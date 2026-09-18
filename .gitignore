@@ -1,6 +1,12 @@
 # Local sample recordings (symlinks to large files outside the repo)
 samples/
 
+# Local-only working documents and assistant configuration
+CLAUDE.md
+CLAUDE.local.md
+PLAN.md
+.claude/
+
 # Raw Insta360 media must never be committed
 *.insv
 *.insp

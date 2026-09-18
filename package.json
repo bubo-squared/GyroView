@@ -1,0 +1,15 @@
+{
+  "name": "gyroview",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Browser player for raw Insta360 .insv recordings",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "spike": "pnpm --filter @gyroview/spike dev",
+    "spike:serve-samples": "pnpm --filter @gyroview/spike serve-samples"
+  }
+}

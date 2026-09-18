@@ -6,17 +6,25 @@ and embeds on any website as a `<gyro-view>` web component or an iframe.
 
 ## Status
 
-Phase 0 (feasibility) is complete: see `spike/README.md` for measured decode and upload
-performance in Chrome and WebKit. Phase 1 (format parsing in `packages/core`) is in progress.
+Phases 0 to 2 are complete: feasibility (`spike/README.md`), format parsing and the CLI
+(`packages/core`, `tools/insv-inspect`), and the media pipeline (HTTP ranges, demuxing, lockstep
+WebCodecs decoding, the playback session, the audio clock over Media Source Extensions,
+capability probing and companion-file discovery). Phase 3, rendering, is next.
 
 ## Development
 
 ```sh
 nvm use           # Node 24 LTS from .nvmrc
 pnpm install
+pnpm --filter @gyroview/adapter-webcodecs exec playwright install chromium webkit
 pnpm verify       # typecheck, lint, format check, dependency rules, tests
 pnpm test:watch
 ```
+
+Browser adapters are tested in headless Chromium and WebKit through Playwright. The end-to-end
+tests in `tools/integration/src/browser` play the local sample recordings; they skip when the
+samples are absent (as in CI) and drive the installed Google Chrome when there is one, because
+Playwright's own Chromium build has no HEVC decoder.
 
 See `CONTRIBUTING.md` for the architecture rules and the definition of done.
 

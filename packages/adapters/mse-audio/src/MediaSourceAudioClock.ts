@@ -86,13 +86,20 @@ export class MediaSourceAudioClock implements PlaybackClock {
     return this.feeder.error;
   }
 
+  /**
+   * Resolves once playback has started. A `stop` that interrupts the start is not an error; the
+   * autoplay policy refusing to start is reported as `playback-blocked`.
+   */
   public async start(): Promise<void> {
     try {
       await this.element.play();
     } catch (error) {
+      if (isNamed(error, 'AbortError')) return;
       throw new GyroViewError(
-        'playback-blocked',
-        'the browser refused to start audio playback; a user gesture is needed',
+        isNamed(error, 'NotAllowedError') ? 'playback-blocked' : 'decode',
+        isNamed(error, 'NotAllowedError')
+          ? 'the browser refused to start audio playback; a user gesture is needed'
+          : 'audio playback failed to start',
         { cause: error },
       );
     }
@@ -116,4 +123,8 @@ export class MediaSourceAudioClock implements PlaybackClock {
     this.element.pause();
     this.detach();
   }
+}
+
+function isNamed(error: unknown, name: string): boolean {
+  return error instanceof Error && error.name === name;
 }

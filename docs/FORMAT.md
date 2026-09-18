@@ -16,6 +16,15 @@ lens (`_00_` back lens, `_10_` screen-side lens) at 5.7K and a single 2:1 packed
 that (unverified: no sample). The LRV proxy is a 1664x832 packed dual fisheye with the same
 trailer.
 
+## File names
+
+`VID_20260814_132640_00_013.insv`: prefix, capture date and time, a two-digit stream code and a
+sequence number. The first digit of the stream code names the lens (0 back, 1 screen side), the
+second marks a proxy (0 the recording, 1 its low-resolution LRV, written as
+`LRV_20260814_132640_01_013.lrv`). Split-file recordings pair `_00_` with `_10_`. Names are hints
+for finding companion files and ordering inputs; everything they suggest is verified against the
+file's contents (`RecordingFileName`, ADR 0004).
+
 ## Trailer
 
 Read from the end of the file. All integers little-endian unless stated.

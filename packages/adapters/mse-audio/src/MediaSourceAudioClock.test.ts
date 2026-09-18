@@ -107,6 +107,14 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     expect(clock.currentTime).toBeCloseTo(3, 1);
   });
 
+  it('treats a stop that interrupts the start as a plain stop, not an error', async () => {
+    const clock = await openClock();
+    const starting = clock.start();
+    clock.stop();
+    await expect(starting).resolves.toBeUndefined();
+    expect(clock.isRunning).toBe(false);
+  });
+
   it('exposes the playback rate of the element', async () => {
     const clock = await openClock();
     expect(clock.rate).toBe(1);

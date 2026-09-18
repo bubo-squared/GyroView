@@ -2,17 +2,24 @@
   "name": "@gyroview/integration",
   "version": "0.0.0",
   "private": true,
-  "description": "Integration tests that combine several adapters against the real recordings (skipped when the samples are absent).",
+  "description": "Integration tests that combine several adapters against the real recordings, in Node and in real browsers (skipped when the samples are absent).",
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
   "devDependencies": {
+    "@gyroview/adapter-fetch": "workspace:*",
     "@gyroview/adapter-mediabunny": "workspace:*",
+    "@gyroview/adapter-mse-audio": "workspace:*",
     "@gyroview/adapter-node": "workspace:*",
+    "@gyroview/adapter-webcodecs": "workspace:*",
     "@gyroview/core": "workspace:*",
     "@types/node": "26.6.1",
+    "@vitest/browser": "4.1.11",
+    "@vitest/browser-playwright": "4.1.11",
+    "playwright": "1.63.0",
+    "vite": "8.3.0",
     "vitest": "4.1.11"
   }
 }

@@ -89,9 +89,17 @@ async function* remux(parts: RemuxParts, from: Seconds): AsyncGenerator<Uint8Arr
     yield* channel.segments();
   } finally {
     channel.close();
-    await production;
-    if (output.state !== 'finalized') await output.cancel();
+    void releaseAfter(production, output);
   }
+}
+
+/**
+ * Frees the muxer once the producer has noticed the closed channel, without making a consumer
+ * that left early (a seek) wait for a packet read still in flight.
+ */
+async function releaseAfter(production: Promise<void>, output: Output): Promise<void> {
+  await production;
+  if (output.state !== 'finalized') await output.cancel();
 }
 
 /**

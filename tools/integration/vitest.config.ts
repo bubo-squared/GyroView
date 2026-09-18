@@ -4,6 +4,7 @@ export default defineProject({
   test: {
     name: 'integration',
     include: ['src/**/*.test.ts'],
+    exclude: ['src/browser/**'],
     environment: 'node',
     testTimeout: 60_000,
   },

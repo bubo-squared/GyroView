@@ -6,6 +6,7 @@ export default defineConfig({
       'packages/*/vitest.config.ts',
       'packages/adapters/*/vitest.config.ts',
       'tools/*/vitest.config.ts',
+      'tools/integration/vitest.browser.config.ts',
     ],
     coverage: {
       provider: 'v8',

@@ -1,5 +1,6 @@
 import { FULL_FRAME, LEFT_HALF, RIGHT_HALF, type LensLayout, type LensSource } from './LensLayout';
 import type { InputDescription, VideoTrackDescription } from './VideoTrackDescription';
+import { RecordingFileName } from '../naming/RecordingFileName';
 import { GyroViewError } from '../../../shared/errors/GyroViewError';
 
 /**
@@ -18,8 +19,6 @@ export const TrackOrderHint = { Track0IsStream10: 1, Track0IsStream00: 2 } as co
 const LENS_COUNT = 2;
 const PACKED_ASPECT_RATIO = 2;
 const ASPECT_TOLERANCE = 0.02;
-const BACK_LENS_FILE_MARKER = '_00_';
-const SCREEN_LENS_FILE_MARKER = '_10_';
 const BACK_LENS_RANK = 0;
 const UNNAMED_RANK = 1;
 const SCREEN_LENS_RANK = 2;
@@ -151,12 +150,13 @@ function isPacked(track: VideoTrackDescription): boolean {
 }
 
 /**
- * `_00_` (back lens) sorts first, `_10_` second, unnamed files keep their given order.
+ * The back lens file (`_00_`) sorts first, the screen-side lens file (`_10_`) second; unnamed or
+ * unconventionally named files keep their given order.
  */
 function fileRank(input: InputDescription): number {
-  const name = input.name ?? '';
-  if (name.includes(BACK_LENS_FILE_MARKER)) return BACK_LENS_RANK;
-  return name.includes(SCREEN_LENS_FILE_MARKER) ? SCREEN_LENS_RANK : UNNAMED_RANK;
+  const name = RecordingFileName.parse(input.name ?? '');
+  if (name?.isBackLens) return BACK_LENS_RANK;
+  return name?.isScreenLens ? SCREEN_LENS_RANK : UNNAMED_RANK;
 }
 
 function undecidable(
@@ -168,7 +168,7 @@ function undecidable(
     inputs.length === 1 &&
     candidates.length === 1 &&
     (hints.fileLayout === FileLayoutHint.SplitFiles ||
-      inputs[0]?.name?.includes(BACK_LENS_FILE_MARKER) === true);
+      RecordingFileName.parse(inputs[0]?.name ?? '')?.isBackLens === true);
   if (isLoneHalfOfPair) {
     return new GyroViewError(
       'missing-second-file',

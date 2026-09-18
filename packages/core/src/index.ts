@@ -1,13 +1,16 @@
 // Application API
 export { readRecording } from './application/recording/readRecording';
 export { Recording, type RecordSummary } from './application/recording/Recording';
+export { locateOtherLensFile, locateProxy } from './application/recording/locateCompanions';
 
 // Ports and the values they exchange
 export type { RandomAccessSource } from './ports/RandomAccessSource';
+export type { ResourceLocator } from './ports/ResourceLocator';
 export { ByteRange } from './shared/binary/ByteRange';
 
 // Domain models
 export type { BoxDescriptor, TrailerWrapper } from './domain/format/boxes/BoxLayout';
+export { RecordingFileName } from './domain/format/naming/RecordingFileName';
 export type {
   CalibrationStrings,
   FileGroup,

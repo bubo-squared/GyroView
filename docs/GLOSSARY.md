@@ -36,3 +36,7 @@ The vocabulary used in code, tests and documents. One name per concept; no synon
 | Frame sink           | Port that receives presentations from the playback session: the renderer, or a test double.                                                                            |
 | Presentation         | One frame pair together with the media time it was shown at and, when known, its frame index.                                                                          |
 | Player state         | The playback session's state machine: idle, ready, playing, paused, seeking, ended, error, disposed; every transition is in one table.                                 |
+| Recording file name  | The camera's `VID_<date>_<time>_<lens><proxy>_<sequence>.insv` convention; a hint only, verified against the file's contents.                                          |
+| Companion file       | A file the camera writes beside a recording: the other lens's file of a split-file pair, or the proxy.                                                                 |
+| Proxy                | The low-resolution `LRV_..._01_` recording of the same capture; optional, used for fallback and scrubbing, never required.                                             |
+| Resource locator     | Port that tells whether a URL can be fetched, used to look for companion files.                                                                                        |

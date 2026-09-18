@@ -9,3 +9,4 @@ export {
   type FakeFrameHandle,
 } from './FakeVideoDecoderPort';
 export { FakeFrameSink } from './FakeFrameSink';
+export { FakeResourceLocator } from './FakeResourceLocator';

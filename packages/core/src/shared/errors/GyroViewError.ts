@@ -5,6 +5,7 @@ export type GyroViewErrorCode =
   | 'binary-out-of-bounds'
   | 'binary-unsafe-integer'
   | 'invalid-byte-range'
+  | 'invalid-protobuf'
   | 'invalid-trailer'
   | 'record-not-found';
 

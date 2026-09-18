@@ -30,7 +30,14 @@ const MEMBER_ORDER = [
 ];
 
 export default defineConfig(
-  globalIgnores(['**/node_modules/', '**/dist/', '**/coverage/', 'spike/', 'test/fixtures/']),
+  globalIgnores([
+    '**/node_modules/',
+    '**/dist/',
+    '**/coverage/',
+    '**/.stryker-tmp/',
+    'spike/',
+    'test/fixtures/',
+  ]),
   {
     files: ['packages/**/*.ts', 'apps/**/*.ts', 'tools/**/*.ts', 'test/**/*.ts'],
     extends: [

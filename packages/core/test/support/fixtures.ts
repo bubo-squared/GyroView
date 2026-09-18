@@ -1,11 +1,23 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const FIXTURE_ROOT = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../../../../test/fixtures',
-);
+/**
+ * Fixtures live at the repository root. Walk up from this file until the workspace manifest
+ * appears, so the same code works from the package directory and from Stryker's sandbox copy.
+ */
+function findWorkspaceRoot(start: string): string {
+  let directory = start;
+  while (!existsSync(path.join(directory, 'pnpm-workspace.yaml'))) {
+    const parent = path.dirname(directory);
+    if (parent === directory) throw new Error(`no pnpm-workspace.yaml above ${start}`);
+    directory = parent;
+  }
+  return directory;
+}
+
+const THIS_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
+const FIXTURE_ROOT = path.join(findWorkspaceRoot(THIS_DIRECTORY), 'test/fixtures');
 
 /**
  * Loads a committed byte fixture cut from a real recording (see test/fixtures/x5/manifest.json).

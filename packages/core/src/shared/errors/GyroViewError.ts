@@ -4,6 +4,8 @@
 export type GyroViewErrorCode =
   | 'binary-out-of-bounds'
   | 'binary-unsafe-integer'
+  | 'codec-unsupported'
+  | 'decode'
   | 'index-out-of-range'
   | 'invalid-byte-range'
   | 'invalid-calibration'

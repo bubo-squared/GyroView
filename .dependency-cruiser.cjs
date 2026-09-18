@@ -54,8 +54,10 @@ module.exports = {
     },
     {
       name: 'adapters-depend-only-on-core',
+      comment:
+        'Production code of an adapter never imports another adapter; tests may compose them.',
       severity: 'error',
-      from: { path: '^packages/adapters/([^/]+)/src' },
+      from: { path: '^packages/adapters/([^/]+)/src', pathNot: '\\.test\\.ts$' },
       to: { path: '^packages/adapters/(?!$1/)', pathNot: '^packages/adapters/$1/' },
     },
     {

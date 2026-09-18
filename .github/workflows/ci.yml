@@ -22,6 +22,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @gyroview/adapter-webcodecs exec playwright install --with-deps chromium webkit
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check

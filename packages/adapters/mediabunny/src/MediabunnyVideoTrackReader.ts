@@ -98,8 +98,12 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
   }
 }
 
+/**
+ * Copies a buffer source into a plain Uint8Array without naming SharedArrayBuffer, which
+ * browsers only define under cross-origin isolation.
+ */
 function toBytes(source: AllowSharedBufferSource): Uint8Array {
-  return source instanceof ArrayBuffer || source instanceof SharedArrayBuffer
-    ? new Uint8Array(source)
-    : new Uint8Array(source.buffer, source.byteOffset, source.byteLength);
+  return ArrayBuffer.isView(source)
+    ? new Uint8Array(source.buffer, source.byteOffset, source.byteLength)
+    : new Uint8Array(source);
 }

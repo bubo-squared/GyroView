@@ -3,7 +3,7 @@ import type { TrailerFooter } from './TrailerFooter';
 
 /**
  * What the reader knows after reading the last bytes of the file: enough for a
- * {@link RecordLocator} to find every record.
+ * record locator to find every record.
  */
 export interface TrailerLayout {
   readonly fileSize: number;

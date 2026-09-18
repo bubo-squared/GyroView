@@ -1,14 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
 import type { LensModel } from './LensModel';
-import { OffsetStringParser } from './OffsetStringParser';
+import { parseOffsetString } from './parseOffsetString';
 import type { Vector3 } from '../../shared/math/Vector3';
-import { OFFICE_CALIBRATION } from '../../../test/support/officeCalibration';
+import { OFFICE_CALIBRATION } from '../../../test/support/calibrationStrings';
 
-const parser = new OffsetStringParser();
-const mei = parser.parse(OFFICE_CALIBRATION.offsetV3).lenses;
-const polynomial = parser.parse(OFFICE_CALIBRATION.offsetV2).lenses;
-const equidistant = parser.parse(OFFICE_CALIBRATION.offset).lenses;
+const mei = parseOffsetString(OFFICE_CALIBRATION.offsetV3).lenses;
+const polynomial = parseOffsetString(OFFICE_CALIBRATION.offsetV2).lenses;
+const equidistant = parseOffsetString(OFFICE_CALIBRATION.offset).lenses;
+
+/**
+ * Back-lens projections computed independently from the MEI formulas (python, 2026-09-18) for
+ * directions with both tangential terms active; they pin the distortion model's sign conventions.
+ */
+const BACK_LENS_GOLDEN = [
+  { theta: 60, azimuth: 30, x: 9427.1557, y: 3456.3014 },
+  { theta: 85, azimuth: 200, x: 5950.8268, y: 1904.193 },
+  { theta: 30, azimuth: 90, x: 8082.1831, y: 3432.3644 },
+];
 
 function directionAt(thetaDegrees: number, azimuthDegrees = 0): Vector3 {
   const theta = (thetaDegrees * Math.PI) / 180;
@@ -69,6 +78,15 @@ describe('lens models on the X5 office lenses', () => {
     expect(worstRadialDifference(equidistant[0]!.model, mei[0]!.model)).toBeLessThan(55);
     expect(worstRadialDifference(equidistant[1]!.model, mei[1]!.model)).toBeLessThan(55);
   });
+
+  it.each(BACK_LENS_GOLDEN)(
+    'MEI projects theta $theta at azimuth $azimuth to the golden pixel ($x, $y) including tangential distortion',
+    ({ theta, azimuth, x, y }) => {
+      const point = mei[1]!.model.project(directionAt(theta, azimuth));
+      expect(point?.x).toBeCloseTo(x, 3);
+      expect(point?.y).toBeCloseTo(y, 3);
+    },
+  );
 
   it('MEI radius grows monotonically with the angle', () => {
     let previous = -1;

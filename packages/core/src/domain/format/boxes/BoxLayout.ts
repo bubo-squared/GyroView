@@ -1,3 +1,4 @@
+import { BoxType } from './boxConstants';
 import type { ByteRange } from '../../../shared/binary/ByteRange';
 
 export interface BoxDescriptor {
@@ -20,6 +21,15 @@ export interface BoxLayout {
   readonly trailingBytes: ByteRange | undefined;
 }
 
+/**
+ * How the trailer is attached: inside an `inst` box (newer firmware) or bare after the boxes.
+ */
+export type TrailerWrapper = 'inst-box' | 'bare';
+
 export function findBox(layout: BoxLayout, type: string): BoxDescriptor | undefined {
   return layout.boxes.find((box) => box.type === type);
+}
+
+export function trailerWrapperOf(layout: BoxLayout): TrailerWrapper {
+  return findBox(layout, BoxType.Insta360Trailer) ? 'inst-box' : 'bare';
 }

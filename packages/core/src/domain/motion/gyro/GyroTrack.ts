@@ -1,14 +1,16 @@
-import type { Vector3 } from '../../../shared/math/Vector3';
+import type {
+  ReadonlyFloat32Array,
+  ReadonlyFloat64Array,
+} from '../../../shared/binary/ReadonlyTypedArray';
+import { ensureIndexInRange, ensureInvariant } from '../../../shared/errors/GyroViewError';
+import { VECTOR3_COMPONENTS, type Vector3 } from '../../../shared/math/Vector3';
 import type { Microseconds } from '../../../shared/units/time';
-
-const COMPONENTS = 3;
 
 export interface GyroSample {
   /**
-   * Capture-clock time of the sample; the same clock the exposure record and
-   * `first_frame_timestamp` use.
+   * Capture-clock time of the sample; the same clock the exposure record and the first frame use.
    */
-  readonly timestamp: Microseconds;
+  readonly captureTime: Microseconds;
   /**
    * Specific force in g.
    */
@@ -25,24 +27,41 @@ export interface GyroSample {
  */
 export class GyroTrack {
   public constructor(
-    public readonly timestamps: Float64Array,
-    public readonly accelerations: Float32Array,
-    public readonly angularVelocities: Float32Array,
+    private readonly captureTimeStore: Float64Array,
+    private readonly accelerationStore: Float32Array,
+    private readonly angularVelocityStore: Float32Array,
   ) {
-    if (
-      accelerations.length !== timestamps.length * COMPONENTS ||
-      angularVelocities.length !== timestamps.length * COMPONENTS
-    ) {
-      throw new RangeError('gyro track arrays disagree on the sample count');
-    }
+    const expected = captureTimeStore.length * VECTOR3_COMPONENTS;
+    ensureInvariant(
+      accelerationStore.length === expected && angularVelocityStore.length === expected,
+      'gyro track arrays disagree on the sample count',
+    );
   }
 
   public get length(): number {
-    return this.timestamps.length;
+    return this.captureTimeStore.length;
   }
 
   public get isEmpty(): boolean {
-    return this.timestamps.length === 0;
+    return this.captureTimeStore.length === 0;
+  }
+
+  public get captureTimes(): ReadonlyFloat64Array {
+    return this.captureTimeStore;
+  }
+
+  /**
+   * Interleaved x, y, z per sample, in g.
+   */
+  public get accelerations(): ReadonlyFloat32Array {
+    return this.accelerationStore;
+  }
+
+  /**
+   * Interleaved x, y, z per sample, in radians per second.
+   */
+  public get angularVelocities(): ReadonlyFloat32Array {
+    return this.angularVelocityStore;
   }
 
   /**
@@ -50,25 +69,21 @@ export class GyroTrack {
    */
   public get meanSampleInterval(): Microseconds | undefined {
     if (this.length < 2) return undefined;
-    const first = this.timestamps[0] ?? 0;
-    const last = this.timestamps[this.length - 1] ?? 0;
-    return ((last - first) / (this.length - 1)) as Microseconds;
+    const span = (this.captureTimeStore[this.length - 1] ?? 0) - (this.captureTimeStore[0] ?? 0);
+    return (span / (this.length - 1)) as Microseconds;
   }
 
   public sampleAt(index: number): GyroSample {
-    const base = index * COMPONENTS;
+    ensureIndexInRange(index, this.length, 'gyro sample');
+    const base = index * VECTOR3_COMPONENTS;
     return {
-      timestamp: this.timestamps[index] as Microseconds,
-      acceleration: [
-        this.accelerations[base] ?? 0,
-        this.accelerations[base + 1] ?? 0,
-        this.accelerations[base + 2] ?? 0,
-      ],
-      angularVelocity: [
-        this.angularVelocities[base] ?? 0,
-        this.angularVelocities[base + 1] ?? 0,
-        this.angularVelocities[base + 2] ?? 0,
-      ],
+      captureTime: this.captureTimeStore[index] as Microseconds,
+      acceleration: this.vectorAt(this.accelerationStore, base),
+      angularVelocity: this.vectorAt(this.angularVelocityStore, base),
     };
+  }
+
+  private vectorAt(store: Float32Array, base: number): Vector3 {
+    return [store[base] ?? NaN, store[base + 1] ?? NaN, store[base + 2] ?? NaN];
   }
 }

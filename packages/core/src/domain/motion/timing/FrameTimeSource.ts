@@ -13,8 +13,8 @@ export interface FrameTimingContext {
   readonly clock: CaptureClock;
   readonly frameCount: number;
   readonly frameRate: number | undefined;
-  readonly readout: Seconds;
-  readonly exposure: ExposureRecord | undefined;
+  readonly readoutTime: Seconds;
+  readonly exposureRecord: ExposureRecord | undefined;
   /**
    * Presentation timestamps of the video track's samples, in seconds from the track start, in
    * frame order. Supplied by the demuxer.

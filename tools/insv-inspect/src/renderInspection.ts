@@ -1,6 +1,5 @@
 import type { Inspection, LensSummary } from './Inspection';
 
-const MICROSECONDS_PER_SECOND = 1_000_000;
 const DECIMALS = 3;
 const TRANSLATION_DECIMALS = 6;
 const HEX_RADIX = 16;
@@ -55,8 +54,8 @@ function renderInfo(inspection: Inspection): string[] {
   return [
     `Camera: ${show(info.model)}, firmware ${show(info.firmware)}, serial ${show(info.serialNumber)}`,
     `Video: ${dimension} per lens track, ${show(info.frameRate)} fps, mode ${show(info.captureMode)}`,
-    `Timing: first frame ${show(info.firstFrameTimestamp)} us, gyro offset ${show(info.gyroTimestampMs)} ms, ` +
-      `rolling shutter ${showFixed(info.rollingShutterTimeMs)} ms, pts type ${show(info.ptsType)}`,
+    `Timing: first frame ${show(info.firstFrameTimestamp)}, gyro offset ${show(info.gyroOffsetMs)} ms, ` +
+      `readout ${showFixed(info.readoutTimeMs)} ms, pts type ${show(info.ptsType)}`,
     `Gyro config: type ${show(info.gyroType)}, raw ${show(info.isRawGyro)}, ` +
       `ranges ${show(info.sensorRanges?.accelerometerG)} g / ${show(info.sensorRanges?.gyroscopeDps)} dps`,
     `Layout hints: file layout ${show(info.fileLayout)}, track order ${show(info.trackOrder)}`,
@@ -78,16 +77,16 @@ function renderLens(lens: LensSummary): string {
   const translation = lens.translationMetres
     .map((value) => value.toFixed(TRANSLATION_DECIMALS))
     .join(', ');
-  return `  lens ${lens.index}: ${lens.model}, centre (${centre}), ypr (${orientation}) deg, translation (${translation}) m`;
+  return `  lens ${lens.lensIndex}: ${lens.model}, centre (${centre}), ypr (${orientation}) deg, translation (${translation}) m`;
 }
 
 function renderGyro(inspection: Inspection): string {
   const { gyro } = inspection;
   if (gyro === undefined) return 'Gyro: none';
-  const spanSeconds = (gyro.lastTimestampUs - gyro.firstTimestampUs) / MICROSECONDS_PER_SECOND;
+  const stray = gyro.strayBytes > 0 ? `, ${gyro.strayBytes} stray byte(s)` : '';
   return (
-    `Gyro: ${gyro.samples.toLocaleString('en-US')} samples over ${fixed(spanSeconds)} s, ` +
-    `mean interval ${showFixed(gyro.meanIntervalUs)} us, mean |a| ${fixed(gyro.meanAccelerationMagnitudeG)} g`
+    `Gyro: ${gyro.layout} layout, ${gyro.samples.toLocaleString('en-US')} samples over ${fixed(gyro.spanSeconds)} s, ` +
+    `mean interval ${showFixed(gyro.meanIntervalUs)} us, mean |a| ${fixed(gyro.meanAccelerationMagnitudeG)} g${stray}`
   );
 }
 
@@ -95,8 +94,8 @@ function renderExposure(inspection: Inspection): string {
   const { exposure } = inspection;
   return exposure === undefined
     ? 'Exposure: none'
-    : `Exposure: ${exposure.entries.toLocaleString('en-US')} entries from ${exposure.firstTimestampUs} to ${exposure.lastTimestampUs} us, ` +
-        `mean shutter 1/${Math.round(1 / exposure.meanExposureSeconds)} s, ` +
+    : `Exposure: ${exposure.entries.toLocaleString('en-US')} entries from ${exposure.firstCaptureTimeUs} to ${exposure.lastCaptureTimeUs} us, ` +
+        `mean shutter 1/${Math.round(1 / exposure.meanShutterTimeSeconds)} s, ` +
         `first encoded frame at entry ${show(exposure.firstEncodedFrameEntry)}`;
 }
 

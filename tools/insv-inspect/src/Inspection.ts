@@ -18,7 +18,7 @@ export interface RecordSummary {
 }
 
 export interface LensSummary {
-  readonly index: number;
+  readonly lensIndex: number;
   readonly model: string;
   readonly principalPoint: readonly [x: number, y: number];
   readonly orientationDegrees: readonly [yaw: number, pitch: number, roll: number];
@@ -33,9 +33,10 @@ export interface CalibrationSummary {
 }
 
 export interface GyroSummary {
+  readonly layout: string;
   readonly samples: number;
-  readonly firstTimestampUs: number;
-  readonly lastTimestampUs: number;
+  readonly strayBytes: number;
+  readonly spanSeconds: number;
   readonly meanIntervalUs: number | undefined;
   /**
    * Mean |acceleration| over the leading samples; about 1 g proves the range scaling.
@@ -45,9 +46,9 @@ export interface GyroSummary {
 
 export interface ExposureSummary {
   readonly entries: number;
-  readonly firstTimestampUs: number;
-  readonly lastTimestampUs: number;
-  readonly meanExposureSeconds: number;
+  readonly firstCaptureTimeUs: number;
+  readonly lastCaptureTimeUs: number;
+  readonly meanShutterTimeSeconds: number;
   /**
    * Index of the entry that belongs to the first encoded frame, when the info record says.
    */

@@ -14,6 +14,9 @@ export interface FileGroup {
   readonly total: number | undefined;
 }
 
+/**
+ * Full-scale ranges of the IMU, which the raw gyro sample layout needs to scale its integers.
+ */
 export interface SensorRanges {
   readonly accelerometerG: number | undefined;
   readonly gyroscopeDps: number | undefined;
@@ -42,11 +45,22 @@ export interface RecordingInfo {
   readonly dimension: LensDimension | undefined;
   readonly frameRate: number | undefined;
   readonly captureMode: string | undefined;
+  /**
+   * Capture-clock time of the first encoded frame, in the unit the gyro record uses
+   * (microseconds for the raw layout, milliseconds for the float layout). Convert through
+   * `CaptureClock.fromInfo`, never by hand.
+   */
   readonly firstFrameTimestamp: number | undefined;
-  readonly rollingShutterTimeMs: number | undefined;
+  /**
+   * Rolling-shutter readout duration of one frame, in milliseconds.
+   */
+  readonly readoutTimeMs: number | undefined;
   readonly fileGroup: FileGroup | undefined;
   readonly windowCrop: WindowCrop | undefined;
-  readonly gyroTimestampMs: number | undefined;
+  /**
+   * How much later than the frames the gyro samples are stamped, in milliseconds.
+   */
+  readonly gyroOffsetMs: number | undefined;
   readonly totalFrames: number | undefined;
   readonly gyroType: number | undefined;
   readonly isRawGyro: boolean | undefined;

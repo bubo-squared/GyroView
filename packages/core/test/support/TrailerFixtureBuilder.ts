@@ -1,6 +1,18 @@
+import { encodeBox } from './encodeBox';
+import { BoxType } from '../../src/domain/format/boxes/boxConstants';
 import {
+  FOOTER_MAGIC_OFFSET,
+  FOOTER_TRAILER_SIZE_OFFSET,
+  FOOTER_VERSION_OFFSET,
+  INDEX_SLOT_FORMAT_OFFSET,
+  INDEX_SLOT_ID_OFFSET,
+  INDEX_SLOT_OFFSET_OFFSET,
   INDEX_SLOT_SIZE,
+  INDEX_SLOT_SIZE_OFFSET,
+  RECORD_HEADER_FORMAT_OFFSET,
+  RECORD_HEADER_ID_OFFSET,
   RECORD_HEADER_SIZE,
+  RECORD_HEADER_SIZE_OFFSET,
   RecordType,
   TRAILER_FOOTER_SIZE,
   TRAILER_MAGIC,
@@ -23,6 +35,10 @@ export interface BuiltTrailerFile {
   readonly bytes: Uint8Array;
   readonly payloadStart: number;
   readonly records: readonly ExpectedRecord[];
+  /**
+   * Size of the index record, or 0 for the contiguous layout.
+   */
+  readonly indexSize: number;
 }
 
 export interface IndexedLayoutOptions {
@@ -34,14 +50,15 @@ export interface IndexedLayoutOptions {
 }
 
 const INDEX_SLOT_COUNT = 31;
-const INST_BOX_HEADER_SIZE = 8;
 const TRAILER_VERSION = 3;
 const DEFAULT_FORMAT = 0;
+const IS_LITTLE_ENDIAN = true;
 
 /**
  * Assembles synthetic Insta360 files for tests: an arbitrary prefix standing in for the MP4,
  * then a trailer in either the indexed layout (records at aligned offsets, index last) or the
- * contiguous layout (records back to back, no index).
+ * contiguous layout (records back to back, no index). Encodes with the same named constants the
+ * parser reads with, so a layout change cannot leave the two silently agreeing on stale bytes.
  */
 export class TrailerFixtureBuilder {
   private prefix: Uint8Array = new Uint8Array();
@@ -66,18 +83,18 @@ export class TrailerFixtureBuilder {
       parts.push(record.payload, encodeHeader(record));
       cursor += record.payload.byteLength + RECORD_HEADER_SIZE;
     }
-    const trailerSize = cursor - this.prefix.byteLength + TRAILER_FOOTER_SIZE;
-    parts.push(encodeFooter(trailerSize));
+    parts.push(encodeFooter(cursor - this.prefix.byteLength + TRAILER_FOOTER_SIZE));
     return {
       bytes: concat([this.prefix, ...parts]),
       payloadStart: this.prefix.byteLength,
       records: expected,
+      indexSize: 0,
     };
   }
 
   public buildIndexed(options: IndexedLayoutOptions): BuiltTrailerFile {
-    const boxHeaderSize = options.wrapInInstBox ? INST_BOX_HEADER_SIZE : 0;
-    const payloadStart = this.prefix.byteLength + boxHeaderSize;
+    const payloadStart =
+      this.prefix.byteLength + (options.wrapInInstBox ? RECORD_HEADER_SIZE + 2 : 0);
     const parts: Uint8Array[] = [];
     const expected: ExpectedRecord[] = [];
     let cursor = payloadStart;
@@ -95,10 +112,13 @@ export class TrailerFixtureBuilder {
     cursor += index.byteLength + RECORD_HEADER_SIZE;
     parts.push(encodeFooter(cursor - payloadStart + TRAILER_FOOTER_SIZE));
     const payload = concat(parts);
-    const wrapped = options.wrapInInstBox
-      ? concat([encodeInstBoxHeader(payload.byteLength), payload])
-      : payload;
-    return { bytes: concat([this.prefix, wrapped]), payloadStart, records: expected };
+    const trailer = options.wrapInInstBox ? encodeBox(BoxType.Insta360Trailer, payload) : payload;
+    return {
+      bytes: concat([this.prefix, trailer]),
+      payloadStart,
+      records: expected,
+      indexSize: index.byteLength,
+    };
   }
 
   private describe(record: FixtureRecordSpec, offset: number): ExpectedRecord {
@@ -114,25 +134,18 @@ export class TrailerFixtureBuilder {
 function encodeHeader(record: FixtureRecordSpec): Uint8Array {
   const header = new Uint8Array(RECORD_HEADER_SIZE);
   const view = new DataView(header.buffer);
-  view.setUint8(0, record.format ?? DEFAULT_FORMAT);
-  view.setUint8(1, record.id);
-  view.setUint32(2, record.payload.byteLength, true);
-  return header;
-}
-
-function encodeInstBoxHeader(payloadSize: number): Uint8Array {
-  const header = new Uint8Array(INST_BOX_HEADER_SIZE);
-  new DataView(header.buffer).setUint32(0, payloadSize + INST_BOX_HEADER_SIZE);
-  header.set(new TextEncoder().encode('inst'), 4);
+  view.setUint8(RECORD_HEADER_FORMAT_OFFSET, record.format ?? DEFAULT_FORMAT);
+  view.setUint8(RECORD_HEADER_ID_OFFSET, record.id);
+  view.setUint32(RECORD_HEADER_SIZE_OFFSET, record.payload.byteLength, IS_LITTLE_ENDIAN);
   return header;
 }
 
 function encodeFooter(trailerSize: number): Uint8Array {
   const footer = new Uint8Array(TRAILER_FOOTER_SIZE);
   const view = new DataView(footer.buffer);
-  view.setUint32(32, trailerSize, true);
-  view.setUint32(36, TRAILER_VERSION, true);
-  footer.set(new TextEncoder().encode(TRAILER_MAGIC), 40);
+  view.setUint32(FOOTER_TRAILER_SIZE_OFFSET, trailerSize, IS_LITTLE_ENDIAN);
+  view.setUint32(FOOTER_VERSION_OFFSET, TRAILER_VERSION, IS_LITTLE_ENDIAN);
+  footer.set(new TextEncoder().encode(TRAILER_MAGIC), FOOTER_MAGIC_OFFSET);
   return footer;
 }
 
@@ -141,10 +154,10 @@ function encodeIndex(records: readonly ExpectedRecord[], payloadStart: number): 
   const view = new DataView(index.buffer);
   for (const record of records) {
     const slot = record.id * INDEX_SLOT_SIZE;
-    view.setUint8(slot, record.id);
-    view.setUint8(slot + 1, record.format);
-    view.setUint32(slot + 2, record.size, true);
-    view.setUint32(slot + 6, record.offset - payloadStart, true);
+    view.setUint8(slot + INDEX_SLOT_ID_OFFSET, record.id);
+    view.setUint8(slot + INDEX_SLOT_FORMAT_OFFSET, record.format);
+    view.setUint32(slot + INDEX_SLOT_SIZE_OFFSET, record.size, IS_LITTLE_ENDIAN);
+    view.setUint32(slot + INDEX_SLOT_OFFSET_OFFSET, record.offset - payloadStart, IS_LITTLE_ENDIAN);
   }
   return index;
 }

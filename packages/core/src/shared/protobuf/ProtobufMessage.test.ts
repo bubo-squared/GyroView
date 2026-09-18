@@ -14,7 +14,7 @@ describe('ProtobufMessage', () => {
   const message = ProtobufMessage.decode(SAMPLE);
 
   it('decodes multi-byte varints', () => {
-    expect(message.varint(1)).toBe(150);
+    expect(message.fields(1)[0]?.value).toEqual({ kind: 'varint', value: 150 });
   });
 
   it('decodes strings and doubles', () => {
@@ -26,19 +26,19 @@ describe('ProtobufMessage', () => {
     expect(message.message(4)?.varint(1)).toBe(7);
   });
 
-  it('exposes repeated fields in order and returns the first for scalar accessors', () => {
+  it('exposes repeated fields in order and lets the last occurrence win for scalar accessors', () => {
     expect(message.fields(1).map((field) => field.value)).toEqual([
       { kind: 'varint', value: 150 },
       { kind: 'varint', value: 1 },
     ]);
-    expect(message.varint(1)).toBe(150);
+    expect(message.varint(1)).toBe(1);
   });
 
   it('reports absence as undefined and zero as false', () => {
     expect(message.varint(99)).toBeUndefined();
     expect(message.has(99)).toBe(false);
     expect(message.boolean(5)).toBe(false);
-    expect(message.boolean(1)).toBe(true);
+    expect(message.boolean(99)).toBeUndefined();
   });
 
   it('rejects reading a field with the wrong wire type', () => {

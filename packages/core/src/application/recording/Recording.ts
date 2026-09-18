@@ -1,26 +1,32 @@
 import type { RandomAccessSource } from '../../ports/RandomAccessSource';
-import type { BoxLayout } from '../../domain/format/boxes/BoxLayout';
-import { BoxType } from '../../domain/format/boxes/boxConstants';
-import { findBox } from '../../domain/format/boxes/BoxLayout';
+import type { BoxDescriptor, TrailerWrapper } from '../../domain/format/boxes/BoxLayout';
 import { RecordType } from '../../domain/format/constants';
 import type { RecordingInfo } from '../../domain/format/info/RecordingInfo';
+import type { LayoutHints } from '../../domain/format/layout/detectLensLayout';
+import { parseExposureRecord } from '../../domain/format/records/exposure/parseExposureRecord';
+import {
+  parseGyroRecord,
+  type ParsedGyroRecord,
+} from '../../domain/format/records/gyro/parseGyroRecord';
 import type { Trailer } from '../../domain/format/trailer/Trailer';
 import type { ExposureRecord } from '../../domain/motion/exposure/ExposureRecord';
-import type { ExposureRecordParser } from '../../domain/motion/exposure/ExposureRecordParser';
-import type { GyroRecordParser } from '../../domain/motion/gyro/GyroRecordParser';
-import type { GyroTrack } from '../../domain/motion/gyro/GyroTrack';
-import type { CalibrationChoice } from '../../domain/optics/CalibrationSelector';
+import { CaptureClock, type CaptureClockUnit } from '../../domain/motion/timing/CaptureClock';
+import type { CalibrationChoice } from '../../domain/optics/selectCalibration';
 
-export type TrailerWrapper = 'inst-box' | 'bare';
+export interface RecordSummary {
+  readonly id: number;
+  readonly format: number;
+  readonly offset: number;
+  readonly size: number;
+}
 
 export interface RecordingParts {
   readonly source: RandomAccessSource;
-  readonly boxes: BoxLayout;
+  readonly boxes: readonly BoxDescriptor[];
+  readonly trailerWrapper: TrailerWrapper;
   readonly trailer: Trailer;
   readonly info: RecordingInfo;
   readonly calibration: CalibrationChoice;
-  readonly gyroParser: GyroRecordParser;
-  readonly exposureParser: ExposureRecordParser;
 }
 
 /**
@@ -30,12 +36,20 @@ export interface RecordingParts {
 export class Recording {
   public constructor(private readonly parts: RecordingParts) {}
 
-  public get boxes(): BoxLayout {
+  public get boxes(): readonly BoxDescriptor[] {
     return this.parts.boxes;
   }
 
-  public get trailer(): Trailer {
-    return this.parts.trailer;
+  public get trailerWrapper(): TrailerWrapper {
+    return this.parts.trailerWrapper;
+  }
+
+  public get trailerVersion(): number {
+    return this.parts.trailer.footer.version;
+  }
+
+  public get trailerPayloadStart(): number {
+    return this.parts.trailer.payloadStart;
   }
 
   public get info(): RecordingInfo {
@@ -46,31 +60,53 @@ export class Recording {
     return this.parts.calibration;
   }
 
-  public get trailerWrapper(): TrailerWrapper {
-    return findBox(this.parts.boxes, BoxType.Insta360Trailer) ? 'inst-box' : 'bare';
+  public get layoutHints(): LayoutHints {
+    return { fileLayout: this.parts.info.fileLayout };
+  }
+
+  /**
+   * Unit of the info record's capture-clock fields: microseconds unless the camera declares the
+   * float gyro layout, whose timestamps are milliseconds.
+   */
+  public get captureClockUnit(): CaptureClockUnit {
+    return this.parts.info.isRawGyro === false ? 'milliseconds' : 'microseconds';
+  }
+
+  public captureClock(): CaptureClock {
+    return CaptureClock.fromInfo(this.parts.info, this.captureClockUnit);
+  }
+
+  public recordSummaries(): readonly RecordSummary[] {
+    return this.parts.trailer.records
+      .map((record) => ({
+        id: record.id,
+        format: record.format,
+        offset: record.payload.offset,
+        size: record.payload.length,
+      }))
+      .toSorted((left, right) => left.id - right.id);
   }
 
   /**
    * Undefined when the camera wrote no gyro record.
    */
-  public async readGyroTrack(): Promise<GyroTrack | undefined> {
-    if (!this.parts.trailer.has(RecordType.Gyro)) return undefined;
-    const payload = await this.parts.trailer.readRecord(this.parts.source, RecordType.Gyro);
-    return this.parts.gyroParser.parse(payload, {
-      isRawGyro: this.parts.info.isRawGyro,
-      ranges: {
-        accelerometerG: this.parts.info.sensorRanges?.accelerometerG,
-        gyroscopeDps: this.parts.info.sensorRanges?.gyroscopeDps,
-      },
-    });
+  public async readGyroRecord(): Promise<ParsedGyroRecord | undefined> {
+    const location = this.parts.trailer.locationOf(RecordType.Gyro);
+    return location === undefined
+      ? undefined
+      : parseGyroRecord(await this.parts.source.read(location.payload), {
+          isRawGyro: this.parts.info.isRawGyro,
+          ranges: this.parts.info.sensorRanges,
+        });
   }
 
   /**
    * Undefined when the camera wrote no exposure record.
    */
   public async readExposureRecord(): Promise<ExposureRecord | undefined> {
-    if (!this.parts.trailer.has(RecordType.Exposure)) return undefined;
-    const payload = await this.parts.trailer.readRecord(this.parts.source, RecordType.Exposure);
-    return this.parts.exposureParser.parse(payload);
+    const location = this.parts.trailer.locationOf(RecordType.Exposure);
+    return location === undefined
+      ? undefined
+      : parseExposureRecord(await this.parts.source.read(location.payload)).record;
   }
 }

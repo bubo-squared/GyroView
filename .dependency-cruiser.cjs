@@ -40,6 +40,13 @@ module.exports = {
       to: { dependencyTypes: ['npm-no-pkg', 'npm-unknown'] },
     },
     {
+      name: 'byte-layout-stays-in-format',
+      comment: 'Only domain/format reads bytes; motion and optics receive decoded values.',
+      severity: 'error',
+      from: { path: '^packages/core/src/domain/(motion|optics)/' },
+      to: { path: '^packages/core/src/shared/(binary/ByteReader|protobuf)/' },
+    },
+    {
       name: 'core-does-not-know-outer-layers',
       severity: 'error',
       from: { path: '^packages/core/src' },

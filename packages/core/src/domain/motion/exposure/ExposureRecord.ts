@@ -1,45 +1,71 @@
+import type { ReadonlyFloat64Array } from '../../../shared/binary/ReadonlyTypedArray';
+import { ensureIndexInRange, ensureInvariant } from '../../../shared/errors/GyroViewError';
 import type { Microseconds, Seconds } from '../../../shared/units/time';
 
 export interface ExposureEntry {
-  readonly timestamp: Microseconds;
-  readonly exposure: Seconds;
+  readonly captureTime: Microseconds;
+  readonly shutterTime: Seconds;
 }
 
 /**
- * Capture timestamps and shutter durations of every frame the sensor produced, in order.
+ * Capture times and shutter durations of every frame the sensor produced, in order.
  */
 export class ExposureRecord {
   public constructor(
-    public readonly timestamps: Float64Array,
-    public readonly exposures: Float64Array,
+    private readonly captureTimeStore: Float64Array,
+    private readonly shutterTimeStore: Float64Array,
   ) {
-    if (timestamps.length !== exposures.length) {
-      throw new RangeError('exposure record arrays disagree on the entry count');
-    }
+    ensureInvariant(
+      captureTimeStore.length === shutterTimeStore.length,
+      'exposure record arrays disagree on the entry count',
+    );
   }
 
   public get length(): number {
-    return this.timestamps.length;
+    return this.captureTimeStore.length;
+  }
+
+  public get captureTimes(): ReadonlyFloat64Array {
+    return this.captureTimeStore;
+  }
+
+  public get shutterTimes(): ReadonlyFloat64Array {
+    return this.shutterTimeStore;
   }
 
   public entryAt(index: number): ExposureEntry {
+    ensureIndexInRange(index, this.length, 'exposure entry');
     return {
-      timestamp: (this.timestamps[index] ?? NaN) as Microseconds,
-      exposure: (this.exposures[index] ?? NaN) as Seconds,
+      captureTime: this.captureTimeStore[index] as Microseconds,
+      shutterTime: this.shutterTimeStore[index] as Seconds,
     };
   }
 
   /**
-   * Index of the first entry captured at or after `timestamp`, or the length when none is.
+   * Index of the first entry captured at or after `captureTime`, or the length when none is.
    */
-  public indexAtOrAfter(timestamp: Microseconds): number {
+  public indexAtOrAfter(captureTime: Microseconds): number {
     let low = 0;
-    let high = this.timestamps.length;
+    let high = this.captureTimeStore.length;
     while (low < high) {
       const middle = (low + high) >>> 1;
-      if ((this.timestamps[middle] ?? Infinity) < timestamp) low = middle + 1;
+      if ((this.captureTimeStore[middle] ?? Infinity) < captureTime) low = middle + 1;
       else high = middle;
     }
     return low;
+  }
+
+  /**
+   * The `count` entries starting at `start`, as their own record.
+   */
+  public slice(start: number, count: number): ExposureRecord {
+    ensureInvariant(
+      start >= 0 && count >= 0 && start + count <= this.length,
+      'exposure slice out of range',
+    );
+    return new ExposureRecord(
+      this.captureTimeStore.slice(start, start + count),
+      this.shutterTimeStore.slice(start, start + count),
+    );
   }
 }

@@ -9,17 +9,16 @@ export class ExposureFrameTimeSource implements FrameTimeSource {
   public readonly name = 'exposure-record';
 
   public resolve(context: FrameTimingContext): FrameTimes | undefined {
-    const { exposure, clock, frameCount } = context;
-    if (!exposure) return undefined;
-    const start = exposure.indexAtOrAfter(clock.firstFrameTimestamp);
-    const hasEnoughEntries = exposure.length - start >= frameCount;
-    return hasEnoughEntries
-      ? new FrameTimes({
-          clock,
-          captureTimestamps: exposure.timestamps.slice(start, start + frameCount),
-          exposures: exposure.exposures.slice(start, start + frameCount),
-          readout: context.readout,
-        })
-      : undefined;
+    const { exposureRecord, clock, frameCount } = context;
+    if (!exposureRecord) return undefined;
+    const start = exposureRecord.indexAtOrAfter(clock.firstFrameCaptureTime);
+    if (exposureRecord.length - start < frameCount) return undefined;
+    const frames = exposureRecord.slice(start, frameCount);
+    return new FrameTimes({
+      clock,
+      captureTimes: Float64Array.from(frames.captureTimes),
+      shutterTimes: Float64Array.from(frames.shutterTimes),
+      readoutTime: context.readoutTime,
+    });
   }
 }

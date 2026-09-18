@@ -1,11 +1,10 @@
 import type { RecordLocation } from './RecordLocation';
 import type { TrailerFooter } from './TrailerFooter';
-import type { RandomAccessSource } from '../../../ports/RandomAccessSource';
 import { GyroViewError } from '../../../shared/errors/GyroViewError';
 
 /**
- * The parsed table of contents of an Insta360 trailer: which records exist and where.
- * Payloads are read on demand because some (gyro, thumbnails) are megabytes large.
+ * The table of contents of an Insta360 trailer: which records exist and where their payloads
+ * lie. Pure data; reading payloads is the caller's job because some are megabytes large.
  */
 export class Trailer {
   private readonly byId: ReadonlyMap<number, RecordLocation>;
@@ -22,6 +21,10 @@ export class Trailer {
     return [...this.byId.keys()];
   }
 
+  public get records(): readonly RecordLocation[] {
+    return [...this.byId.values()];
+  }
+
   public has(id: number): boolean {
     return this.byId.has(id);
   }
@@ -30,11 +33,11 @@ export class Trailer {
     return this.byId.get(id);
   }
 
-  public async readRecord(source: RandomAccessSource, id: number): Promise<Uint8Array> {
+  public requireLocation(id: number): RecordLocation {
     const location = this.byId.get(id);
     if (!location) {
       throw new GyroViewError('record-not-found', `trailer has no record with id ${id}`);
     }
-    return source.read(location.payload);
+    return location;
   }
 }

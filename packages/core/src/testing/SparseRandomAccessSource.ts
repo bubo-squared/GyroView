@@ -10,13 +10,24 @@ interface Segment {
 /**
  * Test double for very large files: reports an arbitrary size and serves bytes only where a
  * segment was placed, zeros elsewhere. Lets trailer tests use real multi-gigabyte offsets
- * with kilobytes of fixture data.
+ * with kilobytes of fixture data, and records every range read for I/O assertions.
  */
 export class SparseRandomAccessSource implements RandomAccessSource {
-  public readonly reads: ByteRange[] = [];
   private readonly segments: Segment[] = [];
+  private readonly readLog: ByteRange[] = [];
 
   public constructor(private readonly totalSize: number) {}
+
+  /**
+   * A source holding exactly `bytes`, for tests that have the whole file in memory.
+   */
+  public static over(bytes: Uint8Array): SparseRandomAccessSource {
+    return new SparseRandomAccessSource(bytes.byteLength).place(0, bytes);
+  }
+
+  public get reads(): readonly ByteRange[] {
+    return this.readLog;
+  }
 
   public place(offset: number, bytes: Uint8Array): this {
     const range = ByteRange.of(offset, bytes.byteLength);
@@ -35,17 +46,10 @@ export class SparseRandomAccessSource implements RandomAccessSource {
   }
 
   public read(range: ByteRange): Promise<Uint8Array> {
-    this.reads.push(range);
+    this.readLog.push(range);
     return range.fitsWithin(this.totalSize)
       ? Promise.resolve(this.assemble(range))
       : Promise.reject(this.outOfRange(range));
-  }
-
-  private outOfRange(range: ByteRange): GyroViewError {
-    return new GyroViewError(
-      'invalid-byte-range',
-      `range ${range.offset}+${range.length} exceeds size ${this.totalSize}`,
-    );
   }
 
   private assemble(range: ByteRange): Uint8Array {
@@ -61,6 +65,13 @@ export class SparseRandomAccessSource implements RandomAccessSource {
     into.set(
       segment.bytes.subarray(start - segment.range.offset, end - segment.range.offset),
       start - range.offset,
+    );
+  }
+
+  private outOfRange(range: ByteRange): GyroViewError {
+    return new GyroViewError(
+      'invalid-byte-range',
+      `range ${range.offset}+${range.length} exceeds size ${this.totalSize}`,
     );
   }
 }

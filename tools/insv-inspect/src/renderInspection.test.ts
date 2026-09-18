@@ -23,10 +23,10 @@ const inspection: Inspection = {
     frameRate: 60,
     captureMode: 'standard',
     firstFrameTimestamp: 921_751_839,
-    rollingShutterTimeMs: 8.4075,
+    readoutTimeMs: 8.4075,
     fileGroup: undefined,
     windowCrop: undefined,
-    gyroTimestampMs: 1.6,
+    gyroOffsetMs: 1.6,
     totalFrames: undefined,
     gyroType: 1,
     isRawGyro: true,
@@ -40,7 +40,7 @@ const inspection: Inspection = {
     canvas: [10_752, 5376],
     lenses: [
       {
-        index: 0,
+        lensIndex: 0,
         model: 'mei',
         principalPoint: [2689.89, 2681.94],
         orientationDegrees: [-0.002, 0.377, 90.524],
@@ -50,17 +50,18 @@ const inspection: Inspection = {
     warnings: ['offset_v2 skipped: example'],
   },
   gyro: {
+    layout: 'raw',
     samples: 261_872,
-    firstTimestampUs: 921_648_752,
-    lastTimestampUs: 1_183_880_765,
+    strayBytes: 1,
+    spanSeconds: 262.232013,
     meanIntervalUs: 1001.3,
     meanAccelerationMagnitudeG: 0.998,
   },
   exposure: {
     entries: 15_720,
-    firstTimestampUs: 921_651_739,
-    lastTimestampUs: 1_183_876_117,
-    meanExposureSeconds: 1 / 640,
+    firstCaptureTimeUs: 921_651_739,
+    lastCaptureTimeUs: 1_183_876_117,
+    meanShutterTimeSeconds: 1 / 640,
     firstEncodedFrameEntry: 6,
   },
 };
@@ -86,7 +87,7 @@ describe('renderInspection', () => {
 
   it('summarises gyro and exposure', () => {
     expect(report).toContain(
-      'Gyro: 261,872 samples over 262.232 s, mean interval 1001.300 us, mean |a| 0.998 g',
+      'Gyro: raw layout, 261,872 samples over 262.232 s, mean interval 1001.300 us, mean |a| 0.998 g, 1 stray byte(s)',
     );
     expect(report).toContain('mean shutter 1/640 s, first encoded frame at entry 6');
   });

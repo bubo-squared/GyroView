@@ -1,0 +1,34 @@
+import {
+  EXPOSURE_DURATION_OFFSET,
+  EXPOSURE_ENTRY_SIZE,
+  EXPOSURE_TIMESTAMP_OFFSET,
+} from './exposureLayout';
+import { ByteReader } from '../../../../shared/binary/ByteReader';
+import { ExposureRecord } from '../../../motion/exposure/ExposureRecord';
+
+export interface ParsedExposureRecord {
+  readonly record: ExposureRecord;
+  /**
+   * Bytes after the last whole entry; tolerated and reported like the gyro record's.
+   */
+  readonly strayBytes: number;
+}
+
+/**
+ * Decodes the exposure record into per-frame capture times and shutter times.
+ */
+export function parseExposureRecord(payload: Uint8Array): ParsedExposureRecord {
+  const count = Math.floor(payload.byteLength / EXPOSURE_ENTRY_SIZE);
+  const reader = new ByteReader(payload);
+  const captureTimes = new Float64Array(count);
+  const shutterTimes = new Float64Array(count);
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * EXPOSURE_ENTRY_SIZE;
+    captureTimes[index] = reader.uint64LeAt(offset + EXPOSURE_TIMESTAMP_OFFSET);
+    shutterTimes[index] = reader.float64LeAt(offset + EXPOSURE_DURATION_OFFSET);
+  }
+  return {
+    record: new ExposureRecord(captureTimes, shutterTimes),
+    strayBytes: payload.byteLength % EXPOSURE_ENTRY_SIZE,
+  };
+}

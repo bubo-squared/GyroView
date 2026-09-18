@@ -3,8 +3,7 @@ import { FrameTimes } from './FrameTimes';
 import { seconds } from '../../../shared/units/time';
 
 /**
- * Uses the video track's own presentation timestamps, anchored at the first frame's capture
- * timestamp. Exposure is unknown here and recorded as zero.
+ * Uses the video track's own presentation timestamps, anchored at the first frame's capture time.
  */
 export class TrackTimestampFrameTimeSource implements FrameTimeSource {
   public readonly name = 'track-timestamps';
@@ -12,14 +11,9 @@ export class TrackTimestampFrameTimeSource implements FrameTimeSource {
   public resolve(context: FrameTimingContext): FrameTimes | undefined {
     const { trackTimestamps, clock, frameCount } = context;
     if (!trackTimestamps || trackTimestamps.length < frameCount) return undefined;
-    const captureTimestamps = Float64Array.from(trackTimestamps.slice(0, frameCount), (timestamp) =>
-      clock.captureTimestampOf(seconds(timestamp)),
+    const captureTimes = Float64Array.from(trackTimestamps.slice(0, frameCount), (timestamp) =>
+      clock.captureTimeOf(seconds(timestamp)),
     );
-    return new FrameTimes({
-      clock,
-      captureTimestamps,
-      exposures: new Float64Array(frameCount),
-      readout: context.readout,
-    });
+    return FrameTimes.withoutShutterTimes(clock, captureTimes, context.readoutTime);
   }
 }

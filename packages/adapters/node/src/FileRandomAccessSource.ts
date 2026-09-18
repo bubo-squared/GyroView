@@ -10,12 +10,17 @@ export class FileRandomAccessSource implements RandomAccessSource {
   private constructor(
     private readonly handle: FileHandle,
     private readonly totalSize: number,
+    private readonly path: string,
   ) {}
 
   public static async open(path: string): Promise<FileRandomAccessSource> {
-    const handle = await open(path, 'r');
-    const { size } = await handle.stat();
-    return new FileRandomAccessSource(handle, size);
+    try {
+      const handle = await open(path, 'r');
+      const { size } = await handle.stat();
+      return new FileRandomAccessSource(handle, size, path);
+    } catch (error) {
+      throw new GyroViewError('source-unreadable', `cannot open ${path}`, { cause: error });
+    }
   }
 
   public size(): Promise<number> {
@@ -26,7 +31,7 @@ export class FileRandomAccessSource implements RandomAccessSource {
     if (!range.fitsWithin(this.totalSize)) {
       throw new GyroViewError(
         'invalid-byte-range',
-        `range ${range.offset}+${range.length} exceeds the ${this.totalSize}-byte file`,
+        `range ${range.offset}+${range.length} exceeds the ${this.totalSize}-byte file ${this.path}`,
       );
     }
     const buffer = new Uint8Array(range.length);
@@ -38,8 +43,9 @@ export class FileRandomAccessSource implements RandomAccessSource {
         range.length - filled,
         range.offset + filled,
       );
-      if (bytesRead === 0)
-        throw new GyroViewError('invalid-byte-range', `file ended before ${range.end}`);
+      if (bytesRead === 0) {
+        throw new GyroViewError('source-truncated', `${this.path} ended before byte ${range.end}`);
+      }
       filled += bytesRead;
     }
     return buffer;

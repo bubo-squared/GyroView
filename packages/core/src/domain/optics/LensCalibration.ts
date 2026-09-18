@@ -17,7 +17,7 @@ export interface CanvasSize {
  * One lens of the camera: its projection model and its pose relative to the first lens.
  */
 export interface LensCalibration {
-  readonly index: number;
+  readonly lensIndex: number;
   readonly model: LensModel;
   readonly orientation: EulerDegrees;
   /**

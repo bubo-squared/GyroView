@@ -1,10 +1,11 @@
 import { FileRandomAccessSource } from '@gyroview/adapter-node';
 import {
-  RecordingReader,
   magnitudeOf,
   microseconds,
+  microsecondsToSeconds,
+  readRecording,
   type ExposureRecord,
-  type GyroTrack,
+  type ParsedGyroRecord,
   type Recording,
 } from '@gyroview/core';
 
@@ -18,23 +19,23 @@ const GRAVITY_SAMPLE_COUNT = 1000;
 export async function inspectFile(file: string): Promise<Inspection> {
   const source = await FileRandomAccessSource.open(file);
   try {
-    const recording = await new RecordingReader().read(source);
+    const recording = await readRecording(source);
     const [gyro, exposure] = await Promise.all([
-      recording.readGyroTrack(),
+      recording.readGyroRecord(),
       recording.readExposureRecord(),
     ]);
     return {
       file,
       fileSize: await source.size(),
-      boxes: recording.boxes.boxes.map((box) => ({
+      boxes: recording.boxes.map((box) => ({
         type: box.type,
         offset: box.range.offset,
         size: box.range.length,
       })),
       trailerWrapper: recording.trailerWrapper,
-      trailerVersion: recording.trailer.footer.version,
-      payloadStart: recording.trailer.payloadStart,
-      records: summarizeRecords(recording),
+      trailerVersion: recording.trailerVersion,
+      payloadStart: recording.trailerPayloadStart,
+      records: recording.recordSummaries(),
       info: recording.info,
       calibration: summarizeCalibration(recording),
       gyro: gyro === undefined ? undefined : summarizeGyro(gyro),
@@ -45,24 +46,6 @@ export async function inspectFile(file: string): Promise<Inspection> {
   }
 }
 
-function summarizeRecords(recording: Recording): Inspection['records'] {
-  return recording.trailer.recordIds
-    .toSorted((left, right) => left - right)
-    .flatMap((id) => {
-      const location = recording.trailer.locationOf(id);
-      return location
-        ? [
-            {
-              id,
-              format: location.format,
-              offset: location.payload.offset,
-              size: location.payload.length,
-            },
-          ]
-        : [];
-    });
-}
-
 function summarizeCalibration(recording: Recording): CalibrationSummary {
   const { calibration, warnings } = recording.calibration;
   return {
@@ -70,7 +53,7 @@ function summarizeCalibration(recording: Recording): CalibrationSummary {
     canvas: [calibration.canvas.width, calibration.canvas.height],
     warnings,
     lenses: calibration.lenses.map((lens) => ({
-      index: lens.index,
+      lensIndex: lens.lensIndex,
       model: lens.model.kind,
       principalPoint: [lens.model.principalPoint.x, lens.model.principalPoint.y],
       orientationDegrees: [lens.orientation.yaw, lens.orientation.pitch, lens.orientation.roll],
@@ -79,32 +62,43 @@ function summarizeCalibration(recording: Recording): CalibrationSummary {
   };
 }
 
-function summarizeGyro(gyro: GyroTrack): GyroSummary {
-  const leading = Math.min(GRAVITY_SAMPLE_COUNT, gyro.length);
+function summarizeGyro({ track, layout, strayBytes }: ParsedGyroRecord): GyroSummary {
+  const leading = Math.min(GRAVITY_SAMPLE_COUNT, track.length);
   let magnitudeSum = 0;
-  for (let index = 0; index < leading; index += 1) {
-    magnitudeSum += magnitudeOf(gyro.sampleAt(index).acceleration);
-  }
+  for (let index = 0; index < leading; index += 1)
+    magnitudeSum += magnitudeOf(track.sampleAt(index).acceleration);
+  const span = track.isEmpty
+    ? 0
+    : track.sampleAt(track.length - 1).captureTime - track.sampleAt(0).captureTime;
   return {
-    samples: gyro.length,
-    firstTimestampUs: gyro.length > 0 ? gyro.sampleAt(0).timestamp : NaN,
-    lastTimestampUs: gyro.length > 0 ? gyro.sampleAt(gyro.length - 1).timestamp : NaN,
-    meanIntervalUs: gyro.meanSampleInterval,
+    layout,
+    samples: track.length,
+    strayBytes,
+    spanSeconds: microsecondsToSeconds(microseconds(span)),
+    meanIntervalUs: track.meanSampleInterval,
     meanAccelerationMagnitudeG: leading > 0 ? magnitudeSum / leading : NaN,
   };
 }
 
 function summarizeExposure(exposure: ExposureRecord, recording: Recording): ExposureSummary {
-  const firstFrame = recording.info.firstFrameTimestamp;
-  let exposureSum = 0;
+  let shutterSum = 0;
   for (let index = 0; index < exposure.length; index += 1)
-    exposureSum += exposure.entryAt(index).exposure;
+    shutterSum += exposure.entryAt(index).shutterTime;
+  const hasEntries = exposure.length > 0;
   return {
     entries: exposure.length,
-    firstTimestampUs: exposure.length > 0 ? exposure.entryAt(0).timestamp : NaN,
-    lastTimestampUs: exposure.length > 0 ? exposure.entryAt(exposure.length - 1).timestamp : NaN,
-    meanExposureSeconds: exposure.length > 0 ? exposureSum / exposure.length : NaN,
-    firstEncodedFrameEntry:
-      firstFrame === undefined ? undefined : exposure.indexAtOrAfter(microseconds(firstFrame)),
+    firstCaptureTimeUs: hasEntries ? exposure.entryAt(0).captureTime : NaN,
+    lastCaptureTimeUs: hasEntries ? exposure.entryAt(exposure.length - 1).captureTime : NaN,
+    meanShutterTimeSeconds: hasEntries ? shutterSum / exposure.length : NaN,
+    firstEncodedFrameEntry: firstEncodedFrameEntry(exposure, recording),
   };
+}
+
+function firstEncodedFrameEntry(
+  exposure: ExposureRecord,
+  recording: Recording,
+): number | undefined {
+  return recording.info.firstFrameTimestamp === undefined
+    ? undefined
+    : exposure.indexAtOrAfter(recording.captureClock().firstFrameCaptureTime);
 }

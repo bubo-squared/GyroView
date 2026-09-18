@@ -4,6 +4,8 @@
  */
 export type Vector3 = readonly [x: number, y: number, z: number];
 
+export const VECTOR3_COMPONENTS = 3;
+
 export function magnitudeOf(vector: Vector3): number {
   return Math.hypot(vector[0], vector[1], vector[2]);
 }

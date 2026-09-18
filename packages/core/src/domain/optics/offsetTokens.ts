@@ -70,9 +70,9 @@ export const V6_LENS_TOKENS = 27;
 export const VERSIONED_TRAILING_TOKENS = 1;
 
 /**
- * The version word: v2/v3 keep the version in the high 16 bits; v1 keeps the lens type in the
- * low 10 bits and the version above it (1137 = version 1, lens type 113).
+ * The version word: v2/v3 keep the version in the high 16 bits. v1 keeps the lens type in the
+ * low 10 bits (1137 on the X5 = lens type 113, 3105 on the ONE R = lens type 33); its upper bits
+ * vary between cameras and carry no version.
  */
 export const VERSION_WORD_SHIFT = 16;
-export const V1_VERSION_SHIFT = 10;
 export const V1_LENS_TYPE_MASK = 0x03_ff;

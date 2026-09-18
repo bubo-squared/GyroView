@@ -90,8 +90,11 @@ export class ProtobufMessage {
     return bytes === undefined ? undefined : ProtobufMessage.decode(bytes);
   }
 
+  /**
+   * Scalar accessors follow protobuf merge semantics: the last occurrence of a field wins.
+   */
   private valueOf(number: number): ProtobufValue | undefined {
-    return this.decoded.find((field) => field.number === number)?.value;
+    return this.decoded.findLast((field) => field.number === number)?.value;
   }
 
   private wrongType(number: number, expected: string, actual: string): GyroViewError {

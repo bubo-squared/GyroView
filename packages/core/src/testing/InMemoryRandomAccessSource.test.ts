@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { InMemoryRandomAccessSource } from './InMemoryRandomAccessSource';
-import { describeRandomAccessSourceContract } from '../ports/RandomAccessSource.contract';
+import { describeRandomAccessSourceContract } from './RandomAccessSource.contract';
 import { ByteRange } from '../shared/binary/ByteRange';
 
 describeRandomAccessSourceContract((bytes) =>

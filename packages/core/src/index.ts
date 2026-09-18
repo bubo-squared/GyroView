@@ -1,34 +1,50 @@
+// Application API
+export { readRecording } from './application/recording/readRecording';
+export { Recording, type RecordSummary } from './application/recording/Recording';
+
+// Ports and the values they exchange
 export type { RandomAccessSource } from './ports/RandomAccessSource';
 export { ByteRange } from './shared/binary/ByteRange';
-export { ByteReader } from './shared/binary/ByteReader';
-export { GyroViewError, type GyroViewErrorCode } from './shared/errors/GyroViewError';
-export { RecordType, InfoRecordFormat } from './domain/format/constants';
-export { Trailer } from './domain/format/trailer/Trailer';
-export { TrailerFooter } from './domain/format/trailer/TrailerFooter';
-export { TrailerReader } from './domain/format/trailer/TrailerReader';
-export type { RecordLocation } from './domain/format/trailer/RecordLocation';
-export { InfoRecordParser } from './domain/format/info/InfoRecordParser';
+
+// Domain models
+export type { BoxDescriptor, TrailerWrapper } from './domain/format/boxes/BoxLayout';
 export type {
-  RecordingInfo,
   CalibrationStrings,
+  FileGroup,
   LensDimension,
+  RecordingInfo,
   SensorRanges,
+  WindowCrop,
 } from './domain/format/info/RecordingInfo';
-export { ProtobufMessage } from './shared/protobuf/ProtobufMessage';
-export { GyroRecordParser, type GyroRecordHints } from './domain/motion/gyro/GyroRecordParser';
+export {
+  detectLensLayout,
+  FileLayoutHint,
+  type LayoutHints,
+} from './domain/format/layout/detectLensLayout';
+export type {
+  FrameRegion,
+  LensLayout,
+  LensLayoutKind,
+  LensSource,
+} from './domain/format/layout/LensLayout';
+export type {
+  InputDescription,
+  VideoTrackDescription,
+} from './domain/format/layout/VideoTrackDescription';
+export type { ParsedGyroRecord } from './domain/format/records/gyro/parseGyroRecord';
 export { GyroTrack, type GyroSample } from './domain/motion/gyro/GyroTrack';
-export { ExposureRecordParser } from './domain/motion/exposure/ExposureRecordParser';
 export { ExposureRecord, type ExposureEntry } from './domain/motion/exposure/ExposureRecord';
-export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
-export * from './shared/units/time';
-export * from './shared/units/angle';
-export { CalibrationSelector, type CalibrationChoice } from './domain/optics/CalibrationSelector';
-export { OffsetStringParser } from './domain/optics/OffsetStringParser';
-export { MeiModel, type MeiParameters } from './domain/optics/MeiModel';
-export { PolynomialModel, type PolynomialParameters } from './domain/optics/PolynomialModel';
-export { EquidistantModel, type EquidistantParameters } from './domain/optics/EquidistantModel';
-export type { LensModel, LensModelKind } from './domain/optics/LensModel';
-export type { PixelPoint } from './domain/optics/PixelPoint';
+export { CaptureClock, type CaptureClockUnit } from './domain/motion/timing/CaptureClock';
+export { FrameTimes, type FrameTime } from './domain/motion/timing/FrameTimes';
+export type {
+  FrameTimeSourceName,
+  FrameTimingContext,
+} from './domain/motion/timing/FrameTimeSource';
+export {
+  PtsType,
+  resolveFrameTimes,
+  type ResolvedFrameTimes,
+} from './domain/motion/timing/resolveFrameTimes';
 export {
   CalibrationVersion,
   type CalibrationSet,
@@ -36,50 +52,16 @@ export {
   type EulerDegrees,
   type LensCalibration,
 } from './domain/optics/LensCalibration';
-export { BoxScanner } from './domain/format/boxes/BoxScanner';
-export { BoxType } from './domain/format/boxes/boxConstants';
-export { findBox, type BoxDescriptor, type BoxLayout } from './domain/format/boxes/BoxLayout';
-export {
-  Recording,
-  type RecordingParts,
-  type TrailerWrapper,
-} from './application/recording/Recording';
-export {
-  RecordingReader,
-  defaultRecordingReaderDependencies,
-  type RecordingReaderDependencies,
-} from './application/recording/RecordingReader';
-export {
-  LensLayoutDetector,
-  FileLayoutHint,
-  type LayoutHints,
-} from './domain/format/layout/LensLayoutDetector';
-export {
-  FULL_FRAME,
-  LEFT_HALF,
-  RIGHT_HALF,
-  type FrameRegion,
-  type LensLayout,
-  type LensLayoutKind,
-  type LensSource,
-} from './domain/format/layout/LensLayout';
+export type { LensModel, LensModelKind } from './domain/optics/LensModel';
+export type { PixelPoint } from './domain/optics/PixelPoint';
+export type { CalibrationChoice } from './domain/optics/selectCalibration';
+
+// Shared vocabulary
+export { GyroViewError, type GyroViewErrorCode } from './shared/errors/GyroViewError';
+export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
 export type {
-  InputDescription,
-  VideoTrackDescription,
-} from './domain/format/layout/VideoTrackDescription';
-export { CaptureClock } from './domain/motion/timing/CaptureClock';
-export {
-  FrameTimes,
-  type FrameTime,
-  type FrameTimesParts,
-} from './domain/motion/timing/FrameTimes';
-export {
-  FrameTimesResolver,
-  PtsType,
-  type ResolvedFrameTimes,
-} from './domain/motion/timing/FrameTimesResolver';
-export type {
-  FrameTimeSource,
-  FrameTimeSourceName,
-  FrameTimingContext,
-} from './domain/motion/timing/FrameTimeSource';
+  ReadonlyFloat32Array,
+  ReadonlyFloat64Array,
+} from './shared/binary/ReadonlyTypedArray';
+export * from './shared/units/time';
+export * from './shared/units/angle';

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GyroView Phase 0 spike</title>
+    <style>
+      body { font: 13px/1.4 ui-monospace, monospace; margin: 16px; background: #111; color: #ddd; }
+      canvas { width: 100%; max-width: 960px; background: #000; display: block; margin-bottom: 12px; }
+      pre { white-space: pre-wrap; }
+      .warn { color: #fc6; }
+      .fail { color: #f66; }
+      .ok { color: #6f6; }
+    </style>
+  </head>
+  <body>
+    <h1>Phase 0 spike: decode + upload feasibility</h1>
+    <p>
+      Query parameters: <code>src</code> (URL of the .insv), <code>seconds</code> (how long to decode, default 10),
+      <code>seek</code> (timestamp in seconds for the seek test, default 100).
+    </p>
+    <canvas id="preview" width="1920" height="960"></canvas>
+    <pre id="log"></pre>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

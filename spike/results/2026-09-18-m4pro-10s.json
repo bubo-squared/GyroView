@@ -1,0 +1,418 @@
+{
+  "chrome office/VID_20260814_132640_00_013.insv": {
+    "done": true,
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+    "steps": {
+      "open": {
+        "format": "MP4",
+        "duration": 262.09516666666667,
+        "videoTracks": 2,
+        "audioTracks": 1
+      },
+      "track 1": {
+        "id": 1,
+        "codec": "hevc",
+        "codecString": "hev1.1.6.H153.80",
+        "codedWidth": 2880,
+        "codedHeight": 2880,
+        "averageFps": 59.94005994005994,
+        "decoderConfig": {
+          "codec": "hev1.1.6.H153.80",
+          "codedWidth": 2880,
+          "codedHeight": 2880,
+          "colorSpace": {
+            "primaries": "bt709",
+            "transfer": "bt709",
+            "matrix": "bt709",
+            "fullRange": true
+          },
+          "descriptionBytes": 172
+        },
+        "canDecode": true
+      },
+      "track 2": {
+        "id": 2,
+        "codec": "hevc",
+        "codecString": "hev1.1.6.H153.80",
+        "codedWidth": 2880,
+        "codedHeight": 2880,
+        "averageFps": 59.94005994005994,
+        "decoderConfig": {
+          "codec": "hev1.1.6.H153.80",
+          "codedWidth": 2880,
+          "codedHeight": 2880,
+          "colorSpace": {
+            "primaries": "bt709",
+            "transfer": "bt709",
+            "matrix": "bt709",
+            "fullRange": true
+          },
+          "descriptionBytes": 172
+        },
+        "canDecode": true
+      },
+      "support track 1": {
+        "preferHardware": true,
+        "preferSoftware": false,
+        "mediaCapabilities": {
+          "supported": true,
+          "smooth": true,
+          "powerEfficient": true
+        }
+      },
+      "support track 2": {
+        "preferHardware": true,
+        "preferSoftware": false,
+        "mediaCapabilities": {
+          "supported": true,
+          "smooth": true,
+          "powerEfficient": true
+        }
+      },
+      "lockstep decode": {
+        "packetsDecoded": 1200,
+        "framePairs": 600,
+        "unpairedFrames": 0,
+        "wallSeconds": 3.4745,
+        "pairsPerSecond": 172.68671751331127,
+        "firstPairLatencyMs": 84.59999996423721,
+        "maxQueueDepth": 9
+      },
+      "gl upload": {
+        "uploads": 600,
+        "totalUploadMs": 85.39999949932098,
+        "maxUploadMs": 0.5999999642372131,
+        "maxTextureSize": 16384,
+        "averageUploadMs": 0.14233333249886831
+      },
+      "seek": {
+        "target": 100,
+        "keyframeTimestamp": 98.098,
+        "framesDecodedBeforeTarget": 115,
+        "firstFrameAtOrAfterTarget": 100.016583,
+        "wallMs": 371.69999998807907
+      },
+      "video element": {
+        "metadataLoaded": true,
+        "videoWidth": 2880,
+        "videoHeight": 2880,
+        "duration": 262.095167,
+        "advancedAfterPlay": true,
+        "error": null
+      }
+    },
+    "errors": []
+  },
+  "chrome sailing/VID_20260918_082915_00_014.insv": {
+    "done": true,
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+    "steps": {
+      "open": {
+        "format": "MP4",
+        "duration": 194.02716666666666,
+        "videoTracks": 2,
+        "audioTracks": 1
+      },
+      "track 1": {
+        "id": 1,
+        "codec": "hevc",
+        "codecString": "hev1.1.6.L183.80",
+        "codedWidth": 3840,
+        "codedHeight": 3840,
+        "averageFps": 29.97002997002997,
+        "decoderConfig": {
+          "codec": "hev1.1.6.L183.80",
+          "codedWidth": 3840,
+          "codedHeight": 3840,
+          "colorSpace": {
+            "primaries": "bt709",
+            "transfer": "bt709",
+            "matrix": "bt709",
+            "fullRange": true
+          },
+          "descriptionBytes": 144
+        },
+        "canDecode": true
+      },
+      "track 2": {
+        "id": 2,
+        "codec": "hevc",
+        "codecString": "hev1.1.6.L183.80",
+        "codedWidth": 3840,
+        "codedHeight": 3840,
+        "averageFps": 29.97002997002997,
+        "decoderConfig": {
+          "codec": "hev1.1.6.L183.80",
+          "codedWidth": 3840,
+          "codedHeight": 3840,
+          "colorSpace": {
+            "primaries": "bt709",
+            "transfer": "bt709",
+            "matrix": "bt709",
+            "fullRange": true
+          },
+          "descriptionBytes": 144
+        },
+        "canDecode": true
+      },
+      "support track 1": {
+        "preferHardware": true,
+        "preferSoftware": false,
+        "mediaCapabilities": {
+          "supported": true,
+          "smooth": true,
+          "powerEfficient": true
+        }
+      },
+      "support track 2": {
+        "preferHardware": true,
+        "preferSoftware": false,
+        "mediaCapabilities": {
+          "supported": true,
+          "smooth": true,
+          "powerEfficient": true
+        }
+      },
+      "lockstep decode": {
+        "packetsDecoded": 600,
+        "framePairs": 300,
+        "unpairedFrames": 0,
+        "wallSeconds": 2.985199999988079,
+        "pairsPerSecond": 100.49577917767587,
+        "firstPairLatencyMs": 105.59999996423721,
+        "maxQueueDepth": 9
+      },
+      "gl upload": {
+        "uploads": 300,
+        "totalUploadMs": 39.900000154972076,
+        "maxUploadMs": 0.5,
+        "maxTextureSize": 16384,
+        "averageUploadMs": 0.1330000005165736
+      },
+      "seek": {
+        "target": 100,
+        "keyframeTimestamp": 98.098,
+        "framesDecodedBeforeTarget": 58,
+        "firstFrameAtOrAfterTarget": 100.033266,
+        "wallMs": 330.39999997615814
+      },
+      "video element": {
+        "metadataLoaded": true,
+        "videoWidth": 3840,
+        "videoHeight": 3840,
+        "duration": 194.027167,
+        "advancedAfterPlay": true,
+        "error": null
+      }
+    },
+    "errors": []
+  },
+  "webkit office/VID_20260814_132640_00_013.insv": {
+    "done": true,
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Safari/605.1.15",
+    "steps": {
+      "open": {
+        "format": "MP4",
+        "duration": 262.09516666666667,
+        "videoTracks": 2,
+        "audioTracks": 1
+      },
+      "track 1": {
+        "id": 1,
+        "codec": "hevc",
+        "codecString": "hev1.1.6.H153.80",
+        "codedWidth": 2880,
+        "codedHeight": 2880,
+        "averageFps": 59.94005994005994,
+        "decoderConfig": {
+          "codec": "hev1.1.6.H153.80",
+          "codedWidth": 2880,
+          "codedHeight": 2880,
+          "colorSpace": {
+            "primaries": "bt709",
+            "transfer": "bt709",
+            "matrix": "bt709",
+            "fullRange": true
+          },
+          "descriptionBytes": 172
+        },
+        "canDecode": true
+      },
+      "track 2": {
+        "id": 2,
+        "codec": "hevc",
+        "codecString": "hev1.1.6.H153.80",
+        "codedWidth": 2880,
+        "codedHeight": 2880,
+        "averageFps": 59.94005994005994,
+        "decoderConfig": {
+          "codec": "hev1.1.6.H153.80",
+          "codedWidth": 2880,
+          "codedHeight": 2880,
+          "colorSpace": {
+            "primaries": "bt709",
+            "transfer": "bt709",
+            "matrix": "bt709",
+            "fullRange": true
+          },
+          "descriptionBytes": 172
+        },
+        "canDecode": true
+      },
+      "support track 1": {
+        "preferHardware": true,
+        "preferSoftware": true,
+        "mediaCapabilities": {
+          "supported": false,
+          "smooth": false,
+          "powerEfficient": false
+        }
+      },
+      "support track 2": {
+        "preferHardware": true,
+        "preferSoftware": true,
+        "mediaCapabilities": {
+          "supported": false,
+          "smooth": false,
+          "powerEfficient": false
+        }
+      },
+      "lockstep decode": {
+        "packetsDecoded": 1200,
+        "framePairs": 600,
+        "unpairedFrames": 0,
+        "wallSeconds": 3.388,
+        "pairsPerSecond": 177.0956316410862,
+        "firstPairLatencyMs": 49,
+        "maxQueueDepth": 9
+      },
+      "gl upload": {
+        "uploads": 600,
+        "totalUploadMs": 552,
+        "maxUploadMs": 82,
+        "maxTextureSize": 16384,
+        "averageUploadMs": 0.92
+      },
+      "seek": {
+        "target": 100,
+        "keyframeTimestamp": 98.098,
+        "framesDecodedBeforeTarget": 115,
+        "firstFrameAtOrAfterTarget": 100.016583,
+        "wallMs": 360
+      },
+      "video element": {
+        "metadataLoaded": true,
+        "videoWidth": 2880,
+        "videoHeight": 2880,
+        "duration": 262.09516666666667,
+        "advancedAfterPlay": true,
+        "error": null
+      }
+    },
+    "errors": []
+  },
+  "webkit sailing/VID_20260918_082915_00_014.insv": {
+    "done": true,
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Safari/605.1.15",
+    "steps": {
+      "open": {
+        "format": "MP4",
+        "duration": 194.02716666666666,
+        "videoTracks": 2,
+        "audioTracks": 1
+      },
+      "track 1": {
+        "id": 1,
+        "codec": "hevc",
+        "codecString": "hev1.1.6.L183.80",
+        "codedWidth": 3840,
+        "codedHeight": 3840,
+        "averageFps": 29.97002997002997,
+        "decoderConfig": {
+          "codec": "hev1.1.6.L183.80",
+          "codedWidth": 3840,
+          "codedHeight": 3840,
+          "colorSpace": {
+            "primaries": "bt709",
+            "transfer": "bt709",
+            "matrix": "bt709",
+            "fullRange": true
+          },
+          "descriptionBytes": 144
+        },
+        "canDecode": true
+      },
+      "track 2": {
+        "id": 2,
+        "codec": "hevc",
+        "codecString": "hev1.1.6.L183.80",
+        "codedWidth": 3840,
+        "codedHeight": 3840,
+        "averageFps": 29.97002997002997,
+        "decoderConfig": {
+          "codec": "hev1.1.6.L183.80",
+          "codedWidth": 3840,
+          "codedHeight": 3840,
+          "colorSpace": {
+            "primaries": "bt709",
+            "transfer": "bt709",
+            "matrix": "bt709",
+            "fullRange": true
+          },
+          "descriptionBytes": 144
+        },
+        "canDecode": true
+      },
+      "support track 1": {
+        "preferHardware": true,
+        "preferSoftware": true,
+        "mediaCapabilities": {
+          "supported": false,
+          "smooth": false,
+          "powerEfficient": false
+        }
+      },
+      "support track 2": {
+        "preferHardware": true,
+        "preferSoftware": true,
+        "mediaCapabilities": {
+          "supported": false,
+          "smooth": false,
+          "powerEfficient": false
+        }
+      },
+      "lockstep decode": {
+        "packetsDecoded": 600,
+        "framePairs": 300,
+        "unpairedFrames": 0,
+        "wallSeconds": 2.91,
+        "pairsPerSecond": 103.09278350515463,
+        "firstPairLatencyMs": 62,
+        "maxQueueDepth": 9
+      },
+      "gl upload": {
+        "uploads": 300,
+        "totalUploadMs": 388,
+        "maxUploadMs": 8,
+        "maxTextureSize": 16384,
+        "averageUploadMs": 1.2933333333333332
+      },
+      "seek": {
+        "target": 100,
+        "keyframeTimestamp": 98.098,
+        "framesDecodedBeforeTarget": 58,
+        "firstFrameAtOrAfterTarget": 100.033266,
+        "wallMs": 321
+      },
+      "video element": {
+        "metadataLoaded": true,
+        "videoWidth": 3840,
+        "videoHeight": 3840,
+        "duration": 194.02716666666666,
+        "advancedAfterPlay": true,
+        "error": null
+      }
+    },
+    "errors": []
+  }
+}

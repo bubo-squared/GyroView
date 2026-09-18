@@ -22,6 +22,7 @@ dist/
 *.tsbuildinfo
 
 # Test artifacts
+.artifacts/
 coverage/
 test-results/
 playwright-report/

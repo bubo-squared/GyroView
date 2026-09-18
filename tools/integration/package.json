@@ -13,6 +13,7 @@
     "@gyroview/adapter-mediabunny": "workspace:*",
     "@gyroview/adapter-mse-audio": "workspace:*",
     "@gyroview/adapter-node": "workspace:*",
+    "@gyroview/adapter-three": "workspace:*",
     "@gyroview/adapter-webcodecs": "workspace:*",
     "@gyroview/core": "workspace:*",
     "@types/node": "26.6.1",

@@ -1,10 +1,27 @@
 import { existsSync, realpathSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { playwright } from '@vitest/browser-playwright';
 import { defineProject } from 'vitest/config';
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../..', import.meta.url));
+const ARTIFACTS = path.join(REPOSITORY_ROOT, '.artifacts');
+const DATA_URL_PAYLOAD = /^data:[^,]*;base64,(?<payload>.+)$/su;
+
+/**
+ * Browser command: stores a rendered image from a test for visual inspection. `.artifacts/` is
+ * git-ignored.
+ */
+async function saveArtifact(_context: unknown, name: string, dataUrl: string): Promise<string> {
+  const payload = DATA_URL_PAYLOAD.exec(dataUrl)?.groups?.['payload'];
+  if (payload === undefined) throw new Error('saveArtifact expects a base64 data URL');
+  await mkdir(ARTIFACTS, { recursive: true });
+  const target = path.join(ARTIFACTS, path.basename(name));
+  await writeFile(target, Buffer.from(payload, 'base64'));
+  return target;
+}
 const SAMPLE_FOLDERS = ['office', 'sailing'].map((name) =>
   fileURLToPath(new URL(`../../samples/${name}`, import.meta.url)),
 );
@@ -46,6 +63,7 @@ export default defineProject({
       enabled: true,
       headless: true,
       provider: playwright(),
+      commands: { saveArtifact },
       instances: [
         {
           browser: 'chromium',

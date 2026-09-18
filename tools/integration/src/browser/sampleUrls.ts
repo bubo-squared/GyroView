@@ -16,6 +16,16 @@ export const OFFICE_5K7_60: SampleRecording = {
   codedSize: 2880,
 };
 
+/**
+ * The office recording's low-resolution proxy: one packed H.264 track holding both lenses.
+ */
+export const OFFICE_PROXY: SampleRecording = {
+  name: 'office proxy (X5 LRV, packed)',
+  url: new URL('../../../../samples/office/LRV_20260814_132640_01_013.lrv', import.meta.url).href,
+  frameRate: 30,
+  codedSize: 832,
+};
+
 export const SAILING_8K_30: SampleRecording = {
   name: 'sailing (X5, 8K30)',
   url: new URL('../../../../samples/sailing/VID_20260918_082915_00_014.insv', import.meta.url).href,

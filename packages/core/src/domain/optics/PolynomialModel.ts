@@ -1,5 +1,5 @@
 import { pixelAtRadius, toPolar } from './lensGeometry';
-import type { LensModel } from './LensModel';
+import type { LensModel, LensProjectionParameters } from './LensModel';
 import type { PixelPoint } from './PixelPoint';
 import type { Vector3 } from '../../shared/math/Vector3';
 import type { Radians } from '../../shared/units/angle';
@@ -33,6 +33,15 @@ export class PolynomialModel implements LensModel {
   ) {
     this.principalPoint = parameters.principalPoint;
     this.scale = parameters.edgeRadius / this.polynomial(halfFieldOfView);
+  }
+
+  public get projection(): LensProjectionParameters {
+    const [c1, c2, c3, c4] = this.parameters.coefficients;
+    return {
+      kind: 'radial-polynomial',
+      principalPoint: this.principalPoint,
+      coefficients: [c1 * this.scale, c2 * this.scale, c3 * this.scale, c4 * this.scale],
+    };
   }
 
   public project(direction: Vector3): PixelPoint | undefined {

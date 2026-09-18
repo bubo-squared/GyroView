@@ -1,4 +1,4 @@
-import type { LensModel } from './LensModel';
+import type { LensModel, LensProjectionParameters } from './LensModel';
 import type { PixelPoint } from './PixelPoint';
 import type { Vector3 } from '../../shared/math/Vector3';
 import type { Radians } from '../../shared/units/angle';
@@ -28,6 +28,10 @@ export class MeiModel implements LensModel {
     public readonly halfFieldOfView: Radians,
   ) {
     this.principalPoint = parameters.principalPoint;
+  }
+
+  public get projection(): LensProjectionParameters {
+    return { kind: 'mei', ...this.parameters };
   }
 
   public project(direction: Vector3): PixelPoint | undefined {

@@ -18,6 +18,7 @@ export type GyroViewErrorCode =
   | 'playback-blocked'
   | 'range-unsupported'
   | 'record-not-found'
+  | 'render-unavailable'
   | 'source-truncated'
   | 'source-unreadable'
   | 'unsupported-calibration'

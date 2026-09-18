@@ -1,90 +1,30 @@
-import { HttpRangeSource } from '@gyroview/adapter-fetch';
-import { MediabunnyAudioSegmenter, MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
+import { MediabunnyAudioSegmenter } from '@gyroview/adapter-mediabunny';
 import { MediaSourceAudioClock } from '@gyroview/adapter-mse-audio';
-import { WebCodecsVideoDecoderPort } from '@gyroview/adapter-webcodecs';
-import {
-  detectLensLayout,
-  FramePairQueue,
-  LensDecodePipeline,
-  PlaybackSession,
-  probeDecoding,
-  readRecording,
-  seconds,
-  Signal,
-  type DemuxedInput,
-  type FramePair,
-  type Recording,
-  type VideoTrackReader,
-} from '@gyroview/core';
+import { LensDecodePipeline, PlaybackSession, seconds } from '@gyroview/core';
 import { FakeFrameSink } from '@gyroview/core/testing';
-import { afterEach, describe, expect, it, type TestContext } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { isServed, OFFICE_5K7_60, SAILING_8K_30, type SampleRecording } from './sampleUrls';
+import {
+  closeAll,
+  expectLockstep,
+  openSample,
+  PIPELINE_OPTIONS,
+  port,
+  PROBE_DEADLINE_MS,
+  QUEUE_CAPACITY,
+  skipUnlessDecodable,
+  skipUnlessServed,
+  takePairs,
+  waitFor,
+  type OpenedRecording,
+} from './realRecordingSupport';
+import { OFFICE_5K7_60, SAILING_8K_30, type SampleRecording } from './sampleUrls';
 
-const PIPELINE_OPTIONS = { maxPendingPackets: 4, pairTolerance: seconds(0.0005) };
-const QUEUE_CAPACITY = 4;
-const PROBE_DEADLINE_MS = 15_000;
-const POLL_INTERVAL_MS = 20;
 const PRESENTATIONS_BEFORE_SEEK = 30;
 const SEEK_TARGET = seconds(120);
 const MID_FILE_START = seconds(100);
 const PAIRS_TO_TAKE = 20;
 const TIMESTAMP_TOLERANCE = 1e-3;
-const port = new WebCodecsVideoDecoderPort();
-
-interface OpenedRecording {
-  readonly recording: Recording;
-  readonly input: DemuxedInput;
-  /**
-   * Track readers in lens order (lens 0 first), as the layout detector maps them.
-   */
-  readonly lensTracks: readonly VideoTrackReader[];
-  readonly dispose: () => void;
-}
-
-async function openSample(sample: SampleRecording): Promise<OpenedRecording> {
-  const source = new HttpRangeSource(sample.url);
-  const recording = await readRecording(source);
-  const input = await new MediabunnyDemuxer().open(source, sample.url);
-  const layout = detectLensLayout(
-    [{ name: input.name, videoTracks: input.videoTracks.map((track) => track.description) }],
-    recording.layoutHints,
-  );
-  const lensTracks = layout.sources.map((lens) => {
-    const track = input.videoTracks[lens.trackIndex];
-    if (!track) throw new Error(`layout points at missing track ${lens.trackIndex}`);
-    return track;
-  });
-  return {
-    recording,
-    input,
-    lensTracks,
-    dispose: (): void => {
-      input.dispose();
-    },
-  };
-}
-
-async function skipUnlessServed(context: TestContext, sample: SampleRecording): Promise<void> {
-  if (!(await isServed(sample.url))) context.skip(`${sample.name} is not available locally`);
-}
-
-/**
- * Probes the lens tracks; a browser build without an HEVC decoder (Playwright's Chromium) skips
- * the test instead of failing it, any other verdict fails with the probe's details.
- */
-async function skipUnlessDecodable(
-  context: TestContext,
-  lensTracks: readonly VideoTrackReader[],
-): Promise<void> {
-  const probe = await probeDecoding(lensTracks, port, { deadline: deadlineIn(PROBE_DEADLINE_MS) });
-  if (probe.canDecode) return;
-  const verdicts = probe.lenses.map((lens) => lens.verdict);
-  if (verdicts.every((verdict) => verdict === 'unsupported-configuration')) {
-    context.skip('this browser build cannot decode the recording (no HEVC decoder)');
-  }
-  throw new Error(`the recording does not decode here: ${JSON.stringify(probe.lenses)}`);
-}
 
 async function openAudioClock(
   opened: OpenedRecording,
@@ -125,77 +65,6 @@ function expectPictureFollowsSound(sink: FakeFrameSink<VideoFrame>, sample: Samp
   if (!latest) throw new Error('nothing was presented');
   expect(latest.pair.timestamp).toBeLessThanOrEqual(latest.mediaTime);
   expect(latest.mediaTime - latest.pair.timestamp).toBeLessThan(3 / sample.frameRate);
-}
-
-function deadlineIn(ms: number): Signal {
-  const signal = new Signal();
-  setTimeout(() => {
-    signal.trigger();
-  }, ms);
-  return signal;
-}
-
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-async function waitFor(isSatisfied: () => boolean, timeoutMs: number, what: string): Promise<void> {
-  const deadline = performance.now() + timeoutMs;
-  while (!isSatisfied()) {
-    if (performance.now() > deadline) throw new Error(`timed out waiting for ${what}`);
-    await wait(POLL_INTERVAL_MS);
-  }
-}
-
-/**
- * Takes the first `count` pairs the pipeline delivers, then stops it.
- */
-async function takePairs(
-  pipeline: LensDecodePipeline<VideoFrame>,
-  from: number,
-  count: number,
-): Promise<FramePair<VideoFrame>[]> {
-  const queue = new FramePairQueue<VideoFrame>(QUEUE_CAPACITY);
-  const run = pipeline.run(seconds(from), queue);
-  const taken: FramePair<VideoFrame>[] = [];
-  await waitFor(
-    () => {
-      const head = queue.peekTimestamp();
-      const pair = head === undefined ? undefined : queue.takePairAt(head);
-      if (pair) taken.push(pair);
-      return taken.length >= count;
-    },
-    PROBE_DEADLINE_MS,
-    `${count} decoded pairs`,
-  );
-  pipeline.abort();
-  await run;
-  return taken;
-}
-
-function closeAll(pairs: readonly FramePair<VideoFrame>[]): void {
-  for (const pair of pairs) for (const frame of pair.frames) frame.close();
-}
-
-function expectLockstep(pairs: readonly FramePair<VideoFrame>[], sample: SampleRecording): void {
-  const frameDuration = 1 / sample.frameRate;
-  for (const [index, pair] of pairs.entries()) {
-    expect(pair.frames).toHaveLength(2);
-    expect(pair.frames.map((frame) => frame.handle.codedWidth)).toEqual([
-      sample.codedSize,
-      sample.codedSize,
-    ]);
-    const [first, second] = pair.frames;
-    expect(Math.abs((first?.timestamp ?? 0) - (second?.timestamp ?? 0))).toBeLessThan(
-      PIPELINE_OPTIONS.pairTolerance,
-    );
-    const previous = pairs[index - 1];
-    if (previous) {
-      expect(pair.timestamp - previous.timestamp).toBeCloseTo(frameDuration, 3);
-    }
-  }
 }
 
 describe('the browser pipeline on the real X5 recordings', () => {

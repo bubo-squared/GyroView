@@ -1,0 +1,22 @@
+import { playwright } from '@vitest/browser-playwright';
+import { defineProject } from 'vitest/config';
+
+/**
+ * WebGL and VideoFrame uploads exist only in browsers, so this project runs in real Chromium
+ * and WebKit builds through Playwright, like the other browser adapters.
+ */
+export default defineProject({
+  server: {
+    fs: { allow: ['../../..'] },
+  },
+  test: {
+    name: 'adapter-three',
+    include: ['src/**/*.test.ts'],
+    browser: {
+      enabled: true,
+      headless: true,
+      provider: playwright(),
+      instances: [{ browser: 'chromium' }, { browser: 'webkit' }],
+    },
+  },
+});

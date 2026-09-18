@@ -65,6 +65,14 @@ module.exports = {
       to: { path: '^(packages/player|apps|tools)/' },
     },
     {
+      name: 'only-integration-tests-combine-adapters',
+      comment:
+        'tools/integration may depend on several adapters; other tools use the application API.',
+      severity: 'error',
+      from: { path: '^tools/(?!integration/)' },
+      to: { path: '^packages/adapters/(?!node/)' },
+    },
+    {
       name: 'player-is-not-imported-by-libraries',
       severity: 'error',
       from: { path: '^(packages/core|packages/adapters|tools)/' },

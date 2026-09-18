@@ -1,0 +1,25 @@
+{
+  "name": "@gyroview/adapter-mediabunny",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Demuxer adapter for GyroView core ports, built on mediabunny.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gyroview/core": "workspace:*",
+    "mediabunny": "^1.58.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.1",
+    "vitest": "4.1.11"
+  }
+}

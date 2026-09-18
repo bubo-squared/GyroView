@@ -13,6 +13,7 @@ export type GyroViewErrorCode =
   | 'missing-second-file'
   | 'no-frame-times'
   | 'no-info-record'
+  | 'range-unsupported'
   | 'record-not-found'
   | 'source-truncated'
   | 'source-unreadable'

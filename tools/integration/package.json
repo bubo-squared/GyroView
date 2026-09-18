@@ -1,0 +1,18 @@
+{
+  "name": "@gyroview/integration",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Integration tests that combine several adapters against the real recordings (skipped when the samples are absent).",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@gyroview/adapter-mediabunny": "workspace:*",
+    "@gyroview/adapter-node": "workspace:*",
+    "@gyroview/core": "workspace:*",
+    "@types/node": "26.6.1",
+    "vitest": "4.1.11"
+  }
+}

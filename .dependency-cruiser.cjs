@@ -1,0 +1,86 @@
+/**
+ * Enforces the hexagonal dependency rule:
+ *   core <- adapters <- player <- apps, core has no runtime dependencies, adapters do not
+ *   import each other. See PLAN.md "Architecture" and "Engineering standards".
+ * @type {import('dependency-cruiser').IConfiguration}
+ */
+module.exports = {
+  forbidden: [
+    {
+      name: 'no-circular',
+      severity: 'error',
+      from: {},
+      to: { circular: true },
+    },
+    {
+      name: 'core-has-no-runtime-dependencies',
+      comment:
+        'The domain and application layer is pure TypeScript: no npm packages, no Node built-ins. Tests and contract tests may use vitest.',
+      severity: 'error',
+      from: { path: '^packages/core/src', pathNot: ['\\.test\\.ts$', '\\.contract\\.ts$'] },
+      to: {
+        dependencyTypes: [
+          'npm',
+          'npm-dev',
+          'npm-optional',
+          'npm-peer',
+          'npm-bundled',
+          'npm-no-pkg',
+          'npm-unknown',
+          'core',
+          'unknown',
+        ],
+      },
+    },
+    {
+      name: 'no-undeclared-dependencies',
+      comment: 'Every package declares what it imports in its own package.json.',
+      severity: 'error',
+      from: {},
+      to: { dependencyTypes: ['npm-no-pkg', 'npm-unknown'] },
+    },
+    {
+      name: 'core-does-not-know-outer-layers',
+      severity: 'error',
+      from: { path: '^packages/core/src' },
+      to: { path: '^(packages/adapters|packages/player|apps|tools)/' },
+    },
+    {
+      name: 'adapters-depend-only-on-core',
+      severity: 'error',
+      from: { path: '^packages/adapters/([^/]+)/src' },
+      to: { path: '^packages/adapters/(?!$1/)', pathNot: '^packages/adapters/$1/' },
+    },
+    {
+      name: 'adapters-do-not-know-player-or-apps',
+      severity: 'error',
+      from: { path: '^packages/adapters/' },
+      to: { path: '^(packages/player|apps|tools)/' },
+    },
+    {
+      name: 'player-is-not-imported-by-libraries',
+      severity: 'error',
+      from: { path: '^(packages/core|packages/adapters|tools)/' },
+      to: { path: '^packages/player/' },
+    },
+    {
+      name: 'no-orphans',
+      severity: 'warn',
+      from: {
+        orphan: true,
+        pathNot: ['\\.d\\.ts$', '(^|/)(index|vitest\\.config|vite\\.config)\\.ts$'],
+      },
+      to: {},
+    },
+  ],
+  options: {
+    doNotFollow: { path: 'node_modules' },
+    tsPreCompilationDeps: true,
+    tsConfig: { fileName: 'tsconfig.base.json' },
+    enhancedResolveOptions: {
+      exportsFields: ['exports'],
+      conditionNames: ['import', 'types', 'default'],
+    },
+    reporterOptions: { text: { highlightFocused: true } },
+  },
+};

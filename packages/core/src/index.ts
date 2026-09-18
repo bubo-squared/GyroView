@@ -67,3 +67,19 @@ export type {
   InputDescription,
   VideoTrackDescription,
 } from './domain/format/layout/VideoTrackDescription';
+export { CaptureClock } from './domain/motion/timing/CaptureClock';
+export {
+  FrameTimes,
+  type FrameTime,
+  type FrameTimesParts,
+} from './domain/motion/timing/FrameTimes';
+export {
+  FrameTimesResolver,
+  PtsType,
+  type ResolvedFrameTimes,
+} from './domain/motion/timing/FrameTimesResolver';
+export type {
+  FrameTimeSource,
+  FrameTimeSourceName,
+  FrameTimingContext,
+} from './domain/motion/timing/FrameTimeSource';

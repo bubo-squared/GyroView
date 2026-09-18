@@ -12,6 +12,7 @@ export type GyroViewErrorCode =
   | 'invalid-trailer'
   | 'missing-second-file'
   | 'no-calibration'
+  | 'no-frame-times'
   | 'no-info-record'
   | 'record-not-found'
   | 'unsupported-calibration'

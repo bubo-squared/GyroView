@@ -49,3 +49,21 @@ export {
   defaultRecordingReaderDependencies,
   type RecordingReaderDependencies,
 } from './application/recording/RecordingReader';
+export {
+  LensLayoutDetector,
+  FileLayoutHint,
+  type LayoutHints,
+} from './domain/format/layout/LensLayoutDetector';
+export {
+  FULL_FRAME,
+  LEFT_HALF,
+  RIGHT_HALF,
+  type FrameRegion,
+  type LensLayout,
+  type LensLayoutKind,
+  type LensSource,
+} from './domain/format/layout/LensLayout';
+export type {
+  InputDescription,
+  VideoTrackDescription,
+} from './domain/format/layout/VideoTrackDescription';

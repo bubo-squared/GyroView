@@ -10,10 +10,12 @@ export type GyroViewErrorCode =
   | 'invalid-gyro-record'
   | 'invalid-protobuf'
   | 'invalid-trailer'
+  | 'missing-second-file'
   | 'no-calibration'
   | 'no-info-record'
   | 'record-not-found'
-  | 'unsupported-calibration';
+  | 'unsupported-calibration'
+  | 'unsupported-layout';
 
 export class GyroViewError extends Error {
   public constructor(

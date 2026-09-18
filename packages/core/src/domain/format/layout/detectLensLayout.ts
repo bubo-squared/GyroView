@@ -10,7 +10,8 @@ export const FileLayoutHint = { SplitFiles: 1, MultiTrack: 2 } as const;
 
 /**
  * Values of the info record's track-order field (protobuf 80), per insta360-rs. Provisional:
- * stream `00` is the back lens (calibration lens 0), stream `10` the screen-side lens.
+ * stream `00` is the back lens (calibration lens 0), stream `10` the screen-side lens. The X5
+ * files seen so far write 1, so their first track is the screen-side lens.
  */
 export const TrackOrderHint = { Track0IsStream10: 1, Track0IsStream00: 2 } as const;
 
@@ -56,13 +57,23 @@ export function detectLensLayout(
   throw undecidable(inputs, candidates, hints);
 }
 
+/**
+ * Lens 0 is the back lens. Without a track-order hint the first track is assumed to be it, as
+ * for the `_00_` file of a pair; when the hint says track 0 is stream 10 the tracks are swapped.
+ */
 function multiTrack(candidates: readonly Candidate[], hints: LayoutHints): LensLayout {
-  const hint =
+  const isSwapped = hints.trackOrder === TrackOrderHint.Track0IsStream10;
+  const ordered = isSwapped ? candidates.toReversed() : candidates;
+  const fileLayoutEvidence =
     hints.fileLayout === undefined ? [] : [`info record file layout ${hints.fileLayout}`];
+  const trackOrderEvidence =
+    hints.trackOrder === undefined
+      ? 'no track order hint: lens 0 assumed to be track 0'
+      : `info record track order ${hints.trackOrder}: lens 0 is track ${isSwapped ? 1 : 0}`;
   return {
     kind: 'multi-track',
-    sources: candidates.map((candidate, lensIndex) => fullFrameSource(candidate, lensIndex)),
-    evidence: ['one input with two video tracks', ...hint],
+    sources: ordered.map((candidate, lensIndex) => fullFrameSource(candidate, lensIndex)),
+    evidence: ['one input with two video tracks', ...fileLayoutEvidence, trackOrderEvidence],
   };
 }
 
@@ -85,25 +96,14 @@ function splitFiles(
 }
 
 function packed(candidate: Candidate): LensLayout {
+  const { inputIndex, track } = candidate;
   return {
     kind: 'packed',
     sources: [
-      {
-        lensIndex: 0,
-        inputIndex: candidate.inputIndex,
-        trackIndex: candidate.track.trackIndex,
-        region: LEFT_HALF,
-      },
-      {
-        lensIndex: 1,
-        inputIndex: candidate.inputIndex,
-        trackIndex: candidate.track.trackIndex,
-        region: RIGHT_HALF,
-      },
+      { lensIndex: 0, inputIndex, trackIndex: track.trackIndex, region: LEFT_HALF },
+      { lensIndex: 1, inputIndex, trackIndex: track.trackIndex, region: RIGHT_HALF },
     ],
-    evidence: [
-      `single ${candidate.track.codedWidth}x${candidate.track.codedHeight} track with a 2:1 aspect ratio`,
-    ],
+    evidence: [`single ${track.codedWidth}x${track.codedHeight} track with a 2:1 aspect ratio`],
   };
 }
 

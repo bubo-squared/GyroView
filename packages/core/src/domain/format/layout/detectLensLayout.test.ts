@@ -20,10 +20,13 @@ function input(
 }
 
 describe('detectLensLayout', () => {
-  it('maps two square tracks in one file onto the two lenses in track order (X4/X5)', () => {
+  it('maps two square tracks in one file onto the two lenses in track order when track 0 is stream 00', () => {
     const layout = detectLensLayout(
       [input('VID_20260814_132640_00_013.insv', track(0, 2880), track(1, 2880))],
-      { fileLayout: FileLayoutHint.MultiTrack, trackOrder: TrackOrderHint.Track0IsStream00 },
+      {
+        fileLayout: FileLayoutHint.MultiTrack,
+        trackOrder: TrackOrderHint.Track0IsStream00,
+      },
     );
     expect(layout.kind).toBe('multi-track');
     expect(layout.sources).toEqual([
@@ -33,12 +36,28 @@ describe('detectLensLayout', () => {
     expect(layout.evidence).toEqual([
       'one input with two video tracks',
       'info record file layout 2',
+      'info record track order 2: lens 0 is track 0',
     ]);
   });
 
-  it('records only the track evidence when the info record has no layout field', () => {
+  it('swaps the tracks when the info record says track 0 is the screen-side stream (X5)', () => {
+    const layout = detectLensLayout([input('clip.insv', track(0, 2880), track(1, 2880))], {
+      fileLayout: FileLayoutHint.MultiTrack,
+      trackOrder: TrackOrderHint.Track0IsStream10,
+    });
+    expect(layout.sources.map((source) => [source.lensIndex, source.trackIndex])).toEqual([
+      [0, 1],
+      [1, 0],
+    ]);
+    expect(layout.evidence).toContain('info record track order 1: lens 0 is track 1');
+  });
+
+  it('records only the track evidence when the info record has no layout fields', () => {
     const layout = detectLensLayout([input('clip.insv', track(0, 3840), track(1, 3840))], NO_HINTS);
-    expect(layout.evidence).toEqual(['one input with two video tracks']);
+    expect(layout.evidence).toEqual([
+      'one input with two video tracks',
+      'no track order hint: lens 0 assumed to be track 0',
+    ]);
   });
 
   it('maps a _00_/_10_ pair onto the lenses with the _00_ file first, whatever order they are given in (X3)', () => {
@@ -69,8 +88,9 @@ describe('detectLensLayout', () => {
   });
 
   it('splits a single 2:1 track into left and right halves (packed modes, LRV)', () => {
+    const packedTrack = { ...track(0, 1664, 832), codec: 'avc1.640028' };
     const layout = detectLensLayout(
-      [input('LRV_20260814_132640_01_013.lrv', { ...track(0, 1664, 832), codec: 'avc1.640028' })],
+      [input('LRV_20260814_132640_01_013.lrv', packedTrack)],
       NO_HINTS,
     );
     expect(layout.kind).toBe('packed');
@@ -103,6 +123,7 @@ describe('detectLensLayout', () => {
       [input('a', track(0, 2880), track(1, 2880)), input('b')],
     ],
     ['a 2:1 track next to a square one', [input('a', track(0, 1664, 832), track(1, 2880))]],
+    ['two square tracks of different sizes', [input('a', track(0, 2880), track(1, 1920))]],
     ['no inputs at all', []],
   ])('rejects %s as an unsupported layout', (_case, inputs) => {
     expect(captureError(() => detectLensLayout(inputs, NO_HINTS))).toMatchObject({

@@ -24,11 +24,14 @@ export {
   FileLayoutHint,
   type LayoutHints,
 } from './domain/format/layout/detectLensLayout';
-export type {
-  FrameRegion,
-  LensLayout,
-  LensLayoutKind,
-  LensSource,
+export {
+  FULL_FRAME,
+  LEFT_HALF,
+  RIGHT_HALF,
+  type FrameRegion,
+  type LensLayout,
+  type LensLayoutKind,
+  type LensSource,
 } from './domain/format/layout/LensLayout';
 export type {
   InputDescription,
@@ -55,8 +58,34 @@ export {
   type EulerDegrees,
   type LensCalibration,
 } from './domain/optics/LensCalibration';
-export type { LensModel, LensModelKind } from './domain/optics/LensModel';
+export type { LensModel, LensModelKind, LensProjectionParameters } from './domain/optics/LensModel';
+export { lensRotation } from './domain/optics/lensPose';
+export {
+  clampView,
+  DEFAULT_VIEW,
+  MAX_FIELD_OF_VIEW,
+  MIN_FIELD_OF_VIEW,
+  viewRotation,
+  type Projection,
+  type ViewState,
+} from './domain/view/ViewState';
+export { lookAt, panView, zoomView, type DragDelta } from './domain/view/viewGestures';
+export {
+  buildStitchingSetup,
+  DEFAULT_FEATHER,
+  lensFrameOrder,
+  type CanvasWindow,
+  type FeatherBand,
+  type FrameSourceKey,
+  type LensStitch,
+  type StitchingInputs,
+  type StitchingSetup,
+} from './application/stitching/StitchingSetup';
 export type { PixelPoint } from './domain/optics/PixelPoint';
+export { EquidistantModel, type EquidistantParameters } from './domain/optics/EquidistantModel';
+export { MeiModel, type MeiParameters } from './domain/optics/MeiModel';
+export { PolynomialModel, type PolynomialParameters } from './domain/optics/PolynomialModel';
+export { DEFAULT_HALF_FIELD_OF_VIEW } from './domain/optics/opticsConstants';
 export type { CalibrationChoice } from './domain/optics/selectCalibration';
 
 // Shared vocabulary
@@ -66,6 +95,16 @@ export {
   type GyroViewErrorCode,
 } from './shared/errors/GyroViewError';
 export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
+export {
+  IDENTITY_MATRIX3,
+  multiplyMatrices,
+  rotationAboutX,
+  rotationAboutY,
+  rotationAboutZ,
+  transformVector,
+  transposeMatrix,
+  type Matrix3,
+} from './shared/math/Matrix3';
 export type {
   ReadonlyFloat32Array,
   ReadonlyFloat64Array,

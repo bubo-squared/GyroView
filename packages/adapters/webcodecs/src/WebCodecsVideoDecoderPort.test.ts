@@ -77,15 +77,15 @@ describe('WebCodecsVideoDecoderPort', () => {
     for (const pair of pairs) for (const frame of pair.frames) frame.close();
   });
 
-  it('starts from the preceding key frame and delivers only frames at or after the requested time', async () => {
+  it('starts from the preceding key frame and keeps only the last pair before the requested time', async () => {
     const pipeline = new LensDecodePipeline(input.videoTracks, port, PIPELINE_OPTIONS);
     const queue = new FramePairQueue<VideoFrame>(4);
     const run = pipeline.run(seconds(1.25), queue);
     const pairs = await drain(queue, run);
     const report = await run;
 
-    expect(pairs[0]?.timestamp).toBeCloseTo(1.3, 5);
-    expect(report.framesDroppedBeforeStart).toBe(3);
+    expect(pairs[0]?.timestamp).toBeCloseTo(1.2, 5);
+    expect(report.pairsDroppedBeforeStart).toBe(2);
     for (const pair of pairs) for (const frame of pair.frames) frame.close();
   });
 

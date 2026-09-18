@@ -1,4 +1,5 @@
 import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../ports/Demuxer';
+import { GyroViewError } from '../shared/errors/GyroViewError';
 import type {
   DecodedFrame,
   VideoDecoderCallbacks,
@@ -22,6 +23,10 @@ export interface FakeDecoderOptions {
    */
   readonly latencyTicks?: number;
   readonly unsupportedCodecs?: readonly string[];
+  /**
+   * Reject `create` for unsupported codecs with a codec-unsupported error, like a real port.
+   */
+  readonly failOnCreate?: boolean;
 }
 
 interface PendingWaiter {
@@ -61,6 +66,14 @@ export class FakeVideoDecoderPort implements VideoDecoderPort<FakeFrameHandle> {
     configuration: VideoDecoderConfiguration,
     callbacks: VideoDecoderCallbacks<FakeFrameHandle>,
   ): Promise<VideoDecoderHandle> {
+    if (
+      this.options.failOnCreate &&
+      (this.options.unsupportedCodecs ?? []).includes(configuration.codec)
+    ) {
+      return Promise.reject(
+        new GyroViewError('codec-unsupported', `${configuration.codec} cannot be decoded`),
+      );
+    }
     const decoder = new FakeVideoDecoder({
       configuration,
       callbacks,

@@ -28,3 +28,11 @@ The vocabulary used in code, tests and documents. One name per concept; no synon
 | Byte range           | An offset and a length in a source; end exclusive.                                                                                                                     |
 | Stabilization mode   | How the gyro orientation is applied: off, lock, horizon, follow.                                                                                                       |
 | Playback session     | The application use case that drives demuxing, decoding, timing and rendering for one recording.                                                                       |
+| Frame pair           | The decoded pictures of every lens for one instant, in lens order; owned by whoever holds it and closed exactly once.                                                  |
+| Frame pair queue     | Soft-capacity buffer of frame pairs between the decode pipeline and the renderer; the consumer takes the latest pair due at a time.                                    |
+| Decode pipeline      | One run of lockstep decoding of all lens tracks from a chosen time, feeding pairs into a frame pair queue.                                                             |
+| Start gate           | Filter at the head of a decode run: passes pairs at or after the start, keeps only the last pair before it (the frame on screen at the start).                         |
+| Playback clock       | Port for the media time source playback follows: wall clock in core, an audio element in the browser.                                                                  |
+| Frame sink           | Port that receives presentations from the playback session: the renderer, or a test double.                                                                            |
+| Presentation         | One frame pair together with the media time it was shown at and, when known, its frame index.                                                                          |
+| Player state         | The playback session's state machine: idle, ready, playing, paused, seeking, ended, error, disposed; every transition is in one table.                                 |

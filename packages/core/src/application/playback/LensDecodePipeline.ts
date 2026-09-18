@@ -1,6 +1,6 @@
-import type { FramePair } from './FramePair';
 import { FramePairer } from './FramePairer';
 import type { FramePairQueue } from './FramePairQueue';
+import { StartGate } from './StartGate';
 import type { EncodedVideoPacket, VideoTrackReader } from '../../ports/Demuxer';
 import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { Signal } from '../../shared/async/Signal';
@@ -22,45 +22,36 @@ export interface DecodeRunReport {
   readonly packetsDecoded: number;
   readonly pairsDelivered: number;
   readonly unpairedFrames: number;
-  readonly framesDroppedBeforeStart: number;
+  /**
+   * Pairs decoded before the requested start and thrown away. The last pair before the start
+   * is not among them: it is delivered, being the frame on screen at the start.
+   */
+  readonly pairsDroppedBeforeStart: number;
   readonly hasReachedEnd: boolean;
 }
 
-/**
- * Counters of one run, kept apart from the control flow.
- */
-class RunTally {
-  public packets = 0;
-  public pairs = 0;
-  public droppedBeforeStart = 0;
-
-  public report(unpairedFrames: number, hasReachedEnd: boolean): DecodeRunReport {
-    return {
-      packetsDecoded: this.packets,
-      pairsDelivered: this.pairs,
-      unpairedFrames,
-      framesDroppedBeforeStart: this.droppedBeforeStart,
-      hasReachedEnd,
-    };
-  }
+interface RunTally {
+  packets: number;
+  pairs: number;
 }
 
-interface DeliverySink<Handle> {
+/**
+ * Everything one run owns, built when the run opens and torn down when it ends.
+ */
+interface Run<Handle> {
   readonly from: Seconds;
   readonly output: FramePairQueue<Handle>;
-  readonly tally: RunTally;
-}
-
-interface RunContext<Handle> extends DeliverySink<Handle> {
-  readonly decoders: readonly VideoDecoderHandle[];
   readonly stop: Signal;
+  readonly tally: RunTally;
+  readonly gate: StartGate<Handle>;
+  readonly pairer: FramePairer<Handle>;
+  readonly decoders: readonly VideoDecoderHandle[];
 }
 
 /**
  * Decodes the lens tracks of a recording in lockstep from a chosen time: starts every decoder at
  * the key packet before that time, feeds packets round-robin with bounded decoder queues, pairs
- * the resulting frames and hands pairs to the output queue. Frames before the requested start
- * (decoded only because a GOP begins with a key frame) are dropped.
+ * the resulting frames and hands pairs to the output queue through a {@link StartGate}.
  */
 export class LensDecodePipeline<Handle = unknown> {
   private stopSignal = new Signal();
@@ -83,24 +74,13 @@ export class LensDecodePipeline<Handle = unknown> {
    * with a report; rejects on decoder failure.
    */
   public async run(from: Seconds, output: FramePairQueue<Handle>): Promise<DecodeRunReport> {
-    const stop = new Signal();
-    this.stopSignal = stop;
-    const sink: DeliverySink<Handle> = { from, output, tally: new RunTally() };
-    const pairer = new FramePairer<Handle>(
-      this.lensTracks.length,
-      this.options.pairTolerance,
-      (pair) => {
-        this.deliver(pair, sink);
-      },
-    );
-    const decoders = await this.createDecoders(pairer);
+    const run = await this.openRun(from, output);
     try {
-      const hasReachedEnd = await this.feed({ ...sink, decoders, stop });
-      await settle(decoders, stop);
-      return sink.tally.report(pairer.unpaired, hasReachedEnd);
+      const hasReachedEnd = await this.feed(run);
+      await settle(run, hasReachedEnd);
+      return reportOf(run, hasReachedEnd);
     } finally {
-      for (const decoder of decoders) decoder.close();
-      pairer.discardAll();
+      closeRun(run);
     }
   }
 
@@ -108,14 +88,23 @@ export class LensDecodePipeline<Handle = unknown> {
     this.stopSignal.trigger();
   }
 
-  private deliver(pair: FramePair<Handle>, sink: DeliverySink<Handle>): void {
-    if (pair.timestamp < sink.from) {
-      sink.tally.droppedBeforeStart += 1;
-      for (const frame of pair.frames) frame.close();
-      return;
-    }
-    sink.tally.pairs += 1;
-    sink.output.push(pair);
+  private async openRun(from: Seconds, output: FramePairQueue<Handle>): Promise<Run<Handle>> {
+    const stop = new Signal();
+    this.stopSignal = stop;
+    const tally: RunTally = { packets: 0, pairs: 0 };
+    const gate = new StartGate<Handle>(from, (pair) => {
+      tally.pairs += 1;
+      output.push(pair);
+    });
+    const pairer = new FramePairer<Handle>(
+      this.lensTracks.length,
+      this.options.pairTolerance,
+      (pair) => {
+        gate.push(pair);
+      },
+    );
+    const decoders = await this.createDecoders(pairer);
+    return { from, output, stop, tally, gate, pairer, decoders };
   }
 
   private async createDecoders(pairer: FramePairer<Handle>): Promise<VideoDecoderHandle[]> {
@@ -139,32 +128,32 @@ export class LensDecodePipeline<Handle = unknown> {
   /**
    * Resolves to true when every track ran out of packets, false when stopped or the queue closed.
    */
-  private async feed(context: RunContext<Handle>): Promise<boolean> {
-    const iterators = await this.packetIteratorsFrom(context.from);
-    while (!shouldStop(context)) {
-      await Promise.race([context.output.waitForRoom(), context.stop.promise]);
-      if (shouldStop(context)) return false;
+  private async feed(run: Run<Handle>): Promise<boolean> {
+    const iterators = await this.packetIteratorsFrom(run.from);
+    while (!shouldStop(run)) {
+      await Promise.race([run.output.waitForRoom(), run.stop.promise]);
+      if (shouldStop(run)) return false;
       const packets = await nextRound(iterators);
       if (!packets) return true;
-      await this.decodeRound(context, packets);
+      await this.decodeRound(run, packets);
     }
     return false;
   }
 
   private async decodeRound(
-    context: RunContext<Handle>,
+    run: Run<Handle>,
     packets: readonly EncodedVideoPacket[],
   ): Promise<void> {
-    for (const [lensIndex, decoder] of context.decoders.entries()) {
+    for (const [lensIndex, decoder] of run.decoders.entries()) {
       const packet = packets[lensIndex];
       if (!packet) continue;
       await Promise.race([
         decoder.waitForPendingBelow(this.options.maxPendingPackets),
-        context.stop.promise,
+        run.stop.promise,
       ]);
-      if (shouldStop(context)) return;
+      if (shouldStop(run)) return;
       decoder.decode(packet);
-      context.tally.packets += 1;
+      run.tally.packets += 1;
     }
   }
 
@@ -184,19 +173,37 @@ export class LensDecodePipeline<Handle = unknown> {
   }
 }
 
-function shouldStop<Handle>(context: RunContext<Handle>): boolean {
-  return context.stop.wasTriggered || context.output.isClosedForGood;
+function shouldStop<Handle>(run: Run<Handle>): boolean {
+  return run.stop.wasTriggered || run.output.isClosedForGood;
 }
 
 /**
- * After the feed: a stopped run throws away what is still pending; a finished run drains it.
+ * After the feed: a stopped run throws away what is still pending; a finished run drains the
+ * decoders and, having reached the end, releases the pair the gate held back.
  */
-async function settle(decoders: readonly VideoDecoderHandle[], stop: Signal): Promise<void> {
-  if (stop.wasTriggered) {
-    for (const decoder of decoders) decoder.reset();
+async function settle<Handle>(run: Run<Handle>, hasReachedEnd: boolean): Promise<void> {
+  if (run.stop.wasTriggered) {
+    for (const decoder of run.decoders) decoder.reset();
     return;
   }
-  await Promise.all(decoders.map((decoder) => decoder.flush()));
+  await Promise.all(run.decoders.map((decoder) => decoder.flush()));
+  if (hasReachedEnd) run.gate.release();
+}
+
+function closeRun<Handle>(run: Run<Handle>): void {
+  for (const decoder of run.decoders) decoder.close();
+  run.pairer.discardAll();
+  run.gate.discard();
+}
+
+function reportOf<Handle>(run: Run<Handle>, hasReachedEnd: boolean): DecodeRunReport {
+  return {
+    packetsDecoded: run.tally.packets,
+    pairsDelivered: run.tally.pairs,
+    unpairedFrames: run.pairer.unpaired,
+    pairsDroppedBeforeStart: run.gate.dropped,
+    hasReachedEnd,
+  };
 }
 
 /**

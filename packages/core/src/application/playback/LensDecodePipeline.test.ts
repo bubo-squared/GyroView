@@ -70,13 +70,13 @@ describe('LensDecodePipeline', () => {
       packetsDecoded: FRAMES * 2,
       pairsDelivered: FRAMES,
       unpairedFrames: 0,
-      framesDroppedBeforeStart: 0,
+      pairsDroppedBeforeStart: 0,
       hasReachedEnd: true,
     });
     expect(decoderPort.openFrames).toBe(0);
   });
 
-  it('starts at the preceding key frame and drops the frames before the requested time', async () => {
+  it('starts at the preceding key frame and keeps only the last pair before the requested time', async () => {
     const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
     const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
@@ -85,9 +85,9 @@ describe('LensDecodePipeline', () => {
     const pairs = await drain(queue, run);
     const report = await run;
 
-    expect(pairs[0]?.timestamp).toBeCloseTo(1.3, 9);
-    expect(pairs).toHaveLength(17);
-    expect(report.framesDroppedBeforeStart).toBe(3);
+    expect(pairs[0]?.timestamp).toBeCloseTo(1.2, 9);
+    expect(pairs).toHaveLength(18);
+    expect(report.pairsDroppedBeforeStart).toBe(2);
     expect(decoderPort.openFrames).toBe(0);
   });
 

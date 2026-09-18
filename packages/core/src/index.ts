@@ -88,3 +88,13 @@ export {
   type DecodePipelineOptions,
   type DecodeRunReport,
 } from './application/playback/LensDecodePipeline';
+export type { PlaybackClock } from './ports/PlaybackClock';
+export type { FrameSink, Presentation } from './ports/FrameSink';
+export { WallClock } from './domain/playback/WallClock';
+export { PlayerStateMachine, type PlayerState } from './domain/playback/PlayerState';
+export { TypedEmitter } from './shared/events/TypedEmitter';
+export {
+  PlaybackSession,
+  type PlaybackSessionEvents,
+  type PlaybackSessionParts,
+} from './application/playback/PlaybackSession';

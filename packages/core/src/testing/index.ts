@@ -8,3 +8,4 @@ export {
   type FakeDecoderOptions,
   type FakeFrameHandle,
 } from './FakeVideoDecoderPort';
+export { FakeFrameSink } from './FakeFrameSink';

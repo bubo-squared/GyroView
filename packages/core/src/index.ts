@@ -22,3 +22,17 @@ export { ExposureRecord, type ExposureEntry } from './domain/motion/exposure/Exp
 export type { Vector3 } from './shared/math/Vector3';
 export * from './shared/units/time';
 export * from './shared/units/angle';
+export { CalibrationSelector, type CalibrationChoice } from './domain/optics/CalibrationSelector';
+export { OffsetStringParser } from './domain/optics/OffsetStringParser';
+export { MeiModel, type MeiParameters } from './domain/optics/MeiModel';
+export { PolynomialModel, type PolynomialParameters } from './domain/optics/PolynomialModel';
+export { EquidistantModel, type EquidistantParameters } from './domain/optics/EquidistantModel';
+export type { LensModel, LensModelKind } from './domain/optics/LensModel';
+export type { PixelPoint } from './domain/optics/PixelPoint';
+export {
+  CalibrationVersion,
+  type CalibrationSet,
+  type CanvasSize,
+  type EulerDegrees,
+  type LensCalibration,
+} from './domain/optics/LensCalibration';

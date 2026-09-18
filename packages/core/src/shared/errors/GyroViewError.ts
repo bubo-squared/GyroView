@@ -5,11 +5,14 @@ export type GyroViewErrorCode =
   | 'binary-out-of-bounds'
   | 'binary-unsafe-integer'
   | 'invalid-byte-range'
+  | 'invalid-calibration'
   | 'invalid-exposure-record'
   | 'invalid-gyro-record'
   | 'invalid-protobuf'
   | 'invalid-trailer'
-  | 'record-not-found';
+  | 'no-calibration'
+  | 'record-not-found'
+  | 'unsupported-calibration';
 
 export class GyroViewError extends Error {
   public constructor(

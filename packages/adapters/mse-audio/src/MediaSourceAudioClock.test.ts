@@ -1,5 +1,5 @@
 import { MediabunnyAudioSegmenter, MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
-import { seconds, type AudioSegmentSource, type DemuxedInput } from '@gyroview/core';
+import { GyroViewError, seconds, type AudioSegmentSource, type DemuxedInput } from '@gyroview/core';
 import { InMemoryRandomAccessSource } from '@gyroview/core/testing';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
@@ -73,14 +73,14 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     expect(clock.isRunning).toBe(true);
     expect(clock.currentTime).toBeGreaterThan(0.3);
     expect(clock.currentTime).toBeLessThan(3);
-    expect(clock.bufferingError).toBeUndefined();
+    expect(clock.failure).toBeUndefined();
   });
 
   it('holds its time while stopped', async () => {
     const clock = await openClock();
     await clock.start();
     await waitUntilPast(clock, 0.2, 4000);
-    clock.stop();
+    clock.pause();
     const held = clock.currentTime;
     await wait(300);
     expect(clock.isRunning).toBe(false);
@@ -97,20 +97,41 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     expect(clock.currentTime).toBeLessThanOrEqual(3.05);
   });
 
-  it('stops running at the end of the track', async () => {
+  it('stops running and reports the end when the track runs out', async () => {
     const clock = await openClock();
     clock.seek(seconds(2.6));
     await clock.start();
     await waitUntilPast(clock, 2.95, 4000);
     await wait(200);
     expect(clock.isRunning).toBe(false);
+    expect(clock.hasEnded).toBe(true);
     expect(clock.currentTime).toBeCloseTo(3, 1);
+    expect(clock.failure).toBeUndefined();
   });
 
-  it('treats a stop that interrupts the start as a plain stop, not an error', async () => {
+  it('reports a failing segment source through failure instead of swallowing it', async () => {
+    const broken: AudioSegmentSource = {
+      mimeType: source.mimeType,
+      duration: source.duration,
+      // eslint-disable-next-line @typescript-eslint/require-await -- an async generator that fails at once
+      async *segmentsFrom(): AsyncGenerator<Uint8Array<ArrayBuffer>> {
+        throw new GyroViewError('source-unreadable', 'audio range request failed');
+      },
+    };
+    const element = document.createElement('audio');
+    element.muted = true;
+    document.body.append(element);
+    elements.push(element);
+    const clock = await MediaSourceAudioClock.open(element, broken);
+    clocks.push(clock);
+    await wait(100);
+    expect(clock.failure?.code).toBe('source-unreadable');
+  });
+
+  it('treats a pause that interrupts the start as a plain pause, not an error', async () => {
     const clock = await openClock();
     const starting = clock.start();
-    clock.stop();
+    clock.pause();
     await expect(starting).resolves.toBeUndefined();
     expect(clock.isRunning).toBe(false);
   });

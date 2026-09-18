@@ -1,13 +1,14 @@
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 
 export type PlayerState =
-  'idle' | 'ready' | 'playing' | 'paused' | 'seeking' | 'ended' | 'error' | 'disposed';
+  'ready' | 'playing' | 'paused' | 'seeking' | 'ended' | 'error' | 'disposed';
 
 /**
- * Every legal transition; anything else is a programming error. `disposed` is terminal.
+ * Every legal transition; anything else is a programming error. A session is `ready` from
+ * construction (its parts are already open), `error` leads only to `disposed`, and `disposed`
+ * is terminal. Buffering is not a state yet: underrun handling belongs to the hardening phase.
  */
 const TRANSITIONS: Readonly<Record<PlayerState, readonly PlayerState[]>> = {
-  idle: ['ready', 'error', 'disposed'],
   ready: ['playing', 'paused', 'seeking', 'error', 'disposed'],
   playing: ['paused', 'seeking', 'ended', 'error', 'disposed'],
   paused: ['playing', 'seeking', 'error', 'disposed'],
@@ -21,7 +22,7 @@ const TRANSITIONS: Readonly<Record<PlayerState, readonly PlayerState[]>> = {
  * Explicit player lifecycle instead of a set of booleans.
  */
 export class PlayerStateMachine {
-  private current: PlayerState = 'idle';
+  private current: PlayerState = 'ready';
 
   public get state(): PlayerState {
     return this.current;
@@ -44,4 +45,11 @@ export class PlayerStateMachine {
   public isOneOf(...states: readonly PlayerState[]): boolean {
     return states.includes(this.current);
   }
+}
+
+/**
+ * The transition table, for tests and documentation.
+ */
+export function transitionsFrom(state: PlayerState): readonly PlayerState[] {
+  return TRANSITIONS[state];
 }

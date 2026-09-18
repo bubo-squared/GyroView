@@ -99,7 +99,12 @@ async function* remux(parts: RemuxParts, from: Seconds): AsyncGenerator<Uint8Arr
  */
 async function releaseAfter(production: Promise<void>, output: Output): Promise<void> {
   await production;
-  if (output.state !== 'finalized') await output.cancel();
+  if (output.state === 'finalized') return;
+  try {
+    await output.cancel();
+  } catch {
+    // Nothing is listening any more; the muxer's resources go with it either way.
+  }
 }
 
 /**

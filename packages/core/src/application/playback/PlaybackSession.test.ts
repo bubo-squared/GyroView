@@ -1,73 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { PlaybackSession, type PlaybackSessionParts } from './PlaybackSession';
-import { WallClock } from '../../domain/playback/WallClock';
-import type { PlayerState } from '../../domain/playback/PlayerState';
 import { seconds } from '../../shared/units/time';
-import { FakeFrameSink } from '../../testing/FakeFrameSink';
-import { FakeVideoDecoderPort, type FakeFrameHandle } from '../../testing/FakeVideoDecoderPort';
-import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
+import { DURATION, FRAME_RATE, sessionHarness, settle } from '../../../test/support/sessionHarness';
 
-const FRAME_RATE = 10;
-const FRAMES = 30;
-const DURATION = seconds(FRAMES / FRAME_RATE);
+const FRAME = 1 / FRAME_RATE;
 
-interface Harness {
-  readonly session: PlaybackSession<FakeFrameHandle>;
-  readonly sink: FakeFrameSink<FakeFrameHandle>;
-  readonly decoderPort: FakeVideoDecoderPort;
-  readonly states: PlayerState[];
-  /**
-   * Moves wall time forward and gives the pipeline a moment to decode, then ticks the session.
-   */
-  readonly advance: (ms: number) => Promise<void>;
-}
-
-function harness(overrides: Partial<PlaybackSessionParts<FakeFrameHandle>> = {}): Harness {
-  let nowMs = 0;
-  const clock = new WallClock(() => nowMs);
-  const sink = new FakeFrameSink<FakeFrameHandle>();
-  const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 1 });
-  const lensTracks = [0, 1].map(
-    (trackIndex) =>
-      new FakeVideoTrack({
-        trackIndex,
-        frameRate: FRAME_RATE,
-        frameCount: FRAMES,
-        framesPerGop: 10,
-      }),
-  );
-  const session = new PlaybackSession<FakeFrameHandle>({
-    lensTracks,
-    decoderPort,
-    clock,
-    sink,
-    duration: DURATION,
-    frameTimes: undefined,
-    pipeline: { maxPendingPackets: 3, pairTolerance: seconds(0.0001) },
-    queueCapacity: 4,
-    ...overrides,
-  });
-  const states: PlayerState[] = [];
-  session.events.on('statechange', (state) => {
-    states.push(state);
-  });
-  return {
-    session,
-    sink,
-    decoderPort,
-    states,
-    advance: async (ms): Promise<void> => {
-      nowMs += ms;
-      await new Promise((resolve) => setTimeout(resolve, 5));
-      session.tick();
-    },
-  };
-}
-
-describe('PlaybackSession', () => {
+describe('PlaybackSession transport', () => {
   it('is ready after construction and presents frames in step with the clock once playing', async () => {
-    const { session, sink, advance } = harness();
+    const { session, sink, advance } = sessionHarness();
     expect(session.state).toBe('ready');
     await session.play();
     expect(session.state).toBe('playing');
@@ -82,7 +22,7 @@ describe('PlaybackSession', () => {
   });
 
   it('closes superseded pairs and keeps only the presented one open', async () => {
-    const { session, decoderPort, advance } = harness();
+    const { session, decoderPort, advance } = sessionHarness();
     await session.play();
     for (let step = 0; step < 6; step += 1) await advance(150);
     expect(decoderPort.openFrames).toBeLessThanOrEqual(2 + 2 * 4 + 2 * 3);
@@ -90,23 +30,41 @@ describe('PlaybackSession', () => {
     expect(decoderPort.openFrames).toBe(0);
   });
 
-  it('pauses and resumes without presenting stale frames', async () => {
-    const { session, sink, advance } = harness();
+  it('pauses and resumes with the same pipeline, presenting nothing stale and no time updates while paused', async () => {
+    const { session, sink, decoderPort, advance } = sessionHarness();
+    const updates: number[] = [];
+    session.events.on('timeupdate', (time) => {
+      updates.push(time);
+    });
     await session.play();
     await advance(300);
     session.pause();
     expect(session.state).toBe('paused');
     const shownWhilePaused = sink.presentations.length;
+    const updatesWhilePaused = updates.length;
     await advance(1000);
     expect(sink.presentations.length).toBe(shownWhilePaused);
+    expect(updates.length).toBe(updatesWhilePaused);
     await session.play();
     await advance(100);
     expect(sink.lastTimestamp).toBeCloseTo(0.4, 6);
+    expect(decoderPort.decodersCreated).toHaveLength(2);
+    expect(updates.length).toBe(updatesWhilePaused + 1);
+    session.dispose();
+  });
+
+  it('calling play while playing changes nothing', async () => {
+    const { session, decoderPort, states } = sessionHarness();
+    await session.play();
+    await session.play();
+    await settle();
+    expect(states).toEqual(['playing']);
+    expect(decoderPort.decodersCreated).toHaveLength(2);
     session.dispose();
   });
 
   it('seeks to a time and presents from there, never a frame before the target', async () => {
-    const { session, sink, advance } = harness();
+    const { session, sink, advance } = sessionHarness();
     await session.play();
     await advance(100);
     session.seek(seconds(2.05));
@@ -124,7 +82,7 @@ describe('PlaybackSession', () => {
   });
 
   it('seeking while paused stays paused and shows the target frame', async () => {
-    const { session, sink, advance, states } = harness();
+    const { session, sink, advance, states } = sessionHarness();
     session.seek(seconds(1));
     await advance(0);
     await advance(0);
@@ -134,8 +92,36 @@ describe('PlaybackSession', () => {
     session.dispose();
   });
 
+  it('clamps seeks into the recording and shows the last frame at the duration without ending', async () => {
+    const { session, sink, advance } = sessionHarness();
+    session.seek(seconds(-5));
+    expect(session.currentTime).toBe(0);
+    session.seek(seconds(10));
+    expect(session.currentTime).toBe(DURATION);
+    await advance(0);
+    await advance(0);
+    expect(sink.lastTimestamp).toBeCloseTo(DURATION - FRAME, 6);
+    expect(session.state).toBe('paused');
+    session.dispose();
+  });
+
+  it('leaves exactly one live pipeline after a burst of seeks', async () => {
+    const { session, decoderPort, advance } = sessionHarness();
+    await session.play();
+    await advance(50);
+    for (const target of [0.5, 1.2, 2.7, 0.1, 1.9]) session.seek(seconds(target));
+    await advance(0);
+    await advance(50);
+    expect(decoderPort.openDecoders).toBe(2);
+    expect(decoderPort.decodersCreated.length).toBeGreaterThan(2);
+    session.dispose();
+    await settle();
+    expect(decoderPort.openFrames).toBe(0);
+    expect(decoderPort.openDecoders).toBe(0);
+  });
+
   it('ends when the clock passes the duration and every frame was shown, then can replay', async () => {
-    const { session, advance, states } = harness();
+    const { session, clock, advance, states } = sessionHarness();
     let endedCount = 0;
     session.events.on('ended', () => {
       endedCount += 1;
@@ -144,6 +130,7 @@ describe('PlaybackSession', () => {
     for (let step = 0; step < 40; step += 1) await advance(100);
     expect(session.state).toBe('ended');
     expect(endedCount).toBe(1);
+    expect(clock.isRunning).toBe(false);
     await session.play();
     expect(session.state).toBe('playing');
     expect(session.currentTime).toBeLessThan(0.1);
@@ -151,8 +138,18 @@ describe('PlaybackSession', () => {
     session.dispose();
   });
 
-  it('stop returns to the start paused', async () => {
-    const { session, sink, advance } = harness();
+  it('does not end while decoded frames are still due, even with the clock past the duration', async () => {
+    const { session, advance } = sessionHarness();
+    await session.play();
+    await advance(0);
+    await advance(3500);
+    expect(session.state).toBe('playing');
+    await settle();
+    session.dispose();
+  });
+
+  it('stop pauses first and returns to the start, also from the ended state', async () => {
+    const { session, sink, advance, states } = sessionHarness();
     await session.play();
     await advance(500);
     session.stop();
@@ -160,32 +157,13 @@ describe('PlaybackSession', () => {
     expect(session.state).toBe('paused');
     expect(session.currentTime).toBe(0);
     expect(sink.lastTimestamp).toBe(0);
-    session.dispose();
-  });
-
-  it('reports decoder failure as an error state with a typed error and stops the clock', async () => {
-    const { session, advance } = harness({
-      decoderPort: new FakeVideoDecoderPort({ unsupportedCodecs: ['fake.1'], failOnCreate: true }),
-    });
-    const errors: unknown[] = [];
-    session.events.on('error', (error) => {
-      errors.push(error);
-    });
+    expect(states.slice(-3)).toEqual(['paused', 'seeking', 'paused']);
     await session.play();
-    await advance(50);
-    expect(session.state).toBe('error');
-    expect(errors[0]).toMatchObject({ code: 'codec-unsupported' });
-    expect(session.currentTime).toBe(session.currentTime);
+    for (let step = 0; step < 40; step += 1) await advance(100);
+    expect(session.state).toBe('ended');
+    session.stop();
+    expect(session.state).toBe('paused');
+    expect(session.currentTime).toBe(0);
     session.dispose();
-  });
-
-  it('dispose is idempotent and frees every frame', async () => {
-    const { session, decoderPort, advance } = harness();
-    await session.play();
-    await advance(200);
-    session.dispose();
-    session.dispose();
-    expect(session.state).toBe('disposed');
-    expect(decoderPort.openFrames).toBe(0);
   });
 });

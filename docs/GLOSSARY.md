@@ -43,3 +43,4 @@ The vocabulary used in code, tests and documents. One name per concept; no synon
 | Decode probe         | Pre-flight decode of every lens track's first key frame under a deadline; its verdicts decide between full playback, proxy fallback and a typed error.                 |
 | Audio segment source | Port: the recording's audio re-packaged as fragmented MP4 (an initialization segment, then media segments from a time) for Media Source Extensions.                    |
 | Audio clock          | The PlaybackClock over an audio element fed through Media Source Extensions; the wall clock replaces it for silent recordings. See ADR 0007.                           |
+| Abort (a run)        | Ending a decode pipeline run early, discarding pending decodes. Distinct from pausing the clock and from the transport's stop (pause and rewind).                      |

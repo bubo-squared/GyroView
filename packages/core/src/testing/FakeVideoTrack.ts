@@ -4,6 +4,7 @@ import type {
   VideoDecoderConfiguration,
   VideoTrackReader,
 } from '../ports/Demuxer';
+import { GyroViewError } from '../shared/errors/GyroViewError';
 import { seconds, type Seconds } from '../shared/units/time';
 
 export interface FakeVideoTrackOptions {
@@ -64,13 +65,19 @@ export class FakeVideoTrack implements VideoTrackReader {
 
   public async *packetsFrom(start: EncodedVideoPacket): AsyncIterable<EncodedVideoPacket> {
     const index = this.packets.indexOf(start);
+    if (index === -1) {
+      throw new GyroViewError(
+        'invariant-violation',
+        'packetsFrom needs a packet handed out by this track',
+      );
+    }
     for (const packet of this.packets.slice(index)) {
       await Promise.resolve();
       yield packet;
     }
   }
 
-  public sampleTimestamps(): Promise<readonly number[]> {
+  public sampleTimestamps(): Promise<readonly Seconds[]> {
     return Promise.resolve(this.packets.map((packet) => packet.timestamp));
   }
 

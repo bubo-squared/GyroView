@@ -1,16 +1,12 @@
 import { GyroViewError, type ByteRange, type RandomAccessSource } from '@gyroview/core';
 
+import { discardBody, httpRequest, type HttpRequestOptions } from './httpRequest';
+
 const HTTP_OK = 200;
 const HTTP_PARTIAL_CONTENT = 206;
 const CONTENT_RANGE_TOTAL = /\/(\d+)$/u;
 
-export interface HttpRangeSourceOptions {
-  /**
-   * Extra request settings, for example credentials or headers. `Range` is set by the source.
-   */
-  readonly requestInit?: RequestInit;
-  readonly fetch?: typeof fetch;
-}
+export type HttpRangeSourceOptions = HttpRequestOptions;
 
 /**
  * RandomAccessSource over HTTP. The server must answer `Range` requests with 206 and, for
@@ -26,28 +22,29 @@ export class HttpRangeSource implements RandomAccessSource {
   ) {}
 
   /**
-   * One HEAD request, cached for the lifetime of the source.
+   * One HEAD request, cached for the lifetime of the source once it succeeded; a failed lookup
+   * is retried on the next call.
    */
   public size(): Promise<number> {
-    this.sizePromise ??= this.fetchSize();
+    this.sizePromise ??= this.rememberSize();
     return this.sizePromise;
   }
 
   public async read(range: ByteRange): Promise<Uint8Array> {
     if (range.length === 0) return new Uint8Array();
     await this.ensureFits(range);
-    const response = await this.request({ Range: `bytes=${range.offset}-${range.end - 1}` }, 'GET');
-    if (response.status === HTTP_OK) {
-      throw new GyroViewError(
-        'range-unsupported',
-        `${this.url} ignores Range requests (answered 200 to a byte range)`,
-      );
-    }
+    const response = await this.request('GET', { Range: `bytes=${range.offset}-${range.end - 1}` });
     if (response.status !== HTTP_PARTIAL_CONTENT) {
-      throw new GyroViewError(
-        'source-unreadable',
-        `${this.url} answered ${response.status} to a byte range`,
-      );
+      discardBody(response);
+      throw response.status === HTTP_OK
+        ? new GyroViewError(
+            'range-unsupported',
+            `${this.url} ignores Range requests (answered 200 to a byte range)`,
+          )
+        : new GyroViewError(
+            'source-unreadable',
+            `${this.url} answered ${response.status} to a byte range`,
+          );
     }
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength !== range.length) {
@@ -73,8 +70,18 @@ export class HttpRangeSource implements RandomAccessSource {
     }
   }
 
+  private async rememberSize(): Promise<number> {
+    try {
+      return await this.fetchSize();
+    } catch (error) {
+      this.sizePromise = undefined;
+      throw error;
+    }
+  }
+
   private async fetchSize(): Promise<number> {
-    const response = await this.request({}, 'HEAD');
+    const response = await this.request('HEAD');
+    discardBody(response);
     if (!response.ok) {
       throw new GyroViewError(
         'source-unreadable',
@@ -90,7 +97,8 @@ export class HttpRangeSource implements RandomAccessSource {
    * Some servers omit Content-Length on HEAD; a one-byte range then reveals the total.
    */
   private async sizeFromContentRange(): Promise<number> {
-    const response = await this.request({ Range: 'bytes=0-0' }, 'GET');
+    const response = await this.request('GET', { Range: 'bytes=0-0' });
+    discardBody(response);
     const total = CONTENT_RANGE_TOTAL.exec(response.headers.get('content-range') ?? '')?.[1];
     if (total === undefined || response.status !== HTTP_PARTIAL_CONTENT) {
       throw new GyroViewError(
@@ -101,27 +109,7 @@ export class HttpRangeSource implements RandomAccessSource {
     return Number(total);
   }
 
-  private async request(
-    headers: Record<string, string>,
-    method: 'GET' | 'HEAD',
-  ): Promise<Response> {
-    const doFetch = this.options.fetch ?? fetch;
-    try {
-      return await doFetch(this.url, {
-        ...this.options.requestInit,
-        method,
-        headers: { ...headersOf(this.options.requestInit), ...headers },
-      });
-    } catch (error) {
-      throw new GyroViewError(
-        'source-unreadable',
-        `${this.url} could not be fetched; check the URL, the network and the server's CORS headers`,
-        { cause: error },
-      );
-    }
+  private request(method: 'GET' | 'HEAD', headers?: Record<string, string>): Promise<Response> {
+    return httpRequest(this.url, { method, ...(headers && { headers }) }, this.options);
   }
-}
-
-function headersOf(init: RequestInit | undefined): Record<string, string> {
-  return Object.fromEntries(new Headers(init?.headers).entries());
 }

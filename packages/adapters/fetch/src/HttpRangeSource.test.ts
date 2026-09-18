@@ -39,6 +39,18 @@ describe('HttpRangeSource', () => {
     expect(headRequests).toBe(1);
   });
 
+  it('retries the size lookup after a failed HEAD instead of caching the failure', async () => {
+    const server = await serve(content);
+    let attempts = 0;
+    const flaky: typeof fetch = (input, init) => {
+      attempts += 1;
+      return attempts === 1 ? Promise.reject(new Error('offline')) : fetch(input, init);
+    };
+    const source = new HttpRangeSource(server.url, { fetch: flaky });
+    await expect(source.size()).rejects.toMatchObject({ code: 'source-unreadable' });
+    await expect(source.size()).resolves.toBe(5000);
+  });
+
   it('falls back to a one-byte range when HEAD carries no Content-Length', async () => {
     const server = await serve(content, { hidesContentLength: true });
     await expect(new HttpRangeSource(server.url).size()).resolves.toBe(5000);

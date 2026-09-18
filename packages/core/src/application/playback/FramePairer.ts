@@ -1,5 +1,6 @@
 import type { FramePair } from './FramePair';
 import type { DecodedFrame } from '../../ports/VideoDecoderPort';
+import { ensureIndexInRange } from '../../shared/errors/GyroViewError';
 import { seconds, type Seconds } from '../../shared/units/time';
 
 /**
@@ -27,6 +28,7 @@ export class FramePairer<Handle = unknown> {
   }
 
   public push(lensIndex: number, frame: DecodedFrame<Handle>): void {
+    ensureIndexInRange(lensIndex, this.queues.length, 'lens');
     this.queues[lensIndex]?.push(frame);
     this.drain();
   }

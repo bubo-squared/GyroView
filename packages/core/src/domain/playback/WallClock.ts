@@ -4,10 +4,12 @@ import { seconds, type Seconds } from '../../shared/units/time';
 const MILLISECONDS_PER_SECOND = 1000;
 
 /**
- * PlaybackClock that advances with real time at the chosen rate. Used for recordings without an
- * audio track and in tests, where `now` is injected.
+ * PlaybackClock that advances with real time at the chosen rate and never ends or fails by
+ * itself. Used for recordings without an audio track and in tests, where `now` is injected.
  */
 export class WallClock implements PlaybackClock {
+  public readonly hasEnded = false;
+  public readonly failure = undefined;
   private isRunningNow = false;
   private rateValue = 1;
   private positionAtAnchor: Seconds = seconds(0);
@@ -37,7 +39,7 @@ export class WallClock implements PlaybackClock {
     return Promise.resolve();
   }
 
-  public stop(): void {
+  public pause(): void {
     if (!this.isRunningNow) return;
     this.positionAtAnchor = this.currentTime;
     this.isRunningNow = false;
@@ -55,6 +57,6 @@ export class WallClock implements PlaybackClock {
   }
 
   public dispose(): void {
-    this.stop();
+    this.pause();
   }
 }

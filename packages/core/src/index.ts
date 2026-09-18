@@ -60,7 +60,11 @@ export type { PixelPoint } from './domain/optics/PixelPoint';
 export type { CalibrationChoice } from './domain/optics/selectCalibration';
 
 // Shared vocabulary
-export { GyroViewError, type GyroViewErrorCode } from './shared/errors/GyroViewError';
+export {
+  ensureInvariant,
+  GyroViewError,
+  type GyroViewErrorCode,
+} from './shared/errors/GyroViewError';
 export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
 export type {
   ReadonlyFloat32Array,

@@ -3,8 +3,9 @@ import type { FramePairQueue } from './FramePairQueue';
 import { StartGate } from './StartGate';
 import type { EncodedVideoPacket, VideoTrackReader } from '../../ports/Demuxer';
 import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDecoderPort';
+import { Deferred } from '../../shared/async/Deferred';
 import { Signal } from '../../shared/async/Signal';
-import { GyroViewError } from '../../shared/errors/GyroViewError';
+import { ensureInvariant, GyroViewError } from '../../shared/errors/GyroViewError';
 import { seconds, type Seconds } from '../../shared/units/time';
 
 export interface DecodePipelineOptions {
@@ -35,26 +36,36 @@ interface RunTally {
   pairs: number;
 }
 
+type PacketIterator = AsyncIterator<EncodedVideoPacket>;
+
 /**
  * Everything one run owns, built when the run opens and torn down when it ends.
  */
 interface Run<Handle> {
-  readonly from: Seconds;
   readonly output: FramePairQueue<Handle>;
-  readonly stop: Signal;
+  readonly abort: Signal;
+  /**
+   * Settled by the first decoder that reports an error; the run is aborted and rejects with it.
+   */
+  readonly failure: Deferred<Error>;
   readonly tally: RunTally;
   readonly gate: StartGate<Handle>;
   readonly pairer: FramePairer<Handle>;
+  readonly iterators: readonly PacketIterator[];
   readonly decoders: readonly VideoDecoderHandle[];
 }
+
+const ABORTED = Symbol('aborted');
 
 /**
  * Decodes the lens tracks of a recording in lockstep from a chosen time: starts every decoder at
  * the key packet before that time, feeds packets round-robin with bounded decoder queues, pairs
- * the resulting frames and hands pairs to the output queue through a {@link StartGate}.
+ * the resulting frames and hands pairs to the output queue through a {@link StartGate}. One
+ * instance runs once; the session creates a new one per run.
  */
 export class LensDecodePipeline<Handle = unknown> {
-  private stopSignal = new Signal();
+  private readonly abortSignal = new Signal();
+  private hasRun = false;
 
   public constructor(
     private readonly lensTracks: readonly VideoTrackReader[],
@@ -70,27 +81,33 @@ export class LensDecodePipeline<Handle = unknown> {
   }
 
   /**
-   * Runs until the tracks end, the output queue is closed or {@link stop} is called. Resolves
-   * with a report; rejects on decoder failure.
+   * Runs until the tracks end, the output queue is closed or {@link abort} is called. Resolves
+   * with a report; rejects when a decoder fails or a track cannot be read.
    */
   public async run(from: Seconds, output: FramePairQueue<Handle>): Promise<DecodeRunReport> {
+    ensureInvariant(!this.hasRun, 'a decode pipeline runs once; create a new one for each run');
+    this.hasRun = true;
     const run = await this.openRun(from, output);
     try {
       const hasReachedEnd = await this.feed(run);
       await settle(run, hasReachedEnd);
+      if (run.failure.isSettled) throw await run.failure.promise;
       return reportOf(run, hasReachedEnd);
     } finally {
       closeRun(run);
     }
   }
 
-  public stop(): void {
-    this.stopSignal.trigger();
+  /**
+   * Ends the run early; pending decodes are discarded. Safe before, during and after the run.
+   */
+  public abort(): void {
+    this.abortSignal.trigger();
   }
 
   private async openRun(from: Seconds, output: FramePairQueue<Handle>): Promise<Run<Handle>> {
-    const stop = new Signal();
-    this.stopSignal = stop;
+    const abort = this.abortSignal;
+    const failure = new Deferred<Error>();
     const tally: RunTally = { packets: 0, pairs: 0 };
     const gate = new StartGate<Handle>(from, (pair) => {
       tally.pairs += 1;
@@ -103,39 +120,59 @@ export class LensDecodePipeline<Handle = unknown> {
         gate.push(pair);
       },
     );
-    const decoders = await this.createDecoders(pairer);
-    return { from, output, stop, tally, gate, pairer, decoders };
+    const iterators = await this.packetIteratorsFrom(from);
+    const onError = (error: Error): void => {
+      failure.resolve(error);
+      abort.trigger();
+    };
+    try {
+      const decoders = await this.createDecoders(pairer, onError);
+      return { output, abort, failure, tally, gate, pairer, iterators, decoders };
+    } catch (error) {
+      closeIterators(iterators);
+      throw error;
+    }
   }
 
-  private async createDecoders(pairer: FramePairer<Handle>): Promise<VideoDecoderHandle[]> {
-    let failure: Error | undefined;
-    const decoders = await Promise.all(
+  /**
+   * Opens one decoder per lens; if any refuses, the ones already open are closed again.
+   */
+  private async createDecoders(
+    pairer: FramePairer<Handle>,
+    onError: (error: Error) => void,
+  ): Promise<VideoDecoderHandle[]> {
+    const results = await Promise.allSettled(
       this.lensTracks.map(async (track, lensIndex) =>
         this.decoderPort.create(await track.decoderConfiguration(), {
           onFrame: (frame) => {
             pairer.push(lensIndex, frame);
           },
-          onError: (error) => {
-            failure ??= error;
-          },
+          onError,
         }),
       ),
     );
-    if (failure) throw failure;
-    return decoders;
+    const opened = results.flatMap((result) =>
+      result.status === 'fulfilled' ? [result.value] : [],
+    );
+    const refusal = results.find((result) => result.status === 'rejected');
+    if (refusal) {
+      for (const decoder of opened) decoder.close();
+      throw toError(refusal.reason);
+    }
+    return opened;
   }
 
   /**
-   * Resolves to true when every track ran out of packets, false when stopped or the queue closed.
+   * Resolves to true when every track ran out of packets, false when aborted or the queue closed.
    */
   private async feed(run: Run<Handle>): Promise<boolean> {
-    const iterators = await this.packetIteratorsFrom(run.from);
     while (!shouldStop(run)) {
-      await Promise.race([run.output.waitForRoom(), run.stop.promise]);
+      await Promise.race([run.output.waitForRoom(), run.abort.promise]);
       if (shouldStop(run)) return false;
-      const packets = await nextRound(iterators);
-      if (!packets) return true;
-      await this.decodeRound(run, packets);
+      const round = await Promise.race([nextRound(run.iterators), afterAbort(run.abort)]);
+      if (round === ABORTED) return false;
+      if (!round) return true;
+      await this.decodeRound(run, round);
     }
     return false;
   }
@@ -149,7 +186,7 @@ export class LensDecodePipeline<Handle = unknown> {
       if (!packet) continue;
       await Promise.race([
         decoder.waitForPendingBelow(this.options.maxPendingPackets),
-        run.stop.promise,
+        run.abort.promise,
       ]);
       if (shouldStop(run)) return;
       decoder.decode(packet);
@@ -157,7 +194,7 @@ export class LensDecodePipeline<Handle = unknown> {
     }
   }
 
-  private packetIteratorsFrom(from: Seconds): Promise<AsyncIterator<EncodedVideoPacket>[]> {
+  private packetIteratorsFrom(from: Seconds): Promise<PacketIterator[]> {
     return Promise.all(
       this.lensTracks.map(async (track) => {
         const start = (await track.keyPacketAt(from)) ?? (await track.keyPacketAt(seconds(0)));
@@ -174,19 +211,30 @@ export class LensDecodePipeline<Handle = unknown> {
 }
 
 function shouldStop<Handle>(run: Run<Handle>): boolean {
-  return run.stop.wasTriggered || run.output.isClosedForGood;
+  return run.abort.wasTriggered || run.output.isClosedForGood;
+}
+
+async function afterAbort(abort: Signal): Promise<typeof ABORTED> {
+  await abort.promise;
+  return ABORTED;
 }
 
 /**
- * After the feed: a stopped run throws away what is still pending; a finished run drains the
- * decoders and, having reached the end, releases the pair the gate held back.
+ * After the feed: an aborted run throws away what is still pending; a finished run drains the
+ * decoders and, having reached the end, releases the pair the gate held back. A decoder that
+ * fails while draining has already aborted the run and settled its failure.
  */
 async function settle<Handle>(run: Run<Handle>, hasReachedEnd: boolean): Promise<void> {
-  if (run.stop.wasTriggered) {
+  if (run.abort.wasTriggered) {
     for (const decoder of run.decoders) decoder.reset();
     return;
   }
-  await Promise.all(run.decoders.map((decoder) => decoder.flush()));
+  try {
+    await Promise.all(run.decoders.map((decoder) => decoder.flush()));
+  } catch (error) {
+    if (!run.failure.isSettled) throw error;
+    return;
+  }
   if (hasReachedEnd) run.gate.release();
 }
 
@@ -194,6 +242,11 @@ function closeRun<Handle>(run: Run<Handle>): void {
   for (const decoder of run.decoders) decoder.close();
   run.pairer.discardAll();
   run.gate.discard();
+  closeIterators(run.iterators);
+}
+
+function closeIterators(iterators: readonly PacketIterator[]): void {
+  for (const iterator of iterators) void iterator.return?.();
 }
 
 function reportOf<Handle>(run: Run<Handle>, hasReachedEnd: boolean): DecodeRunReport {
@@ -206,11 +259,17 @@ function reportOf<Handle>(run: Run<Handle>, hasReachedEnd: boolean): DecodeRunRe
   };
 }
 
+function toError(reason: unknown): Error {
+  return reason instanceof Error
+    ? reason
+    : new GyroViewError('decode', 'a decoder could not be created', { cause: reason });
+}
+
 /**
  * One packet per lens, or undefined as soon as any lens track is exhausted.
  */
 async function nextRound(
-  iterators: readonly AsyncIterator<EncodedVideoPacket>[],
+  iterators: readonly PacketIterator[],
 ): Promise<EncodedVideoPacket[] | undefined> {
   const results = await Promise.all(iterators.map((iterator) => iterator.next()));
   const packets: EncodedVideoPacket[] = [];

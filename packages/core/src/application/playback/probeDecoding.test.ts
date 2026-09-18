@@ -7,6 +7,7 @@ import type {
   VideoDecoderHandle,
   VideoDecoderPort,
 } from '../../ports/VideoDecoderPort';
+import { Deferred } from '../../shared/async/Deferred';
 import { Signal } from '../../shared/async/Signal';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { FakeVideoDecoderPort } from '../../testing/FakeVideoDecoderPort';
@@ -172,4 +173,59 @@ describe('probeDecoding', () => {
     expect(report.lenses.map((lens) => lens.verdict)).toEqual(['timed-out', 'timed-out']);
     expect(port.decoders.map((decoder) => decoder.isClosed)).toEqual([true, true]);
   });
+
+  it('closes a decoder that appears only after the deadline and reports it timed out', async () => {
+    const port = new LatePort();
+    const deadline = new Signal();
+    const pending = probeDecoding(tracks([30]), port, { deadline });
+    await Promise.resolve();
+    deadline.trigger();
+    const report = await pending;
+    expect(report.lenses[0]?.verdict).toBe('timed-out');
+    port.gate.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    expect(port.decoders.map((decoder) => decoder.isClosed)).toEqual([true]);
+  });
+
+  it('reports a decoder that accepts the key frame but never produces a picture as a failed decode', async () => {
+    const report = await probeDecoding(tracks([30]), new SilentPort(), { deadline: new Signal() });
+    expect(report.lenses[0]).toMatchObject({
+      verdict: 'decode-failed',
+      detail: expect.stringContaining('no picture') as string,
+    });
+  });
 });
+
+/**
+ * Creates its decoders only once the gate opens.
+ */
+class LatePort implements VideoDecoderPort<never> {
+  public readonly gate = new Deferred<void>();
+  public readonly decoders: StalledDecoder[] = [];
+
+  public isSupported(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
+  public async create(): Promise<VideoDecoderHandle> {
+    await this.gate.promise;
+    const decoder = new StalledDecoder();
+    this.decoders.push(decoder);
+    return decoder;
+  }
+}
+
+/**
+ * A decoder that swallows packets: flush completes with nothing decoded.
+ */
+class SilentPort implements VideoDecoderPort<never> {
+  public isSupported(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
+  public create(): Promise<VideoDecoderHandle> {
+    const decoder = new StalledDecoder();
+    decoder.flush = (): Promise<void> => Promise.resolve();
+    return Promise.resolve(decoder);
+  }
+}

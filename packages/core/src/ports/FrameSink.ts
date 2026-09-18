@@ -11,7 +11,7 @@ export interface Presentation<Handle = unknown> {
 }
 
 /**
- * Port: displays frame pairs. The renderer adapter uploads the frames; the session keeps
+ * Port: displays frame pairs. The implementation uploads the frames; the session keeps
  * ownership of the pair and closes it once a newer pair has been presented.
  */
 export interface FrameSink<Handle = unknown> {

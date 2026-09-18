@@ -2,6 +2,7 @@ import {
   GyroViewError,
   seconds,
   type EncodedVideoPacket,
+  type Seconds,
   type VideoDecoderConfiguration,
   type VideoTrackDescription,
   type VideoTrackReader,
@@ -60,7 +61,7 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
     };
   }
 
-  public async keyPacketAt(time: number): Promise<EncodedVideoPacket | undefined> {
+  public async keyPacketAt(time: Seconds): Promise<EncodedVideoPacket | undefined> {
     const packet = await this.sink.getKeyPacket(time, { verifyKeyPackets: true });
     return packet === null ? undefined : this.wrap(packet);
   }
@@ -76,10 +77,10 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
     for await (const packet of this.sink.packets(original)) yield this.wrap(packet);
   }
 
-  public async sampleTimestamps(): Promise<readonly number[]> {
-    const timestamps: number[] = [];
+  public async sampleTimestamps(): Promise<readonly Seconds[]> {
+    const timestamps: Seconds[] = [];
     const metadataOnly = this.sink.packets(undefined, undefined, { metadataOnly: true });
-    for await (const packet of metadataOnly) timestamps.push(packet.timestamp);
+    for await (const packet of metadataOnly) timestamps.push(seconds(packet.timestamp));
     return timestamps.toSorted((left, right) => left - right);
   }
 

@@ -77,9 +77,12 @@ export function nextEvent(target: EventTarget, type: string): Promise<void> {
 }
 
 /**
- * Resolves on the first of the given events; the other listeners are removed then.
+ * Resolves with the type of the first of the given events; the other listeners are removed then.
  */
-export function nextOfEvents(target: EventTarget, types: readonly string[]): Promise<void> {
+export function nextOfEvents<Type extends string>(
+  target: EventTarget,
+  types: readonly Type[],
+): Promise<Type> {
   const controller = new AbortController();
   return new Promise((resolve) => {
     for (const type of types) {
@@ -87,7 +90,7 @@ export function nextOfEvents(target: EventTarget, types: readonly string[]): Pro
         type,
         () => {
           controller.abort();
-          resolve();
+          resolve(type);
         },
         { once: true, signal: controller.signal },
       );

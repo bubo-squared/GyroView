@@ -16,11 +16,16 @@ export interface DecodedFrame<Handle = unknown> {
 
 export interface VideoDecoderCallbacks<Handle = unknown> {
   readonly onFrame: (frame: DecodedFrame<Handle>) => void;
+  /**
+   * The decoder failed and is closed; no further frames will come. Reported once.
+   */
   readonly onError: (error: Error) => void;
 }
 
 /**
- * One configured decoder instance.
+ * One configured decoder instance. Contract (see the shared contract suite in `testing`):
+ * the first packet after creation or `reset` must be a key packet and `decode` throws
+ * otherwise; `decode` and `flush` fail once the decoder is closed, by `close` or by an error.
  */
 export interface VideoDecoderHandle {
   /**
@@ -29,12 +34,12 @@ export interface VideoDecoderHandle {
   readonly pendingCount: number;
   decode(packet: EncodedVideoPacket): void;
   /**
-   * Resolves as soon as fewer than `limit` packets are pending. This is how the pipeline applies
-   * backpressure without polling.
+   * Resolves as soon as fewer than `limit` packets are pending, or at once when the decoder is
+   * closed. This is how the pipeline applies backpressure without polling.
    */
   waitForPendingBelow(limit: number): Promise<void>;
   /**
-   * Resolves when every submitted packet has produced its frame.
+   * Resolves when every submitted packet has produced its frame; rejects if the decoder failed.
    */
   flush(): Promise<void>;
   /**
@@ -45,7 +50,7 @@ export interface VideoDecoderHandle {
 }
 
 /**
- * Port: creates hardware or software video decoders. Implemented by the WebCodecs adapter.
+ * Port: creates hardware or software video decoders.
  */
 export interface VideoDecoderPort<Handle = unknown> {
   isSupported(configuration: VideoDecoderConfiguration): Promise<boolean>;

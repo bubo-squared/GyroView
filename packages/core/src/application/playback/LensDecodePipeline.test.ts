@@ -5,6 +5,13 @@ import { FramePairQueue } from './FramePairQueue';
 import { LensDecodePipeline } from './LensDecodePipeline';
 import { seconds } from '../../shared/units/time';
 import { fakeFrameNumberOf, FakeVideoTrack } from '../../testing/FakeVideoTrack';
+import type { VideoDecoderConfiguration } from '../../ports/Demuxer';
+import type {
+  VideoDecoderCallbacks,
+  VideoDecoderHandle,
+  VideoDecoderPort,
+} from '../../ports/VideoDecoderPort';
+import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { FakeVideoDecoderPort, type FakeFrameHandle } from '../../testing/FakeVideoDecoderPort';
 
 const FRAME_RATE = 10;
@@ -44,6 +51,17 @@ async function drain(
   }
   closeLast(taken);
   return taken;
+}
+
+/**
+ * A run whose rejection the test asserts separately.
+ */
+async function swallow(run: Promise<unknown>): Promise<void> {
+  try {
+    await run;
+  } catch {
+    // asserted by the test
+  }
 }
 
 function closeLast(taken: readonly FramePair<FakeFrameHandle>[]): void {
@@ -126,7 +144,7 @@ describe('LensDecodePipeline', () => {
 
     const run = pipeline.run(seconds(0), queue);
     await new Promise((resolve) => setTimeout(resolve, 5));
-    pipeline.stop();
+    pipeline.abort();
     const report = await run;
     queue.close();
 
@@ -167,4 +185,135 @@ describe('LensDecodePipeline', () => {
       expect.objectContaining({ code: 'invariant-violation' }) as Error,
     );
   });
+
+  it('rejects when a decoder fails mid-stream, closing every decoder and frame', async () => {
+    const decoderPort = new FakeVideoDecoderPort({ ...DECODER_LATENCY, failAtPacket: 15 });
+    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    const run = pipeline.run(seconds(0), queue);
+    const pairs = await drain(queue, swallow(run));
+    await expect(run).rejects.toMatchObject({ code: 'decode' });
+
+    expect(pairs.length).toBeLessThan(FRAMES);
+    expect(decoderPort.openDecoders).toBe(0);
+    expect(decoderPort.openFrames).toBe(0);
+  });
+
+  it('rejects when a decoder fails on its very last packet instead of reporting success', async () => {
+    const decoderPort = new FakeVideoDecoderPort({ ...DECODER_LATENCY, failAtPacket: FRAMES });
+    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    const run = pipeline.run(seconds(0), queue);
+    const pairs = await drain(queue, swallow(run));
+    await expect(run).rejects.toMatchObject({ code: 'decode' });
+    expect(pairs).toHaveLength(FRAMES - 1);
+    expect(decoderPort.openFrames).toBe(0);
+  });
+
+  it('closes the decoders it opened when another lens refuses to open', async () => {
+    const decoderPort = new RefusingSecondLensPort();
+    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    await expect(pipeline.run(seconds(0), queue)).rejects.toMatchObject({
+      code: 'codec-unsupported',
+    });
+    expect(decoderPort.inner.decodersCreated).toHaveLength(1);
+    expect(decoderPort.inner.openDecoders).toBe(0);
+  });
+
+  it('rejects with no-frame-times when a track has no key frame', async () => {
+    const pipeline = new LensDecodePipeline(
+      twoLensTracks(0),
+      new FakeVideoDecoderPort(DECODER_LATENCY),
+      OPTIONS,
+    );
+    await expect(
+      pipeline.run(seconds(0), new FramePairQueue<FakeFrameHandle>(4)),
+    ).rejects.toMatchObject({ code: 'no-frame-times' });
+  });
+
+  it('delivers the last pair of the track when started past its last frame', async () => {
+    const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
+    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    const run = pipeline.run(seconds(3.5), queue);
+    const pairs = await drain(queue, run);
+    const report = await run;
+
+    expect(pairs.map((pair) => pair.timestamp)).toEqual([expect.closeTo(2.9, 9) as number]);
+    expect(report).toMatchObject({
+      pairsDelivered: 1,
+      pairsDroppedBeforeStart: 9,
+      hasReachedEnd: true,
+    });
+    expect(decoderPort.openFrames).toBe(0);
+  });
+
+  it('aborted before running, it ends at once without decoding and closes its decoders', async () => {
+    const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
+    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    pipeline.abort();
+
+    const report = await pipeline.run(seconds(0), new FramePairQueue<FakeFrameHandle>(4));
+
+    expect(report).toMatchObject({ packetsDecoded: 0, pairsDelivered: 0, hasReachedEnd: false });
+    expect(decoderPort.openDecoders).toBe(0);
+  });
+
+  it('an abort resets the decoders instead of draining them', async () => {
+    const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 6 });
+    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    const run = pipeline.run(seconds(0), queue);
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    pipeline.abort();
+    const report = await run;
+
+    expect(report.hasReachedEnd).toBe(false);
+    expect(decoderPort.decodersCreated.every((decoder) => decoder.resetCount === 1)).toBe(true);
+    expect(decoderPort.openDecoders).toBe(0);
+    queue.close();
+    expect(decoderPort.openFrames).toBe(0);
+  });
+
+  it('runs only once', async () => {
+    const pipeline = new LensDecodePipeline(
+      twoLensTracks(),
+      new FakeVideoDecoderPort(DECODER_LATENCY),
+      OPTIONS,
+    );
+    pipeline.abort();
+    await pipeline.run(seconds(0), new FramePairQueue<FakeFrameHandle>(4));
+    await expect(
+      pipeline.run(seconds(0), new FramePairQueue<FakeFrameHandle>(4)),
+    ).rejects.toMatchObject({ code: 'invariant-violation' });
+  });
 });
+
+/**
+ * Opens the first lens through the fake port and refuses the second, like a platform out of
+ * hardware decoder instances.
+ */
+class RefusingSecondLensPort implements VideoDecoderPort<FakeFrameHandle> {
+  public readonly inner = new FakeVideoDecoderPort(DECODER_LATENCY);
+  private created = 0;
+
+  public isSupported(configuration: VideoDecoderConfiguration): Promise<boolean> {
+    return this.inner.isSupported(configuration);
+  }
+
+  public create(
+    configuration: VideoDecoderConfiguration,
+    callbacks: VideoDecoderCallbacks<FakeFrameHandle>,
+  ): Promise<VideoDecoderHandle> {
+    this.created += 1;
+    return this.created === 1
+      ? this.inner.create(configuration, callbacks)
+      : Promise.reject(new GyroViewError('codec-unsupported', 'no second decoder instance'));
+  }
+}

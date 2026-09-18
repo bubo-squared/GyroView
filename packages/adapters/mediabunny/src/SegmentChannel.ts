@@ -1,10 +1,11 @@
-import { GyroViewError } from '@gyroview/core';
+import { ensureInvariant, GyroViewError } from '@gyroview/core';
 
 /**
- * Hands segments from the muxer's synchronous callbacks to an asynchronous consumer, with a
+ * Hands segments from the muxer's synchronous callbacks to one asynchronous consumer, with a
  * bound on how many may wait unconsumed so re-packaging never runs far ahead of playback.
  * Closing from either side ends the exchange; a producer failure reaches the consumer as a
- * thrown error once the segments before it are drained.
+ * thrown error once the segments before it are drained. A second concurrent consumer is a
+ * programming error.
  */
 export class SegmentChannel {
   private readonly queue: Uint8Array<ArrayBuffer>[] = [];
@@ -74,6 +75,7 @@ export class SegmentChannel {
   }
 
   private nextPush(): Promise<void> {
+    ensureInvariant(this.takeWaiter === undefined, 'a segment channel has one consumer');
     return new Promise((resolve) => {
       this.takeWaiter = resolve;
     });

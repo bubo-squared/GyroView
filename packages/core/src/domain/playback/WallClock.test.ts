@@ -29,7 +29,7 @@ describe('WallClock', () => {
     const { clock, advance } = clockAt();
     await clock.start();
     advance(1000);
-    clock.stop();
+    clock.pause();
     advance(5000);
     expect(clock.currentTime).toBe(1);
     await clock.start();
@@ -64,5 +64,24 @@ describe('WallClock', () => {
     clock.dispose();
     advance(1000);
     expect(clock.currentTime).toBe(0);
+  });
+
+  it('ignores a second start and a pause while already paused', async () => {
+    let nowMs = 0;
+    const clock = new WallClock(() => nowMs);
+    await clock.start();
+    nowMs = 1000;
+    await clock.start();
+    expect(clock.currentTime).toBe(1);
+    clock.pause();
+    clock.pause();
+    nowMs = 5000;
+    expect(clock.currentTime).toBe(1);
+  });
+
+  it('never ends or fails by itself', () => {
+    const clock = new WallClock(() => 0);
+    expect(clock.hasEnded).toBe(false);
+    expect(clock.failure).toBeUndefined();
   });
 });

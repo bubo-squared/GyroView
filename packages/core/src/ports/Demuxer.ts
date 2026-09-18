@@ -14,8 +14,8 @@ export interface EncodedVideoPacket {
 }
 
 /**
- * Codec parameters a decoder needs, expressed without WebCodecs types so the core stays free of
- * DOM declarations. The WebCodecs adapter maps this onto `VideoDecoderConfig`.
+ * Codec parameters a decoder needs, expressed without platform types so the core stays free of
+ * DOM declarations.
  */
 export interface VideoDecoderConfiguration {
   readonly codec: string;
@@ -79,14 +79,15 @@ export interface VideoTrackReader {
    */
   keyPacketAt(time: Seconds): Promise<EncodedVideoPacket | undefined>;
   /**
-   * Packets in decode order starting with `start`, until the track ends.
+   * Packets in decode order starting with `start`, until the track ends. `start` must be a
+   * packet this reader handed out; anything else is an `invariant-violation`.
    */
   packetsFrom(start: EncodedVideoPacket): AsyncIterable<EncodedVideoPacket>;
   /**
    * Presentation timestamps of every sample, in frame order. Costly on long tracks; used only
    * when the frame timing has to come from the track itself.
    */
-  sampleTimestamps(): Promise<readonly number[]>;
+  sampleTimestamps(): Promise<readonly Seconds[]>;
   frameCount(): Promise<number>;
 }
 
@@ -102,7 +103,7 @@ export interface DemuxedInput {
 }
 
 /**
- * Port: opens a container over a {@link RandomAccessSource}. Implemented by the mediabunny adapter.
+ * Port: opens a container over a {@link RandomAccessSource}.
  */
 export interface Demuxer {
   open(source: RandomAccessSource, name?: string): Promise<DemuxedInput>;

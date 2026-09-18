@@ -1,15 +1,11 @@
 import type { ResourceLocator } from '@gyroview/core';
 
+import { discardBody, httpRequest, type HttpRequestOptions } from './httpRequest';
+
 const HTTP_METHOD_NOT_ALLOWED = 405;
 const FIRST_BYTE_RANGE = 'bytes=0-0';
 
-export interface HttpResourceLocatorOptions {
-  /**
-   * Extra request settings, for example credentials or headers, shared with the range source.
-   */
-  readonly requestInit?: RequestInit;
-  readonly fetch?: typeof fetch;
-}
+export type HttpResourceLocatorOptions = HttpRequestOptions;
 
 /**
  * ResourceLocator over HTTP: one HEAD request, or a one-byte GET when the server does not allow
@@ -21,29 +17,18 @@ export class HttpResourceLocator implements ResourceLocator {
 
   public async exists(url: string): Promise<boolean> {
     try {
-      const head = await this.request(url, 'HEAD', {});
+      const head = await httpRequest(url, { method: 'HEAD' }, this.options);
+      discardBody(head);
       if (head.status !== HTTP_METHOD_NOT_ALLOWED) return head.ok;
-      const firstByte = await this.request(url, 'GET', { Range: FIRST_BYTE_RANGE });
+      const firstByte = await httpRequest(
+        url,
+        { method: 'GET', headers: { Range: FIRST_BYTE_RANGE } },
+        this.options,
+      );
+      discardBody(firstByte);
       return firstByte.ok;
     } catch {
       return false;
     }
   }
-
-  private request(
-    url: string,
-    method: 'GET' | 'HEAD',
-    headers: Record<string, string>,
-  ): Promise<Response> {
-    const doFetch = this.options.fetch ?? fetch;
-    return doFetch(url, {
-      ...this.options.requestInit,
-      method,
-      headers: { ...headersOf(this.options.requestInit), ...headers },
-    });
-  }
-}
-
-function headersOf(init: RequestInit | undefined): Record<string, string> {
-  return Object.fromEntries(new Headers(init?.headers).entries());
 }

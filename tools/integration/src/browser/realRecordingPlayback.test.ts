@@ -83,7 +83,7 @@ async function skipUnlessDecodable(
   if (verdicts.every((verdict) => verdict === 'unsupported-configuration')) {
     context.skip('this browser build cannot decode the recording (no HEVC decoder)');
   }
-  expect.fail(`the recording does not decode here: ${JSON.stringify(probe.lenses)}`);
+  throw new Error(`the recording does not decode here: ${JSON.stringify(probe.lenses)}`);
 }
 
 async function openAudioClock(
@@ -170,7 +170,7 @@ async function takePairs(
     PROBE_DEADLINE_MS,
     `${count} decoded pairs`,
   );
-  pipeline.stop();
+  pipeline.abort();
   await run;
   return taken;
 }
@@ -202,7 +202,7 @@ describe('the browser pipeline on the real X5 recordings', () => {
   const cleanups: (() => void)[] = [];
 
   afterEach(() => {
-    for (const cleanup of cleanups.splice(0)) cleanup();
+    for (const cleanup of cleanups.splice(0).toReversed()) cleanup();
   });
 
   it('reads the office recording over HTTP ranges and decodes both lenses in lockstep from a mid-file time', async (context) => {
@@ -254,7 +254,7 @@ describe('the browser pipeline on the real X5 recordings', () => {
       'the first presentations',
     );
     expectPictureFollowsSound(sink, OFFICE_5K7_60);
-    expect(clock.bufferingError).toBeUndefined();
+    expect(clock.failure).toBeUndefined();
 
     session.seek(SEEK_TARGET);
     await waitFor(

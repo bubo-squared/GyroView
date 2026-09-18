@@ -79,4 +79,13 @@ describe('FramePairer', () => {
     pairer.push(0, frame(0.25));
     expect(pairs.map((pair) => pair.timestamp)).toEqual([0.25]);
   });
+
+  it('rejects a lens index outside the configured lenses instead of losing the frame', () => {
+    const pairer = new FramePairer<Probe>(2, seconds(0), () => {
+      // pairs are irrelevant here
+    });
+    expect(() => {
+      pairer.push(2, frame(0));
+    }).toThrow(/lens index 2/u);
+  });
 });

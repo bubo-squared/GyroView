@@ -1,11 +1,11 @@
 import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../ports/Demuxer';
-import { GyroViewError } from '../shared/errors/GyroViewError';
 import type {
   DecodedFrame,
   VideoDecoderCallbacks,
   VideoDecoderHandle,
   VideoDecoderPort,
 } from '../ports/VideoDecoderPort';
+import { GyroViewError } from '../shared/errors/GyroViewError';
 
 /**
  * What the fake decoder hands out: enough to trace a frame back to its packet and to assert that
@@ -27,6 +27,11 @@ export interface FakeDecoderOptions {
    * Reject `create` for unsupported codecs with a codec-unsupported error, like a real port.
    */
   readonly failOnCreate?: boolean;
+  /**
+   * The ordinal (1-based) of the packet at which every decoder reports an error instead of a
+   * picture and closes itself, like a decoder meeting a broken bitstream.
+   */
+  readonly failAtPacket?: number;
 }
 
 interface PendingWaiter {
@@ -38,6 +43,7 @@ interface FakeVideoDecoderParts {
   readonly configuration: VideoDecoderConfiguration;
   readonly callbacks: VideoDecoderCallbacks<FakeFrameHandle>;
   readonly latencyTicks: number;
+  readonly failAtPacket: number | undefined;
   readonly onFrameCreated: (frame: DecodedFrame<FakeFrameHandle>) => void;
 }
 
@@ -45,8 +51,9 @@ const DEFAULT_LATENCY_TICKS = 1;
 
 /**
  * Test double for the decoder port: frames come out asynchronously in submission order, and the
- * double keeps every frame it made so tests can check for leaks. Scheduling uses microtasks
- * only, so it runs wherever the core runs.
+ * double keeps every frame it made so tests can check for leaks. It enforces the port contract
+ * (key frame first, nothing after close) as strictly as a platform decoder. Scheduling uses
+ * microtasks only, so it runs wherever the core runs.
  */
 export class FakeVideoDecoderPort implements VideoDecoderPort<FakeFrameHandle> {
   public readonly framesCreated: DecodedFrame<FakeFrameHandle>[] = [];
@@ -56,6 +63,10 @@ export class FakeVideoDecoderPort implements VideoDecoderPort<FakeFrameHandle> {
 
   public get openFrames(): number {
     return this.framesCreated.filter((frame) => !frame.handle.isClosed()).length;
+  }
+
+  public get openDecoders(): number {
+    return this.decodersCreated.filter((decoder) => !decoder.isClosed).length;
   }
 
   public isSupported(configuration: VideoDecoderConfiguration): Promise<boolean> {
@@ -78,6 +89,7 @@ export class FakeVideoDecoderPort implements VideoDecoderPort<FakeFrameHandle> {
       configuration,
       callbacks,
       latencyTicks: this.options.latencyTicks ?? DEFAULT_LATENCY_TICKS,
+      failAtPacket: this.options.failAtPacket,
       onFrameCreated: (frame): void => {
         this.framesCreated.push(frame);
       },
@@ -89,10 +101,14 @@ export class FakeVideoDecoderPort implements VideoDecoderPort<FakeFrameHandle> {
 
 export class FakeVideoDecoder implements VideoDecoderHandle {
   public maxPendingSeen = 0;
+  public resetCount = 0;
   private pending = 0;
+  private decodedCount = 0;
   private generation = 0;
+  private needsKeyFrame = true;
   private waiters: PendingWaiter[] = [];
   private isClosedNow = false;
+  private failure: Error | undefined;
 
   public constructor(private readonly parts: FakeVideoDecoderParts) {}
 
@@ -105,46 +121,81 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
   }
 
   public decode(packet: EncodedVideoPacket): void {
+    if (this.isClosedNow) throw new GyroViewError('decode', 'decode on a closed decoder');
+    if (this.needsKeyFrame && !packet.isKeyFrame) {
+      throw new GyroViewError(
+        'decode',
+        'the first packet after creation or reset must be a key frame',
+      );
+    }
+    this.needsKeyFrame = false;
+    this.decodedCount += 1;
     this.pending += 1;
     this.maxPendingSeen = Math.max(this.maxPendingSeen, this.pending);
-    const generation = this.generation;
+    const { generation, decodedCount: ordinal } = this;
     void afterTicks(this.parts.latencyTicks).then(() => {
-      if (generation !== this.generation) return;
-      this.pending -= 1;
-      const frame = this.frameFor(packet);
-      this.parts.onFrameCreated(frame);
-      this.parts.callbacks.onFrame(frame);
-      this.notifyWaiters();
+      if (generation === this.generation) this.output(packet, ordinal);
     });
   }
 
   public waitForPendingBelow(limit: number): Promise<void> {
-    return this.pending < limit
+    return this.pending < limit || this.isClosedNow
       ? Promise.resolve()
       : new Promise((resolve) => {
           this.waiters.push({ limit, resolve });
         });
   }
 
-  public flush(): Promise<void> {
-    return this.waitForPendingBelow(1);
+  public async flush(): Promise<void> {
+    if (this.isClosedNow)
+      throw this.failure ?? new GyroViewError('decode', 'flush on a closed decoder');
+    await this.waitForPendingBelow(1);
+    if (this.failure) throw this.failure;
   }
 
   public reset(): void {
-    this.generation += 1;
-    this.pending = 0;
-    this.notifyWaiters();
+    this.resetCount += 1;
+    this.discardPending();
   }
 
   public close(): void {
-    this.reset();
+    this.discardPending();
     this.isClosedNow = true;
+  }
+
+  private output(packet: EncodedVideoPacket, ordinal: number): void {
+    this.pending -= 1;
+    if (ordinal === this.parts.failAtPacket) {
+      this.failWith(new GyroViewError('decode', `fake decoder failed at packet ${ordinal}`));
+      return;
+    }
+    const frame = this.frameFor(packet);
+    this.parts.onFrameCreated(frame);
+    this.parts.callbacks.onFrame(frame);
+    this.notifyWaiters();
+  }
+
+  /**
+   * Like a platform decoder: the error closes the decoder, then the callback hears about it.
+   */
+  private failWith(error: Error): void {
+    this.failure = error;
+    this.isClosedNow = true;
+    this.discardPending();
+    this.parts.callbacks.onError(error);
+  }
+
+  private discardPending(): void {
+    this.generation += 1;
+    this.pending = 0;
+    this.needsKeyFrame = true;
+    this.notifyWaiters();
   }
 
   private notifyWaiters(): void {
     const stillWaiting: PendingWaiter[] = [];
     for (const waiter of this.waiters) {
-      if (this.pending < waiter.limit) waiter.resolve();
+      if (this.pending < waiter.limit || this.isClosedNow) waiter.resolve();
       else stillWaiting.push(waiter);
     }
     this.waiters = stillWaiting;

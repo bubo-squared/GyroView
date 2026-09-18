@@ -5,9 +5,10 @@
     "configFile": "vitest.config.ts"
   },
   "mutate": [
-    "src/domain/format/**/*.ts",
-    "src/domain/motion/**/*.ts",
-    "src/domain/optics/**/*.ts",
+    "src/domain/**/*.ts",
+    "src/application/**/*.ts",
+    "src/shared/async/**/*.ts",
+    "src/shared/events/**/*.ts",
     "!src/**/*.test.ts",
     "!src/**/*.contract.ts"
   ],

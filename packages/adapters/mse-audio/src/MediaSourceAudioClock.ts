@@ -10,6 +10,7 @@ import {
   attachMediaSource,
   isMediaSourceTypeSupported,
   mediaSourceConstructor,
+  type AttachedMediaSource,
 } from './mediaSourceSupport';
 import { SourceBufferFeeder } from './SourceBufferFeeder';
 
@@ -25,13 +26,14 @@ const DEFAULT_BUFFER_AHEAD_SECONDS = 30;
 /**
  * PlaybackClock over an audio element fed through Media Source Extensions with the recording's
  * own audio track, so the picture follows the sound and volume, mute and rate are the element's.
+ * The element is borrowed from the host; disposing detaches the media source from it.
  * See ADR 0007.
  */
 export class MediaSourceAudioClock implements PlaybackClock {
   private constructor(
     private readonly element: HTMLMediaElement,
     private readonly feeder: SourceBufferFeeder,
-    private readonly detach: () => void,
+    private readonly attached: AttachedMediaSource,
   ) {}
 
   public static isSupported(source: Pick<AudioSegmentSource, 'mimeType'>): boolean {
@@ -53,18 +55,23 @@ export class MediaSourceAudioClock implements PlaybackClock {
         `${source.mimeType} cannot play through Media Source Extensions here`,
       );
     }
-    const { mediaSource, detach } = await attachMediaSource(element, mediaSourceClass);
-    const sourceBuffer = mediaSource.addSourceBuffer(source.mimeType);
-    mediaSource.duration = source.duration;
-    const feeder = new SourceBufferFeeder({
-      element,
-      mediaSource,
-      sourceBuffer,
-      source,
-      bufferAhead: options.bufferAhead ?? seconds(DEFAULT_BUFFER_AHEAD_SECONDS),
-    });
-    feeder.restartFrom(seconds(0));
-    return new MediaSourceAudioClock(element, feeder, detach);
+    const attached = await attachMediaSource(element, mediaSourceClass);
+    try {
+      const sourceBuffer = attached.mediaSource.addSourceBuffer(source.mimeType);
+      attached.mediaSource.duration = source.duration;
+      const feeder = new SourceBufferFeeder({
+        element,
+        mediaSource: attached.mediaSource,
+        sourceBuffer,
+        source,
+        bufferAhead: options.bufferAhead ?? seconds(DEFAULT_BUFFER_AHEAD_SECONDS),
+      });
+      feeder.restartFrom(seconds(0));
+      return new MediaSourceAudioClock(element, feeder, attached);
+    } catch (error) {
+      attached.detach();
+      throw error;
+    }
   }
 
   public get currentTime(): Seconds {
@@ -75,29 +82,31 @@ export class MediaSourceAudioClock implements PlaybackClock {
     return !this.element.paused && !this.element.ended;
   }
 
+  public get hasEnded(): boolean {
+    return this.element.ended;
+  }
+
+  public get failure(): GyroViewError | undefined {
+    return this.feeder.failure;
+  }
+
   public get rate(): number {
     return this.element.playbackRate;
   }
 
   /**
-   * The first buffering error, if any. Playback continues with what was buffered before it.
-   */
-  public get bufferingError(): GyroViewError | undefined {
-    return this.feeder.error;
-  }
-
-  /**
-   * Resolves once playback has started. A `stop` that interrupts the start is not an error; the
-   * autoplay policy refusing to start is reported as `playback-blocked`.
+   * Resolves once playback has started. A `pause` that interrupts the start is not an error;
+   * the autoplay policy refusing to start is reported as `playback-blocked`.
    */
   public async start(): Promise<void> {
     try {
       await this.element.play();
     } catch (error) {
       if (isNamed(error, 'AbortError')) return;
+      const isBlocked = isNamed(error, 'NotAllowedError');
       throw new GyroViewError(
-        isNamed(error, 'NotAllowedError') ? 'playback-blocked' : 'decode',
-        isNamed(error, 'NotAllowedError')
+        isBlocked ? 'playback-blocked' : 'decode',
+        isBlocked
           ? 'the browser refused to start audio playback; a user gesture is needed'
           : 'audio playback failed to start',
         { cause: error },
@@ -105,7 +114,7 @@ export class MediaSourceAudioClock implements PlaybackClock {
     }
   }
 
-  public stop(): void {
+  public pause(): void {
     this.element.pause();
   }
 
@@ -121,7 +130,7 @@ export class MediaSourceAudioClock implements PlaybackClock {
   public dispose(): void {
     this.feeder.dispose();
     this.element.pause();
-    this.detach();
+    this.attached.detach();
   }
 }
 

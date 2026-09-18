@@ -18,9 +18,25 @@ export interface WebCodecsDecoderOptions {
 }
 
 /**
+ * The error a decoder reported through its callback, shared between the callback and the
+ * handle so that later calls fail with the real cause instead of a bare "closed" state.
+ */
+class ReportedFailure {
+  private error: GyroViewError | undefined;
+
+  public get current(): GyroViewError | undefined {
+    return this.error;
+  }
+
+  public record(error: GyroViewError): void {
+    this.error ??= error;
+  }
+}
+
+/**
  * VideoDecoderPort over the browser's WebCodecs `VideoDecoder`. Frames are exposed as
- * `DecodedFrame<VideoFrame>`; the renderer adapter uploads the handle to the GPU and the
- * pipeline closes it afterwards.
+ * `DecodedFrame<VideoFrame>`; the renderer uploads the handle to the GPU and the pipeline closes
+ * it afterwards.
  */
 export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
   public constructor(private readonly options: WebCodecsDecoderOptions = {}) {}
@@ -35,32 +51,57 @@ export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
     configuration: VideoDecoderConfiguration,
     callbacks: VideoDecoderCallbacks<VideoFrame>,
   ): Promise<VideoDecoderHandle> {
-    if (typeof VideoDecoder === 'undefined') {
+    try {
+      return Promise.resolve(this.configureDecoder(configuration, callbacks));
+    } catch (error) {
       return Promise.reject(
-        new GyroViewError('codec-unsupported', 'this browser has no WebCodecs VideoDecoder'),
+        error instanceof GyroViewError
+          ? error
+          : new GyroViewError('codec-unsupported', 'the decoder rejected its configuration', {
+              cause: error,
+            }),
       );
     }
+  }
+
+  private configureDecoder(
+    configuration: VideoDecoderConfiguration,
+    callbacks: VideoDecoderCallbacks<VideoFrame>,
+  ): VideoDecoderHandle {
+    if (typeof VideoDecoder === 'undefined') {
+      throw new GyroViewError('codec-unsupported', 'this browser has no WebCodecs VideoDecoder');
+    }
+    const failure = new ReportedFailure();
     const decoder = new VideoDecoder({
       output: (frame): void => {
         callbacks.onFrame(wrapFrame(frame));
       },
       error: (error): void => {
-        callbacks.onError(
-          new GyroViewError('decode', `video decoder failed: ${error.message}`, { cause: error }),
-        );
+        const reported = new GyroViewError('decode', `video decoder failed: ${error.message}`, {
+          cause: error,
+        });
+        failure.record(reported);
+        callbacks.onError(reported);
       },
     });
-    decoder.configure(this.toWebCodecsConfig(configuration));
-    return Promise.resolve(new WebCodecsDecoderHandle(decoder));
+    const config = this.toWebCodecsConfig(configuration);
+    try {
+      decoder.configure(config);
+    } catch (error) {
+      decoder.close();
+      throw error;
+    }
+    return new WebCodecsDecoderHandle(decoder, config, failure);
   }
 
   private toWebCodecsConfig(configuration: VideoDecoderConfiguration): VideoDecoderConfig {
-    const { description } = configuration;
+    const { description, isFullRange } = configuration;
     return {
       codec: configuration.codec,
       codedWidth: configuration.codedWidth,
       codedHeight: configuration.codedHeight,
       ...(description && { description }),
+      ...(isFullRange !== undefined && { colorSpace: { fullRange: isFullRange } }),
       hardwareAcceleration: this.options.hardwareAcceleration ?? 'prefer-hardware',
       optimizeForLatency: false,
     };
@@ -68,13 +109,18 @@ export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
 }
 
 class WebCodecsDecoderHandle implements VideoDecoderHandle {
-  public constructor(private readonly decoder: VideoDecoder) {}
+  public constructor(
+    private readonly decoder: VideoDecoder,
+    private readonly config: VideoDecoderConfig,
+    private readonly failure: ReportedFailure,
+  ) {}
 
   public get pendingCount(): number {
     return this.decoder.decodeQueueSize;
   }
 
   public decode(packet: EncodedVideoPacket): void {
+    if (this.failure.current) throw this.failure.current;
     this.decoder.decode(
       new EncodedVideoChunk({
         type: packet.isKeyFrame ? 'key' : 'delta',
@@ -86,7 +132,8 @@ class WebCodecsDecoderHandle implements VideoDecoderHandle {
   }
 
   /**
-   * Resolves on the decoder's `dequeue` events until fewer than `limit` packets are pending.
+   * Resolves on the decoder's `dequeue` events until fewer than `limit` packets are pending, or
+   * at once when the decoder is no longer configured.
    */
   public waitForPendingBelow(limit: number): Promise<void> {
     return this.decoder.decodeQueueSize < limit
@@ -103,12 +150,28 @@ class WebCodecsDecoderHandle implements VideoDecoderHandle {
         });
   }
 
-  public flush(): Promise<void> {
-    return this.decoder.state === 'configured' ? this.decoder.flush() : Promise.resolve();
+  public async flush(): Promise<void> {
+    if (this.decoder.state !== 'configured') {
+      throw this.failure.current ?? new GyroViewError('decode', 'flush on a closed decoder');
+    }
+    try {
+      await this.decoder.flush();
+    } catch (error) {
+      throw (
+        this.failure.current ??
+        new GyroViewError('decode', 'the decoder could not be flushed', { cause: error })
+      );
+    }
   }
 
+  /**
+   * WebCodecs leaves a reset decoder unconfigured, so the configuration is applied again to
+   * keep the port's promise that decoding may continue with a key frame.
+   */
   public reset(): void {
-    if (this.decoder.state === 'configured') this.decoder.reset();
+    if (this.decoder.state !== 'configured') return;
+    this.decoder.reset();
+    this.decoder.configure(this.config);
   }
 
   public close(): void {

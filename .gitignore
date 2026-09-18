@@ -1,0 +1,28 @@
+# Local sample recordings (symlinks to large files outside the repo)
+samples/
+
+# Raw Insta360 media must never be committed
+*.insv
+*.insp
+*.lrv
+
+# Dependencies and build output
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Test artifacts
+coverage/
+test-results/
+playwright-report/
+.stryker-tmp/
+
+# Environment and editor
+.env
+.env.*
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log

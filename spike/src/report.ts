@@ -7,7 +7,12 @@ export interface SpikeResults {
   errors: string[];
 }
 
-const results: SpikeResults = { done: false, userAgent: navigator.userAgent, steps: {}, errors: [] };
+const results: SpikeResults = {
+  done: false,
+  userAgent: navigator.userAgent,
+  steps: {},
+  errors: [],
+};
 (globalThis as unknown as { __spikeResults: SpikeResults }).__spikeResults = results;
 
 const logElement = document.querySelector<HTMLPreElement>('#log');

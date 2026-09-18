@@ -54,7 +54,9 @@ class FramePairer {
     while (this.queues.every((queue) => queue.length > 0)) {
       const heads = this.queues.map((queue) => queue[0]!);
       const earliest = Math.min(...heads.map((frame) => frame.timestamp));
-      const aligned = heads.every((frame) => Math.abs(frame.timestamp - earliest) <= PAIR_TOLERANCE_MICROSECONDS);
+      const aligned = heads.every(
+        (frame) => Math.abs(frame.timestamp - earliest) <= PAIR_TOLERANCE_MICROSECONDS,
+      );
       if (aligned) {
         this.emitPair(heads, earliest);
       } else {
@@ -82,15 +84,25 @@ async function waitForQueueRoom(decoder: VideoDecoder): Promise<void> {
   }
 }
 
-export async function createHardwareDecoder(track: InputVideoTrack, output: (frame: VideoFrame) => void): Promise<VideoDecoder> {
+export async function createHardwareDecoder(
+  track: InputVideoTrack,
+  output: (frame: VideoFrame) => void,
+): Promise<VideoDecoder> {
   const config = await track.getDecoderConfig();
   if (!config) throw new Error(`track ${track.id} has no decoder config`);
-  const decoder = new VideoDecoder({ output, error: (error) => console.error('decoder error', error) });
+  const decoder = new VideoDecoder({
+    output,
+    error: (error) => console.error('decoder error', error),
+  });
   decoder.configure({ ...config, hardwareAcceleration: 'prefer-hardware' });
   return decoder;
 }
 
-export async function* packetsBetween(track: InputVideoTrack, startTimestamp: number, endTimestamp: number): AsyncGenerator<EncodedPacket> {
+export async function* packetsBetween(
+  track: InputVideoTrack,
+  startTimestamp: number,
+  endTimestamp: number,
+): AsyncGenerator<EncodedPacket> {
   const sink = new EncodedPacketSink(track);
   const start = await sink.getKeyPacket(startTimestamp);
   if (!start) return;
@@ -100,15 +112,24 @@ export async function* packetsBetween(track: InputVideoTrack, startTimestamp: nu
   }
 }
 
-export async function decodeInLockstep(tracks: InputVideoTrack[], options: LockstepOptions): Promise<LockstepMetrics> {
+export async function decodeInLockstep(
+  tracks: InputVideoTrack[],
+  options: LockstepOptions,
+): Promise<LockstepMetrics> {
   const startedAt = performance.now();
   let firstPairLatencyMs = -1;
   const pairer = new FramePairer(tracks.length, (pair) => {
     if (firstPairLatencyMs < 0) firstPairLatencyMs = performance.now() - startedAt;
     options.onPair(pair);
   });
-  const decoders = await Promise.all(tracks.map((track, index) => createHardwareDecoder(track, (frame) => pairer.push(index, frame))));
-  const generators = tracks.map((track) => packetsBetween(track, options.startTimestamp, options.startTimestamp + options.seconds));
+  const decoders = await Promise.all(
+    tracks.map((track, index) =>
+      createHardwareDecoder(track, (frame) => pairer.push(index, frame)),
+    ),
+  );
+  const generators = tracks.map((track) =>
+    packetsBetween(track, options.startTimestamp, options.startTimestamp + options.seconds),
+  );
   let packetsDecoded = 0;
   let maxQueueDepth = 0;
 

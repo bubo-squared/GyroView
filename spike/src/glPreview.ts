@@ -36,7 +36,12 @@ export class GlPreview {
     if (!gl) throw new Error('WebGL2 unavailable');
     this.gl = gl;
     this.textures = [this.createTexture(), this.createTexture()];
-    this.metrics = { uploads: 0, totalUploadMs: 0, maxUploadMs: 0, maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE) as number };
+    this.metrics = {
+      uploads: 0,
+      totalUploadMs: 0,
+      maxUploadMs: 0,
+      maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE) as number,
+    };
     this.installProgram();
   }
 
@@ -56,7 +61,10 @@ export class GlPreview {
   }
 
   report(): UploadMetrics & { averageUploadMs: number } {
-    return { ...this.metrics, averageUploadMs: this.metrics.uploads ? this.metrics.totalUploadMs / this.metrics.uploads : 0 };
+    return {
+      ...this.metrics,
+      averageUploadMs: this.metrics.uploads ? this.metrics.totalUploadMs / this.metrics.uploads : 0,
+    };
   }
 
   private createTexture(): WebGLTexture {
@@ -76,7 +84,8 @@ export class GlPreview {
     gl.attachShader(program, this.compile(gl.VERTEX_SHADER, VERTEX_SHADER));
     gl.attachShader(program, this.compile(gl.FRAGMENT_SHADER, FRAGMENT_SHADER));
     gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) ?? 'link failed');
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+      throw new Error(gl.getProgramInfoLog(program) ?? 'link failed');
     gl.useProgram(program);
     gl.uniform1i(gl.getUniformLocation(program, 'lensA'), 0);
     gl.uniform1i(gl.getUniformLocation(program, 'lensB'), 1);
@@ -95,7 +104,8 @@ export class GlPreview {
     if (!shader) throw new Error('createShader failed');
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) ?? 'compile failed');
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+      throw new Error(gl.getShaderInfoLog(shader) ?? 'compile failed');
     return shader;
   }
 }

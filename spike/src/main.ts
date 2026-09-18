@@ -2,7 +2,13 @@
 import { probeDecoderSupport } from './decoderSupport';
 import { GlPreview } from './glPreview';
 import { decodeInLockstep } from './lockstepDecoder';
-import { describeTrack, openRecording, serializableConfig, type OpenedRecording, type TrackDescription } from './recording';
+import {
+  describeTrack,
+  openRecording,
+  serializableConfig,
+  type OpenedRecording,
+  type TrackDescription,
+} from './recording';
 import { finish, log, record, recordFailure } from './report';
 import { measureSeek } from './seekTest';
 import { testVideoElement } from './videoElementTest';
@@ -29,7 +35,11 @@ function readParameters(): SpikeParameters {
 }
 
 /** Runs one check; records `describe(value)` (or the value itself) so non-serializable objects stay out of the report. */
-async function step<T>(name: string, work: () => Promise<T>, describe: (value: T) => unknown = (value) => value): Promise<T | undefined> {
+async function step<T>(
+  name: string,
+  work: () => Promise<T>,
+  describe: (value: T) => unknown = (value) => value,
+): Promise<T | undefined> {
   try {
     const value = await work();
     record(name, describe(value));
@@ -72,7 +82,11 @@ async function run(): Promise<void> {
     if (!description || !config || !description.codecString) continue;
     const bitrate = (await track.getAverageBitrate()) ?? 0;
     await step(`support track ${track.id}`, () =>
-      probeDecoderSupport(config, { codecString: description.codecString!, bitrate, framerate: description.averageFps }),
+      probeDecoderSupport(config, {
+        codecString: description.codecString!,
+        bitrate,
+        framerate: description.averageFps,
+      }),
     );
   }
 

@@ -38,5 +38,11 @@ export async function measureSeek(track: InputVideoTrack, target: number): Promi
   } finally {
     decoder.close();
   }
-  return { target, keyframeTimestamp: keyPacket.timestamp, framesDecodedBeforeTarget, firstFrameAtOrAfterTarget, wallMs: performance.now() - started };
+  return {
+    target,
+    keyframeTimestamp: keyPacket.timestamp,
+    framesDecodedBeforeTarget,
+    firstFrameAtOrAfterTarget,
+    wallMs: performance.now() - started,
+  };
 }

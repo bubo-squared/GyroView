@@ -8,11 +8,17 @@ import { chromium, webkit } from '@playwright/test';
 const SAMPLE_SERVER = 'http://localhost:8787';
 const VITE_SERVER = 'http://localhost:5173';
 const SECONDS = process.env.SECONDS ?? '10';
-const FILES = (process.env.FILES ?? 'office/VID_20260814_132640_00_013.insv,sailing/VID_20260918_082915_00_014.insv').split(',');
+const FILES = (
+  process.env.FILES ??
+  'office/VID_20260814_132640_00_013.insv,sailing/VID_20260918_082915_00_014.insv'
+).split(',');
 const ENGINES = (process.env.ENGINES ?? 'chrome,webkit').split(',');
 
 function startProcess(command, args) {
-  const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'inherit'], cwd: import.meta.dirname });
+  const child = spawn(command, args, {
+    stdio: ['ignore', 'pipe', 'inherit'],
+    cwd: import.meta.dirname,
+  });
   child.stdout.on('data', (chunk) => process.stderr.write(`[${command}] ${chunk}`));
   return child;
 }
@@ -39,17 +45,26 @@ async function launch(engine) {
 async function measure(engine, file) {
   const browser = await launch(engine);
   const page = await browser.newPage();
-  page.on('console', (message) => process.stderr.write(`  [${engine}:console] ${message.text()}\n`));
-  page.on('pageerror', (error) => process.stderr.write(`  [${engine}:pageerror] ${error.message}\n`));
+  page.on('console', (message) =>
+    process.stderr.write(`  [${engine}:console] ${message.text()}\n`),
+  );
+  page.on('pageerror', (error) =>
+    process.stderr.write(`  [${engine}:pageerror] ${error.message}\n`),
+  );
   const url = `${VITE_SERVER}/?src=${encodeURIComponent(`${SAMPLE_SERVER}/${file}`)}&seconds=${SECONDS}`;
   await page.goto(url);
-  await page.waitForFunction(() => globalThis.__spikeResults?.done === true, null, { timeout: 180_000 });
+  await page.waitForFunction(() => globalThis.__spikeResults?.done === true, null, {
+    timeout: 180_000,
+  });
   const results = await page.evaluate(() => globalThis.__spikeResults);
   await browser.close();
   return results;
 }
 
-const servers = [startProcess('node', ['serve-samples.mjs']), startProcess('pnpm', ['exec', 'vite', '--port', '5173', '--strictPort'])];
+const servers = [
+  startProcess('node', ['serve-samples.mjs']),
+  startProcess('pnpm', ['exec', 'vite', '--port', '5173', '--strictPort']),
+];
 try {
   await waitForServer(`${SAMPLE_SERVER}/`);
   await waitForServer(`${VITE_SERVER}/`);

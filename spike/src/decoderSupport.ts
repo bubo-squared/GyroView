@@ -3,7 +3,8 @@
 export interface DecoderSupport {
   preferHardware: boolean;
   preferSoftware: boolean;
-  mediaCapabilities: { supported: boolean; smooth: boolean; powerEfficient: boolean } | { error: string };
+  mediaCapabilities:
+    { supported: boolean; smooth: boolean; powerEfficient: boolean } | { error: string };
 }
 
 export async function probeDecoderSupport(

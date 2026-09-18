@@ -47,7 +47,9 @@ export async function testVideoElement(url: string): Promise<VideoElementResult>
 function waitForMetadata(video: HTMLVideoElement): Promise<boolean> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve(false), TIMEOUT_MS);
-    video.addEventListener('loadedmetadata', () => (clearTimeout(timer), resolve(true)), { once: true });
+    video.addEventListener('loadedmetadata', () => (clearTimeout(timer), resolve(true)), {
+      once: true,
+    });
     video.addEventListener('error', () => (clearTimeout(timer), resolve(false)), { once: true });
   });
 }

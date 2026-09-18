@@ -15,7 +15,13 @@ export async function openRecording(url: string): Promise<OpenedRecording> {
   const videoTracks = await input.getVideoTracks();
   const audioTracks = await input.getAudioTracks();
   const duration = await input.computeDuration();
-  return { input, formatName: format.name, duration, videoTracks, audioTrackCount: audioTracks.length };
+  return {
+    input,
+    formatName: format.name,
+    duration,
+    videoTracks,
+    audioTrackCount: audioTracks.length,
+  };
 }
 
 export interface TrackDescription {
@@ -45,7 +51,9 @@ export async function describeTrack(track: InputVideoTrack): Promise<TrackDescri
 }
 
 /** Strips the binary `description` so the config can be serialized into the report. */
-export function serializableConfig(config: VideoDecoderConfig | null): Record<string, unknown> | null {
+export function serializableConfig(
+  config: VideoDecoderConfig | null,
+): Record<string, unknown> | null {
   if (!config) return null;
   const { description, ...rest } = config;
   return { ...rest, descriptionBytes: description ? byteLengthOf(description) : 0 };

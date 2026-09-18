@@ -84,16 +84,26 @@ export default defineConfig(
         'error',
         { selector: 'default', format: ['camelCase'], leadingUnderscore: 'forbid' },
         {
+          selector: 'parameter',
+          modifiers: ['unused'],
+          format: ['camelCase'],
+          leadingUnderscore: 'allow',
+        },
+        // Global constants: UPPER_CASE for values, PascalCase for enum-like `as const` objects.
+        {
           selector: 'variable',
           modifiers: ['const', 'global'],
-          format: ['camelCase', 'UPPER_CASE'],
+          format: ['camelCase', 'UPPER_CASE', 'PascalCase'],
         },
+        { selector: 'objectLiteralProperty', format: ['camelCase', 'PascalCase'] },
         { selector: 'typeLike', format: ['PascalCase'] },
         { selector: 'enumMember', format: ['PascalCase'] },
         { selector: 'import', format: null },
       ],
       'unicorn/filename-case': ['error', { cases: { camelCase: true, pascalCase: true } }],
       'unicorn/no-null': 'off',
+      // Iterator helpers need iOS Safari 18.4+; the player targets older iOS releases too.
+      'unicorn/prefer-iterator-to-array': 'off',
       'unicorn/name-replacements': [
         'error',
         {

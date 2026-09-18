@@ -8,6 +8,8 @@ import {
 } from '@gyroview/core';
 import { EncodedPacketSink, type EncodedPacket, type InputVideoTrack } from 'mediabunny';
 
+import { toBytes } from './bufferSources';
+
 /**
  * VideoTrackReader over one mediabunny video track. Packets handed out are plain data; the
  * mediabunny packet behind each is remembered so iteration can resume from it.
@@ -96,14 +98,4 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
     this.originals.set(wrapped, packet);
     return wrapped;
   }
-}
-
-/**
- * Copies a buffer source into a plain Uint8Array without naming SharedArrayBuffer, which
- * browsers only define under cross-origin isolation.
- */
-function toBytes(source: AllowSharedBufferSource): Uint8Array {
-  return ArrayBuffer.isView(source)
-    ? new Uint8Array(source.buffer, source.byteOffset, source.byteLength)
-    : new Uint8Array(source);
 }

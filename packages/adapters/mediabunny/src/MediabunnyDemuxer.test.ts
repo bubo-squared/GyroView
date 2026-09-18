@@ -13,6 +13,7 @@ const FIXTURES = path.resolve(
   '../../../../test/fixtures',
 );
 const SYNTHETIC = path.join(FIXTURES, 'synthetic/dual-track-64px-10fps-3s.mp4');
+const SYNTHETIC_WITH_AUDIO = path.join(FIXTURES, 'synthetic/dual-track-aac-64px-10fps-3s.mp4');
 const ONE_R_TRAILER_ONLY = path.join(FIXTURES, 'thirdparty/insta360py/sample.insv');
 
 describe('MediabunnyDemuxer on the synthetic dual-track fixture', () => {
@@ -119,4 +120,48 @@ describe('MediabunnyDemuxer on files it cannot read', () => {
       }
     },
   );
+});
+
+describe('MediabunnyDemuxer on the synthetic fixture with an AAC track', () => {
+  let input: DemuxedInput;
+
+  beforeAll(async () => {
+    input = await new MediabunnyDemuxer().open(
+      new InMemoryRandomAccessSource(readFileSync(SYNTHETIC_WITH_AUDIO)),
+      'synthetic with audio',
+    );
+  });
+
+  afterAll(() => {
+    input.dispose();
+  });
+
+  it('describes the audio track and its decoder configuration', async () => {
+    const [audio] = input.audioTracks;
+    expect(audio?.description).toEqual({
+      trackIndex: 0,
+      codec: 'mp4a.40.2',
+      sampleRate: 48_000,
+      channelCount: 2,
+    });
+    await expect(audio?.duration()).resolves.toBeCloseTo(3, 1);
+    const configuration = await audio?.decoderConfiguration();
+    expect(configuration).toMatchObject({
+      codec: 'mp4a.40.2',
+      sampleRate: 48_000,
+      channelCount: 2,
+    });
+    expect(configuration?.description?.byteLength).toBeGreaterThan(0);
+  });
+
+  it('iterates audio packets from the one playing at a time to the end', async () => {
+    const [audio] = input.audioTracks;
+    const timestamps: number[] = [];
+    const packets = audio?.packetsFrom(seconds(1.5)) ?? [];
+    for await (const packet of packets) timestamps.push(packet.timestamp);
+    expect(timestamps[0]).toBeLessThanOrEqual(1.5);
+    expect(timestamps[0]).toBeGreaterThan(1.4);
+    expect(timestamps.at(-1)).toBeGreaterThan(2.9);
+    expect(timestamps).toEqual(timestamps.toSorted((left, right) => left - right));
+  });
 });

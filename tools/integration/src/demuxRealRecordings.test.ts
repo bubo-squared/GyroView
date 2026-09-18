@@ -18,7 +18,7 @@ describe.skipIf(!hasSamples())(
           { trackIndex: 1, codedWidth: 2880, codedHeight: 2880 },
         ]);
         expect(input.videoTracks[0]!.description.codec).toMatch(/^hev1|^hvc1/);
-        expect(input.audioTracks).toMatchObject([
+        expect(input.audioTracks.map((track) => track.description)).toMatchObject([
           { codec: expect.stringMatching(/^mp4a/) as string, sampleRate: 48_000, channelCount: 2 },
         ]);
 

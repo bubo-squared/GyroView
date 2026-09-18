@@ -26,6 +26,8 @@ coverage/
 test-results/
 playwright-report/
 .stryker-tmp/
+.vitest-attachments/
+__screenshots__/
 
 # Environment and editor
 .env

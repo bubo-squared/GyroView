@@ -2,13 +2,13 @@ import {
   ByteRange,
   GyroViewError,
   seconds,
-  type AudioTrackDescription,
   type DemuxedInput,
   type Demuxer,
   type RandomAccessSource,
 } from '@gyroview/core';
-import { ALL_FORMATS, CustomSource, Input, type InputAudioTrack } from 'mediabunny';
+import { ALL_FORMATS, CustomSource, Input } from 'mediabunny';
 
+import { MediabunnyAudioTrackReader } from './MediabunnyAudioTrackReader';
 import { MediabunnyVideoTrackReader } from './MediabunnyVideoTrackReader';
 
 /**
@@ -55,22 +55,10 @@ async function describeInput(input: Input, name: string | undefined): Promise<De
       videoTracks.map((track, trackIndex) => MediabunnyVideoTrackReader.open(track, trackIndex)),
     ),
     audioTracks: await Promise.all(
-      audioTracks.map((track, trackIndex) => describeAudio(track, trackIndex)),
+      audioTracks.map((track, trackIndex) => MediabunnyAudioTrackReader.open(track, trackIndex)),
     ),
     dispose: (): void => {
       input.dispose();
     },
   };
-}
-
-async function describeAudio(
-  track: InputAudioTrack,
-  trackIndex: number,
-): Promise<AudioTrackDescription> {
-  const [codec, sampleRate, channelCount] = await Promise.all([
-    track.getCodecParameterString(),
-    track.getSampleRate(),
-    track.getNumberOfChannels(),
-  ]);
-  return { trackIndex, codec: codec ?? 'unknown', sampleRate, channelCount };
 }

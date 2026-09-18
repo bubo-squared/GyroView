@@ -71,13 +71,17 @@ export * from './shared/units/angle';
 
 // Playback ports and pipeline
 export type {
+  AudioDecoderConfiguration,
   AudioTrackDescription,
+  AudioTrackReader,
   DemuxedInput,
   Demuxer,
+  EncodedAudioPacket,
   EncodedVideoPacket,
   VideoDecoderConfiguration,
   VideoTrackReader,
 } from './ports/Demuxer';
+export type { AudioSegmentSource } from './ports/AudioSegmentSource';
 export type {
   DecodedFrame,
   VideoDecoderCallbacks,

@@ -1,0 +1,28 @@
+{
+  "name": "@gyroview/adapter-mse-audio",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Audio clock adapter for GyroView core ports: an audio element fed through Media Source Extensions.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gyroview/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@gyroview/adapter-mediabunny": "workspace:*",
+    "@vitest/browser": "4.1.11",
+    "@vitest/browser-playwright": "4.1.11",
+    "playwright": "1.63.0",
+    "vite": "8.3.0",
+    "vitest": "4.1.11"
+  }
+}

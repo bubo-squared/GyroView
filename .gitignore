@@ -11,6 +11,8 @@ PLAN.md
 *.insv
 *.insp
 *.lrv
+# Small, redistributable trailer fixtures are the one exception
+!test/fixtures/**/*.insv
 
 # Dependencies and build output
 node_modules/

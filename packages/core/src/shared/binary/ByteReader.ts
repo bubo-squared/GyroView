@@ -6,6 +6,7 @@ const UINT32_SIZE = 4;
 const UINT64_SIZE = 8;
 const FLOAT64_SIZE = 8;
 const IS_LITTLE_ENDIAN = true;
+const IS_BIG_ENDIAN = false;
 
 /**
  * Bounds-checked, little-endian reads over a byte array. Every read is positional, so callers
@@ -37,19 +38,25 @@ export class ByteReader {
     return this.view.getUint32(offset, IS_LITTLE_ENDIAN);
   }
 
+  public uint32BeAt(offset: number): number {
+    this.ensureAvailable(offset, UINT32_SIZE);
+    return this.view.getUint32(offset, IS_BIG_ENDIAN);
+  }
+
   /**
    * Reads an unsigned 64-bit integer as a JavaScript number; rejects values beyond 2^53 - 1.
    */
   public uint64LeAt(offset: number): number {
     this.ensureAvailable(offset, UINT64_SIZE);
-    const value = this.view.getBigUint64(offset, IS_LITTLE_ENDIAN);
-    if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
-      throw new GyroViewError(
-        'binary-unsafe-integer',
-        `uint64 at offset ${offset} (${value.toString()}) exceeds the safe integer range`,
-      );
-    }
-    return Number(value);
+    return this.toSafeNumber(this.view.getBigUint64(offset, IS_LITTLE_ENDIAN), offset);
+  }
+
+  /**
+   * Reads a big-endian unsigned 64-bit integer (ISOBMFF box sizes) as a safe JavaScript number.
+   */
+  public uint64BeAt(offset: number): number {
+    this.ensureAvailable(offset, UINT64_SIZE);
+    return this.toSafeNumber(this.view.getBigUint64(offset, IS_BIG_ENDIAN), offset);
   }
 
   public float64LeAt(offset: number): number {
@@ -67,6 +74,16 @@ export class ByteReader {
 
   public asciiAt(offset: number, length: number): string {
     return String.fromCodePoint(...this.bytesAt(offset, length));
+  }
+
+  private toSafeNumber(value: bigint, offset: number): number {
+    if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new GyroViewError(
+        'binary-unsafe-integer',
+        `uint64 at offset ${offset} (${value.toString()}) exceeds the safe integer range`,
+      );
+    }
+    return Number(value);
   }
 
   private ensureAvailable(offset: number, length: number): void {

@@ -1,0 +1,33 @@
+{
+  "fileSize": 4598321522,
+  "boxes": [
+    {
+      "type": "ftyp",
+      "offset": 0,
+      "size": 28,
+      "headerSize": 8,
+      "headerHex": "0000001c66747970"
+    },
+    {
+      "type": "mdat",
+      "offset": 28,
+      "size": 4576756310,
+      "headerSize": 16,
+      "headerHex": "000000016d6461740000000110cbc256"
+    },
+    {
+      "type": "moov",
+      "offset": 4576756338,
+      "size": 4101637,
+      "headerSize": 8,
+      "headerHex": "003e96056d6f6f76"
+    },
+    {
+      "type": "inst",
+      "offset": 4580857975,
+      "size": 17463547,
+      "headerSize": 8,
+      "headerHex": "010a78fb696e7374"
+    }
+  ]
+}

@@ -36,3 +36,6 @@ export {
   type EulerDegrees,
   type LensCalibration,
 } from './domain/optics/LensCalibration';
+export { BoxScanner } from './domain/format/boxes/BoxScanner';
+export { BoxType } from './domain/format/boxes/boxConstants';
+export { findBox, type BoxDescriptor, type BoxLayout } from './domain/format/boxes/BoxLayout';

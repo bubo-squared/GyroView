@@ -38,3 +38,20 @@ export function loadManifest(): Record<'office' | 'sailing', FixtureManifestEntr
     FixtureManifestEntry
   >;
 }
+
+export interface BoxHeaderFixture {
+  type: string;
+  offset: number;
+  size: number;
+  headerSize: number;
+  headerHex: string;
+}
+
+export function loadBoxHeaders(sample: 'office' | 'sailing'): {
+  fileSize: number;
+  boxes: BoxHeaderFixture[];
+} {
+  return JSON.parse(
+    readFileSync(path.resolve(FIXTURE_ROOT, `x5/${sample}/box-headers.json`), 'utf8'),
+  ) as { fileSize: number; boxes: BoxHeaderFixture[] };
+}

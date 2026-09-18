@@ -25,6 +25,12 @@ describe('ByteReader', () => {
     expect(small.uint64LeAt(0)).toBe(0x05_04_03_02_01);
   });
 
+  it('reads big-endian integers for ISOBMFF box headers', () => {
+    expect(reader.uint32BeAt(0)).toBe(0x01_02_03_04);
+    const large = new ByteReader(new Uint8Array([0, 0, 0, 1, 0x99, 0x69, 0xab, 0x8e]));
+    expect(large.uint64BeAt(0)).toBe(6_868_806_542);
+  });
+
   it('reads a little-endian float64', () => {
     expect(reader.float64LeAt(12)).toBe(1.5);
   });

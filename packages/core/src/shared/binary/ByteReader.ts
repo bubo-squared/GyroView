@@ -1,0 +1,80 @@
+import { GyroViewError } from '../errors/GyroViewError';
+
+const UINT8_SIZE = 1;
+const UINT16_SIZE = 2;
+const UINT32_SIZE = 4;
+const UINT64_SIZE = 8;
+const FLOAT64_SIZE = 8;
+const IS_LITTLE_ENDIAN = true;
+
+/**
+ * Bounds-checked, little-endian reads over a byte array. Every read is positional, so callers
+ * express the record layouts they parse as named offsets rather than as a moving cursor.
+ */
+export class ByteReader {
+  private readonly view: DataView;
+
+  public constructor(private readonly bytes: Uint8Array) {
+    this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  }
+
+  public get length(): number {
+    return this.bytes.byteLength;
+  }
+
+  public uint8At(offset: number): number {
+    this.ensureAvailable(offset, UINT8_SIZE);
+    return this.view.getUint8(offset);
+  }
+
+  public uint16LeAt(offset: number): number {
+    this.ensureAvailable(offset, UINT16_SIZE);
+    return this.view.getUint16(offset, IS_LITTLE_ENDIAN);
+  }
+
+  public uint32LeAt(offset: number): number {
+    this.ensureAvailable(offset, UINT32_SIZE);
+    return this.view.getUint32(offset, IS_LITTLE_ENDIAN);
+  }
+
+  /**
+   * Reads an unsigned 64-bit integer as a JavaScript number; rejects values beyond 2^53 - 1.
+   */
+  public uint64LeAt(offset: number): number {
+    this.ensureAvailable(offset, UINT64_SIZE);
+    const value = this.view.getBigUint64(offset, IS_LITTLE_ENDIAN);
+    if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new GyroViewError(
+        'binary-unsafe-integer',
+        `uint64 at offset ${offset} (${value.toString()}) exceeds the safe integer range`,
+      );
+    }
+    return Number(value);
+  }
+
+  public float64LeAt(offset: number): number {
+    this.ensureAvailable(offset, FLOAT64_SIZE);
+    return this.view.getFloat64(offset, IS_LITTLE_ENDIAN);
+  }
+
+  /**
+   * Returns a view (not a copy) of `length` bytes starting at `offset`.
+   */
+  public bytesAt(offset: number, length: number): Uint8Array {
+    this.ensureAvailable(offset, length);
+    return this.bytes.subarray(offset, offset + length);
+  }
+
+  public asciiAt(offset: number, length: number): string {
+    return String.fromCodePoint(...this.bytesAt(offset, length));
+  }
+
+  private ensureAvailable(offset: number, length: number): void {
+    if (offset < 0 || length < 0 || offset + length > this.bytes.byteLength) {
+      throw new GyroViewError(
+        'binary-out-of-bounds',
+        `read of ${length} byte(s) at offset ${offset} exceeds ${this.bytes.byteLength} available`,
+      );
+    }
+  }
+}

@@ -49,6 +49,7 @@ const inspection: Inspection = {
     ],
     warnings: ['offset_v2 skipped: example'],
   },
+  calibrationWarnings: ['offset_v2 skipped: example'],
   gyro: {
     layout: 'raw',
     samples: 261_872,
@@ -90,6 +91,12 @@ describe('renderInspection', () => {
       'Gyro: raw layout, 261,872 samples over 262.232 s, mean interval 1001.300 us, mean |a| 0.998 g, 1 stray byte(s)',
     );
     expect(report).toContain('mean shutter 1/640 s, first encoded frame at entry 6');
+  });
+
+  it('says so when no calibration is usable and still lists the warnings', () => {
+    const none = renderInspection({ ...inspection, calibration: undefined });
+    expect(none).toContain('Calibration: none usable');
+    expect(none).toContain('warning: offset_v2 skipped: example');
   });
 
   it('says so when gyro or exposure are missing', () => {

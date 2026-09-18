@@ -64,11 +64,14 @@ function renderInfo(inspection: Inspection): string[] {
 
 function renderCalibration(inspection: Inspection): string[] {
   const { calibration } = inspection;
-  return [
-    `Calibration: v${calibration.version} on a ${calibration.canvas[0]}x${calibration.canvas[1]} canvas`,
-    ...calibration.lenses.map((lens) => renderLens(lens)),
-    ...calibration.warnings.map((warning) => `  warning: ${warning}`),
-  ];
+  const warnings = inspection.calibrationWarnings.map((warning) => `  warning: ${warning}`);
+  return calibration === undefined
+    ? ['Calibration: none usable', ...warnings]
+    : [
+        `Calibration: v${calibration.version} on a ${calibration.canvas[0]}x${calibration.canvas[1]} canvas`,
+        ...calibration.lenses.map((lens) => renderLens(lens)),
+        ...warnings,
+      ];
 }
 
 function renderLens(lens: LensSummary): string {

@@ -8,6 +8,12 @@ import { GyroViewError } from '../../../shared/errors/GyroViewError';
  */
 export const FileLayoutHint = { SplitFiles: 1, MultiTrack: 2 } as const;
 
+/**
+ * Values of the info record's track-order field (protobuf 80), per insta360-rs. Provisional:
+ * stream `00` is the back lens (calibration lens 0), stream `10` the screen-side lens.
+ */
+export const TrackOrderHint = { Track0IsStream10: 1, Track0IsStream00: 2 } as const;
+
 const LENS_COUNT = 2;
 const PACKED_ASPECT_RATIO = 2;
 const ASPECT_TOLERANCE = 0.02;
@@ -19,6 +25,7 @@ const SCREEN_LENS_RANK = 2;
 
 export interface LayoutHints {
   readonly fileLayout: number | undefined;
+  readonly trackOrder: number | undefined;
 }
 
 interface Candidate {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { readTrailer } from './readTrailer';
+import { readTrailer as readTrailerWithSize } from './readTrailer';
+import type { RandomAccessSource } from '../../../ports/RandomAccessSource';
 import {
   FOOTER_TRAILER_SIZE_OFFSET,
   INDEX_SLOT_OFFSET_OFFSET,
@@ -18,6 +19,10 @@ const manifest = loadManifest();
 const INFO_PAYLOAD = Uint8Array.from({ length: 300 }, (_value, index) => index);
 const GYRO_PAYLOAD = new Uint8Array(1000).fill(0xab);
 const EXPOSURE_PAYLOAD = new Uint8Array(64).fill(0xcd);
+
+async function readTrailer(source: RandomAccessSource): ReturnType<typeof readTrailerWithSize> {
+  return readTrailerWithSize(source, await source.size());
+}
 
 function realFileStandIn(sample: 'office' | 'sailing'): SparseRandomAccessSource {
   const entry = manifest[sample];

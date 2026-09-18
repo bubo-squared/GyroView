@@ -34,6 +34,13 @@ describe('FileRandomAccessSource', () => {
     ).rejects.toThrow();
   });
 
+  it('refuses a directory with the source-unreadable code and does not keep a handle open', async () => {
+    await expect(FileRandomAccessSource.open(directory)).rejects.toMatchObject({
+      code: 'source-unreadable',
+      message: expect.stringContaining('not a regular file') as string,
+    });
+  });
+
   it('reads a range in the middle of a larger file exactly once through', async () => {
     const bytes = Uint8Array.from({ length: 70_000 }, (_value, index) => index % 251);
     const source = await sourceOver(bytes);

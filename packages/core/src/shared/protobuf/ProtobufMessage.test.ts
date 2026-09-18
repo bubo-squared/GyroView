@@ -14,7 +14,7 @@ describe('ProtobufMessage', () => {
   const message = ProtobufMessage.decode(SAMPLE);
 
   it('decodes multi-byte varints', () => {
-    expect(message.fields(1)[0]?.value).toEqual({ kind: 'varint', value: 150 });
+    expect(message.fields(1)[0]?.value).toEqual({ kind: 'varint', value: 150n });
   });
 
   it('decodes strings and doubles', () => {
@@ -28,8 +28,8 @@ describe('ProtobufMessage', () => {
 
   it('exposes repeated fields in order and lets the last occurrence win for scalar accessors', () => {
     expect(message.fields(1).map((field) => field.value)).toEqual([
-      { kind: 'varint', value: 150 },
-      { kind: 'varint', value: 1 },
+      { kind: 'varint', value: 150n },
+      { kind: 'varint', value: 1n },
     ]);
     expect(message.varint(1)).toBe(1);
   });
@@ -60,10 +60,27 @@ describe('ProtobufMessage', () => {
     });
   });
 
-  it('rejects varints beyond the safe integer range', () => {
-    const huge = new Uint8Array([0x08, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f]);
-    expect(captureError(() => ProtobufMessage.decode(huge))).toMatchObject({
-      code: 'binary-unsafe-integer',
+  it('carries an oversized varint in an unread field without failing the message', () => {
+    const huge = new Uint8Array([
+      0x08, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f, 0x10, 0x05,
+    ]);
+    const decoded = ProtobufMessage.decode(huge);
+    expect(decoded.varint(2)).toBe(5);
+    expect(captureError(() => decoded.varint(1))).toMatchObject({ code: 'binary-unsafe-integer' });
+  });
+
+  it('rejects a varint longer than ten bytes', () => {
+    const runaway = new Uint8Array([0x08, ...Array.from({ length: 11 }, () => 0xff)]);
+    expect(captureError(() => ProtobufMessage.decode(runaway))).toMatchObject({
+      code: 'invalid-protobuf',
+    });
+  });
+
+  it('rejects a length prefix larger than the message', () => {
+    expect(
+      captureError(() => ProtobufMessage.decode(new Uint8Array([0x12, 0xff, 0x7f]))),
+    ).toMatchObject({
+      code: 'invalid-protobuf',
     });
   });
 

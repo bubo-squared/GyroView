@@ -14,12 +14,22 @@ export class FileRandomAccessSource implements RandomAccessSource {
   ) {}
 
   public static async open(path: string): Promise<FileRandomAccessSource> {
+    let handle: FileHandle;
     try {
-      const handle = await open(path, 'r');
-      const { size } = await handle.stat();
-      return new FileRandomAccessSource(handle, size, path);
+      handle = await open(path, 'r');
     } catch (error) {
       throw new GyroViewError('source-unreadable', `cannot open ${path}`, { cause: error });
+    }
+    try {
+      const stats = await handle.stat();
+      if (!stats.isFile())
+        throw new GyroViewError('source-unreadable', `${path} is not a regular file`);
+      return new FileRandomAccessSource(handle, stats.size, path);
+    } catch (error) {
+      await handle.close();
+      throw error instanceof GyroViewError
+        ? error
+        : new GyroViewError('source-unreadable', `cannot stat ${path}`, { cause: error });
     }
   }
 

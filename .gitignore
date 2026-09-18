@@ -11,8 +11,9 @@ PLAN.md
 *.insv
 *.insp
 *.lrv
-# Small, redistributable trailer fixtures are the one exception
-!test/fixtures/**/*.insv
+# The only exceptions: two tiny, MIT-licensed, video-stripped trailer fixtures
+!test/fixtures/thirdparty/insta360py/sample.insv
+!test/fixtures/thirdparty/insta360py/x5_indexed.insv
 
 # Dependencies and build output
 node_modules/

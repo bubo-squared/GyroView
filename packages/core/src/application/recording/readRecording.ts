@@ -10,11 +10,15 @@ import { GyroViewError } from '../../shared/errors/GyroViewError';
 
 /**
  * Use case: open a source and read everything needed to describe the recording, with the
- * minimum of I/O (box headers, trailer table of contents, info record).
+ * minimum of I/O: one size lookup, box headers and trailer table of contents in parallel, then
+ * the info record. A missing calibration is reported, not fatal; stitching checks for it.
  */
 export async function readRecording(source: RandomAccessSource): Promise<Recording> {
-  const boxLayout = await scanBoxes(source);
-  const trailer = await readTrailer(source);
+  const fileSize = await source.size();
+  const [boxLayout, trailer] = await Promise.all([
+    scanBoxes(source, fileSize),
+    readTrailer(source, fileSize),
+  ]);
   const infoLocation = trailer.locationOf(RecordType.Info);
   if (!infoLocation) {
     throw new GyroViewError(
@@ -25,6 +29,7 @@ export async function readRecording(source: RandomAccessSource): Promise<Recordi
   const info = parseInfoRecord(await source.read(infoLocation.payload), infoLocation.format);
   return new Recording({
     source,
+    fileSize,
     boxes: boxLayout.boxes,
     trailerWrapper: trailerWrapperOf(boxLayout),
     trailer,

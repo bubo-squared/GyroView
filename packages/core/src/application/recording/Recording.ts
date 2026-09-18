@@ -5,13 +5,18 @@ import type { RecordingInfo } from '../../domain/format/info/RecordingInfo';
 import type { LayoutHints } from '../../domain/format/layout/detectLensLayout';
 import { parseExposureRecord } from '../../domain/format/records/exposure/parseExposureRecord';
 import {
+  GYRO_LAYOUT_PROBE_SIZE,
+  inferGyroLayout,
   parseGyroRecord,
+  type GyroLayoutName,
   type ParsedGyroRecord,
 } from '../../domain/format/records/gyro/parseGyroRecord';
+import type { RecordLocation } from '../../domain/format/trailer/RecordLocation';
 import type { Trailer } from '../../domain/format/trailer/Trailer';
 import type { ExposureRecord } from '../../domain/motion/exposure/ExposureRecord';
 import { CaptureClock, type CaptureClockUnit } from '../../domain/motion/timing/CaptureClock';
 import type { CalibrationChoice } from '../../domain/optics/selectCalibration';
+import { ByteRange } from '../../shared/binary/ByteRange';
 
 export interface RecordSummary {
   readonly id: number;
@@ -22,6 +27,7 @@ export interface RecordSummary {
 
 export interface RecordingParts {
   readonly source: RandomAccessSource;
+  readonly fileSize: number;
   readonly boxes: readonly BoxDescriptor[];
   readonly trailerWrapper: TrailerWrapper;
   readonly trailer: Trailer;
@@ -34,7 +40,13 @@ export interface RecordingParts {
  * the large records. Video track details arrive later from the demuxer port.
  */
 export class Recording {
+  private gyroLayoutPromise: Promise<GyroLayoutName | undefined> | undefined;
+
   public constructor(private readonly parts: RecordingParts) {}
+
+  public get fileSize(): number {
+    return this.parts.fileSize;
+  }
 
   public get boxes(): readonly BoxDescriptor[] {
     return this.parts.boxes;
@@ -61,19 +73,29 @@ export class Recording {
   }
 
   public get layoutHints(): LayoutHints {
-    return { fileLayout: this.parts.info.fileLayout };
+    return { fileLayout: this.parts.info.fileLayout, trackOrder: this.parts.info.trackOrder };
   }
 
   /**
-   * Unit of the info record's capture-clock fields: microseconds unless the camera declares the
-   * float gyro layout, whose timestamps are milliseconds.
+   * The gyro sample layout the file actually uses: from the info record's flag when present,
+   * otherwise inferred from the first bytes of the gyro record. Undefined without a gyro record
+   * and without the flag.
    */
-  public get captureClockUnit(): CaptureClockUnit {
-    return this.parts.info.isRawGyro === false ? 'milliseconds' : 'microseconds';
+  public gyroLayout(): Promise<GyroLayoutName | undefined> {
+    this.gyroLayoutPromise ??= this.resolveGyroLayout();
+    return this.gyroLayoutPromise;
   }
 
-  public captureClock(): CaptureClock {
-    return CaptureClock.fromInfo(this.parts.info, this.captureClockUnit);
+  /**
+   * Unit of the info record's capture-clock fields, which follows the gyro layout: the float
+   * layout stamps in milliseconds, the raw layout (and cameras without gyro) in microseconds.
+   */
+  public async captureClockUnit(): Promise<CaptureClockUnit> {
+    return (await this.gyroLayout()) === 'float' ? 'milliseconds' : 'microseconds';
+  }
+
+  public async captureClock(): Promise<CaptureClock> {
+    return CaptureClock.fromInfo(this.parts.info, await this.captureClockUnit());
   }
 
   public recordSummaries(): readonly RecordSummary[] {
@@ -92,12 +114,12 @@ export class Recording {
    */
   public async readGyroRecord(): Promise<ParsedGyroRecord | undefined> {
     const location = this.parts.trailer.locationOf(RecordType.Gyro);
-    return location === undefined
-      ? undefined
-      : parseGyroRecord(await this.parts.source.read(location.payload), {
-          isRawGyro: this.parts.info.isRawGyro,
-          ranges: this.parts.info.sensorRanges,
-        });
+    if (location === undefined) return undefined;
+    const layout = await this.gyroLayout();
+    return parseGyroRecord(await this.parts.source.read(location.payload), {
+      isRawGyro: layout === undefined ? undefined : layout === 'raw',
+      ranges: this.parts.info.sensorRanges,
+    });
   }
 
   /**
@@ -108,5 +130,19 @@ export class Recording {
     return location === undefined
       ? undefined
       : parseExposureRecord(await this.parts.source.read(location.payload)).record;
+  }
+
+  private async resolveGyroLayout(): Promise<GyroLayoutName | undefined> {
+    const { isRawGyro } = this.parts.info;
+    if (isRawGyro !== undefined) return isRawGyro ? 'raw' : 'float';
+    const location = this.parts.trailer.locationOf(RecordType.Gyro);
+    return location === undefined
+      ? undefined
+      : inferGyroLayout(await this.readHeadOf(location), undefined);
+  }
+
+  private readHeadOf(location: RecordLocation): Promise<Uint8Array> {
+    const length = Math.min(GYRO_LAYOUT_PROBE_SIZE, location.payload.length);
+    return this.parts.source.read(ByteRange.of(location.payload.offset, length));
   }
 }

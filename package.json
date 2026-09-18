@@ -6,7 +6,7 @@
   "license": "UNLICENSED",
   "packageManager": "pnpm@11.7.0",
   "engines": {
-    "node": ">=22"
+    "node": "^22 || ^24 || ^26"
   },
   "scripts": {
     "prepare": "husky",

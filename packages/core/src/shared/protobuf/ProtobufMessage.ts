@@ -13,7 +13,7 @@ export const WireType = {
 } as const;
 
 export type ProtobufValue =
-  | { readonly kind: 'varint'; readonly value: number }
+  | { readonly kind: 'varint'; readonly value: bigint }
   | { readonly kind: 'fixed64'; readonly bytes: Uint8Array }
   | { readonly kind: 'fixed32'; readonly bytes: Uint8Array }
   | { readonly kind: 'bytes'; readonly bytes: Uint8Array };
@@ -30,11 +30,13 @@ const VARINT_PAYLOAD_MASK = 0x7fn;
 const VARINT_CONTINUATION_BIT = 0x80;
 const FIXED64_SIZE = 8;
 const FIXED32_SIZE = 4;
+const MAX_VARINT_BYTES = 10;
 const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
 
 /**
- * A schema-less view of one encoded protobuf message: fields are decoded lazily by number, and
- * unknown fields are simply ignored. Enough to read Insta360's info record without a .proto.
+ * A schema-less view of one encoded protobuf message: fields are looked up by number and unknown
+ * fields are simply carried along. Varints stay exact (bigint) until a caller asks for a number,
+ * so an oversized value in a field nobody reads cannot break the whole record.
  */
 export class ProtobufMessage {
   private constructor(private readonly decoded: readonly ProtobufField[]) {}
@@ -58,7 +60,13 @@ export class ProtobufMessage {
     const value = this.valueOf(number);
     if (value === undefined) return undefined;
     if (value.kind !== 'varint') throw this.wrongType(number, 'varint', value.kind);
-    return value.value;
+    if (value.value > MAX_SAFE) {
+      throw new GyroViewError(
+        'binary-unsafe-integer',
+        `field ${number} holds ${value.value.toString()}, beyond the safe integer range`,
+      );
+    }
+    return Number(value.value);
   }
 
   public boolean(number: number): boolean | undefined {
@@ -122,8 +130,8 @@ class Cursor {
 
   public readField(): ProtobufField {
     const key = this.readVarint();
-    const number = Math.floor(key / 2 ** FIELD_NUMBER_SHIFT);
-    const wireType = key & WIRE_TYPE_MASK;
+    const number = Number(key >> BigInt(FIELD_NUMBER_SHIFT));
+    const wireType = Number(key & BigInt(WIRE_TYPE_MASK));
     return { number, value: this.readValue(wireType, number) };
   }
 
@@ -139,7 +147,7 @@ class Cursor {
         return { kind: 'fixed32', bytes: this.readBytes(FIXED32_SIZE) };
       }
       case WireType.LengthDelimited: {
-        return { kind: 'bytes', bytes: this.readBytes(this.readVarint()) };
+        return { kind: 'bytes', bytes: this.readBytes(this.readLength()) };
       }
       default: {
         throw new GyroViewError(
@@ -150,22 +158,30 @@ class Cursor {
     }
   }
 
-  private readVarint(): number {
+  private readVarint(): bigint {
     let result = 0n;
     let shift = 0n;
-    for (;;) {
+    for (let consumed = 0; consumed < MAX_VARINT_BYTES; consumed += 1) {
       const byte = this.readByte();
       result |= (BigInt(byte) & VARINT_PAYLOAD_MASK) << shift;
-      if ((byte & VARINT_CONTINUATION_BIT) === 0) break;
+      if ((byte & VARINT_CONTINUATION_BIT) === 0) return result;
       shift += VARINT_PAYLOAD_BITS;
     }
-    if (result > MAX_SAFE) {
+    throw new GyroViewError(
+      'invalid-protobuf',
+      `varint longer than ${MAX_VARINT_BYTES} bytes at byte ${this.position}`,
+    );
+  }
+
+  private readLength(): number {
+    const length = this.readVarint();
+    if (length > BigInt(this.bytes.byteLength)) {
       throw new GyroViewError(
-        'binary-unsafe-integer',
-        `varint ${result.toString()} exceeds the safe integer range`,
+        'invalid-protobuf',
+        `length ${length.toString()} exceeds the message at byte ${this.position}`,
       );
     }
-    return Number(result);
+    return Number(length);
   }
 
   private readByte(): number {

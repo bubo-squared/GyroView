@@ -48,9 +48,10 @@ describe('readRecording on synthetic X5 files', () => {
       RecordType.Exposure,
     ]);
     expect(recording.info.model).toBe('Insta360 X5');
-    expect(recording.calibration.calibration.version).toBe(CalibrationVersion.Mei);
+    expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
     expect(recording.calibration.warnings).toEqual([]);
-    expect(recording.layoutHints).toEqual({ fileLayout: 2 });
+    expect(recording.layoutHints).toEqual({ fileLayout: 2, trackOrder: 1 });
+    expect(recording.fileSize).toBe(file.bytes.byteLength);
   });
 
   it('reads a bare contiguous trailer and reports it as such', async () => {
@@ -77,8 +78,9 @@ describe('readRecording on synthetic X5 files', () => {
     );
     const exposure = await recording.readExposureRecord();
     expect(exposure?.length).toBe(16);
-    expect(recording.captureClockUnit).toBe('microseconds');
-    const clock = recording.captureClock();
+    await expect(recording.captureClockUnit()).resolves.toBe('microseconds');
+    await expect(recording.gyroLayout()).resolves.toBe('raw');
+    const clock = await recording.captureClock();
     expect(clock.firstFrameCaptureTime).toBe(921_751_839);
     expect(clock.gyroOffset).toBe(1.6);
     expect(exposure?.indexAtOrAfter(clock.firstFrameCaptureTime)).toBe(6);
@@ -108,6 +110,42 @@ describe('readRecording on synthetic X5 files', () => {
     });
   });
 
+  it('reports a recording without any calibration string as having none, and still opens it', async () => {
+    const file = new TrailerFixtureBuilder()
+      .withPrefix(minimalMp4Prefix())
+      .addRecord({ id: RecordType.Info, format: PROTOBUF, payload: new Uint8Array() })
+      .buildContiguous();
+    const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
+    expect(recording.calibration).toEqual({ calibration: undefined, warnings: [] });
+    expect(recording.info.model).toBeUndefined();
+  });
+
+  it('infers a float gyro layout from the record when the info record has no flag, and reads the clock in milliseconds', async () => {
+    const floatSamples = new Uint8Array(56 * 2);
+    const view = new DataView(floatSamples.buffer);
+    view.setBigUint64(0, 5000n, true);
+    view.setBigUint64(56, 5001n, true);
+    const info = new Uint8Array([0xc0, 0x01, 0xd0, 0x0f]); // field 24 (first frame timestamp) = 2000
+    const file = new TrailerFixtureBuilder()
+      .withPrefix(minimalMp4Prefix())
+      .addRecord({ id: RecordType.Info, format: PROTOBUF, payload: info })
+      .addRecord({ id: RecordType.Gyro, payload: floatSamples })
+      .buildContiguous();
+    const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
+    await expect(recording.gyroLayout()).resolves.toBe('float');
+    await expect(recording.captureClockUnit()).resolves.toBe('milliseconds');
+    const clock = await recording.captureClock();
+    expect(clock.firstFrameCaptureTime).toBe(2_000_000);
+    const gyro = await recording.readGyroRecord();
+    expect(gyro?.layout).toBe('float');
+  });
+
+  it('opens with one size lookup and reads boxes and trailer concurrently', async () => {
+    const source = new InMemoryRandomAccessSource(officeRecords().buildContiguous().bytes);
+    await readRecording(source);
+    expect(source.sizeCalls).toBe(1);
+  });
+
   it('fails with a typed error when the info record is not protobuf', async () => {
     const file = new TrailerFixtureBuilder()
       .withPrefix(minimalMp4Prefix())
@@ -132,8 +170,8 @@ describe('readRecording on real trailers from other cameras (insta360py fixtures
       isRawGyro: true,
       ptsType: 2,
     });
-    expect(recording.calibration.calibration.version).toBe(CalibrationVersion.Legacy);
-    expect(recording.calibration.calibration.canvas).toEqual({ width: 6080, height: 3040 });
+    expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Legacy);
+    expect(recording.calibration.calibration?.canvas).toEqual({ width: 6080, height: 3040 });
     expect(recording.recordSummaries().map((record) => record.id)).toEqual([
       1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12,
     ]);
@@ -146,9 +184,8 @@ describe('readRecording on real trailers from other cameras (insta360py fixtures
 
     const exposure = await recording.readExposureRecord();
     expect(exposure?.length).toBe(40);
-    expect(exposure?.indexAtOrAfter(recording.captureClock().firstFrameCaptureTime)).toBeLessThan(
-      40,
-    );
+    const clock = await recording.captureClock();
+    expect(exposure?.indexAtOrAfter(clock.firstFrameCaptureTime)).toBeLessThan(40);
   });
 
   it('reads the X5 file: inst-wrapped indexed trailer without layout hints', async () => {
@@ -161,7 +198,7 @@ describe('readRecording on real trailers from other cameras (insta360py fixtures
       firmware: 'v1.11.6_build1',
       fileLayout: undefined,
     });
-    expect(recording.calibration.calibration.version).toBe(CalibrationVersion.Mei);
+    expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
     expect(recording.recordSummaries()).toHaveLength(13);
     const gyro = await recording.readGyroRecord();
     expect(gyro?.track.length).toBe(12);

@@ -84,6 +84,15 @@ describe('resolveFrameTimes fallbacks', () => {
     expect(resolved.frameTimes.hasShutterTimes).toBe(false);
   });
 
+  it('rebases track timestamps that do not start at zero onto the first frame', () => {
+    const resolved = resolveFrameTimes(
+      context({ frameCount: 3, exposureRecord: undefined, trackTimestamps: [0.5, 1, 1.5] }),
+      PtsType.TrackTimestamps,
+    );
+    expect(resolved.frameTimes.frameAt(0).videoTime).toBe(0);
+    expect(resolved.frameTimes.frameAt(2).videoTime).toBe(1);
+  });
+
   it('prefers track timestamps when the camera says so, even with an exposure record present', () => {
     const resolved = resolveFrameTimes(
       context({ frameCount: 2, trackTimestamps: [0, 0.25] }),

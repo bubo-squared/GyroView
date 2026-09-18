@@ -30,7 +30,7 @@ describe.skipIf(!existsSync(OFFICE) || !existsSync(SAILING))('real X5 recordings
         expect(recording.boxes.map((box) => box.type)).toEqual(['ftyp', 'mdat', 'moov', 'inst']);
         expect(recording.recordSummaries()).toHaveLength(10);
         expect(recording.info).toMatchObject({ model: 'Insta360 X5', frameRate: 60 });
-        expect(recording.calibration.calibration.version).toBe(CalibrationVersion.Mei);
+        expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
 
         const gyro = await recording.readGyroRecord();
         expect(gyro).toMatchObject({ layout: 'raw', strayBytes: 0 });
@@ -39,7 +39,8 @@ describe.skipIf(!existsSync(OFFICE) || !existsSync(SAILING))('real X5 recordings
 
         const exposure = await recording.readExposureRecord();
         expect(exposure?.length).toBe(15_720);
-        expect(exposure?.indexAtOrAfter(recording.captureClock().firstFrameCaptureTime)).toBe(6);
+        const clock = await recording.captureClock();
+        expect(exposure?.indexAtOrAfter(clock.firstFrameCaptureTime)).toBe(6);
       } finally {
         await source.close();
       }

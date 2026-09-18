@@ -13,10 +13,10 @@ const TAIL_SIZE = RECORD_HEADER_SIZE + TRAILER_FOOTER_SIZE;
 
 /**
  * Reads the trailer's table of contents with as few round trips as possible: one read for the
- * footer plus last header, then whatever locating the records needs.
+ * footer plus last header, then whatever locating the records needs. `fileSize` is passed in so
+ * the caller can share one size lookup between several readers of the same source.
  */
-export async function readTrailer(source: RandomAccessSource): Promise<Trailer> {
-  const fileSize = await source.size();
+export async function readTrailer(source: RandomAccessSource, fileSize: number): Promise<Trailer> {
   if (fileSize < TAIL_SIZE) {
     throw new GyroViewError(
       'invalid-trailer',

@@ -64,7 +64,11 @@ export interface Inspection {
   readonly payloadStart: number;
   readonly records: readonly RecordSummary[];
   readonly info: RecordingInfo;
-  readonly calibration: CalibrationSummary;
+  /**
+   * Undefined when the recording carries no usable calibration string.
+   */
+  readonly calibration: CalibrationSummary | undefined;
+  readonly calibrationWarnings: readonly string[];
   readonly gyro: GyroSummary | undefined;
   readonly exposure: ExposureSummary | undefined;
 }

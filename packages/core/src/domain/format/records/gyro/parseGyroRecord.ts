@@ -1,4 +1,5 @@
 import { FloatGyroSampleLayout } from './FloatGyroSampleLayout';
+import { FLOAT_SAMPLE_SIZE } from './gyroLayouts';
 import type { GyroSampleLayout } from './GyroSampleLayout';
 import { RawGyroSampleLayout } from './RawGyroSampleLayout';
 import { ByteReader } from '../../../../shared/binary/ByteReader';
@@ -30,6 +31,24 @@ export interface ParsedGyroRecord {
    * Bytes after the last whole sample. Real ONE R recordings carry one; they are ignored.
    */
   readonly strayBytes: number;
+}
+
+export type GyroLayoutName = GyroSampleLayout['name'];
+
+/**
+ * Enough leading bytes of a gyro record to tell its layout: two samples of the larger layout.
+ */
+export const GYRO_LAYOUT_PROBE_SIZE = FLOAT_SAMPLE_SIZE * SAMPLES_NEEDED_TO_GUESS;
+
+/**
+ * Decides the sample layout from the info record hint or, failing that, from the timestamps the
+ * candidate layouts decode in the first bytes of the record.
+ */
+export function inferGyroLayout(
+  payloadHead: Uint8Array,
+  isRawGyro: boolean | undefined,
+): GyroLayoutName {
+  return chooseLayout(payloadHead, { isRawGyro, ranges: undefined }).name;
 }
 
 /**

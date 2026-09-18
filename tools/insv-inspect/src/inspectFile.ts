@@ -25,41 +25,58 @@ export async function inspectFile(file: string): Promise<Inspection> {
       recording.readExposureRecord(),
     ]);
     return {
-      file,
-      fileSize: await source.size(),
-      boxes: recording.boxes.map((box) => ({
-        type: box.type,
-        offset: box.range.offset,
-        size: box.range.length,
-      })),
-      trailerWrapper: recording.trailerWrapper,
-      trailerVersion: recording.trailerVersion,
-      payloadStart: recording.trailerPayloadStart,
-      records: recording.recordSummaries(),
+      ...summarizeStructure(file, recording),
       info: recording.info,
       calibration: summarizeCalibration(recording),
+      calibrationWarnings: recording.calibration.warnings,
       gyro: gyro === undefined ? undefined : summarizeGyro(gyro),
-      exposure: exposure === undefined ? undefined : summarizeExposure(exposure, recording),
+      exposure:
+        exposure === undefined
+          ? undefined
+          : summarizeExposure(exposure, await firstEncodedFrameEntry(exposure, recording)),
     };
   } finally {
     await source.close();
   }
 }
 
-function summarizeCalibration(recording: Recording): CalibrationSummary {
-  const { calibration, warnings } = recording.calibration;
+type StructureSummary = Pick<
+  Inspection,
+  'file' | 'fileSize' | 'boxes' | 'trailerWrapper' | 'trailerVersion' | 'payloadStart' | 'records'
+>;
+
+function summarizeStructure(file: string, recording: Recording): StructureSummary {
   return {
-    version: calibration.version,
-    canvas: [calibration.canvas.width, calibration.canvas.height],
-    warnings,
-    lenses: calibration.lenses.map((lens) => ({
-      lensIndex: lens.lensIndex,
-      model: lens.model.kind,
-      principalPoint: [lens.model.principalPoint.x, lens.model.principalPoint.y],
-      orientationDegrees: [lens.orientation.yaw, lens.orientation.pitch, lens.orientation.roll],
-      translationMetres: lens.translation,
+    file,
+    fileSize: recording.fileSize,
+    boxes: recording.boxes.map((box) => ({
+      type: box.type,
+      offset: box.range.offset,
+      size: box.range.length,
     })),
+    trailerWrapper: recording.trailerWrapper,
+    trailerVersion: recording.trailerVersion,
+    payloadStart: recording.trailerPayloadStart,
+    records: recording.recordSummaries(),
   };
+}
+
+function summarizeCalibration(recording: Recording): CalibrationSummary | undefined {
+  const { calibration, warnings } = recording.calibration;
+  return calibration === undefined
+    ? undefined
+    : {
+        version: calibration.version,
+        canvas: [calibration.canvas.width, calibration.canvas.height],
+        warnings,
+        lenses: calibration.lenses.map((lens) => ({
+          lensIndex: lens.lensIndex,
+          model: lens.model.kind,
+          principalPoint: [lens.model.principalPoint.x, lens.model.principalPoint.y],
+          orientationDegrees: [lens.orientation.yaw, lens.orientation.pitch, lens.orientation.roll],
+          translationMetres: lens.translation,
+        })),
+      };
 }
 
 function summarizeGyro({ track, layout, strayBytes }: ParsedGyroRecord): GyroSummary {
@@ -80,25 +97,29 @@ function summarizeGyro({ track, layout, strayBytes }: ParsedGyroRecord): GyroSum
   };
 }
 
-function summarizeExposure(exposure: ExposureRecord, recording: Recording): ExposureSummary {
+function summarizeExposure(
+  exposure: ExposureRecord,
+  firstEncodedFrame: number | undefined,
+): ExposureSummary {
   let shutterSum = 0;
-  for (let index = 0; index < exposure.length; index += 1)
+  for (let index = 0; index < exposure.length; index += 1) {
     shutterSum += exposure.entryAt(index).shutterTime;
+  }
   const hasEntries = exposure.length > 0;
   return {
     entries: exposure.length,
     firstCaptureTimeUs: hasEntries ? exposure.entryAt(0).captureTime : NaN,
     lastCaptureTimeUs: hasEntries ? exposure.entryAt(exposure.length - 1).captureTime : NaN,
     meanShutterTimeSeconds: hasEntries ? shutterSum / exposure.length : NaN,
-    firstEncodedFrameEntry: firstEncodedFrameEntry(exposure, recording),
+    firstEncodedFrameEntry: firstEncodedFrame,
   };
 }
 
-function firstEncodedFrameEntry(
+async function firstEncodedFrameEntry(
   exposure: ExposureRecord,
   recording: Recording,
-): number | undefined {
-  return recording.info.firstFrameTimestamp === undefined
-    ? undefined
-    : exposure.indexAtOrAfter(recording.captureClock().firstFrameCaptureTime);
+): Promise<number | undefined> {
+  if (recording.info.firstFrameTimestamp === undefined) return undefined;
+  const clock = await recording.captureClock();
+  return exposure.indexAtOrAfter(clock.firstFrameCaptureTime);
 }

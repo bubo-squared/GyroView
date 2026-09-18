@@ -13,13 +13,14 @@ import {
 import type { RandomAccessSource } from '../../../ports/RandomAccessSource';
 import { ByteRange } from '../../../shared/binary/ByteRange';
 import { ByteReader } from '../../../shared/binary/ByteReader';
+import { GyroViewError } from '../../../shared/errors/GyroViewError';
 
 /**
  * Walks the top-level boxes of a file with one small read per box. Stops at the first bytes that
- * do not form a box header and reports them as trailing bytes.
+ * do not form a box header and reports them as trailing bytes. `fileSize` is passed in so the
+ * caller can share one size lookup between several readers of the same source.
  */
-export async function scanBoxes(source: RandomAccessSource): Promise<BoxLayout> {
-  const fileSize = await source.size();
+export async function scanBoxes(source: RandomAccessSource, fileSize: number): Promise<BoxLayout> {
   const boxes: BoxDescriptor[] = [];
   let offset = 0;
   while (offset + BOX_HEADER_SIZE <= fileSize) {
@@ -41,20 +42,40 @@ async function readBoxAt(
   const header = new ByteReader(await source.read(ByteRange.of(offset, headerLength)));
   const type = header.asciiAt(BOX_TYPE_OFFSET, BOX_TYPE_LENGTH);
   if (!isPlausibleBoxType(type)) return undefined;
-  const { size, headerSize } = resolveSize(header, offset, fileSize);
+  const resolved = resolveSize(header, offset, fileSize);
+  if (!resolved) return undefined;
+  const { size, headerSize } = resolved;
   const isWellFormed = size >= headerSize && offset + size <= fileSize;
   return isWellFormed ? { type, range: ByteRange.of(offset, size), headerSize } : undefined;
 }
 
+interface ResolvedSize {
+  readonly size: number;
+  readonly headerSize: number;
+}
+
+/**
+ * Undefined when the header declares a large size that is not a safe integer: real boxes never
+ * do, so those bytes are trailer data, not a box.
+ */
 function resolveSize(
   header: ByteReader,
   offset: number,
   fileSize: number,
-): { size: number; headerSize: number } {
+): ResolvedSize | undefined {
   const declared = header.uint32BeAt(BOX_SIZE_OFFSET);
   if (declared === BOX_SIZE_IS_LARGE && header.length >= LARGE_BOX_HEADER_SIZE) {
-    return { size: header.uint64BeAt(LARGE_SIZE_OFFSET), headerSize: LARGE_BOX_HEADER_SIZE };
+    return largeSize(header);
   }
   const size = declared === BOX_SIZE_TO_END_OF_FILE ? fileSize - offset : declared;
   return { size, headerSize: BOX_HEADER_SIZE };
+}
+
+function largeSize(header: ByteReader): ResolvedSize | undefined {
+  try {
+    return { size: header.uint64BeAt(LARGE_SIZE_OFFSET), headerSize: LARGE_BOX_HEADER_SIZE };
+  } catch (error) {
+    if (error instanceof GyroViewError && error.code === 'binary-unsafe-integer') return undefined;
+    throw error;
+  }
 }

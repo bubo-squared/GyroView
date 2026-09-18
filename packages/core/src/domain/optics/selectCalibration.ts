@@ -4,7 +4,11 @@ import { GyroViewError, type GyroViewErrorCode } from '../../shared/errors/GyroV
 import type { CalibrationStrings } from '../format/info/RecordingInfo';
 
 export interface CalibrationChoice {
-  readonly calibration: CalibrationSet;
+  /**
+   * Undefined when the recording carries no usable calibration string. Playback that stitches
+   * needs one; inspection and non-stitching uses do not.
+   */
+  readonly calibration: CalibrationSet | undefined;
   /**
    * Human-readable notes about strings that were present but skipped.
    */
@@ -24,7 +28,8 @@ const SKIPPABLE: ReadonlySet<GyroViewErrorCode> = new Set([
 
 /**
  * Picks the most accurate calibration a recording offers: MEI (v3) over polynomial (v2) over
- * equidistant (v1). Strings that cannot be used are reported, not silently dropped.
+ * equidistant (v1). Strings that cannot be used are reported, not silently dropped; having none
+ * is reported as absence, not as a failure.
  */
 export function selectCalibration(strings: CalibrationStrings): CalibrationChoice {
   const candidates: readonly (readonly [name: string, text: string | undefined])[] = [
@@ -39,7 +44,7 @@ export function selectCalibration(strings: CalibrationStrings): CalibrationChoic
     if ('calibration' in attempt) return { calibration: attempt.calibration, warnings };
     warnings.push(attempt.warning);
   }
-  throw new GyroViewError('no-calibration', 'the recording carries no usable lens calibration');
+  return { calibration: undefined, warnings };
 }
 
 function tryParse(name: string, text: string): Attempt {

@@ -15,6 +15,7 @@ interface Segment {
 export class SparseRandomAccessSource implements RandomAccessSource {
   private readonly segments: Segment[] = [];
   private readonly readLog: ByteRange[] = [];
+  private sizeLookups = 0;
 
   public constructor(private readonly totalSize: number) {}
 
@@ -27,6 +28,13 @@ export class SparseRandomAccessSource implements RandomAccessSource {
 
   public get reads(): readonly ByteRange[] {
     return this.readLog;
+  }
+
+  /**
+   * How often `size()` was asked, so tests can assert callers look it up once.
+   */
+  public get sizeCalls(): number {
+    return this.sizeLookups;
   }
 
   public place(offset: number, bytes: Uint8Array): this {
@@ -42,6 +50,7 @@ export class SparseRandomAccessSource implements RandomAccessSource {
   }
 
   public size(): Promise<number> {
+    this.sizeLookups += 1;
     return Promise.resolve(this.totalSize);
   }
 

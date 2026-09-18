@@ -40,3 +40,4 @@ The vocabulary used in code, tests and documents. One name per concept; no synon
 | Companion file       | A file the camera writes beside a recording: the other lens's file of a split-file pair, or the proxy.                                                                 |
 | Proxy                | The low-resolution `LRV_..._01_` recording of the same capture; optional, used for fallback and scrubbing, never required.                                             |
 | Resource locator     | Port that tells whether a URL can be fetched, used to look for companion files.                                                                                        |
+| Decode probe         | Pre-flight decode of every lens track's first key frame under a deadline; its verdicts decide between full playback, proxy fallback and a typed error.                 |

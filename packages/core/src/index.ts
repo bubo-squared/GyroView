@@ -91,6 +91,14 @@ export {
   type DecodePipelineOptions,
   type DecodeRunReport,
 } from './application/playback/LensDecodePipeline';
+export {
+  probeDecoding,
+  type DecodeProbeOptions,
+  type DecodeProbeReport,
+  type LensProbeResult,
+  type LensProbeVerdict,
+} from './application/playback/probeDecoding';
+export { Signal } from './shared/async/Signal';
 export type { PlaybackClock } from './ports/PlaybackClock';
 export type { FrameSink, Presentation } from './ports/FrameSink';
 export { WallClock } from './domain/playback/WallClock';

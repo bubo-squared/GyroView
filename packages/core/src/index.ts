@@ -65,3 +65,26 @@ export type {
 } from './shared/binary/ReadonlyTypedArray';
 export * from './shared/units/time';
 export * from './shared/units/angle';
+
+// Playback ports and pipeline
+export type {
+  AudioTrackDescription,
+  DemuxedInput,
+  Demuxer,
+  EncodedVideoPacket,
+  VideoDecoderConfiguration,
+  VideoTrackReader,
+} from './ports/Demuxer';
+export type {
+  DecodedFrame,
+  VideoDecoderCallbacks,
+  VideoDecoderHandle,
+  VideoDecoderPort,
+} from './ports/VideoDecoderPort';
+export { closeFramePair, type FramePair } from './application/playback/FramePair';
+export { FramePairQueue } from './application/playback/FramePairQueue';
+export {
+  LensDecodePipeline,
+  type DecodePipelineOptions,
+  type DecodeRunReport,
+} from './application/playback/LensDecodePipeline';

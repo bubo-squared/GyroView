@@ -131,6 +131,8 @@ export default defineConfig(
             cx: true,
             cy: true,
           },
+          // "configuration" is the full word; the rule would shorten it to "config".
+          replacements: { configuration: false },
         },
       ],
     },

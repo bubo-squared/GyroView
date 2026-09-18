@@ -25,7 +25,16 @@ export interface BuiltTrailerFile {
   readonly records: readonly ExpectedRecord[];
 }
 
+export interface IndexedLayoutOptions {
+  readonly alignment: number;
+  /**
+   * Newer firmware wraps the whole trailer in an `inst` box whose header precedes the payload.
+   */
+  readonly wrapInInstBox?: boolean;
+}
+
 const INDEX_SLOT_COUNT = 31;
+const INST_BOX_HEADER_SIZE = 8;
 const TRAILER_VERSION = 3;
 const DEFAULT_FORMAT = 0;
 
@@ -66,13 +75,14 @@ export class TrailerFixtureBuilder {
     };
   }
 
-  public buildIndexed(alignment: number): BuiltTrailerFile {
-    const payloadStart = this.prefix.byteLength;
+  public buildIndexed(options: IndexedLayoutOptions): BuiltTrailerFile {
+    const boxHeaderSize = options.wrapInInstBox ? INST_BOX_HEADER_SIZE : 0;
+    const payloadStart = this.prefix.byteLength + boxHeaderSize;
     const parts: Uint8Array[] = [];
     const expected: ExpectedRecord[] = [];
     let cursor = payloadStart;
     for (const record of this.records) {
-      const aligned = alignUp(cursor, alignment);
+      const aligned = alignUp(cursor, options.alignment);
       parts.push(new Uint8Array(aligned - cursor), record.payload);
       expected.push(this.describe(record, aligned));
       cursor = aligned + record.payload.byteLength;
@@ -84,7 +94,11 @@ export class TrailerFixtureBuilder {
     );
     cursor += index.byteLength + RECORD_HEADER_SIZE;
     parts.push(encodeFooter(cursor - payloadStart + TRAILER_FOOTER_SIZE));
-    return { bytes: concat([this.prefix, ...parts]), payloadStart, records: expected };
+    const payload = concat(parts);
+    const wrapped = options.wrapInInstBox
+      ? concat([encodeInstBoxHeader(payload.byteLength), payload])
+      : payload;
+    return { bytes: concat([this.prefix, wrapped]), payloadStart, records: expected };
   }
 
   private describe(record: FixtureRecordSpec, offset: number): ExpectedRecord {
@@ -103,6 +117,13 @@ function encodeHeader(record: FixtureRecordSpec): Uint8Array {
   view.setUint8(0, record.format ?? DEFAULT_FORMAT);
   view.setUint8(1, record.id);
   view.setUint32(2, record.payload.byteLength, true);
+  return header;
+}
+
+function encodeInstBoxHeader(payloadSize: number): Uint8Array {
+  const header = new Uint8Array(INST_BOX_HEADER_SIZE);
+  new DataView(header.buffer).setUint32(0, payloadSize + INST_BOX_HEADER_SIZE);
+  header.set(new TextEncoder().encode('inst'), 4);
   return header;
 }
 

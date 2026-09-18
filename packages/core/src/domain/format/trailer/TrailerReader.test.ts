@@ -63,7 +63,7 @@ describe('TrailerReader with the real X5 layout', () => {
 
 describe('TrailerReader with synthetic layouts', () => {
   it('locates records through the index when one is present', async () => {
-    const file = syntheticRecords().buildIndexed(4096);
+    const file = syntheticRecords().buildIndexed({ alignment: 4096 });
     const source = new InMemoryRandomAccessSource(file.bytes);
 
     const trailer = await reader.read(source);

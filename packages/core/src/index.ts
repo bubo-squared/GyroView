@@ -19,7 +19,7 @@ export { GyroRecordParser, type GyroRecordHints } from './domain/motion/gyro/Gyr
 export { GyroTrack, type GyroSample } from './domain/motion/gyro/GyroTrack';
 export { ExposureRecordParser } from './domain/motion/exposure/ExposureRecordParser';
 export { ExposureRecord, type ExposureEntry } from './domain/motion/exposure/ExposureRecord';
-export type { Vector3 } from './shared/math/Vector3';
+export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
 export * from './shared/units/time';
 export * from './shared/units/angle';
 export { CalibrationSelector, type CalibrationChoice } from './domain/optics/CalibrationSelector';
@@ -39,3 +39,13 @@ export {
 export { BoxScanner } from './domain/format/boxes/BoxScanner';
 export { BoxType } from './domain/format/boxes/boxConstants';
 export { findBox, type BoxDescriptor, type BoxLayout } from './domain/format/boxes/BoxLayout';
+export {
+  Recording,
+  type RecordingParts,
+  type TrailerWrapper,
+} from './application/recording/Recording';
+export {
+  RecordingReader,
+  defaultRecordingReaderDependencies,
+  type RecordingReaderDependencies,
+} from './application/recording/RecordingReader';

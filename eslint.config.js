@@ -100,7 +100,14 @@ export default defineConfig(
         { selector: 'enumMember', format: ['PascalCase'] },
         { selector: 'import', format: null },
       ],
-      'unicorn/filename-case': ['error', { cases: { camelCase: true, pascalCase: true } }],
+      // Package directories follow npm's kebab-case; everything beneath them is camel or pascal case.
+      'unicorn/filename-case': [
+        'error',
+        {
+          cases: { camelCase: true, pascalCase: true },
+          directoryRoots: [/^(packages\/adapters|packages|tools|apps)\/[^/]+$/u],
+        },
+      ],
       'unicorn/no-null': 'off',
       // Iterator helpers need iOS Safari 18.4+; the player targets older iOS releases too.
       'unicorn/prefer-iterator-to-array': 'off',

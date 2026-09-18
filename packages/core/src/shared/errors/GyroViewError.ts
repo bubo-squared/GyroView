@@ -11,6 +11,7 @@ export type GyroViewErrorCode =
   | 'invalid-protobuf'
   | 'invalid-trailer'
   | 'no-calibration'
+  | 'no-info-record'
   | 'record-not-found'
   | 'unsupported-calibration';
 

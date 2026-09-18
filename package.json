@@ -15,7 +15,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "depcruise": "depcruise packages apps tools --config .dependency-cruiser.cjs",
+    "depcruise": "depcruise packages tools --config .dependency-cruiser.cjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

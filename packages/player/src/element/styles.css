@@ -1,0 +1,241 @@
+:host {
+  --gyro-view-accent: #4cc2ff;
+  --gyro-view-controls-background: rgb(0 0 0 / 55%);
+  --gyro-view-text: #f4f4f4;
+  --gyro-view-font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --gyro-view-radius: 6px;
+
+  display: block;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  color: var(--gyro-view-text);
+  font-family: var(--gyro-view-font);
+  overflow: hidden;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+:host([hidden]) {
+  display: none;
+}
+
+:host([data-fill]) {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+  z-index: 2147483000;
+}
+
+:host(:fullscreen) {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+
+canvas:active {
+  cursor: grabbing;
+}
+
+.poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+:host([data-has-frame]) .poster,
+:host(:not([poster])) .poster {
+  display: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+  background: rgb(0 0 0 / 45%);
+}
+
+:host([data-status='loading']) .overlay.loading,
+:host([data-status='error']) .overlay.error {
+  display: flex;
+}
+
+.spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid rgb(255 255 255 / 25%);
+  border-top-color: var(--gyro-view-accent);
+  border-radius: 50%;
+  animation: gyro-view-spin 0.9s linear infinite;
+}
+
+@keyframes gyro-view-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-code {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.big-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4.5rem;
+  height: 4.5rem;
+  transform: translate(-50%, -50%);
+  border: 0;
+  border-radius: 50%;
+  background: var(--gyro-view-controls-background);
+  color: var(--gyro-view-text);
+  font-size: 2rem;
+  cursor: pointer;
+}
+
+:host(:not([data-status='ready'])):host(:not([data-status='paused'])) .big-play,
+:host(:not([controls])) .big-play {
+  display: none;
+}
+
+.controls {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem 0.5rem 0.5rem;
+  background: linear-gradient(to top, var(--gyro-view-controls-background), transparent);
+  transition: opacity 0.25s;
+}
+
+:host(:not([controls])) .controls,
+:host([data-status='idle']) .controls,
+:host([data-status='loading']) .controls {
+  display: none;
+}
+
+:host([data-idle]) .controls {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.time {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  padding: 0 0.5rem;
+  white-space: nowrap;
+}
+
+button {
+  min-width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: var(--gyro-view-radius);
+  background: transparent;
+  color: var(--gyro-view-text);
+  font: inherit;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+button:hover,
+button:focus-visible {
+  background: rgb(255 255 255 / 15%);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--gyro-view-accent);
+  outline-offset: 1px;
+}
+
+input[type='range'] {
+  accent-color: var(--gyro-view-accent);
+  margin: 0;
+}
+
+.seek {
+  width: 100%;
+  height: 1.25rem;
+}
+
+.volume {
+  width: 5rem;
+}
+
+.menu {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: var(--gyro-view-radius);
+  background: var(--gyro-view-controls-background);
+  font-size: 0.85rem;
+}
+
+.menu[hidden],
+.menu label[hidden] {
+  display: none;
+}
+
+.menu label {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+select {
+  font: inherit;
+  border-radius: var(--gyro-view-radius);
+  padding: 0.15rem 0.3rem;
+}
+
+@media (max-width: 480px) {
+  .volume,
+  .stop {
+    display: none;
+  }
+}

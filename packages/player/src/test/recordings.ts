@@ -36,7 +36,7 @@ const WIRE_TYPE_BITS = 3;
 const VARINT_CONTINUE = 0x80;
 const VARINT_MASK = 0x7f;
 
-export async function fetchBytes(url: string): Promise<Uint8Array> {
+export async function fetchBytes(url: string): Promise<Uint8Array<ArrayBuffer>> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${url} answered ${response.status}`);
   return new Uint8Array(await response.arrayBuffer());

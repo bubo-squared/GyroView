@@ -1,0 +1,173 @@
+import {
+  clampView,
+  degrees,
+  type Degrees,
+  type Projection,
+  type StabilizationMode,
+  type ViewState,
+} from '@gyroview/core';
+
+import type { MediaInput, PlayerSource, Quality } from '../PlayerSource';
+
+/**
+ * Reads one attribute of the element, `null` when absent, like `Element.getAttribute`.
+ */
+export type AttributeReader = (name: string) => string | null;
+
+/**
+ * The attributes `<gyro-view>` understands. `Source` ones name what to play; changing any of
+ * them reloads. `View` ones move the picture without reloading.
+ */
+export const SourceAttribute = {
+  Src: 'src',
+  Src2: 'src2',
+  Proxy: 'proxy',
+  Quality: 'quality',
+} as const;
+
+export const ViewAttribute = {
+  FieldOfView: 'fov',
+  Yaw: 'yaw',
+  Pitch: 'pitch',
+  Projection: 'projection',
+} as const;
+
+export const PlaybackAttribute = {
+  Autoplay: 'autoplay',
+  Muted: 'muted',
+  Loop: 'loop',
+  Stabilization: 'stabilization',
+  Controls: 'controls',
+  Poster: 'poster',
+} as const;
+
+export const OBSERVED_ATTRIBUTES: readonly string[] = [
+  ...Object.values(SourceAttribute),
+  ...Object.values(ViewAttribute),
+  ...Object.values(PlaybackAttribute),
+];
+
+const STABILIZATION_MODES: readonly StabilizationMode[] = ['off', 'lock', 'horizon', 'follow'];
+const PROJECTIONS: readonly Projection[] = ['rectilinear', 'stereographic', 'equirectangular'];
+const QUALITIES: readonly Quality[] = ['auto', 'full', 'proxy'];
+const PROXY_AUTO = 'auto';
+const PROXY_NONE = 'none';
+
+export interface ParsedSource {
+  readonly source: PlayerSource | undefined;
+  /**
+   * Attribute values that were ignored, worded for a `warning` event.
+   */
+  readonly problems: readonly string[];
+}
+
+/**
+ * The source the attributes describe, or nothing when `src` is absent. URLs resolve against
+ * the document, as an image's would.
+ */
+export function sourceFromAttributes(read: AttributeReader, baseUrl: string): ParsedSource {
+  const main = read(SourceAttribute.Src);
+  if (main === null || main.trim() === '') return { source: undefined, problems: [] };
+  const qualityValue = read(SourceAttribute.Quality);
+  const quality = qualityFromAttribute(qualityValue);
+  const problems = quality === undefined ? problemsWith('quality', qualityValue, QUALITIES) : [];
+  const second = read(SourceAttribute.Src2);
+  const proxy = proxyFromAttribute(read(SourceAttribute.Proxy), baseUrl);
+  const source: PlayerSource = {
+    main: urlInput(main, baseUrl),
+    second: second === null || second.trim() === '' ? undefined : urlInput(second, baseUrl),
+    proxy: proxy.input,
+    shouldDiscoverProxy: proxy.shouldDiscover,
+    quality: quality ?? 'auto',
+  };
+  return { source, problems };
+}
+
+interface ProxyChoice {
+  readonly input: MediaInput | undefined;
+  readonly shouldDiscover: boolean;
+}
+
+const DISCOVER_PROXY: ProxyChoice = { input: undefined, shouldDiscover: true };
+const NO_PROXY: ProxyChoice = { input: undefined, shouldDiscover: false };
+
+/**
+ * `auto` (the default) looks beside the recording, `none` never does, anything else is the
+ * proxy's URL.
+ */
+function proxyFromAttribute(value: string | null, baseUrl: string): ProxyChoice {
+  const trimmed = value?.trim() ?? PROXY_AUTO;
+  if (trimmed === PROXY_AUTO || trimmed === '') return DISCOVER_PROXY;
+  return trimmed === PROXY_NONE
+    ? NO_PROXY
+    : { input: urlInput(trimmed, baseUrl), shouldDiscover: false };
+}
+
+function urlInput(value: string, baseUrl: string): MediaInput {
+  return { url: new URL(value.trim(), baseUrl).href };
+}
+
+/**
+ * The view the attributes ask for, starting from `fallback` for whatever they leave out.
+ */
+export function viewFromAttributes(read: AttributeReader, fallback: ViewState): ViewState {
+  return clampView({
+    yaw: angleOf(read(ViewAttribute.Yaw), fallback.yaw),
+    pitch: angleOf(read(ViewAttribute.Pitch), fallback.pitch),
+    fieldOfView: angleOf(read(ViewAttribute.FieldOfView), fallback.fieldOfView),
+    projection: projectionFromAttribute(read(ViewAttribute.Projection)) ?? fallback.projection,
+  });
+}
+
+function angleOf(value: string | null, fallback: Degrees): Degrees {
+  const parsed = parseNumber(value);
+  return parsed === undefined ? fallback : degrees(parsed);
+}
+
+export function qualityFromAttribute(value: string | null): Quality | undefined {
+  return parseChoice(value, QUALITIES);
+}
+
+export function stabilizationFromAttribute(value: string | null): StabilizationMode | undefined {
+  return parseChoice(value, STABILIZATION_MODES);
+}
+
+export function projectionFromAttribute(value: string | null): Projection | undefined {
+  return parseChoice(value, PROJECTIONS);
+}
+
+/**
+ * HTML boolean attributes are true by presence, whatever their value.
+ */
+export function isBooleanAttributeSet(value: string | null): boolean {
+  return value !== null;
+}
+
+export function parseNumber(value: string | null): number | undefined {
+  if (value === null || value.trim() === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+/**
+ * The choice named by the attribute, matched without regard to case; undefined when absent
+ * or unknown.
+ */
+function parseChoice<Choice extends string>(
+  value: string | null,
+  choices: readonly Choice[],
+): Choice | undefined {
+  if (value === null) return undefined;
+  const wanted = value.trim().toLowerCase();
+  return choices.find((choice) => choice === wanted);
+}
+
+function problemsWith(
+  attribute: string,
+  value: string | null,
+  choices: readonly string[],
+): readonly string[] {
+  return value === null
+    ? []
+    : [`ignoring ${attribute}="${value}"; expected one of ${choices.join(', ')}`];
+}

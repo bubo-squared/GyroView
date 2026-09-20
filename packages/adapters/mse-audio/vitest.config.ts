@@ -14,6 +14,11 @@ export default defineProject({
   test: {
     name: 'adapter-mse-audio',
     include: ['src/**/*.test.ts'],
+    /**
+     * The tests wait on real audio playback, which headless WebKit starts slowly while the
+     * whole workspace's browsers run at once; their own waits are much shorter.
+     */
+    testTimeout: 60_000,
     browser: {
       enabled: true,
       headless: true,

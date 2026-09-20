@@ -5,6 +5,7 @@ export type GyroViewErrorCode =
   | 'binary-out-of-bounds'
   | 'binary-unsafe-integer'
   | 'codec-unsupported'
+  | 'cors'
   | 'decode'
   | 'index-out-of-range'
   | 'invalid-byte-range'

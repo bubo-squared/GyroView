@@ -42,9 +42,10 @@ describe('HttpRangeSource', () => {
   it('retries the size lookup after a failed HEAD instead of caching the failure', async () => {
     const server = await serve(content);
     let attempts = 0;
+    // The first HEAD and the no-CORS probe that diagnoses its failure both find the network down.
     const flaky: typeof fetch = (input, init) => {
       attempts += 1;
-      return attempts === 1 ? Promise.reject(new Error('offline')) : fetch(input, init);
+      return attempts <= 2 ? Promise.reject(new Error('offline')) : fetch(input, init);
     };
     const source = new HttpRangeSource(server.url, { fetch: flaky });
     await expect(source.size()).rejects.toMatchObject({ code: 'source-unreadable' });

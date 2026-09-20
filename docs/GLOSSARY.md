@@ -70,3 +70,10 @@ The vocabulary used in code, tests and documents. One name per concept; no synon
 | Embed protocol       | The versioned `postMessage` vocabulary between an embedding page and the frame: `hello`, `command`, `result`, `event`; every message validated, one trusted origin each. |
 | Embed host           | The frame's side of the bridge: runs commands on the element and forwards its events.                                                                                    |
 | Embed handle         | The embedding page's side: the player API as promises, the events, and a state mirror.                                                                                   |
+| Buffering            | Playing without a picture to show: the clock waits for the decoders on starting, after a seek and when they fall behind; `waiting`/`playing` to page listeners.          |
+| Priming              | Having enough decoded pairs queued (two, or the run over) for the clock to start without stalling at once.                                                               |
+| Starvation           | Nothing due, nothing queued, the run not over and the shown frame well behind the clock: the decoders cannot keep up, so playback buffers.                               |
+| Preload              | Decoding the first frame while `ready`, so it shows instead of a black canvas; `preload="none"` skips it.                                                                |
+| Scrub                | A seek to the key frame at or before a time: quick to show while the seek bar is dragged; the exact seek follows when the thumb is released.                             |
+| Seam ring            | The circle of body directions halfway through the blend band around lens 0's axis; both lenses image it, so their colours there differ by exposure, not content.         |
+| Gain match           | Per-channel gains that bring every lens's seam-ring brightness to lens 0's, measured on the GPU every half second and low-passed over 1.5 s.                             |

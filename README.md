@@ -6,14 +6,15 @@ and embeds on any website as a `<gyro-view>` web component or an iframe.
 
 ## Status
 
-Phases 0 to 5 are complete: feasibility (`spike/README.md`), format parsing and the CLI
+Phases 0 to 6 are complete: feasibility (`spike/README.md`), format parsing and the CLI
 (`packages/core`, `tools/insv-inspect`), the media pipeline (HTTP ranges, demuxing, lockstep
-WebCodecs decoding, the playback session, the audio clock over Media Source Extensions,
-capability probing and companion-file discovery), GPU stitching with Three.js
-(`packages/adapters/three`), gyro stabilization (orientation integration, lock, horizon and
-follow modes), the `<gyro-view>` player (`packages/player`) and the embed site (`apps/embed`).
-Phase 6, hardening (buffering state, gain matching, Safari specifics, long clips, deployment
-notes), is next.
+WebCodecs decoding, the playback session with its buffering state, the audio clock over Media
+Source Extensions, capability probing and companion-file discovery), GPU stitching with
+Three.js including exposure matching along the seam (`packages/adapters/three`), gyro
+stabilization (orientation integration, lock, horizon and follow modes), the `<gyro-view>`
+player (`packages/player`), the embed site (`apps/embed`) and the deployment notes
+(`docs/DEPLOYMENT.md`). Still open: verification on X3 and X4 recordings and on an iPhone,
+which need the files and the device.
 
 ## Using the player
 
@@ -35,19 +36,25 @@ Two ways in; both play the recording from a URL that serves byte ranges (see bel
 Attributes: `src` (the recording), `src2` (the other lens's file of a split-file recording,
 found by itself when it sits beside `src` under the camera's name), `proxy` (`auto`, `none` or
 the URL of the camera's low-resolution `LRV` file), `quality` (`auto`, `full`, `proxy`),
-`autoplay`, `muted`, `loop`, `controls`, `poster`, `fov`, `yaw`, `pitch`, `projection`
-(`rectilinear`, `stereographic`, `equirectangular`) and `stabilization` (`off`, `lock`,
-`horizon`, `follow`). Every attribute is also a property.
+`autoplay`, `muted`, `loop`, `controls`, `poster`, `preload` (`none` keeps the decoders idle
+until play; otherwise the first frame shows at once), `gain-match` (`off` leaves the lenses'
+exposure as recorded), `fov`, `yaw`, `pitch`, `projection` (`rectilinear`, `stereographic`,
+`equirectangular`) and `stabilization` (`off`, `lock`, `horizon`, `follow`). Every attribute
+is also a property (`gainMatch` for `gain-match`).
 
-API: `play()`, `pause()`, `stop()`, `seek(seconds)`, `currentTime`, `duration`, `paused`,
-`status`, `metadata`, `view`, `lookAt(yaw, pitch)`, `resetView()`, `zoom(steps)`,
-`setStabilization(mode)`, `volume`, `toggleFullscreen()`, `loadFiles({ main, second, proxy })`.
+API: `play()`, `pause()`, `stop()`, `seek(seconds)`, `scrub(seconds)` (to the key frame at or
+before the time, for a dragged seek bar), `currentTime`, `duration`, `paused`, `status`,
+`metadata`, `view`, `lookAt(yaw, pitch)`, `resetView()`, `zoom(steps)`, `setStabilization(mode)`,
+`volume`, `toggleFullscreen()`, `loadFiles({ main, second, proxy })`.
 
 Events (`CustomEvent`s, payload in `detail`): `ready` (metadata: camera, layout, calibration
-version, frame time source, gyro and IMU frame, audio, proxy), `statuschange`, `play`, `pause`,
-`ended`, `timeupdate`, `seeking`, `seeked`, `frame`, `viewchange`, `stabilizationchange`,
-`warning` (a feature degraded: no gyro, unverified IMU frame, silent clock, proxy in use) and
-`error` (`code` and `message`; codes are stable, see `GyroViewErrorCode` in the core).
+version, frame time source, gyro and IMU frame, audio, proxy), `statuschange` (`idle`,
+`loading`, `ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`), `play`,
+`waiting`, `playing`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `frame`,
+`viewchange`, `stabilizationchange`, `warning` (a feature degraded: no gyro, unverified IMU
+frame, silent clock, proxy in use) and `error` (`code` and `message`; the codes are listed in
+`docs/DEPLOYMENT.md`). Sound follows the picture: playback holds in `buffering` (`waiting`)
+until frames are decoded, on starting, after a seek and whenever decoding falls behind.
 
 Keyboard: space or K play/pause, J and L seek, arrows look around (Shift + arrows seek), plus
 and minus zoom, 0 resets the view, M mutes, F fills the screen. Mouse and touch: drag to look,
@@ -76,7 +83,7 @@ Styling: the host element sizes the player (it is a block with a 16:9 aspect rat
 
 `GyroView.embed` puts an `<iframe allow="fullscreen; autoplay">` pointing at `embed.html`
 in the container and returns the same API as the element, as promises over `postMessage`
-(`play`, `pause`, `stop`, `seek`, `lookAt`, `resetView`, `zoom`, `setStabilization`,
+(`play`, `pause`, `stop`, `seek`, `scrub`, `lookAt`, `resetView`, `zoom`, `setStabilization`,
 `setVolume`, `setMuted`, `setLoop`, `load`, `getState`), the player's events on
 `handle.events`, and a `state` mirror. The frame talks only to the page that embedded it and
 the page only to the frame. Without the snippet, an iframe of

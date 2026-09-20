@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
 
-import { samplesPlugin } from './dev/samplesPlugin';
+import { samplesPlugin } from './dev/samplesPlugin.ts';
 
 const APP_ROOT = fileURLToPath(new URL('.', import.meta.url));
 const REPOSITORY_ROOT = fileURLToPath(new URL('../..', import.meta.url));

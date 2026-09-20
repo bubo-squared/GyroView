@@ -59,6 +59,11 @@ export default defineProject({
     include: ['src/browser/**/*.test.ts'],
     testTimeout: 90_000,
     hookTimeout: 90_000,
+    /**
+     * The suites share the machine's few hardware HEVC decoders; running them at once starves
+     * the playback test of frames.
+     */
+    fileParallelism: false,
     browser: {
       enabled: true,
       headless: true,

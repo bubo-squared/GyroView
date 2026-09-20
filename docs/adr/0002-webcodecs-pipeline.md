@@ -16,7 +16,7 @@ MSE is the master clock.
 
 ## Evidence
 
-The Phase 0 spike (`spike/README.md`) decoded 5.7K60 dual-track at ~175 pairs/s and 8K30 at
+The feasibility spike (`docs/FEASIBILITY.md`) decoded 5.7K60 dual-track at ~175 pairs/s and 8K30 at
 ~100 pairs/s in Chrome and WebKit on an M4 Pro with zero unpaired frames; both tracks carry
 identical timestamps.
 

@@ -1,4 +1,4 @@
-// Lint gate for production packages. The Phase 0 spike is throwaway and excluded.
+// Lint gate for every package, app and tool.
 import { defineConfig, globalIgnores } from 'eslint/config';
 import prettier from 'eslint-config-prettier';
 import unicorn from 'eslint-plugin-unicorn';
@@ -35,7 +35,6 @@ export default defineConfig(
     '**/dist/',
     '**/coverage/',
     '**/.stryker-tmp/',
-    'spike/',
     'test/fixtures/',
   ]),
   {

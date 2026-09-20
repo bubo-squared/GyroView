@@ -19,5 +19,5 @@ Use mediabunny (TypeScript, MPL-2.0, WebCodecs-native): `UrlSource` and `BlobSou
 
 ## Consequences
 
-mediabunny opened the `inst`-wrapped files in the spike without special handling. If a bare
+mediabunny opened the `inst`-wrapped files in the feasibility spike (`docs/FEASIBILITY.md`) without special handling. If a bare
 trailer ever breaks it, the `RandomAccessSource` can present a view truncated at the trailer.

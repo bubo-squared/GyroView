@@ -14,8 +14,12 @@ Hexagonal architecture, enforced by `.dependency-cruiser.cjs`:
 - `packages/core`: domain and application code. Pure TypeScript, no runtime dependencies, no DOM
   or Node types in `src` (tests may use Node).
 - `packages/adapters/*`: one external technology per package, implementing `core` ports.
-- `packages/player`: the `<gyro-view>` element and the composition root.
-- `apps/*`: deployable sites. `tools/*`: developer CLIs.
+- `packages/player`: the composition root (`openRecording`, `buildPipeline`), the headless
+  `Player` and the `<gyro-view>` element with its controls and gestures.
+- `apps/embed`: the static site: embed page, `embed.js` snippet with the postMessage bridge,
+  `gyro-view.js` bundle, developer page. Apps import the player, never the adapters.
+- `tools/*`: developer CLIs (`insv-inspect`), the fixture builder (`fixtures`) and the
+  end-to-end tests over the real recordings (`integration`).
 
 ## Definition of done for a change
 

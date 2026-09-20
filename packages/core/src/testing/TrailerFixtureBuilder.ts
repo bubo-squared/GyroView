@@ -1,5 +1,5 @@
 import { encodeBox } from './encodeBox';
-import { BoxType } from '../../src/domain/format/boxes/boxConstants';
+import { BoxType } from '../domain/format/boxes/boxConstants';
 import {
   FOOTER_MAGIC_OFFSET,
   FOOTER_TRAILER_SIZE_OFFSET,
@@ -16,7 +16,8 @@ import {
   RecordType,
   TRAILER_FOOTER_SIZE,
   TRAILER_MAGIC,
-} from '../../src/domain/format/constants';
+} from '../domain/format/constants';
+import { encodeAscii } from '../shared/text/ascii';
 
 export interface FixtureRecordSpec {
   readonly id: number;
@@ -145,7 +146,7 @@ function encodeFooter(trailerSize: number): Uint8Array {
   const view = new DataView(footer.buffer);
   view.setUint32(FOOTER_TRAILER_SIZE_OFFSET, trailerSize, IS_LITTLE_ENDIAN);
   view.setUint32(FOOTER_VERSION_OFFSET, TRAILER_VERSION, IS_LITTLE_ENDIAN);
-  footer.set(new TextEncoder().encode(TRAILER_MAGIC), FOOTER_MAGIC_OFFSET);
+  footer.set(encodeAscii(TRAILER_MAGIC), FOOTER_MAGIC_OFFSET);
   return footer;
 }
 

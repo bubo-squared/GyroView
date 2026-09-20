@@ -5,7 +5,7 @@ import { BoxType } from './boxConstants';
 import { scanBoxes } from './scanBoxes';
 import { InMemoryRandomAccessSource } from '../../../testing/InMemoryRandomAccessSource';
 import { SparseRandomAccessSource } from '../../../testing/SparseRandomAccessSource';
-import { encodeBox } from '../../../../test/support/encodeBox';
+import { encodeBox } from '../../../testing/encodeBox';
 import { loadBoxHeaders } from '../../../../test/support/fixtures';
 
 function scanFile(bytes: Uint8Array): ReturnType<typeof scanBoxes> {

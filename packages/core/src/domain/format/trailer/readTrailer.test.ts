@@ -12,7 +12,7 @@ import {
 } from '../constants';
 import { InMemoryRandomAccessSource } from '../../../testing/InMemoryRandomAccessSource';
 import { SparseRandomAccessSource } from '../../../testing/SparseRandomAccessSource';
-import { TrailerFixtureBuilder } from '../../../../test/support/TrailerFixtureBuilder';
+import { TrailerFixtureBuilder } from '../../../testing/TrailerFixtureBuilder';
 import { loadFixture, loadManifest } from '../../../../test/support/fixtures';
 
 const manifest = loadManifest();

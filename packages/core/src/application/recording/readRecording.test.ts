@@ -4,7 +4,7 @@ import { readRecording } from './readRecording';
 import { RecordType } from '../../domain/format/constants';
 import { CalibrationVersion } from '../../domain/optics/LensCalibration';
 import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSource';
-import { TrailerFixtureBuilder } from '../../../test/support/TrailerFixtureBuilder';
+import { TrailerFixtureBuilder } from '../../testing/TrailerFixtureBuilder';
 import { loadFixture } from '../../../test/support/fixtures';
 import { minimalMp4Prefix } from '../../../test/support/mp4Prefix';
 import {

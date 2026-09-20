@@ -1,4 +1,4 @@
-import { encodeBox } from './encodeBox';
+import { encodeBox } from '../../src/testing/encodeBox';
 
 /**
  * The smallest sequence of bytes the box scanner accepts as an MP4 body: an `ftyp` and an empty

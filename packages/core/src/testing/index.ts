@@ -19,3 +19,12 @@ export {
 export { FakeFrameSink } from './FakeFrameSink';
 export { FakePlaybackClock, type FakePlaybackClockOptions } from './FakePlaybackClock';
 export { FakeResourceLocator } from './FakeResourceLocator';
+export { encodeBox } from './encodeBox';
+export {
+  TrailerFixtureBuilder,
+  type BuiltTrailerFile,
+  type ExpectedRecord,
+  type FixtureRecordSpec,
+  type IndexedLayoutOptions,
+} from './TrailerFixtureBuilder';
+export { FakeDemuxer, type FakeInputSpec } from './FakeDemuxer';

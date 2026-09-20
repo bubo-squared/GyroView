@@ -11,6 +11,7 @@ import {
   type DemuxedInput,
   type FrameSourceKey,
   type Recording,
+  type Seconds,
   type VideoTrackReader,
 } from '@gyroview/core';
 
@@ -80,15 +81,13 @@ async function demuxInputs(
   disposables: Disposables,
 ): Promise<DemuxedRecording> {
   const { ports, signal } = attempt;
-  const sources = inputs.map((input) => ports.sources.open(input));
-  const [primary] = sources;
+  const openings = inputs.map((input) => ({ input, source: ports.sources.open(input) }));
+  const [primary] = openings;
   ensureInvariant(primary !== undefined, 'a recording needs at least one input');
-  const recording = await readRecording(primary);
+  const recording = await readRecording(primary.source);
   signal.throwIfAborted();
   const settled = await Promise.allSettled(
-    sources.map((source, index) =>
-      ports.demuxer.open(source, inputName(inputs[index] ?? { url: '' })),
-    ),
+    openings.map(({ input, source }) => ports.demuxer.open(source, inputName(input))),
   );
   const opened = settled.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
   for (const input of opened) {
@@ -219,7 +218,7 @@ function assemble(parts: AssemblyParts, disposables: Disposables): OpenedRecordi
   };
 }
 
-function metadataOf(parts: AssemblyParts, duration: number, hasAudio: boolean): PlayerMetadata {
+function metadataOf(parts: AssemblyParts, duration: Seconds, hasAudio: boolean): PlayerMetadata {
   const { info } = parts.demuxed.recording;
   const { motion } = parts.timing;
   return {
@@ -236,6 +235,6 @@ function metadataOf(parts: AssemblyParts, duration: number, hasAudio: boolean): 
     hasAudio,
     isProxy: parts.attempt.isProxy,
     proxyName: parts.attempt.proxyName,
-    duration: seconds(duration),
+    duration,
   };
 }

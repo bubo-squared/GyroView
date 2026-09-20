@@ -21,6 +21,7 @@ import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
 import { transportEventsFor } from './transportEvents';
 import { Viewport } from './Viewport';
 import { buildPipeline, type Pipeline, type PipelineHost } from '../composition/buildPipeline';
+import { Disposables } from '../composition/Disposables';
 import { hasErrorCode, isAbortError } from '../composition/errorCodes';
 import type { OpenedRecording } from '../composition/OpenedRecording';
 import { openRecording } from '../composition/openRecording';
@@ -44,12 +45,13 @@ export interface LoadOptions {
 }
 
 /**
- * What is running for the loaded recording.
+ * What is running for the loaded recording; disposed as one.
  */
 interface Loaded {
   readonly opened: OpenedRecording;
   readonly pipeline: Pipeline;
   readonly viewport: Viewport;
+  dispose(): void;
 }
 
 const DEFAULT_STABILIZATION: StabilizationMode = 'lock';
@@ -132,6 +134,12 @@ export class Player {
     this.setStatus('loading');
     try {
       const loaded = await this.open(source, controller.signal);
+      // A newer load may have started between the last abort check and here; its parts belong
+      // to nobody now.
+      if (controller.signal.aborted) {
+        loaded.dispose();
+        return;
+      }
       this.loading = undefined;
       this.attach(loaded);
       if (options.autoplay) await this.autoplay();
@@ -151,11 +159,7 @@ export class Player {
     this.lastSessionState = undefined;
     const { loaded } = this;
     this.loaded = undefined;
-    if (loaded) {
-      loaded.viewport.dispose();
-      loaded.pipeline.dispose();
-      loaded.opened.dispose();
-    }
+    loaded?.dispose();
     this.setStatus('idle');
   }
 
@@ -227,6 +231,10 @@ export class Player {
 
   private async open(source: PlayerSource, signal: AbortSignal): Promise<Loaded> {
     const opened = await openRecording(source, this.parts.ports, signal);
+    const disposables = new Disposables();
+    disposables.add(() => {
+      opened.dispose();
+    });
     try {
       const pipeline = await buildPipeline({
         opened,
@@ -237,14 +245,17 @@ export class Player {
           this.onPresent(presentation);
         },
       });
+      disposables.add(() => {
+        pipeline.dispose();
+      });
       signal.throwIfAborted();
-      return {
-        opened,
-        pipeline,
-        viewport: new Viewport(this.parts.host.canvas, pipeline.renderer),
-      };
+      const viewport = new Viewport(this.parts.host.canvas, pipeline.renderer);
+      disposables.add(() => {
+        viewport.dispose();
+      });
+      return { opened, pipeline, viewport, dispose: disposables.toDisposer() };
     } catch (error) {
-      opened.dispose();
+      disposables.disposeAll();
       throw error;
     }
   }
@@ -274,12 +285,19 @@ export class Player {
     this.events.emit('ready', loaded.opened.metadata);
   }
 
+  /**
+   * A refused start leaves the recording loaded and paused: a warning, never a failed load.
+   */
   private async autoplay(): Promise<void> {
     try {
       await this.play();
     } catch (error) {
-      if (!hasErrorCode(error, 'playback-blocked')) throw error;
-      this.events.emit('warning', 'autoplay was blocked; playback waits for a user gesture');
+      this.events.emit(
+        'warning',
+        hasErrorCode(error, 'playback-blocked')
+          ? 'autoplay was blocked; playback waits for a user gesture'
+          : `autoplay failed: ${messageOf(error)}`,
+      );
     }
   }
 
@@ -306,8 +324,7 @@ export class Player {
     try {
       await this.play();
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      this.events.emit('warning', `the loop could not restart playback: ${reason}`);
+      this.events.emit('warning', `the loop could not restart playback: ${messageOf(error)}`);
     }
   }
 
@@ -344,6 +361,10 @@ export class Player {
     this.lastStatus = status;
     this.events.emit('statuschange', status);
   }
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function sinkOf(pipeline: Pipeline): Pick<ThreeFrameRenderer, 'present'> {

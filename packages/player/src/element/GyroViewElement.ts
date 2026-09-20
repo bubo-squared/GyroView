@@ -1,6 +1,6 @@
 import {
+  degrees,
   seconds,
-  type Degrees,
   type GyroViewError,
   type StabilizationMode,
   type ViewState,
@@ -188,7 +188,7 @@ export class GyroViewElement extends HTMLElement {
   }
 
   public lookAt(yaw: number, pitch: number): void {
-    this.player.lookAt(yaw as Degrees, pitch as Degrees);
+    this.player.lookAt(degrees(yaw), degrees(pitch));
   }
 
   public resetView(): void {
@@ -232,7 +232,11 @@ export class GyroViewElement extends HTMLElement {
       this.player.pause();
       return;
     }
-    void this.player.play().catch(ignoreReportedFailure);
+    void this.player.play().catch((error: unknown) => {
+      this.warn(
+        `playback could not start: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
   };
 
   private readonly toggleFullscreenLater = (): void => {
@@ -278,8 +282,11 @@ export class GyroViewElement extends HTMLElement {
     return viewFromAttributes((attribute) => this.getAttribute(attribute), this.player.view);
   }
 
+  /**
+   * The element's own bookkeeping runs before the events reach page listeners, so a listener
+   * sees the attributes already matching the event it hears.
+   */
   private observePlayer(): void {
-    relayPlayerEvents(this.player, this);
     this.player.events.on('statuschange', (status) => {
       this.dataset['status'] = status;
       this.idle.refresh();
@@ -290,6 +297,7 @@ export class GyroViewElement extends HTMLElement {
     this.player.events.on('error', (error) => {
       this.showError(error);
     });
+    relayPlayerEvents(this.player, this);
   }
 
   private showError(error: GyroViewError): void {

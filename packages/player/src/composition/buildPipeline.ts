@@ -71,6 +71,8 @@ const AUDIO_BUFFER_AHEAD_SECONDS = 30;
 const NO_AUDIO_WARNING = 'the recording has no audio track; playback follows a silent clock';
 const AUDIO_UNSUPPORTED_WARNING =
   'this browser cannot play the audio track through Media Source Extensions; playback follows a silent clock';
+const AUDIO_FAILED_WARNING =
+  'the audio track could not be prepared for playback; playback follows a silent clock';
 
 /**
  * Assembles the playing parts for an opened recording: the clock the picture follows, the
@@ -136,12 +138,18 @@ async function clockFor(
   audio: HTMLMediaElement,
 ): Promise<ChosenClock> {
   if (!audioTrack) return wallClock(NO_AUDIO_WARNING);
-  const segments = await new MediabunnyAudioSegmenter().open(audioTrack);
-  if (!MediaSourceAudioClock.isSupported(segments)) return wallClock(AUDIO_UNSUPPORTED_WARNING);
-  const clock = await MediaSourceAudioClock.open(audio, segments, {
-    bufferAhead: seconds(AUDIO_BUFFER_AHEAD_SECONDS),
-  });
-  return { clock, kind: 'audio', warnings: [] };
+  try {
+    const segments = await new MediabunnyAudioSegmenter().open(audioTrack);
+    if (!MediaSourceAudioClock.isSupported(segments)) return wallClock(AUDIO_UNSUPPORTED_WARNING);
+    const clock = await MediaSourceAudioClock.open(audio, segments, {
+      bufferAhead: seconds(AUDIO_BUFFER_AHEAD_SECONDS),
+    });
+    return { clock, kind: 'audio', warnings: [] };
+  } catch (error) {
+    // Sound is a comfort, the picture is the point: a broken audio path must not stop playback.
+    const reason = error instanceof Error ? error.message : String(error);
+    return wallClock(`${AUDIO_FAILED_WARNING} (${reason})`);
+  }
 }
 
 function wallClock(warning: string): ChosenClock {

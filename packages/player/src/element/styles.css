@@ -13,13 +13,17 @@
   color: var(--gyro-view-text);
   font-family: var(--gyro-view-font);
   overflow: hidden;
-  outline: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
 :host([hidden]) {
   display: none;
+}
+
+:host(:focus-visible) {
+  outline: 2px solid var(--gyro-view-accent);
+  outline-offset: 2px;
 }
 
 :host([data-fill]) {
@@ -121,7 +125,7 @@ canvas:active {
   cursor: pointer;
 }
 
-:host(:not([data-status='ready'])):host(:not([data-status='paused'])) .big-play,
+:host(:not([data-status='ready']):not([data-status='paused'])) .big-play,
 :host(:not([controls])) .big-play {
   display: none;
 }

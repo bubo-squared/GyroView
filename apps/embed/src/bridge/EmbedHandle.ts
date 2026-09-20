@@ -1,4 +1,12 @@
-import { DEFAULT_VIEW, GyroViewError, TypedEmitter, type GyroViewErrorCode } from '@gyroview/core';
+import {
+  DEFAULT_VIEW,
+  GyroViewError,
+  TypedEmitter,
+  type GyroViewErrorCode,
+  type StabilizationMode,
+  type ViewState,
+} from '@gyroview/core';
+import type { PlayerMetadata, PlayerStatus } from '@gyroview/player';
 
 import type { Endpoint } from './Endpoint';
 import type { EmbedState, LoadRequest } from './EmbedState';
@@ -18,7 +26,20 @@ interface PendingCommand {
 /**
  * Events as the embedding page hears them: the player's, with errors as plain data.
  */
-export type EmbedEvents = Record<string, unknown>;
+export interface EmbedEvents extends Record<string, unknown> {
+  readonly statuschange: PlayerStatus;
+  readonly ready: PlayerMetadata;
+  readonly play: undefined;
+  readonly pause: undefined;
+  readonly ended: undefined;
+  readonly timeupdate: number;
+  readonly seeking: number;
+  readonly seeked: number;
+  readonly viewchange: ViewState;
+  readonly stabilizationchange: StabilizationMode;
+  readonly warning: string;
+  readonly error: SerializedError;
+}
 
 const INITIAL_STATE: EmbedState = {
   status: 'idle',

@@ -1,6 +1,6 @@
 import { locateOtherLensFile, locateProxy } from '@gyroview/core';
 
-import { hasErrorCode } from './errorCodes';
+import { hasErrorCode, isAbortError } from './errorCodes';
 import type { OpenedRecording } from './OpenedRecording';
 import { openInputs, type OpenAttempt } from './openInputs';
 import type { RecordingPorts } from './ports';
@@ -117,7 +117,7 @@ async function openProxyAfter(
   try {
     return await openProxy(proxy, context, [`playing the proxy: ${reason}`]);
   } catch (proxyError) {
-    if (proxyError instanceof DOMException) throw proxyError;
+    if (isAbortError(proxyError)) throw proxyError;
     throw cause;
   }
 }

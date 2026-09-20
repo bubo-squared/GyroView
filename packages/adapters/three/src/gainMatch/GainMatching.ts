@@ -46,6 +46,9 @@ export class GainMatching {
       const means = await this.pass.measure();
       this.lastMeasuredAt = mediaTime;
       if (means) this.applyGains(this.matcher.update(means, mediaTime));
+    } catch {
+      // A lost context fails the read-back; the picture is still drawn and a later frame retries.
+      this.lastMeasuredAt = mediaTime;
     } finally {
       this.inFlight = undefined;
     }

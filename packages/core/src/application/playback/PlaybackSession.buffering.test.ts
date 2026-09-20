@@ -12,8 +12,10 @@ describe('PlaybackSession buffering', () => {
     const playing = session.play();
     expect(session.state).toBe('buffering');
     expect(clock.isRunning).toBe(false);
+    // A second call joins the first instead of resolving before the clock runs.
+    const joining = session.play();
 
-    await playing;
+    await Promise.all([playing, joining]);
     expect(session.state).toBe('playing');
     expect(clock.isRunning).toBe(true);
     expect(states).toEqual(['buffering', 'playing']);

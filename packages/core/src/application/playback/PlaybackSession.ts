@@ -105,7 +105,11 @@ export class PlaybackSession<Handle = unknown> {
    * policy); the host then waits for a user gesture. Pausing meanwhile resolves quietly.
    */
   public async play(): Promise<void> {
-    if (this.machine.isOneOf('playing', 'buffering')) return;
+    if (this.machine.state === 'playing') return;
+    if (this.machine.state === 'buffering') {
+      await this.startAttempt?.promise;
+      return;
+    }
     if (this.machine.state === 'ended') this.seek(seconds(0));
     if (!this.machine.canTransitionTo('buffering')) return;
     if (!this.pipeline) this.startPipeline(this.parts.clock.currentTime);
@@ -230,9 +234,9 @@ export class PlaybackSession<Handle = unknown> {
    * behind the clock: the decoders cannot keep up.
    */
   private isStarved(now: Seconds): boolean {
-    return this.queue.length > 0 || this.hasDecodedToEnd
-      ? false
-      : now - (this.presented?.timestamp ?? -Infinity) > STARVATION_LAG_SECONDS;
+    const isWaitingOnDecoders = this.queue.length === 0 && !this.hasDecodedToEnd;
+    const lag = now - (this.presented?.timestamp ?? -Infinity);
+    return isWaitingOnDecoders && lag > STARVATION_LAG_SECONDS;
   }
 
   /**

@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { OrientationTrack } from './OrientationTrack';
-import { rotateVector } from '../../../shared/math/Quaternion';
+import { IDENTITY_QUATERNION, rotateVector } from '../../../shared/math/Quaternion';
 import type { Vector3 } from '../../../shared/math/Vector3';
 import { seconds } from '../../../shared/units/time';
-import type { GyroTrack } from '../gyro/GyroTrack';
+import { GyroTrack } from '../gyro/GyroTrack';
 import { ALIGNED_IMU_FRAME } from '../imu/ImuFrame';
+import { captureError } from '../../../../test/support/errors';
 import {
   RESTING_UPRIGHT,
   SYNTHETIC_CLOCK,
@@ -61,6 +62,22 @@ describe('OrientationTrack', () => {
     expectVector(forwardAt(track, 1.5), [Math.SQRT1_2, 0, Math.SQRT1_2], 2);
   });
 
+  it('interpolates between samples', () => {
+    const coarseRate = 40;
+    const gyro = syntheticGyroTrack(1, coarseRate, () => ({
+      acceleration: RESTING_UPRIGHT,
+      angularVelocity: [0, QUARTER_TURN_PER_SECOND, 0],
+    }));
+    const track = integrate(gyro, { gravityGain: 0 });
+    const angleAt = (time: number): number => {
+      const forward = forwardAt(track, time);
+      return Math.atan2(forward[0], forward[2]);
+    };
+    for (const time of [0.5, 0.5125, 0.9875]) {
+      expect(angleAt(time), `t=${String(time)}`).toBeCloseTo(QUARTER_TURN_PER_SECOND * time, 3);
+    }
+  });
+
   it('removes the gyro bias measured while the camera rests', () => {
     const bias: Vector3 = [0.005, -0.008, 0.003];
     const gyro = syntheticGyroTrack(10, RATE_HZ, () => ({
@@ -78,6 +95,23 @@ describe('OrientationTrack', () => {
       angularVelocity: [0, 0, 0],
     }));
     expectVector(forwardAt(integrate(gyro), 0), [0, -Math.sin(pitch), Math.cos(pitch)], 3);
+  });
+
+  it('takes the initial pose from the opening window, not from a later rest in another tilt', () => {
+    const pitch = Math.PI / 6;
+    const gyro = syntheticGyroTrack(12, RATE_HZ, (time) => ({
+      acceleration: time < 0.5 ? restingPitchedUp(pitch) : RESTING_UPRIGHT,
+      angularVelocity: [time < 0.5 ? 0.02 : 0, 0, 0],
+    }));
+    expectVector(forwardAt(integrate(gyro), 0), [0, -Math.sin(pitch), Math.cos(pitch)], 2);
+  });
+
+  it('starts level when the camera accelerates during the opening window', () => {
+    const gyro = syntheticGyroTrack(2, RATE_HZ, (time) => ({
+      acceleration: time < 0.6 ? [0, -2, 0] : RESTING_UPRIGHT,
+      angularVelocity: [0, 0, 0],
+    }));
+    expect(integrate(gyro).orientationAt(seconds(0))).toEqual(IDENTITY_QUATERNION);
   });
 
   it('is pulled back towards gravity when the gyro and the accelerometer disagree', () => {
@@ -99,6 +133,24 @@ describe('OrientationTrack', () => {
     expectVector(forwardAt(track, 5), FORWARD, 4);
   });
 
+  it('does not spin through a gap in the samples', () => {
+    const captureTimes = Float64Array.from(
+      [0, 0.005, 0.01, 2.01, 2.015].map((time) => SYNTHETIC_CLOCK.captureTimeOf(seconds(time))),
+    );
+    const accelerations = new Float32Array(captureTimes.length * 3);
+    const angularVelocities = new Float32Array(captureTimes.length * 3);
+    for (let index = 0; index < captureTimes.length; index += 1) {
+      accelerations.set(RESTING_UPRIGHT, index * 3);
+      angularVelocities.set([0, 1, 0], index * 3);
+    }
+    const track = integrate(new GyroTrack(captureTimes, accelerations, angularVelocities), {
+      gravityGain: 0,
+    });
+    const turned = Math.atan2(forwardAt(track, 2.015)[0], forwardAt(track, 2.015)[2]);
+    expect(turned).toBeLessThan(0.1);
+    expect(turned).toBeGreaterThan(0.05);
+  });
+
   it('holds the first and last orientation outside the recorded span and is empty-safe', () => {
     const gyro = syntheticGyroTrack(1, RATE_HZ, () => ({
       acceleration: RESTING_UPRIGHT,
@@ -110,5 +162,18 @@ describe('OrientationTrack', () => {
     expect(track.startTime).toBe(0);
     expect(track.endTime).toBe(1);
     expect(integrate(syntheticGyroTrack(0, RATE_HZ, atRest)).length).toBe(1);
+    const empty = integrate(
+      new GyroTrack(new Float64Array(0), new Float32Array(0), new Float32Array(0)),
+    );
+    expect(empty.length).toBe(0);
+    expect(empty.orientationAt(seconds(3))).toBe(IDENTITY_QUATERNION);
+  });
+
+  it('refuses samples that are not finite', () => {
+    const gyro = syntheticGyroTrack(1, RATE_HZ, (time) => ({
+      acceleration: RESTING_UPRIGHT,
+      angularVelocity: [time > 0.5 ? NaN : 0, 0, 0],
+    }));
+    expect(captureError(() => integrate(gyro))).toMatchObject({ code: 'invariant-violation' });
   });
 });

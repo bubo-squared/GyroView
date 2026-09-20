@@ -8,6 +8,7 @@ import {
   type LensLayout,
 } from '../../domain/format/layout/LensLayout';
 import { parseOffsetString } from '../../domain/optics/parseOffsetString';
+import { transformVector } from '../../shared/math/Matrix3';
 import { captureError } from '../../../test/support/errors';
 import { OFFICE_CALIBRATION } from '../../../test/support/officeCalibration';
 
@@ -38,6 +39,27 @@ const X5_CROP = {
   cropOffsetY: 0,
 };
 
+/**
+ * A sensor half the canvas resolution with an off-centre window, as another camera might report.
+ */
+const HALF_RESOLUTION_CROP = {
+  sensorWidth: 2688,
+  sensorHeight: 2688,
+  cropWidth: 2656,
+  cropHeight: 2640,
+  cropOffsetX: 16,
+  cropOffsetY: 8,
+};
+
+const SPLIT_FILES: LensLayout = {
+  kind: 'split-files',
+  sources: [
+    { lensIndex: 0, inputIndex: 0, trackIndex: 0, region: FULL_FRAME },
+    { lensIndex: 1, inputIndex: 1, trackIndex: 0, region: FULL_FRAME },
+  ],
+  evidence: [],
+};
+
 describe('lensFrameOrder', () => {
   it('lists one frame per distinct track in lens order', () => {
     expect(lensFrameOrder(MULTI_TRACK)).toEqual([
@@ -65,7 +87,46 @@ describe('buildStitchingSetup', () => {
     expect(setup.lenses[0]?.window).toEqual({ x: 0, y: 0, width: 5312, height: 5312 });
     expect(setup.lenses[1]?.window).toEqual({ x: 5376, y: 0, width: 5312, height: 5312 });
     expect(setup.lenses[0]?.projection.kind).toBe('mei');
-    expect(setup.lenses[1]?.rotation).toHaveLength(9);
+    const backLens = setup.lenses[1];
+    if (!backLens) throw new Error('no second lens');
+    const forwardInLens = transformVector(backLens.rotation, [0, 0, -1]);
+    expect(forwardInLens[2]).toBeCloseTo(1, 2);
+  });
+
+  it('scales an off-centre sensor window onto the canvas square', () => {
+    const setup = buildStitchingSetup({
+      calibration,
+      layout: MULTI_TRACK,
+      windowCrop: HALF_RESOLUTION_CROP,
+    });
+    expect(setup.lenses[0]?.window).toEqual({ x: 32, y: 16, width: 5312, height: 5280 });
+    expect(setup.lenses[1]?.window).toEqual({ x: 5376 + 32, y: 16, width: 5312, height: 5280 });
+  });
+
+  it('ignores a window whose sensor size is missing', () => {
+    const setup = buildStitchingSetup({
+      calibration,
+      layout: MULTI_TRACK,
+      windowCrop: { ...X5_CROP, sensorWidth: undefined },
+    });
+    expect(setup.lenses[0]?.window).toEqual({ x: 0, y: 0, width: 5376, height: 5376 });
+  });
+
+  it('gives each file of a split-file pair its own frame', () => {
+    const setup = buildStitchingSetup({ calibration, layout: SPLIT_FILES, windowCrop: undefined });
+    expect(setup.frameCount).toBe(2);
+    expect(setup.lenses.map((lens) => lens.frameIndex)).toEqual([0, 1]);
+  });
+
+  it('refuses a calibration that lacks a lens the layout needs', () => {
+    const [first] = calibration.lenses;
+    if (!first) throw new Error('no lens');
+    const twice = { ...calibration, lenses: [first, first] };
+    expect(
+      captureError(() =>
+        buildStitchingSetup({ calibration: twice, layout: MULTI_TRACK, windowCrop: undefined }),
+      ),
+    ).toMatchObject({ code: 'invalid-calibration' });
   });
 
   it('uses the whole canvas square when the info record has no crop', () => {

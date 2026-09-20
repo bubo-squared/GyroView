@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ALIGNED_IMU_FRAME, imuFrame, imuFrameFor, toBodyFrame, X5_IMU_FRAME } from './ImuFrame';
 import type { Vector3 } from '../../../shared/math/Vector3';
+import { captureError } from '../../../../test/support/errors';
 
 /**
  * Mean accelerometer readings (specific force, g) measured on the X5 recordings over one second.
@@ -31,9 +32,23 @@ describe('ImuFrame', () => {
     expect(frame.toBody).toEqual([0, 1, 0, 0, 0, 1, 1, 0, 0]);
   });
 
+  it('refuses a repeated axis and a reflection', () => {
+    expect(captureError(() => imuFrame('singular', ['x', 'x', 'z'], false))).toMatchObject({
+      code: 'invariant-violation',
+    });
+    expect(captureError(() => imuFrame('mirror', ['x', 'y', '-z'], false))).toMatchObject({
+      code: 'invariant-violation',
+    });
+    expect(imuFrame('turned', ['-x', 'z', 'y'], false).toBody).toEqual([
+      -1, 0, 0, 0, 0, 1, 0, 1, 0,
+    ]);
+    expect(X5_IMU_FRAME.toBody).toEqual([1, 0, 0, 0, 0, 1, 0, -1, 0]);
+  });
+
   it('picks the measured frame for the X5 and the unverified default for other cameras', () => {
     expect(imuFrameFor({ model: 'Insta360 X5' })).toBe(X5_IMU_FRAME);
     expect(imuFrameFor({ model: 'Insta360 X3' })).toBe(ALIGNED_IMU_FRAME);
+    expect(imuFrameFor({ model: 'Not an Insta360 X5' })).toBe(ALIGNED_IMU_FRAME);
     expect(imuFrameFor({ model: undefined }).isVerified).toBe(false);
   });
 });

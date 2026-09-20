@@ -1,4 +1,4 @@
-import { estimateGyroBias } from './estimateGyroBias';
+import { estimateGyroBias, stillestWindow } from './estimateGyroBias';
 import { gravityCorrection, initialOrientation } from './gravity';
 import { ensureInvariant } from '../../../shared/errors/GyroViewError';
 import {
@@ -9,7 +9,7 @@ import {
   slerpQuaternions,
   type Quaternion,
 } from '../../../shared/math/Quaternion';
-import type { Vector3 } from '../../../shared/math/Vector3';
+import { isFiniteVector, type Vector3 } from '../../../shared/math/Vector3';
 import { seconds, type Seconds } from '../../../shared/units/time';
 import type { GyroTrack } from '../gyro/GyroTrack';
 import { toBodyFrame, type ImuFrame } from '../imu/ImuFrame';
@@ -46,7 +46,8 @@ export const DEFAULT_INTEGRATION_OPTIONS: IntegrationOptions = {
 const QUATERNION_COMPONENTS = 4;
 /**
  * Gaps longer than this between samples are integrated as if they were this long: a dropout
- * must not spin the estimate by a whole missing second.
+ * must not spin the estimate by a whole missing second. A sample stamped before its
+ * predecessor (clock glitch) contributes no step at all.
  */
 const MAX_STEP_SECONDS = 0.05;
 
@@ -67,7 +68,7 @@ export class OrientationTrack {
 
   /**
    * Integrates the gyro, bias-corrected and pulled towards gravity, from an initial pose that
-   * levels the first still samples.
+   * levels the opening window's gravity.
    */
   public static integrate(parts: OrientationTrackParts): OrientationTrack {
     const options = { ...DEFAULT_INTEGRATION_OPTIONS, ...parts.options };
@@ -75,11 +76,15 @@ export class OrientationTrack {
     const videoTimes = new Float64Array(gyro.length);
     const quaternions = new Float32Array(gyro.length * QUATERNION_COMPONENTS);
     if (gyro.isEmpty) return new OrientationTrack(videoTimes, quaternions);
-    const bias = estimateGyroBias(gyro, frame, options.biasWindow);
+    const bias = estimateGyroBias(gyro, frame, stillestWindow(gyro, frame, options.biasWindow));
     let orientation = initialOrientation(gyro, frame, options.biasWindow);
     let previous = { time: clock.gyroVideoTimeOf(gyro.sampleAt(0).captureTime), rate: ZERO };
     for (let index = 0; index < gyro.length; index += 1) {
       const sample = gyro.sampleAt(index);
+      ensureInvariant(
+        isFiniteVector(sample.acceleration) && isFiniteVector(sample.angularVelocity),
+        `gyro sample ${index} is not finite`,
+      );
       const time = clock.gyroVideoTimeOf(sample.captureTime);
       const step = Math.min(Math.max(time - previous.time, 0), MAX_STEP_SECONDS);
       const correction = gravityCorrection(orientation, toBodyFrame(frame, sample.acceleration));

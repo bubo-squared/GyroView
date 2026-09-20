@@ -4,16 +4,12 @@ import {
   conjugateQuaternion,
   quaternionFromAxisAngle,
   quaternionToMatrix,
-  rotateVector,
   slerpQuaternions,
   type Quaternion,
 } from '../../../shared/math/Quaternion';
-import type { Vector3 } from '../../../shared/math/Vector3';
 import { radians, type Radians } from '../../../shared/units/angle';
 import { seconds, type Seconds } from '../../../shared/units/time';
-
-const WORLD_VERTICAL_AXIS: Vector3 = [0, 1, 0];
-const BODY_FORWARD: Vector3 = [0, 0, 1];
+import { WORLD_DOWN } from '../orientation/gravity';
 
 /**
  * The picture moves with the camera, as recorded.
@@ -44,7 +40,7 @@ export class HorizonStabilization implements Stabilizer {
   public readonly mode = 'horizon';
 
   public rotationFor(orientation: Quaternion): Matrix3 {
-    const heading = quaternionFromAxisAngle(WORLD_VERTICAL_AXIS, headingOf(orientation));
+    const heading = quaternionFromAxisAngle(WORLD_DOWN, headingOf(orientation));
     return multiplyMatrices(
       quaternionToMatrix(conjugateQuaternion(orientation)),
       quaternionToMatrix(heading),
@@ -82,18 +78,24 @@ export class FollowStabilization implements Stabilizer {
   public constructor(private readonly options: FollowOptions = DEFAULT_FOLLOW_OPTIONS) {}
 
   public rotationFor(orientation: Quaternion, videoTime: Seconds): Matrix3 {
-    const gap = this.previousTime === undefined ? Infinity : videoTime - this.previousTime;
-    const isContinuous = gap >= 0 && gap <= this.options.maxContinuousGap;
-    const weight = 1 - Math.exp(-gap / this.options.timeConstant);
-    this.smoothed =
-      isContinuous && this.smoothed
-        ? slerpQuaternions(this.smoothed, orientation, weight)
-        : orientation;
+    this.smoothed = this.follow(orientation, videoTime);
     this.previousTime = videoTime;
     return multiplyMatrices(
       quaternionToMatrix(conjugateQuaternion(orientation)),
       quaternionToMatrix(this.smoothed),
     );
+  }
+
+  /**
+   * A seek (a jump either way beyond the continuous gap) restarts on the camera; a small step
+   * back (frame jitter) holds; ordinary forward time low-passes towards the camera.
+   */
+  private follow(orientation: Quaternion, videoTime: Seconds): Quaternion {
+    const gap = this.previousTime === undefined ? Infinity : videoTime - this.previousTime;
+    if (!this.smoothed || Math.abs(gap) > this.options.maxContinuousGap) return orientation;
+    if (gap <= 0) return this.smoothed;
+    const weight = 1 - Math.exp(-gap / this.options.timeConstant);
+    return slerpQuaternions(this.smoothed, orientation, weight);
   }
 }
 
@@ -115,9 +117,12 @@ export function stabilizerFor(mode: StabilizationMode): Stabilizer {
 }
 
 /**
- * The camera's heading: the yaw of its forward axis projected onto the world's horizontal plane.
+ * The camera's heading: the twist of its orientation about the world's vertical axis (the
+ * swing-twist decomposition). Unlike the yaw of the forward axis, it stays continuous when the
+ * camera points straight up or down; it is undefined only for an exact half turn about a
+ * horizontal axis, where it reads zero.
  */
 function headingOf(orientation: Quaternion): Radians {
-  const forward = rotateVector(orientation, BODY_FORWARD);
-  return radians(Math.atan2(forward[0], forward[2]));
+  const [, y, , w] = orientation;
+  return radians(2 * Math.atan2(y, w));
 }

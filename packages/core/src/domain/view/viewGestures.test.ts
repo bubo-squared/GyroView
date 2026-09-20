@@ -18,6 +18,11 @@ describe('view gestures', () => {
     expect(panView(DEFAULT_VIEW, { x: 0, y: 2000 }, VIEWPORT_WIDTH).pitch).toBe(90);
   });
 
+  it('drags a whole turn across an equirectangular viewport', () => {
+    const equirectangular = { ...DEFAULT_VIEW, projection: 'equirectangular' as const };
+    expect(panView(equirectangular, { x: 90, y: 0 }, VIEWPORT_WIDTH).yaw).toBeCloseTo(-36, 9);
+  });
+
   it('covers fewer degrees per pixel when zoomed in', () => {
     const zoomedIn = { ...DEFAULT_VIEW, fieldOfView: degrees(45) };
     expect(panView(zoomedIn, { x: 90, y: 0 }, VIEWPORT_WIDTH).yaw).toBeCloseTo(-4.5, 9);

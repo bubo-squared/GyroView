@@ -53,5 +53,6 @@ does not separate the two window interpretations; the image-circle extents do.
 Per-channel gain matching between the lenses is visible as a brightness step at the seam and is
 deferred to the hardening phase; the renderer already exposes a per-lens gain. Parallax of
 subjects closer than about a metre ghosts at the seam, as accepted in the plan. The Euler order
-for yaw and pitch is fixed by convention, not yet by measurement: their values are below half a
-degree on the X5, so a wrong order would move the seam by a few pixels at most.
+and the signs of the calibration yaw and pitch are fixed by convention, not yet by measurement:
+their values are below half a degree on the X5, so a wrong order or sign would move the seam by
+a few pixels at most; a camera with larger values would show it at the seam.

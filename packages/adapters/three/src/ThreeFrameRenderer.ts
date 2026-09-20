@@ -1,6 +1,7 @@
 import {
   clampView,
   DEFAULT_VIEW,
+  ensureInvariant,
   GyroViewError,
   type Matrix3 as CoreMatrix3,
   type Presentation,
@@ -33,6 +34,7 @@ import {
   applyView,
   createStitchUniforms,
   MAX_LENSES,
+  SHADER_DEFINES,
   type StitchUniforms,
 } from './stitchUniforms';
 
@@ -64,12 +66,22 @@ const POSITION_COMPONENTS = 3;
 const RGBA_CHANNELS = 4;
 
 /**
+ * The raw shader ignores the camera; three still wants one to render a scene.
+ */
+const PASS_THROUGH_CAMERA = new Camera();
+
+/**
  * FrameSink over Three.js: uploads each lens frame to a texture and draws the stitched view with
- * one fullscreen pass of `stitch.frag.glsl`. Stabilization plugs in as a rotation later.
+ * one fullscreen pass of `stitch.frag.glsl`, turned by the view and the stabilization rotations.
  */
 export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   private viewState: ViewState;
+  /**
+   * False until the first pair arrives and again after a context loss: the textures then hold
+   * frames the session has closed, which must not be uploaded again.
+   */
   private hasFrames = false;
+  private isDisposed = false;
 
   private constructor(
     private readonly parts: RendererParts,
@@ -78,6 +90,7 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   ) {
     this.viewState = clampView(view);
     this.applyView();
+    canvas.addEventListener('webglcontextlost', this.onContextLost);
   }
 
   public static create(
@@ -85,10 +98,10 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
     setup: StitchingSetup,
     options: ThreeFrameRendererOptions = {},
   ): ThreeFrameRenderer {
-    if (setup.frameCount > MAX_LENSES) {
+    if (setup.lenses.length > MAX_LENSES) {
       throw new GyroViewError(
         'unsupported-layout',
-        `the renderer draws at most ${MAX_LENSES} frames, the layout needs ${setup.frameCount}`,
+        `the renderer draws at most ${MAX_LENSES} lenses, the layout has ${setup.lenses.length}`,
       );
     }
     const renderer = createRenderer(canvas, options.preserveDrawingBuffer ?? false);
@@ -102,6 +115,8 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
     );
     const scene = new Scene();
     scene.add(new Mesh(geometry, material));
+    // Compiling now surfaces a broken shader here rather than at the first presented frame.
+    renderer.compile(scene, PASS_THROUGH_CAMERA);
     const parts = { renderer, scene, material, geometry, textures, uniforms };
     return new ThreeFrameRenderer(parts, canvas, options.view ?? DEFAULT_VIEW);
   }
@@ -111,6 +126,7 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   }
 
   public setView(view: ViewState): void {
+    this.ensureLive();
     this.viewState = clampView(view);
     this.applyView();
     this.render();
@@ -121,20 +137,29 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
    * single lens (gain zero on the other).
    */
   public setLensGain(lensIndex: number, gain: CoreVector3): void {
+    this.ensureLive();
     this.parts.uniforms.uLensGain.value[lensIndex]?.set(...gain);
     this.render();
   }
 
   /**
    * Turns the whole picture: the stabilized frame the viewer looks around in, into the body.
+   * Does not redraw by itself: the stabilizing sink calls it right before presenting a pair.
    */
   public setStabilization(rotation: CoreMatrix3): void {
+    this.ensureLive();
     applyStabilization(this.parts.uniforms, rotation);
   }
 
   public present(presentation: Presentation<VideoFrame>): void {
+    this.ensureLive();
+    const { frames } = presentation.pair;
+    ensureInvariant(
+      frames.length === this.parts.textures.length,
+      `a pair of ${frames.length} frames does not fit ${this.parts.textures.length} lens textures`,
+    );
     for (const [index, texture] of this.parts.textures.entries()) {
-      const frame = presentation.pair.frames[index];
+      const frame = frames[index];
       if (frame) texture.setFrame(frame.handle);
     }
     this.hasFrames = true;
@@ -145,6 +170,7 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
    * Matches the drawing buffer to a new element size, in device pixels.
    */
   public resize(width: number, height: number): void {
+    this.ensureLive();
     this.parts.renderer.setSize(width, height, false);
     this.applyView();
     this.render();
@@ -154,6 +180,7 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
    * The current drawing buffer as RGBA rows from the bottom up, for tests and inspection.
    */
   public readPixels(): Uint8ClampedArray {
+    this.ensureLive();
     const gl = this.parts.renderer.getContext();
     const pixels = new Uint8ClampedArray(this.canvas.width * this.canvas.height * RGBA_CHANNELS);
     gl.readPixels(0, 0, this.canvas.width, this.canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
@@ -161,11 +188,18 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   }
 
   public dispose(): void {
+    if (this.isDisposed) return;
+    this.isDisposed = true;
+    this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     for (const texture of this.parts.textures) texture.dispose();
     this.parts.material.dispose();
     this.parts.geometry.dispose();
     this.parts.renderer.dispose();
   }
+
+  private readonly onContextLost = (): void => {
+    this.hasFrames = false;
+  };
 
   private render(): void {
     if (!this.hasFrames) return;
@@ -176,24 +210,28 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
     const aspect = this.canvas.width / Math.max(this.canvas.height, 1);
     applyView(this.parts.uniforms, this.viewState, aspect);
   }
-}
 
-/**
- * The raw shader ignores the camera; three still wants one to render a scene.
- */
-const PASS_THROUGH_CAMERA = new Camera();
+  private ensureLive(): void {
+    ensureInvariant(!this.isDisposed, 'the renderer has been disposed');
+  }
+}
 
 function createRenderer(
   canvas: HTMLCanvasElement,
   shouldPreserveDrawingBuffer: boolean,
 ): WebGLRenderer {
+  // The context attributes must be given here: three keeps a context it is handed as it is.
   const context = canvas.getContext('webgl2', {
     preserveDrawingBuffer: shouldPreserveDrawingBuffer,
+    antialias: false,
+    alpha: false,
+    depth: false,
+    stencil: false,
   });
   if (!context) {
     throw new GyroViewError('render-unavailable', 'this browser has no WebGL2 context');
   }
-  const renderer = new WebGLRenderer({ canvas, context, antialias: false, alpha: false });
+  const renderer = new WebGLRenderer({ canvas, context });
   renderer.setPixelRatio(1);
   renderer.debug.onShaderError = (gl, _program, ...shaders): void => {
     rejectShaders(gl, shaders);
@@ -215,6 +253,7 @@ function rejectShaders(gl: WebGLRenderingContext, shaders: readonly WebGLShader[
 function createMaterial(uniforms: StitchUniforms): RawShaderMaterial {
   return new RawShaderMaterial({
     glslVersion: GLSL3,
+    defines: { ...SHADER_DEFINES },
     vertexShader: fullscreenVertex,
     fragmentShader: [precision, rays, lensModels, stitchFragment].join('\n'),
     uniforms: { ...uniforms },

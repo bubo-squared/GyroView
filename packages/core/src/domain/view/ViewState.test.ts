@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { clampView, DEFAULT_VIEW, viewRotation } from './ViewState';
+import { clampView, DEFAULT_VIEW, fieldOfViewBoundsFor, viewRotation } from './ViewState';
 import { transformVector } from '../../shared/math/Matrix3';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { degrees } from '../../shared/units/angle';
+import { captureError } from '../../../test/support/errors';
 
 const FORWARD: Vector3 = [0, 0, 1];
 
@@ -50,5 +51,24 @@ describe('ViewState', () => {
       projection: 'rectilinear',
     });
     expect(clampView({ ...DEFAULT_VIEW, yaw: degrees(-540) }).yaw).toBe(180);
+    expect(clampView({ ...DEFAULT_VIEW, yaw: degrees(180) }).yaw).toBe(180);
+  });
+
+  it('lets a little planet go far wider than a rectilinear view', () => {
+    expect(fieldOfViewBoundsFor('stereographic').max).toBe(300);
+    expect(
+      clampView({ ...DEFAULT_VIEW, projection: 'stereographic', fieldOfView: degrees(250) })
+        .fieldOfView,
+    ).toBe(250);
+    expect(
+      clampView({ ...DEFAULT_VIEW, projection: 'rectilinear', fieldOfView: degrees(250) })
+        .fieldOfView,
+    ).toBe(120);
+  });
+
+  it('refuses non-finite angles', () => {
+    expect(captureError(() => clampView({ ...DEFAULT_VIEW, yaw: degrees(NaN) }))).toMatchObject({
+      code: 'invariant-violation',
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { stillestWindow } from './estimateGyroBias';
+import { meanOverWindow, type SampleWindow } from './estimateGyroBias';
 import {
   conjugateQuaternion,
   IDENTITY_QUATERNION,
@@ -6,11 +6,11 @@ import {
   rotateVector,
   type Quaternion,
 } from '../../../shared/math/Quaternion';
-import { magnitudeOf, type Vector3 } from '../../../shared/math/Vector3';
+import { crossProduct, dotProduct, magnitudeOf, type Vector3 } from '../../../shared/math/Vector3';
 import { radians } from '../../../shared/units/angle';
-import type { Seconds } from '../../../shared/units/time';
+import { secondsToMicroseconds, type Seconds } from '../../../shared/units/time';
 import type { GyroTrack } from '../gyro/GyroTrack';
-import { toBodyFrame, type ImuFrame } from '../imu/ImuFrame';
+import type { ImuFrame } from '../imu/ImuFrame';
 
 /**
  * Gravity points down; the world frame's y axis is down, like the body frame's at rest.
@@ -49,24 +49,32 @@ export function gravityCorrection(orientation: Quaternion, accelerationInBody: V
   const measured = measuredGravity(accelerationInBody);
   if (!measured) return [0, 0, 0];
   const estimated = rotateVector(conjugateQuaternion(orientation), WORLD_DOWN);
-  return cross(measured, estimated);
+  return crossProduct(measured, estimated);
 }
 
 /**
- * The pose at the start: the stillest early window's gravity turned onto world down, with no
- * yaw, so the world's forward is the body's forward at the start.
+ * The samples within the first `length` seconds of the track, at least the first one.
+ */
+export function openingWindow(gyro: GyroTrack, length: Seconds): SampleWindow {
+  if (gyro.isEmpty) return { start: 0, end: 0 };
+  const first = gyro.sampleAt(0).captureTime;
+  const span = secondsToMicroseconds(length);
+  let end = 1;
+  while (end < gyro.length && gyro.sampleAt(end).captureTime - first <= span) end += 1;
+  return { start: 0, end };
+}
+
+/**
+ * The pose at the start: the gravity measured over the opening window turned onto world down,
+ * with no yaw, so the world's forward is the body's forward at the start. Identity when the
+ * camera accelerates in that window; the gravity pull levels the estimate over the next seconds.
  */
 export function initialOrientation(gyro: GyroTrack, frame: ImuFrame, window: Seconds): Quaternion {
-  const { start, end } = stillestWindow(gyro, frame, window);
-  const sum: [number, number, number] = [0, 0, 0];
-  for (let index = start; index < end; index += 1) {
-    const acceleration = toBodyFrame(frame, gyro.sampleAt(index).acceleration);
-    sum[0] += acceleration[0];
-    sum[1] += acceleration[1];
-    sum[2] += acceleration[2];
-  }
-  const count = Math.max(end - start, 1);
-  const gravity = measuredGravity([sum[0] / count, sum[1] / count, sum[2] / count]);
+  if (gyro.isEmpty) return IDENTITY_QUATERNION;
+  const opening = openingWindow(gyro, window);
+  const gravity = measuredGravity(
+    meanOverWindow({ gyro, frame }, opening, (sample) => sample.acceleration),
+  );
   return gravity ? rotationBetween(gravity, WORLD_DOWN) : IDENTITY_QUATERNION;
 }
 
@@ -74,8 +82,8 @@ export function initialOrientation(gyro: GyroTrack, frame: ImuFrame, window: Sec
  * The shortest rotation taking unit vector `from` onto unit vector `to`.
  */
 export function rotationBetween(from: Vector3, to: Vector3): Quaternion {
-  const axis = cross(from, to);
-  const dot = from[0] * to[0] + from[1] * to[1] + from[2] * to[2];
+  const axis = crossProduct(from, to);
+  const dot = dotProduct(from, to);
   const sine = magnitudeOf(axis);
   if (sine > 0) return quaternionFromAxisAngle(axis, radians(Math.atan2(sine, dot)));
   return dot > 0
@@ -85,8 +93,4 @@ export function rotationBetween(from: Vector3, to: Vector3): Quaternion {
 
 function anyPerpendicular(v: Vector3): Vector3 {
   return Math.abs(v[0]) < Math.abs(v[2]) ? [0, -v[2], v[1]] : [-v[1], v[0], 0];
-}
-
-function cross(a: Vector3, b: Vector3): Vector3 {
-  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }

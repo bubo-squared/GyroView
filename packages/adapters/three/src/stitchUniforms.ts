@@ -1,6 +1,7 @@
 import {
   degrees,
   degreesToRadians,
+  ensureInvariant,
   viewRotation,
   type LensStitch,
   type Matrix3 as CoreMatrix3,
@@ -24,6 +25,21 @@ const LENS_MEI = 0;
 const LENS_RADIAL_POLYNOMIAL = 1;
 
 /**
+ * The constants the GLSL sources refer to, injected as preprocessor defines so that this file is
+ * their only home.
+ */
+export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntries([
+  ['MAX_LENSES', MAX_LENSES],
+  ['PROJECTION_RECTILINEAR', PROJECTION_CODES.rectilinear],
+  ['PROJECTION_STEREOGRAPHIC', PROJECTION_CODES.stereographic],
+  ['PROJECTION_EQUIRECTANGULAR', PROJECTION_CODES.equirectangular],
+  ['LENS_MEI', LENS_MEI],
+  ['LENS_RADIAL_POLYNOMIAL', LENS_RADIAL_POLYNOMIAL],
+]);
+
+const QUARTER = 4;
+
+/**
  * Every uniform of `stitch.frag.glsl`, named exactly as declared there; the only place the
  * TypeScript side spells uniform names.
  */
@@ -32,7 +48,7 @@ export interface StitchUniforms {
   readonly uViewRotation: IUniform<Matrix3>;
   readonly uStabilization: IUniform<Matrix3>;
   readonly uProjection: IUniform<number>;
-  readonly uTanHalfFov: IUniform<number>;
+  readonly uPlaneHalfExtent: IUniform<number>;
   readonly uAspect: IUniform<number>;
   readonly uFeather: IUniform<Vector2>;
   readonly uLensRotation: IUniform<Matrix3[]>;
@@ -74,7 +90,7 @@ function viewUniforms(
   | 'uViewRotation'
   | 'uStabilization'
   | 'uProjection'
-  | 'uTanHalfFov'
+  | 'uPlaneHalfExtent'
   | 'uAspect'
   | 'uFeather'
 > {
@@ -83,7 +99,7 @@ function viewUniforms(
     uViewRotation: { value: new Matrix3() },
     uStabilization: { value: new Matrix3() },
     uProjection: { value: PROJECTION_CODES.rectilinear },
-    uTanHalfFov: { value: 1 },
+    uPlaneHalfExtent: { value: 1 },
     uAspect: { value: 1 },
     uFeather: { value: new Vector2(setup.feather.start, setup.feather.end) },
   };
@@ -144,8 +160,20 @@ export function applyStabilization(uniforms: StitchUniforms, rotation: CoreMatri
 export function applyView(uniforms: StitchUniforms, view: ViewState, aspect: number): void {
   uniforms.uViewRotation.value = toThreeMatrix(viewRotation(view));
   uniforms.uProjection.value = PROJECTION_CODES[view.projection];
-  uniforms.uTanHalfFov.value = Math.tan(degreesToRadians(degrees(view.fieldOfView / 2)));
+  uniforms.uPlaneHalfExtent.value = planeHalfExtentOf(view);
   uniforms.uAspect.value = aspect;
+}
+
+/**
+ * Half the width of the image plane at the screen edge, so that the horizontal field of view is
+ * the one the view names: `tan(fov / 2)` for a rectilinear view, `2 tan(fov / 4)` for the
+ * stereographic one whose image radius is `2 tan(theta / 2)`.
+ */
+function planeHalfExtentOf(view: ViewState): number {
+  const halfFieldOfView = degreesToRadians(degrees(view.fieldOfView / 2));
+  return view.projection === 'stereographic'
+    ? 2 * Math.tan(degreesToRadians(degrees(view.fieldOfView / QUARTER)))
+    : Math.tan(halfFieldOfView);
 }
 
 /**
@@ -190,6 +218,9 @@ function polynomialOf(lens: LensStitch): Vector4 {
  */
 function padded(lenses: readonly LensStitch[]): readonly LensStitch[] {
   const last = lenses.at(-1);
-  if (!last) throw new Error('a stitching setup has at least one lens');
+  ensureInvariant(
+    last !== undefined && lenses.length <= MAX_LENSES,
+    'a stitching setup has one or two lenses',
+  );
   return Array.from({ length: MAX_LENSES }, (_unused, index) => lenses[index] ?? last);
 }

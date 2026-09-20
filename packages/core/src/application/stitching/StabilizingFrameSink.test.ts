@@ -73,6 +73,18 @@ describe('StabilizingFrameSink', () => {
     expect(forwardInBody[2]).toBeCloseTo(0, 2);
   });
 
+  it('falls back to the pair timestamp when the frame index lies beyond the frame times', () => {
+    const inner = new RecordingSink();
+    const captureTimes = Float64Array.from(
+      [0, 1].map((time) => SYNTHETIC_CLOCK.captureTimeOf(seconds(time))),
+    );
+    const frameTimes = FrameTimes.withoutShutterTimes(SYNTHETIC_CLOCK, captureTimes, seconds(0));
+    const sink = new StabilizingFrameSink({ sink: inner, orientations, frameTimes });
+    sink.setStabilizer(new LockStabilization());
+    sink.present(presentationAt(1, 7));
+    expect(forwardThrough(inner)[0]).toBeCloseTo(-1, 2);
+  });
+
   it('samples the orientation at the frame mid-exposure when frame times are known', () => {
     const inner = new RecordingSink();
     const captureTimes = Float64Array.from(

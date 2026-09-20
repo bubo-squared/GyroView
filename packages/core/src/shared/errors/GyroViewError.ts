@@ -40,7 +40,7 @@ export class GyroViewError extends Error {
 /**
  * Guards a constructor or factory precondition with the shared error type.
  */
-export function ensureInvariant(isSatisfied: boolean, message: string): void {
+export function ensureInvariant(isSatisfied: boolean, message: string): asserts isSatisfied {
   if (!isSatisfied) throw new GyroViewError('invariant-violation', message);
 }
 

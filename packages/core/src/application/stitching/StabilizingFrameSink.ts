@@ -38,10 +38,17 @@ export class StabilizingFrameSink<Handle = unknown> implements FrameSink<Handle>
     this.parts.sink.present(presentation);
   }
 
+  /**
+   * The frame's mid-exposure time, or its track timestamp when the frame times do not know the
+   * frame (no timing record, or a record shorter than the video).
+   */
   private exposureTimeOf(presentation: Presentation<Handle>): Seconds {
     const { frameTimes } = this.parts;
-    return frameTimes && presentation.frameIndex !== undefined
-      ? frameTimes.frameAt(presentation.frameIndex).midExposureVideoTime
+    const { frameIndex } = presentation;
+    const isKnown =
+      frameTimes !== undefined && frameIndex !== undefined && frameIndex < frameTimes.frameCount;
+    return isKnown
+      ? frameTimes.frameAt(frameIndex).midExposureVideoTime
       : presentation.pair.timestamp;
   }
 }

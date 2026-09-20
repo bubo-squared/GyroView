@@ -4,6 +4,7 @@ import { WebCodecsVideoDecoderPort } from '@gyroview/adapter-webcodecs';
 import {
   detectLensLayout,
   FramePairQueue,
+  lensFrameOrder,
   probeDecoding,
   readRecording,
   seconds,
@@ -37,7 +38,7 @@ export interface OpenedRecording {
   readonly input: DemuxedInput;
   readonly layout: LensLayout;
   /**
-   * Track readers in lens order (lens 0 first), as the layout detector maps them.
+   * One reader per distinct track the layout draws from, in the order pairs are presented.
    */
   readonly lensTracks: readonly VideoTrackReader[];
   readonly dispose: () => void;
@@ -51,9 +52,9 @@ export async function openSample(sample: SampleRecording): Promise<OpenedRecordi
     [{ name: input.name, videoTracks: input.videoTracks.map((track) => track.description) }],
     recording.layoutHints,
   );
-  const lensTracks = layout.sources.map((lens) => {
-    const track = input.videoTracks[lens.trackIndex];
-    if (!track) throw new Error(`layout points at missing track ${lens.trackIndex}`);
+  const lensTracks = lensFrameOrder(layout).map((source) => {
+    const track = input.videoTracks[source.trackIndex];
+    if (!track) throw new Error(`layout points at missing track ${source.trackIndex}`);
     return track;
   });
   return {
@@ -153,11 +154,8 @@ export function expectLockstep(
 ): void {
   const frameDuration = 1 / sample.frameRate;
   for (const [index, pair] of pairs.entries()) {
-    expect(pair.frames).toHaveLength(2);
-    expect(pair.frames.map((frame) => frame.handle.codedWidth)).toEqual([
-      sample.codedSize,
-      sample.codedSize,
-    ]);
+    expect(pair.frames.length).toBeGreaterThan(0);
+    expect(pair.frames.every((frame) => frame.handle.codedWidth === sample.codedSize)).toBe(true);
     const [first, second] = pair.frames;
     expect(Math.abs((first?.timestamp ?? 0) - (second?.timestamp ?? 0))).toBeLessThan(
       PIPELINE_OPTIONS.pairTolerance,

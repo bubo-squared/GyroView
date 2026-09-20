@@ -1,3 +1,4 @@
+import { ensureInvariant } from '../../shared/errors/GyroViewError';
 import {
   multiplyMatrices,
   rotationAboutX,
@@ -19,16 +20,34 @@ export interface ViewState {
   readonly projection: Projection;
 }
 
-const MIN_FIELD_OF_VIEW_DEGREES = 30;
-const MAX_FIELD_OF_VIEW_DEGREES = 120;
+export interface FieldOfViewBounds {
+  readonly min: Degrees;
+  readonly max: Degrees;
+}
+
+const NARROWEST_DEGREES = 30;
+const RECTILINEAR_WIDEST_DEGREES = 120;
+/**
+ * A little planet needs more than a half turn to show the ground curling round the horizon.
+ */
+const STEREOGRAPHIC_WIDEST_DEGREES = 300;
 const DEFAULT_FIELD_OF_VIEW_DEGREES = 90;
 const MAX_PITCH_DEGREES = 90;
 const HALF_TURN_DEGREES = 180;
 const FULL_TURN_DEGREES = 360;
 
-export const MIN_FIELD_OF_VIEW = degrees(MIN_FIELD_OF_VIEW_DEGREES);
-export const MAX_FIELD_OF_VIEW = degrees(MAX_FIELD_OF_VIEW_DEGREES);
+/**
+ * Each projection tolerates its own range; the equirectangular one always shows the whole
+ * sphere and keeps the field of view only so switching back is seamless.
+ */
+const FIELD_OF_VIEW_BOUNDS: Readonly<Record<Projection, FieldOfViewBounds>> = {
+  rectilinear: { min: degrees(NARROWEST_DEGREES), max: degrees(RECTILINEAR_WIDEST_DEGREES) },
+  stereographic: { min: degrees(NARROWEST_DEGREES), max: degrees(STEREOGRAPHIC_WIDEST_DEGREES) },
+  equirectangular: { min: degrees(NARROWEST_DEGREES), max: degrees(RECTILINEAR_WIDEST_DEGREES) },
+};
+
 export const DEFAULT_FIELD_OF_VIEW = degrees(DEFAULT_FIELD_OF_VIEW_DEGREES);
+export const FULL_TURN = degrees(FULL_TURN_DEGREES);
 
 export const DEFAULT_VIEW: ViewState = {
   yaw: degrees(0),
@@ -37,18 +56,25 @@ export const DEFAULT_VIEW: ViewState = {
   projection: 'rectilinear',
 };
 
+export function fieldOfViewBoundsFor(projection: Projection): FieldOfViewBounds {
+  return FIELD_OF_VIEW_BOUNDS[projection];
+}
+
 /**
  * Keeps the view inside the sphere: yaw wrapped to (-180, 180], pitch within the poles, field
- * of view within the supported range.
+ * of view within the projection's range. Non-finite angles are a programming error.
  */
 export function clampView(view: ViewState): ViewState {
+  ensureInvariant(
+    [view.yaw, view.pitch, view.fieldOfView].every((angle) => Number.isFinite(angle)),
+    'view angles must be finite',
+  );
+  const bounds = fieldOfViewBoundsFor(view.projection);
   return {
     ...view,
     yaw: wrapHalfTurn(view.yaw),
     pitch: degrees(Math.min(Math.max(view.pitch, -MAX_PITCH_DEGREES), MAX_PITCH_DEGREES)),
-    fieldOfView: degrees(
-      Math.min(Math.max(view.fieldOfView, MIN_FIELD_OF_VIEW), MAX_FIELD_OF_VIEW),
-    ),
+    fieldOfView: degrees(Math.min(Math.max(view.fieldOfView, bounds.min), bounds.max)),
   };
 }
 

@@ -19,6 +19,7 @@ import { seconds } from '../../../shared/units/time';
 
 const FORWARD: Vector3 = [0, 0, 1];
 const VIEW_UP: Vector3 = [0, -1, 0];
+const X: Vector3 = [1, 0, 0];
 const Y: Vector3 = [0, 1, 0];
 const Z: Vector3 = [0, 0, 1];
 const YAW_90 = quaternionFromAxisAngle(Y, radians(Math.PI / 2));
@@ -26,14 +27,24 @@ const YAW_180 = quaternionFromAxisAngle(Y, radians(Math.PI));
 const ROLL_30 = quaternionFromAxisAngle(Z, radians(Math.PI / 6));
 const START = seconds(0);
 const SHORTLY_AFTER = seconds(0.1);
+const ONE_TIME_CONSTANT = seconds(1);
 const MUCH_LATER = seconds(10);
 
 function forwardThrough(rotation: Matrix3): Vector3 {
   return transformVector(rotation, FORWARD);
 }
 
-function expectVector(actual: Vector3, expected: Vector3): void {
-  for (const [index, value] of expected.entries()) expect(actual[index]).toBeCloseTo(value, 9);
+function yawThenPitch(yawDegrees: number, pitchDegrees: number): Quaternion {
+  return multiplyQuaternions(
+    quaternionFromAxisAngle(Y, radians((yawDegrees * Math.PI) / 180)),
+    quaternionFromAxisAngle(X, radians((pitchDegrees * Math.PI) / 180)),
+  );
+}
+
+function expectVector(actual: Vector3, expected: Vector3, digits = 9): void {
+  for (const [index, value] of expected.entries()) {
+    expect(actual[index]).toBeCloseTo(value, digits);
+  }
 }
 
 describe('stabilizers', () => {
@@ -56,6 +67,17 @@ describe('stabilizers', () => {
     ]);
   });
 
+  it('horizon keeps the heading when the camera points straight up or down', () => {
+    const horizon = new HorizonStabilization();
+    const nearlyUp = transformVector(horizon.rotationFor(yawThenPitch(30, 89)), VIEW_UP);
+    const straightUp = transformVector(horizon.rotationFor(yawThenPitch(30, 90)), VIEW_UP);
+    const pastUp = transformVector(horizon.rotationFor(yawThenPitch(30, 91)), VIEW_UP);
+    expectVector(straightUp, nearlyUp, 1);
+    expectVector(pastUp, nearlyUp, 1);
+    const straightDown = horizon.rotationFor(yawThenPitch(30, -90));
+    expectVector(forwardThrough(straightDown), [0, -1, 0], 6);
+  });
+
   it('follow starts on the camera, lags far behind a sudden turn and snaps after a seek', () => {
     const follow = new FollowStabilization({
       timeConstant: seconds(1),
@@ -67,6 +89,24 @@ describe('stabilizers', () => {
     expect(lagging[2]).toBeGreaterThan(0);
     expect(lagging[2]).toBeLessThan(0.3);
     expectVector(forwardThrough(follow.rotationFor(YAW_90, MUCH_LATER)), FORWARD);
+  });
+
+  it('follow catches up by 1 - 1/e per time constant, holds on a small step back and snaps on a seek back', () => {
+    const follow = new FollowStabilization({
+      timeConstant: seconds(1),
+      maxContinuousGap: seconds(1),
+    });
+    follow.rotationFor(YAW_90, START);
+    const afterOneConstant = forwardThrough(follow.rotationFor(YAW_180, ONE_TIME_CONSTANT));
+    const caughtUp = Math.atan2(afterOneConstant[0], afterOneConstant[2]);
+    expect(caughtUp).toBeCloseTo(-(Math.PI / 2) * Math.exp(-1), 3);
+    const stepBack = seconds(0.98);
+    const held = forwardThrough(follow.rotationFor(YAW_180, stepBack));
+    expectVector(held, afterOneConstant);
+    const sameTime = forwardThrough(follow.rotationFor(YAW_180, stepBack));
+    expectVector(sameTime, afterOneConstant);
+    const seekBack = follow.rotationFor(YAW_90, seconds(-5));
+    expectVector(forwardThrough(seekBack), FORWARD);
   });
 
   it('builds the strategy for each mode', () => {

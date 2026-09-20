@@ -69,3 +69,13 @@ export function transposeMatrix(m: Matrix3): Matrix3 {
   const [m00, m01, m02, m10, m11, m12, m20, m21, m22] = m;
   return [m00, m10, m20, m01, m11, m21, m02, m12, m22];
 }
+
+/**
+ * Positive one for a proper rotation, minus one for a reflection, zero when singular.
+ */
+export function determinantOf(m: Matrix3): number {
+  const [m00, m01, m02, m10, m11, m12, m20, m21, m22] = m;
+  return (
+    m00 * (m11 * m22 - m12 * m21) - m01 * (m10 * m22 - m12 * m20) + m02 * (m10 * m21 - m11 * m20)
+  );
+}

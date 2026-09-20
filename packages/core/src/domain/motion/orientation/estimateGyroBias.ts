@@ -1,6 +1,11 @@
 import { magnitudeOf, type Vector3 } from '../../../shared/math/Vector3';
-import type { Seconds } from '../../../shared/units/time';
-import type { GyroTrack } from '../gyro/GyroTrack';
+import {
+  microsecondsToSeconds,
+  seconds,
+  secondsToMicroseconds,
+  type Seconds,
+} from '../../../shared/units/time';
+import type { GyroSample, GyroTrack } from '../gyro/GyroTrack';
 import { toBodyFrame, type ImuFrame } from '../imu/ImuFrame';
 
 export interface SampleWindow {
@@ -11,14 +16,22 @@ export interface SampleWindow {
   readonly end: number;
 }
 
-const MICROSECONDS_PER_SECOND = 1e6;
+/**
+ * A window whose mean rate exceeds this (radians per second, about one degree per second) is
+ * motion, not bias: gyro offsets are a fraction of a degree per second.
+ */
+const MAX_BIAS_RATE = 0.02;
+/**
+ * Spacing assumed for a track too short to measure its own.
+ */
+const FALLBACK_INTERVAL = secondsToMicroseconds(seconds(1));
 
 /**
  * The window of `length` seconds in which the gyro reports the least motion: where the camera
  * rested, or at least moved least.
  */
 export function stillestWindow(gyro: GyroTrack, frame: ImuFrame, length: Seconds): SampleWindow {
-  const interval = (gyro.meanSampleInterval ?? MICROSECONDS_PER_SECOND) / MICROSECONDS_PER_SECOND;
+  const interval = microsecondsToSeconds(gyro.meanSampleInterval ?? FALLBACK_INTERVAL);
   const size = Math.max(1, Math.min(gyro.length, Math.round(length / interval)));
   const magnitudes = Float64Array.from({ length: gyro.length }, (_unused, index) =>
     magnitudeOf(toBodyFrame(frame, gyro.sampleAt(index).angularVelocity)),
@@ -34,26 +47,38 @@ export function stillestWindow(gyro: GyroTrack, frame: ImuFrame, length: Seconds
 }
 
 /**
- * A window whose mean rate exceeds this (radians per second, about one degree per second) is
- * motion, not bias: gyro offsets are a fraction of a degree per second.
+ * A gyro track together with the frame its readings are expressed in.
  */
-const MAX_BIAS_RATE = 0.02;
+export interface FramedGyro {
+  readonly gyro: GyroTrack;
+  readonly frame: ImuFrame;
+}
+
+/**
+ * The mean of one vector quantity over a window of samples, in the body frame.
+ */
+export function meanOverWindow(
+  { gyro, frame }: FramedGyro,
+  window: SampleWindow,
+  quantity: (sample: GyroSample) => Vector3,
+): Vector3 {
+  const sum: [number, number, number] = [0, 0, 0];
+  for (let index = window.start; index < window.end; index += 1) {
+    const vector = toBodyFrame(frame, quantity(gyro.sampleAt(index)));
+    sum[0] += vector[0];
+    sum[1] += vector[1];
+    sum[2] += vector[2];
+  }
+  const count = Math.max(window.end - window.start, 1);
+  return [sum[0] / count, sum[1] / count, sum[2] / count];
+}
 
 /**
  * The gyro's constant offset, taken as its mean reading over the stillest window. A camera
  * that never rests (mounted on a moving boat) gets no bias correction rather than having its
  * slowest real motion subtracted.
  */
-export function estimateGyroBias(gyro: GyroTrack, frame: ImuFrame, window: Seconds): Vector3 {
-  const { start, end } = stillestWindow(gyro, frame, window);
-  const sum: [number, number, number] = [0, 0, 0];
-  for (let index = start; index < end; index += 1) {
-    const rate = toBodyFrame(frame, gyro.sampleAt(index).angularVelocity);
-    sum[0] += rate[0];
-    sum[1] += rate[1];
-    sum[2] += rate[2];
-  }
-  const count = Math.max(end - start, 1);
-  const mean: Vector3 = [sum[0] / count, sum[1] / count, sum[2] / count];
+export function estimateGyroBias(gyro: GyroTrack, frame: ImuFrame, window: SampleWindow): Vector3 {
+  const mean = meanOverWindow({ gyro, frame }, window, (sample) => sample.angularVelocity);
   return magnitudeOf(mean) <= MAX_BIAS_RATE ? mean : [0, 0, 0];
 }

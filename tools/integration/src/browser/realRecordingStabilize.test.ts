@@ -3,6 +3,7 @@ import {
   buildStitchingSetup,
   conjugateQuaternion,
   DEFAULT_VIEW,
+  equirectangularPixelOf,
   imuFrameFor,
   LensDecodePipeline,
   microseconds,
@@ -46,17 +47,14 @@ const MAX_RIGID_ROTATION_ERROR = 20;
  */
 const MAX_DOWN_ERROR_DEGREES = 12;
 
+const SIZE = { width: WIDTH, height: HEIGHT };
+
 /**
- * Pixel offset of an equirectangular render (rows from the bottom, as readPixels gives them)
- * that shows a body-frame direction.
+ * Byte offset of the pixel (rows from the bottom, as readPixels gives them) showing a direction.
  */
 function pixelFor(direction: readonly [number, number, number]): number {
-  const [x, y, z] = direction;
-  const yaw = Math.atan2(x, z);
-  const pitch = Math.asin(Math.max(-1, Math.min(1, -y)));
-  const column = Math.min(WIDTH - 1, Math.floor(((yaw / Math.PI + 1) / 2) * WIDTH));
-  const rowFromTop = Math.min(HEIGHT - 1, Math.floor(((1 - pitch / (Math.PI / 2)) / 2) * HEIGHT));
-  return ((HEIGHT - 1 - rowFromTop) * WIDTH + column) * RGBA;
+  const pixel = equirectangularPixelOf(direction, SIZE);
+  return ((HEIGHT - 1 - pixel.row) * WIDTH + pixel.column) * RGBA;
 }
 
 /**
@@ -121,7 +119,7 @@ describe('stabilizing the real recordings', () => {
     ['office', OFFICE_5K7_60],
     ['sailing', SAILING_8K_30],
   ] as const) {
-    it(`renders the ${sample.name} in every stabilization mode: lock and horizon should be level, and lock is a rigid rotation of off`, async (context) => {
+    it(`renders the ${sample.name} in every mode for inspection, checks lock is a rigid rotation of off and that the estimate follows gravity`, async (context) => {
       await skipUnlessServed(context, sample);
       const opened = await openSample(sample);
       cleanups.push(opened.dispose);

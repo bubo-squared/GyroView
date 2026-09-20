@@ -1,5 +1,5 @@
-import type { Matrix3 } from '../../../shared/math/Matrix3';
-import { transformVector } from '../../../shared/math/Matrix3';
+import { ensureInvariant } from '../../../shared/errors/GyroViewError';
+import { determinantOf, transformVector, type Matrix3 } from '../../../shared/math/Matrix3';
 import type { Vector3 } from '../../../shared/math/Vector3';
 
 /**
@@ -23,35 +23,46 @@ export interface ImuFrame {
   readonly isVerified: boolean;
 }
 
-type AxisLetter = 'x' | 'y' | 'z';
-
-const UNIT_VECTORS: Readonly<Record<AxisLetter, Vector3>> = {
-  x: [1, 0, 0],
-  y: [0, 1, 0],
-  z: [0, 0, 1],
-};
+const AXIS_VECTORS: ReadonlyMap<SignedAxis, Vector3> = new Map<SignedAxis, Vector3>([
+  ['x', [1, 0, 0]],
+  ['y', [0, 1, 0]],
+  ['z', [0, 0, 1]],
+  ['-x', [-1, 0, 0]],
+  ['-y', [0, -1, 0]],
+  ['-z', [0, 0, -1]],
+]);
 
 function axisVector(axis: SignedAxis): Vector3 {
-  const isNegative = axis.startsWith('-');
-  const letter = (isNegative ? axis.slice(1) : axis) as AxisLetter;
-  const [x, y, z] = UNIT_VECTORS[letter];
-  return isNegative ? [-x, -y, -z] : [x, y, z];
+  const vector = AXIS_VECTORS.get(axis);
+  ensureInvariant(vector !== undefined, `unknown IMU axis ${axis}`);
+  return vector;
 }
 
 /**
- * Builds the frame from the IMU axis each body axis reads from, in body order x, y, z.
+ * The IMU axis each body axis reads from, in body order x, y, z.
  */
-export function imuFrame(
-  name: string,
-  bodyAxes: readonly [x: SignedAxis, y: SignedAxis, z: SignedAxis],
-  isVerified: boolean,
-): ImuFrame {
+export type BodyAxes = readonly [x: SignedAxis, y: SignedAxis, z: SignedAxis];
+
+function toBodyMatrixOf(bodyAxes: BodyAxes): Matrix3 {
   const [rowX, rowY, rowZ] = bodyAxes.map((axis) => axisVector(axis)) as [
     Vector3,
     Vector3,
     Vector3,
   ];
-  return { name, toBody: [...rowX, ...rowY, ...rowZ], isVerified };
+  return [...rowX, ...rowY, ...rowZ];
+}
+
+/**
+ * Only a proper rotation is a frame: a repeated axis is singular and a reflection would
+ * integrate a mirrored world.
+ */
+export function isProperRotation(bodyAxes: BodyAxes): boolean {
+  return determinantOf(toBodyMatrixOf(bodyAxes)) === 1;
+}
+
+export function imuFrame(name: string, bodyAxes: BodyAxes, isVerified: boolean): ImuFrame {
+  ensureInvariant(isProperRotation(bodyAxes), `IMU axes ${bodyAxes.join(', ')} are not a rotation`);
+  return { name, toBody: toBodyMatrixOf(bodyAxes), isVerified };
 }
 
 export function toBodyFrame(frame: ImuFrame, imuVector: Vector3): Vector3 {

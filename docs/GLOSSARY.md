@@ -45,14 +45,14 @@ The vocabulary used in code, tests and documents. One name per concept; no synon
 | Audio clock          | The PlaybackClock over an audio element fed through Media Source Extensions; the wall clock replaces it for silent recordings. See ADR 0007.                           |
 | Abort (a run)        | Ending a decode pipeline run early, discarding pending decodes. Distinct from pausing the clock and from the transport's stop (pause and rewind).                      |
 | Body frame           | The camera's own frame: x right, y down, z forward along lens 0's optical axis. Stabilization and view rotations are expressed in it.                                  |
-| Lens pose            | The rotation from the body frame into one lens's frame: the lens's half turn plus the calibration's yaw, pitch and roll (ADR 0008).                                    |
+| Lens pose            | The rotation from the body frame into one lens's frame (`lensRotation`): the lens's half turn plus the calibration's yaw, pitch and roll (ADR 0008).                   |
 | Canvas window        | The part of a lens's calibration canvas square that the recorded frame shows; the info record's sensor window, else the whole square.                                  |
 | Feather band         | The angles from a lens's optical axis between which its blend weight fades from one to zero, centred on the overlap of the two lenses.                                 |
 | View state           | Where the viewer looks (yaw, pitch), the horizontal field of view and the projection (rectilinear, stereographic, equirectangular).                                    |
 | Stitching setup      | Everything the renderer needs per lens (frame index, region, canvas window, pose, projection parameters), computed once from calibration and layout.                   |
 | Frame renderer       | The FrameSink that draws stitched frame pairs on the GPU; one fullscreen pass, one texture per decoded frame.                                                          |
 | Seam difference      | Mean absolute pixel difference between the two lenses in the overlap band of an equirectangular render; an inspection figure, not a quality gate.                      |
-| IMU frame            | How the gyro record's axes lie in the body frame; chosen from model and firmware, verified per recording by rendering (ADR 0009).                                      |
+| IMU frame            | How the gyro record's axes lie in the body frame; chosen from the camera model, measured per camera by the world-stillness ranking test (ADR 0009).                    |
 | World frame          | Gravity down along y, the body's forward at the start along z; orientations are body to world.                                                                         |
 | Orientation track    | The camera's body-to-world orientation per gyro sample, integrated from the gyro and pulled towards gravity.                                                           |
 | Stabilizer           | Strategy turning a frame's orientation into the rotation the renderer applies for a stabilization mode (off, lock, horizon, follow).                                   |

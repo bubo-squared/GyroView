@@ -1,5 +1,6 @@
 import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
+  isProperRotation,
   buildStitchingSetup,
   DEFAULT_VIEW,
   IDENTITY_MATRIX3,
@@ -9,8 +10,8 @@ import {
   LockStabilization,
   OrientationTrack,
   type FramePair,
+  type BodyAxes,
   type ImuFrame,
-  type Matrix3,
   type SignedAxis,
 } from '@gyroview/core';
 import { commands } from '@vitest/browser/context';
@@ -50,20 +51,8 @@ function allImuFrames(): readonly ImuFrame[] {
 }
 
 function properFrameOf(x: SignedAxis, y: SignedAxis, z: SignedAxis): ImuFrame[] {
-  if (isSameAxis(x, y) || isSameAxis(x, z) || isSameAxis(y, z)) return [];
-  const frame = imuFrame(`${x},${y},${z}`, [x, y, z], false);
-  return determinant(frame.toBody) > 0 ? [frame] : [];
-}
-
-function isSameAxis(a: SignedAxis, b: SignedAxis): boolean {
-  return a.at(-1) === b.at(-1);
-}
-
-function determinant(m: Matrix3): number {
-  const [m00, m01, m02, m10, m11, m12, m20, m21, m22] = m;
-  return (
-    m00 * (m11 * m22 - m12 * m21) - m01 * (m10 * m22 - m12 * m20) + m02 * (m10 * m21 - m11 * m20)
-  );
+  const axes: BodyAxes = [x, y, z];
+  return isProperRotation(axes) ? [imuFrame(axes.join(','), axes, false)] : [];
 }
 
 /**

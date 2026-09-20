@@ -1,8 +1,6 @@
-const int LENS_MEI = 0;
-const int LENS_RADIAL_POLYNOMIAL = 1;
-
 // Canvas pixel of a unit direction in the lens frame under the unified (Mei) model: project onto
-// the unit sphere, then from xi behind its centre onto the image plane, distort, scale.
+// the unit sphere, then from xi behind its centre onto the image plane, distort, scale. The
+// depth is positive for every direction inside a lens's field, which the caller has checked.
 vec2 projectMei(vec3 d, float xi, vec2 focal, vec2 principalPoint, vec3 radial, vec2 tangential) {
   float depth = d.z + xi;
   vec2 m = d.xy / depth;

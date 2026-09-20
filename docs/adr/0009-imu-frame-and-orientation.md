@@ -19,7 +19,8 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
   rate is below one degree per second (otherwise no bias is assumed: a camera that never rests
   must not have its slowest real motion subtracted), and pulled towards the accelerometer with a
   Mahony proportional term (gain 0.2) whenever the specific force lies within 0.9-1.1 g. The
-  initial pose levels the stillest early window's gravity with no yaw.
+  initial pose levels the gravity of the opening half second with no yaw (identity when the
+  camera accelerates then; the pull levels it within seconds).
 - **IMU frame** (`imuFrameFor`): chosen from the camera model in the info record. On the X5 the
   IMU sits a quarter turn about the camera's lateral axis: body x = IMU x, body y = IMU z,
   body z = -IMU y. The same frame fits recordings from firmware 1.7 and 1.11. Other cameras get

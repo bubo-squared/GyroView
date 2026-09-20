@@ -2,6 +2,7 @@ import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
   DEFAULT_VIEW,
+  equirectangularPixelOf,
   LensDecodePipeline,
   type FramePair,
   type StitchingSetup,
@@ -26,10 +27,21 @@ const HEIGHT = 768;
 const RENDER_TIME = 100;
 const RGBA_CHANNELS = 4;
 const BLACK_THRESHOLD = 8;
+/**
+ * The two 200-degree lenses cover the sphere; the few unlit pixels are the black beyond the
+ * image circles' corners and dark scene content, not stitching holes.
+ */
 const MIN_COVERAGE = 0.97;
 const FULL_TURN_DEGREES = 360;
 const SEAM_BAND_DEGREES = 8;
 const SEAM_ROWS_DEGREES = 50;
+/**
+ * The two lenses meet at yaw +-90: body left and right.
+ */
+const SEAM_COLUMNS = [
+  equirectangularPixelOf([-1, 0, 0], { width: WIDTH, height: HEIGHT }).column,
+  equirectangularPixelOf([1, 0, 0], { width: WIDTH, height: HEIGHT }).column,
+];
 
 /**
  * Fraction of pixels that received some picture; the stitched sphere has no holes.
@@ -56,7 +68,7 @@ function seamDifference(lens0: Uint8ClampedArray, lens1: Uint8ClampedArray): num
   const rowSpan = Math.round(SEAM_ROWS_DEGREES * rowsPerDegree);
   const sum = { total: 0, count: 0 };
   for (let row = HEIGHT / 2 - rowSpan; row < HEIGHT / 2 + rowSpan; row += 1) {
-    for (const seamColumn of [WIDTH / 4, (WIDTH * 3) / 4]) {
+    for (const seamColumn of SEAM_COLUMNS) {
       for (let column = seamColumn - bandColumns; column < seamColumn + bandColumns; column += 1) {
         accumulateDifference(sum, { lens0, lens1 }, (row * WIDTH + column) * RGBA_CHANNELS);
       }

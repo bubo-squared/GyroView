@@ -130,10 +130,41 @@ function lensOf(calibration: CalibrationSet, lensIndex: number): LensCalibration
 }
 
 /**
+ * The sensor window the info record describes, complete enough to place on the canvas.
+ */
+interface SensorWindow {
+  readonly sensorWidth: number;
+  readonly sensorHeight: number;
+  readonly cropWidth: number;
+  readonly cropHeight: number;
+  readonly cropOffsetX: number;
+  readonly cropOffsetY: number;
+}
+
+function sensorWindowOf(crop: WindowCrop | undefined): SensorWindow | undefined {
+  const isComplete =
+    crop?.sensorWidth !== undefined &&
+    crop.sensorHeight !== undefined &&
+    crop.cropWidth !== undefined &&
+    crop.cropHeight !== undefined;
+  return isComplete
+    ? {
+        sensorWidth: crop.sensorWidth,
+        sensorHeight: crop.sensorHeight,
+        cropWidth: crop.cropWidth,
+        cropHeight: crop.cropHeight,
+        cropOffsetX: crop.cropOffsetX ?? 0,
+        cropOffsetY: crop.cropOffsetY ?? 0,
+      }
+    : undefined;
+}
+
+/**
  * The canvas holds the lens images side by side in squares of its height; each lens's square is
  * the one holding its principal point. The encoded frame shows the sensor window the info
- * record describes (5312 of 5376 pixels on the X5), or the whole square when it says nothing.
- * Provisional: the window's meaning is confirmed on real frames (ADR 0008).
+ * record describes, in sensor pixels, which the canvas square represents at calibration
+ * resolution (both 5376 on the X5, so the scale is one there). Without a complete window the
+ * frame is taken to show the whole square. Verified on X5 frames (ADR 0008).
  */
 function canvasWindowOf(
   calibration: CalibrationSet,
@@ -142,13 +173,14 @@ function canvasWindowOf(
 ): CanvasWindow {
   const side = calibration.canvas.height;
   const squareX = Math.floor(lens.model.principalPoint.x / side) * side;
-  const isCropped = crop?.cropWidth !== undefined && crop.cropHeight !== undefined;
-  return isCropped
-    ? {
-        x: squareX + (crop.cropOffsetX ?? 0),
-        y: crop.cropOffsetY ?? 0,
-        width: crop.cropWidth,
-        height: crop.cropHeight,
-      }
-    : { x: squareX, y: 0, width: side, height: side };
+  const sensor = sensorWindowOf(crop);
+  if (!sensor) return { x: squareX, y: 0, width: side, height: side };
+  const scaleX = side / sensor.sensorWidth;
+  const scaleY = side / sensor.sensorHeight;
+  return {
+    x: squareX + sensor.cropOffsetX * scaleX,
+    y: sensor.cropOffsetY * scaleY,
+    width: sensor.cropWidth * scaleX,
+    height: sensor.cropHeight * scaleY,
+  };
 }

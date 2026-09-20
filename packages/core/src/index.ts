@@ -41,10 +41,12 @@ export type { ParsedGyroRecord } from './domain/format/records/gyro/parseGyroRec
 export { GyroTrack, type GyroSample } from './domain/motion/gyro/GyroTrack';
 export {
   ALIGNED_IMU_FRAME,
+  isProperRotation,
   imuFrame,
   imuFrameFor,
   toBodyFrame,
   X5_IMU_FRAME,
+  type BodyAxes,
   type ImuFrame,
   type ImuFrameHints,
   type SignedAxis,
@@ -88,13 +90,25 @@ export { lensRotation } from './domain/optics/lensPose';
 export {
   clampView,
   DEFAULT_VIEW,
-  MAX_FIELD_OF_VIEW,
-  MIN_FIELD_OF_VIEW,
+  fieldOfViewBoundsFor,
   viewRotation,
+  type FieldOfViewBounds,
   type Projection,
   type ViewState,
 } from './domain/view/ViewState';
-export { lookAt, panView, zoomView, type DragDelta } from './domain/view/viewGestures';
+export {
+  degreesPerPixel,
+  lookAt,
+  panView,
+  zoomView,
+  type DragDelta,
+} from './domain/view/viewGestures';
+export {
+  equirectangularDirectionOf,
+  equirectangularPixelOf,
+  type EquirectangularPixel,
+  type PixelSize,
+} from './domain/view/equirectangular';
 export {
   buildStitchingSetup,
   DEFAULT_FEATHER,
@@ -116,6 +130,7 @@ export { MeiModel, type MeiParameters } from './domain/optics/MeiModel';
 export { PolynomialModel, type PolynomialParameters } from './domain/optics/PolynomialModel';
 export { DEFAULT_HALF_FIELD_OF_VIEW } from './domain/optics/opticsConstants';
 export type { CalibrationChoice } from './domain/optics/selectCalibration';
+export { parseOffsetString } from './domain/optics/parseOffsetString';
 
 // Shared vocabulary
 export {
@@ -123,8 +138,15 @@ export {
   GyroViewError,
   type GyroViewErrorCode,
 } from './shared/errors/GyroViewError';
-export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
 export {
+  crossProduct,
+  dotProduct,
+  isFiniteVector,
+  magnitudeOf,
+  type Vector3,
+} from './shared/math/Vector3';
+export {
+  determinantOf,
   IDENTITY_MATRIX3,
   multiplyMatrices,
   rotationAboutX,

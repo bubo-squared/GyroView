@@ -1,10 +1,8 @@
-#define MAX_LENSES 2
-
 uniform int uLensCount;
 uniform mat3 uViewRotation;
 uniform mat3 uStabilization;
 uniform int uProjection;
-uniform float uTanHalfFov;
+uniform float uPlaneHalfExtent;
 uniform float uAspect;
 uniform vec2 uFeather;
 uniform mat3 uLensRotation[MAX_LENSES];
@@ -46,14 +44,15 @@ vec2 canvasPixel(int i, vec3 d, float theta) {
 }
 
 void main() {
-  vec3 dirView = rayFromNdc(vNdc, uProjection, uTanHalfFov, uAspect);
+  vec3 dirView = rayFromNdc(vNdc, uProjection, uPlaneHalfExtent, uAspect);
   vec3 dirBody = uStabilization * (uViewRotation * dirView);
   vec3 sum = vec3(0.0);
   float weightSum = 0.0;
   for (int i = 0; i < MAX_LENSES; i++) {
     if (i >= uLensCount) break;
     vec3 d = uLensRotation[i] * dirBody;
-    float theta = acos(clamp(d.z, -1.0, 1.0));
+    // atan keeps its precision near the axis where acos loses it.
+    float theta = atan(length(d.xy), d.z);
     if (theta >= uLensHalfFov[i]) continue;
     vec2 uv = (canvasPixel(i, d, theta) - uLensWindow[i].xy) / uLensWindow[i].zw;
     if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) continue;

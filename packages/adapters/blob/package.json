@@ -1,0 +1,24 @@
+{
+  "name": "@gyroview/adapter-blob",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Blob adapter for GyroView core ports: RandomAccessSource over a Blob or File already in the browser.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gyroview/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.1",
+    "vitest": "4.1.11"
+  }
+}

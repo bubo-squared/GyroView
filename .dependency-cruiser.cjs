@@ -75,6 +75,13 @@ module.exports = {
       to: { path: '^packages/adapters/(?!node/)' },
     },
     {
+      name: 'apps-use-the-player-not-the-adapters',
+      comment: 'Apps compose the player; only the player composes adapters.',
+      severity: 'error',
+      from: { path: '^apps/' },
+      to: { path: '^packages/adapters/' },
+    },
+    {
       name: 'player-is-not-imported-by-libraries',
       severity: 'error',
       from: { path: '^(packages/core|packages/adapters|tools)/' },

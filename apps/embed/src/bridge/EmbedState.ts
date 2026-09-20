@@ -1,0 +1,26 @@
+import type { StabilizationMode, ViewState } from '@gyroview/core';
+import type { PlayerMetadata, PlayerStatus } from '@gyroview/player';
+
+/**
+ * The player's state as the embedding page sees it: a snapshot the host answers `getState`
+ * with, and which the handle keeps current from the events it hears.
+ */
+export interface EmbedState {
+  readonly status: PlayerStatus;
+  readonly currentTime: number;
+  readonly duration: number;
+  readonly isPaused: boolean;
+  readonly view: ViewState;
+  readonly stabilization: StabilizationMode;
+  readonly metadata: PlayerMetadata | undefined;
+}
+
+/**
+ * The attributes a `load` command may set; anything absent is removed.
+ */
+export interface LoadRequest {
+  readonly src: string;
+  readonly src2?: string;
+  readonly proxy?: string;
+  readonly quality?: string;
+}

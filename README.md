@@ -130,7 +130,8 @@ through Playwright. The end-to-end tests in `tools/integration/src/browser` play
 sample recordings; they skip when the samples are absent (as in CI) and drive the installed
 Google Chrome when there is one, because Playwright's own Chromium build has no HEVC decoder.
 
-See `CONTRIBUTING.md` for the architecture rules and the definition of done.
+See `docs/ARCHITECTURE.md` for how the code is organised and `CONTRIBUTING.md` for the
+architecture rules and the definition of done.
 
 ## Local samples
 

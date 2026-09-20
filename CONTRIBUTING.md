@@ -9,7 +9,8 @@
 
 ## Layout and dependency rule
 
-Hexagonal architecture, enforced by `.dependency-cruiser.cjs`:
+Hexagonal architecture, enforced by `.dependency-cruiser.cjs`; `docs/ARCHITECTURE.md`
+describes the components layer by layer:
 
 - `packages/core`: domain and application code. Pure TypeScript, no runtime dependencies, no DOM
   or Node types in `src` (tests may use Node).

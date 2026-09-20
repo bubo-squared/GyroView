@@ -6,7 +6,7 @@ export interface FrameScheduler {
   cancel(handle: number): void;
 }
 
-export const ANIMATION_FRAMES: FrameScheduler = {
+const ANIMATION_FRAMES: FrameScheduler = {
   request: (callback): number => requestAnimationFrame(callback),
   cancel: (handle): void => {
     cancelAnimationFrame(handle);

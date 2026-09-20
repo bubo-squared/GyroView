@@ -24,7 +24,7 @@ import { MAX_LENSES, SHADER_DEFINES, type StitchUniforms } from '../stitchUnifor
  * Samples taken around the seam ring per lens: enough to average out content, few enough that
  * the read-back is negligible.
  */
-export const SEAM_SAMPLES = 64;
+const SEAM_SAMPLES = 64;
 const RGBA = 4;
 const BEYOND_CLIP = 3;
 const FULLSCREEN_TRIANGLE = [-1, -1, 0, BEYOND_CLIP, -1, 0, -1, BEYOND_CLIP, 0];

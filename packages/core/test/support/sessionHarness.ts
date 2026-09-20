@@ -16,8 +16,8 @@ import {
 import { FakeVideoTrack } from '../../src/testing/FakeVideoTrack';
 
 export const FRAME_RATE = 10;
-export const FRAMES = 30;
-export const FRAMES_PER_GOP = 10;
+const FRAMES = 30;
+const FRAMES_PER_GOP = 10;
 export const DURATION = seconds(FRAMES / FRAME_RATE);
 const SETTLE_MS = 5;
 const MILLISECONDS_PER_SECOND = 1000;
@@ -43,7 +43,7 @@ export interface SessionHarnessOptions {
   readonly parts?: Partial<PlaybackSessionParts<FakeFrameHandle>>;
 }
 
-export function lensTracks(frameCount = FRAMES): FakeVideoTrack[] {
+function lensTracks(frameCount = FRAMES): FakeVideoTrack[] {
   return [0, 1].map(
     (trackIndex) =>
       new FakeVideoTrack({

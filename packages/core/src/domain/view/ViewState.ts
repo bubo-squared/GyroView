@@ -46,7 +46,7 @@ const FIELD_OF_VIEW_BOUNDS: Readonly<Record<Projection, FieldOfViewBounds>> = {
   equirectangular: { min: degrees(NARROWEST_DEGREES), max: degrees(RECTILINEAR_WIDEST_DEGREES) },
 };
 
-export const DEFAULT_FIELD_OF_VIEW = degrees(DEFAULT_FIELD_OF_VIEW_DEGREES);
+const DEFAULT_FIELD_OF_VIEW = degrees(DEFAULT_FIELD_OF_VIEW_DEGREES);
 export const FULL_TURN = degrees(FULL_TURN_DEGREES);
 
 export const DEFAULT_VIEW: ViewState = {

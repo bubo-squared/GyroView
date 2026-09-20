@@ -5,20 +5,20 @@ import { decodeUtf8 } from '../text/utf8';
 /**
  * Protocol Buffers wire types this decoder understands. Groups (3, 4) are obsolete and rejected.
  */
-export const WireType = {
+const WireType = {
   Varint: 0,
   Fixed64: 1,
   LengthDelimited: 2,
   Fixed32: 5,
 } as const;
 
-export type ProtobufValue =
+type ProtobufValue =
   | { readonly kind: 'varint'; readonly value: bigint }
   | { readonly kind: 'fixed64'; readonly bytes: Uint8Array }
   | { readonly kind: 'fixed32'; readonly bytes: Uint8Array }
   | { readonly kind: 'bytes'; readonly bytes: Uint8Array };
 
-export interface ProtobufField {
+interface ProtobufField {
   readonly number: number;
   readonly value: ProtobufValue;
 }

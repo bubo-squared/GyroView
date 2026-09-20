@@ -15,10 +15,11 @@ export const TRAILER_MAGIC = '8db42d694ccc418790edff439fe026bf';
  * 32 reserved bytes, u32 LE trailer size, u32 LE version, 32-byte magic.
  */
 export const TRAILER_FOOTER_SIZE = 72;
-export const FOOTER_RESERVED_SIZE = 32;
-export const FOOTER_TRAILER_SIZE_OFFSET = 32;
-export const FOOTER_VERSION_OFFSET = 36;
-export const FOOTER_MAGIC_OFFSET = 40;
+const FOOTER_RESERVED_SIZE = 32;
+const FOOTER_FIELD_SIZE = 4;
+export const FOOTER_TRAILER_SIZE_OFFSET = FOOTER_RESERVED_SIZE;
+export const FOOTER_VERSION_OFFSET = FOOTER_TRAILER_SIZE_OFFSET + FOOTER_FIELD_SIZE;
+export const FOOTER_MAGIC_OFFSET = FOOTER_VERSION_OFFSET + FOOTER_FIELD_SIZE;
 export const FOOTER_MAGIC_SIZE = 32;
 
 /**

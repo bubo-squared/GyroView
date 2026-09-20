@@ -29,7 +29,7 @@ const MAX_RESTING_G = 1.1;
  * while the camera accelerates. The accelerometer measures the reaction to gravity, hence the
  * sign flip.
  */
-export function measuredGravity(accelerationInBody: Vector3): Vector3 | undefined {
+function measuredGravity(accelerationInBody: Vector3): Vector3 | undefined {
   const magnitude = magnitudeOf(accelerationInBody);
   const isResting = magnitude >= MIN_RESTING_G && magnitude <= MAX_RESTING_G;
   return isResting
@@ -55,7 +55,7 @@ export function gravityCorrection(orientation: Quaternion, accelerationInBody: V
 /**
  * The samples within the first `length` seconds of the track, at least the first one.
  */
-export function openingWindow(gyro: GyroTrack, length: Seconds): SampleWindow {
+function openingWindow(gyro: GyroTrack, length: Seconds): SampleWindow {
   if (gyro.isEmpty) return { start: 0, end: 0 };
   const first = gyro.sampleAt(0).captureTime;
   const span = secondsToMicroseconds(length);
@@ -81,7 +81,7 @@ export function initialOrientation(gyro: GyroTrack, frame: ImuFrame, window: Sec
 /**
  * The shortest rotation taking unit vector `from` onto unit vector `to`.
  */
-export function rotationBetween(from: Vector3, to: Vector3): Quaternion {
+function rotationBetween(from: Vector3, to: Vector3): Quaternion {
   const axis = crossProduct(from, to);
   const dot = dotProduct(from, to);
   const sine = magnitudeOf(axis);

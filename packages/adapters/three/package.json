@@ -19,8 +19,6 @@
     "three": "0.186.0"
   },
   "devDependencies": {
-    "@gyroview/adapter-mediabunny": "workspace:*",
-    "@gyroview/adapter-webcodecs": "workspace:*",
     "@types/three": "0.186.0",
     "@vitest/browser": "4.1.11",
     "@vitest/browser-playwright": "4.1.11",

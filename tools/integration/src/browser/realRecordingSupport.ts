@@ -92,7 +92,7 @@ export async function skipUnlessDecodable(
   throw new Error(`the recording does not decode here: ${JSON.stringify(probe.lenses)}`);
 }
 
-export function deadlineIn(ms: number): Signal {
+function deadlineIn(ms: number): Signal {
   const signal = new Signal();
   setTimeout(() => {
     signal.trigger();
@@ -100,7 +100,7 @@ export function deadlineIn(ms: number): Signal {
   return signal;
 }
 
-export function wait(ms: number): Promise<void> {
+function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });

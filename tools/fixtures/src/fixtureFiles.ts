@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
  */
 const FIXTURE_ROOT = new URL('../../../test/fixtures/', import.meta.url);
 
-export function fixturePath(relativePath: string): string {
+function fixturePath(relativePath: string): string {
   return fileURLToPath(new URL(relativePath, FIXTURE_ROOT));
 }
 

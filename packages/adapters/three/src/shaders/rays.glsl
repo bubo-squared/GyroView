@@ -1,5 +1,3 @@
-const float PI = 3.14159265358979;
-
 // Direction in view space (x right, y down, z forward) seen through a screen point in normalised
 // device coordinates. Screen y points up, view y points down. The perspective projections scale
 // the image plane so that the horizontal field of view means what the view state says; the

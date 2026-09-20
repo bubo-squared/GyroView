@@ -5,7 +5,7 @@
  */
 export function defineStringProperties(element: HTMLElement, names: readonly string[]): void {
   for (const name of names) {
-    Object.defineProperty(element, name, {
+    Object.defineProperty(element, propertyNameOf(name), {
       configurable: true,
       enumerable: true,
       get(this: HTMLElement): string | null {
@@ -20,7 +20,7 @@ export function defineStringProperties(element: HTMLElement, names: readonly str
 
 export function defineNumberProperties(element: HTMLElement, names: readonly string[]): void {
   for (const name of names) {
-    Object.defineProperty(element, name, {
+    Object.defineProperty(element, propertyNameOf(name), {
       configurable: true,
       enumerable: true,
       get(this: HTMLElement): number | undefined {
@@ -36,7 +36,7 @@ export function defineNumberProperties(element: HTMLElement, names: readonly str
 
 export function defineBooleanProperties(element: HTMLElement, names: readonly string[]): void {
   for (const name of names) {
-    Object.defineProperty(element, name, {
+    Object.defineProperty(element, propertyNameOf(name), {
       configurable: true,
       enumerable: true,
       get(this: HTMLElement): boolean {
@@ -59,4 +59,13 @@ function writeAttribute(element: Element, name: string, value: string | null): v
     return;
   }
   element.setAttribute(name, value);
+}
+
+const HYPHENATED_LETTER = /-(?<letter>[a-z])/gu;
+
+/**
+ * `gain-match` is the property `gainMatch`, as the DOM does for `data-*` and `aria-*`.
+ */
+export function propertyNameOf(attribute: string): string {
+  return attribute.replaceAll(HYPHENATED_LETTER, (_match, letter: string) => letter.toUpperCase());
 }

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isBooleanAttributeSet,
+  shouldMatchGains,
   shouldPreload,
   parseNumber,
   projectionFromAttribute,
@@ -93,5 +94,11 @@ describe('view and playback attributes', () => {
     expect(shouldPreload(null)).toBe(true);
     expect(shouldPreload('auto')).toBe(true);
     expect(shouldPreload('None')).toBe(false);
+  });
+
+  it('matches gains unless told off', () => {
+    expect(shouldMatchGains(null)).toBe(true);
+    expect(shouldMatchGains('on')).toBe(true);
+    expect(shouldMatchGains('OFF')).toBe(false);
   });
 });

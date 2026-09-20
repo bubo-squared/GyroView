@@ -39,6 +39,7 @@ const STRING_ATTRIBUTES = [
   PlaybackAttribute.Stabilization,
   PlaybackAttribute.Poster,
   PlaybackAttribute.Preload,
+  PlaybackAttribute.GainMatch,
   ViewAttribute.Projection,
 ];
 const NUMBER_ATTRIBUTES = [ViewAttribute.FieldOfView, ViewAttribute.Yaw, ViewAttribute.Pitch];

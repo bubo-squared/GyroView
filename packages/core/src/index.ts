@@ -130,6 +130,12 @@ export { EquidistantModel, type EquidistantParameters } from './domain/optics/Eq
 export { MeiModel, type MeiParameters } from './domain/optics/MeiModel';
 export { PolynomialModel, type PolynomialParameters } from './domain/optics/PolynomialModel';
 export { DEFAULT_HALF_FIELD_OF_VIEW } from './domain/optics/opticsConstants';
+export {
+  DEFAULT_GAIN_MATCH_OPTIONS,
+  GainMatcher,
+  gainsMatching,
+  type GainMatchOptions,
+} from './domain/optics/gainMatch';
 export type { CalibrationChoice } from './domain/optics/selectCalibration';
 export { parseOffsetString } from './domain/optics/parseOffsetString';
 

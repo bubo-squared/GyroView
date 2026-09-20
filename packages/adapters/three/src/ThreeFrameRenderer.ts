@@ -4,7 +4,9 @@ import {
   ensureInvariant,
   GyroViewError,
   type Matrix3 as CoreMatrix3,
+  seconds,
   type Presentation,
+  type Seconds,
   type StabilizableFrameSink,
   type StitchingSetup,
   type Vector3 as CoreVector3,
@@ -24,8 +26,12 @@ import {
   WebGLRenderer,
 } from 'three';
 
+import { GainMatching } from './gainMatch/GainMatching';
+import { GainMatchPass } from './gainMatch/GainMatchPass';
+import constants from './shaders/constants.glsl?raw';
 import fullscreenVertex from './shaders/fullscreen.vert.glsl?raw';
 import lensModels from './shaders/lensModels.glsl?raw';
+import lensSampling from './shaders/lensSampling.glsl?raw';
 import precision from './shaders/precision.glsl?raw';
 import rays from './shaders/rays.glsl?raw';
 import stitchFragment from './shaders/stitch.frag.glsl?raw';
@@ -82,6 +88,8 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
    */
   private hasFrames = false;
   private isDisposed = false;
+  private gainMatching: GainMatching | undefined;
+  private lastMediaTime: Seconds = seconds(0);
 
   private constructor(
     private readonly parts: RendererParts,
@@ -143,6 +151,33 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   }
 
   /**
+   * Matches the lenses' exposure along the seam automatically, measuring every half second of
+   * presented frames. Off by default; turning it off leaves the last gains in place.
+   */
+  public setGainMatching(isEnabled: boolean): void {
+    this.ensureLive();
+    if (!isEnabled) {
+      this.gainMatching?.dispose();
+      this.gainMatching = undefined;
+      return;
+    }
+    this.gainMatching ??= new GainMatching(
+      new GainMatchPass(this.parts.renderer, this.parts.uniforms, this.parts.textures.length),
+      (gains) => {
+        this.applyGains(gains);
+      },
+    );
+  }
+
+  /**
+   * One measurement and adjustment right now, for tests and for a still frame.
+   */
+  public async matchGainsNow(): Promise<void> {
+    this.ensureLive();
+    await this.gainMatching?.matchNow(this.lastMediaTime);
+  }
+
+  /**
    * Turns the whole picture: the stabilized frame the viewer looks around in, into the body.
    * Does not redraw by itself: the stabilizing sink calls it right before presenting a pair.
    */
@@ -163,7 +198,9 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
       if (frame) texture.setFrame(frame.handle);
     }
     this.hasFrames = true;
+    this.lastMediaTime = presentation.mediaTime;
     this.render();
+    this.gainMatching?.afterPresent(presentation.mediaTime);
   }
 
   /**
@@ -191,6 +228,7 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
     if (this.isDisposed) return;
     this.isDisposed = true;
     this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
+    this.gainMatching?.dispose();
     for (const texture of this.parts.textures) texture.dispose();
     this.parts.material.dispose();
     this.parts.geometry.dispose();
@@ -204,6 +242,14 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   private render(): void {
     if (!this.hasFrames) return;
     this.parts.renderer.render(this.parts.scene, PASS_THROUGH_CAMERA);
+  }
+
+  private applyGains(gains: readonly CoreVector3[]): void {
+    if (this.isDisposed) return;
+    for (const [lensIndex, gain] of gains.entries()) {
+      this.parts.uniforms.uLensGain.value[lensIndex]?.set(...gain);
+    }
+    this.render();
   }
 
   private applyView(): void {
@@ -255,7 +301,9 @@ function createMaterial(uniforms: StitchUniforms): RawShaderMaterial {
     glslVersion: GLSL3,
     defines: { ...SHADER_DEFINES },
     vertexShader: fullscreenVertex,
-    fragmentShader: [precision, rays, lensModels, stitchFragment].join('\n'),
+    fragmentShader: [precision, constants, rays, lensModels, lensSampling, stitchFragment].join(
+      '\n',
+    ),
     uniforms: { ...uniforms },
     depthTest: false,
     depthWrite: false,

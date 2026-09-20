@@ -1,4 +1,9 @@
-import { isBooleanAttributeSet, PlaybackAttribute, stabilizationFromAttribute } from './attributes';
+import {
+  isBooleanAttributeSet,
+  PlaybackAttribute,
+  shouldMatchGains,
+  stabilizationFromAttribute,
+} from './attributes';
 import type { Player } from '../player/Player';
 
 export interface PlaybackTargets {
@@ -6,35 +11,49 @@ export interface PlaybackTargets {
   readonly posterImage: HTMLImageElement;
 }
 
+type AttributeApplier = (targets: PlaybackTargets, value: string | null) => void;
+
 /**
- * Applies one of the attributes that change playback without reloading.
+ * What each attribute that changes playback without reloading does.
  */
+const APPLIERS: ReadonlyMap<string, AttributeApplier> = new Map<string, AttributeApplier>([
+  [
+    PlaybackAttribute.Stabilization,
+    ({ player }, value): void => {
+      const mode = stabilizationFromAttribute(value);
+      if (mode) player.setStabilization(mode);
+    },
+  ],
+  [
+    PlaybackAttribute.Muted,
+    ({ player }, value): void => {
+      player.setMuted(isBooleanAttributeSet(value));
+    },
+  ],
+  [
+    PlaybackAttribute.Loop,
+    ({ player }, value): void => {
+      player.setLooping(isBooleanAttributeSet(value));
+    },
+  ],
+  [
+    PlaybackAttribute.Poster,
+    ({ posterImage }, value): void => {
+      posterImage.src = value ?? '';
+    },
+  ],
+  [
+    PlaybackAttribute.GainMatch,
+    ({ player }, value): void => {
+      player.setGainMatching(shouldMatchGains(value));
+    },
+  ],
+]);
+
 export function applyPlaybackAttribute(
   targets: PlaybackTargets,
   name: string,
   value: string | null,
 ): void {
-  const { player, posterImage } = targets;
-  switch (name) {
-    case PlaybackAttribute.Stabilization: {
-      const mode = stabilizationFromAttribute(value);
-      if (mode) player.setStabilization(mode);
-      break;
-    }
-    case PlaybackAttribute.Muted: {
-      player.setMuted(isBooleanAttributeSet(value));
-      break;
-    }
-    case PlaybackAttribute.Loop: {
-      player.setLooping(isBooleanAttributeSet(value));
-      break;
-    }
-    case PlaybackAttribute.Poster: {
-      posterImage.src = value ?? '';
-      break;
-    }
-    default: {
-      break;
-    }
-  }
+  APPLIERS.get(name)?.(targets, value);
 }

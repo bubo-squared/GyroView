@@ -10,3 +10,7 @@ export function hasErrorCode(error: unknown, code: GyroViewErrorCode): boolean {
 export function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
 }
+
+export function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

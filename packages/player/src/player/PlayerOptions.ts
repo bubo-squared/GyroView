@@ -22,4 +22,8 @@ export interface LoadOptions {
    * canvas. Default true; off keeps the decoders idle until play.
    */
   readonly preload?: boolean;
+  /**
+   * Match the lenses' exposure along the seam. Default true.
+   */
+  readonly gainMatching?: boolean;
 }

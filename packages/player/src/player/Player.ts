@@ -1,4 +1,3 @@
-import type { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   clampView,
   DEFAULT_VIEW,
@@ -23,7 +22,7 @@ import { transportEventsFor } from './transportEvents';
 import { Viewport } from './Viewport';
 import { buildPipeline, type Pipeline } from '../composition/buildPipeline';
 import { Disposables } from '../composition/Disposables';
-import { hasErrorCode, isAbortError } from '../composition/errorCodes';
+import { hasErrorCode, isAbortError, messageOf } from '../composition/errorCodes';
 import type { OpenedRecording } from '../composition/OpenedRecording';
 import { openRecording } from '../composition/openRecording';
 import type { PlayerMetadata } from '../PlayerMetadata';
@@ -54,6 +53,7 @@ export class Player {
   private failure: GyroViewError | undefined;
   private viewState: ViewState = DEFAULT_VIEW;
   private stabilizationMode: StabilizationMode = DEFAULT_STABILIZATION;
+  private isGainMatching = true;
   private isLoopingValue = false;
   private lastStatus: PlayerStatus = 'idle';
   private lastSessionState: PlayerState | undefined;
@@ -100,6 +100,10 @@ export class Player {
 
   public get isLooping(): boolean {
     return this.isLoopingValue;
+  }
+
+  public get isMatchingGains(): boolean {
+    return this.isGainMatching;
   }
 
   public get volume(): number {
@@ -208,6 +212,14 @@ export class Player {
     this.isLoopingValue = isLooping;
   }
 
+  /**
+   * Whether the lenses' exposure is matched along the seam; kept across loads.
+   */
+  public setGainMatching(isEnabled: boolean): void {
+    this.isGainMatching = isEnabled;
+    this.loaded?.pipeline.renderer.setGainMatching(isEnabled);
+  }
+
   public setVolume(volume: number): void {
     this.parts.host.audio.volume = Math.min(Math.max(volume, 0), 1);
   }
@@ -224,6 +236,7 @@ export class Player {
   private applyOptions(options: LoadOptions): void {
     if (options.view) this.viewState = clampView(options.view);
     if (options.stabilization) this.stabilizationMode = options.stabilization;
+    if (options.gainMatching !== undefined) this.isGainMatching = options.gainMatching;
   }
 
   private async open(source: PlayerSource, signal: AbortSignal): Promise<Loaded> {
@@ -261,6 +274,7 @@ export class Player {
     this.loaded = loaded;
     const { session } = loaded.pipeline;
     loaded.pipeline.stabilizing?.setStabilizer(stabilizerFor(this.stabilizationMode));
+    loaded.pipeline.renderer.setGainMatching(this.isGainMatching);
     session.events.on('statechange', (state) => {
       this.onSessionState(state);
     });
@@ -337,7 +351,7 @@ export class Player {
   private refreshPicture(): void {
     const { loaded, lastPresentation } = this;
     if (!loaded || !lastPresentation || loaded.pipeline.session.state === 'playing') return;
-    sinkOf(loaded.pipeline).present(lastPresentation);
+    (loaded.pipeline.stabilizing ?? loaded.pipeline.renderer).present(lastPresentation);
   }
 
   private failWith(error: unknown): GyroViewError {
@@ -358,12 +372,4 @@ export class Player {
     this.lastStatus = status;
     this.events.emit('statuschange', status);
   }
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function sinkOf(pipeline: Pipeline): Pick<ThreeFrameRenderer, 'present'> {
-  return pipeline.stabilizing ?? pipeline.renderer;
 }

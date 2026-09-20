@@ -298,6 +298,28 @@ describe('ThreeFrameRenderer', () => {
     expect(beforeSeam.b).toBeGreaterThan(FAINT);
   });
 
+  it('matches the darker lens to the brighter one along the seam when gain matching is on', async () => {
+    const renderer = open();
+    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    renderer.setGainMatching(true);
+    present(renderer, [solidFrame('rgb(200, 200, 200)'), solidFrame('rgb(100, 100, 100)')]);
+    expect(pixelTowards(renderer, [0, 0, -1]).g).toBeLessThan(110);
+
+    await renderer.matchGainsNow();
+
+    expect(pixelTowards(renderer, [0, 0, -1]).g).toBeGreaterThan(190);
+    expect(pixelTowards(renderer, [0, 0, 1]).g).toBeGreaterThan(190);
+    expect(pixelTowards(renderer, [0, 0, 1]).g).toBeLessThan(210);
+  });
+
+  it('leaves the lenses as recorded while gain matching is off', async () => {
+    const renderer = open();
+    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    present(renderer, [solidFrame('rgb(200, 200, 200)'), solidFrame('rgb(100, 100, 100)')]);
+    await renderer.matchGainsNow();
+    expect(pixelTowards(renderer, [0, 0, -1]).g).toBeLessThan(110);
+  });
+
   it('applies a lock stabilization: a camera turned around shows lens 1 ahead', () => {
     const renderer = open();
     renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });

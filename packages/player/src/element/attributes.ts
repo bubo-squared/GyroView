@@ -38,6 +38,10 @@ export const PlaybackAttribute = {
    * `none` keeps the decoders idle until play; anything else (the default) shows the first frame.
    */
   Preload: 'preload',
+  /**
+   * `off` leaves the lenses' exposure as recorded; anything else (the default) matches them.
+   */
+  GainMatch: 'gain-match',
   Muted: 'muted',
   Loop: 'loop',
   Stabilization: 'stabilization',
@@ -180,4 +184,10 @@ const PRELOAD_NONE = 'none';
 
 export function shouldPreload(value: string | null): boolean {
   return value?.trim().toLowerCase() !== PRELOAD_NONE;
+}
+
+const GAIN_MATCH_OFF = 'off';
+
+export function shouldMatchGains(value: string | null): boolean {
+  return value?.trim().toLowerCase() !== GAIN_MATCH_OFF;
 }

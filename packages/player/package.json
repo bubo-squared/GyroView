@@ -1,0 +1,33 @@
+{
+  "name": "@gyroview/player",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The <gyro-view> web component: composition root wiring the GyroView core and adapters into a player for raw Insta360 recordings.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gyroview/adapter-blob": "workspace:*",
+    "@gyroview/adapter-fetch": "workspace:*",
+    "@gyroview/adapter-mediabunny": "workspace:*",
+    "@gyroview/adapter-mse-audio": "workspace:*",
+    "@gyroview/adapter-three": "workspace:*",
+    "@gyroview/adapter-webcodecs": "workspace:*",
+    "@gyroview/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitest/browser": "4.1.11",
+    "@vitest/browser-playwright": "4.1.11",
+    "playwright": "1.63.0",
+    "vite": "8.3.0",
+    "vitest": "4.1.11"
+  }
+}

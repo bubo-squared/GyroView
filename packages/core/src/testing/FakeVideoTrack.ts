@@ -14,6 +14,13 @@ export interface FakeVideoTrackOptions {
   readonly framesPerGop: number;
   readonly codedSize?: number;
   /**
+   * Width and height when the frame is not square (a packed dual-fisheye proxy); default the
+   * coded size both ways.
+   */
+  readonly codedWidth?: number;
+  readonly codedHeight?: number;
+  readonly codec?: string;
+  /**
    * Shifts every timestamp, to simulate tracks that do not start at zero.
    */
   readonly firstTimestamp?: Seconds;
@@ -33,24 +40,15 @@ export class FakeVideoTrack implements VideoTrackReader {
   private readonly packets: readonly EncodedVideoPacket[];
 
   public constructor(private readonly options: FakeVideoTrackOptions) {
-    const size = options.codedSize ?? DEFAULT_CODED_SIZE;
-    this.description = {
-      trackIndex: options.trackIndex,
-      codedWidth: size,
-      codedHeight: size,
-      codec: FAKE_CODEC,
-    };
+    this.description = { trackIndex: options.trackIndex, ...codedShapeOf(options) };
     this.packets = Array.from({ length: options.frameCount }, (_unused, frame) =>
       this.packetFor(frame),
     );
   }
 
   public decoderConfiguration(): Promise<VideoDecoderConfiguration> {
-    const size = this.options.codedSize ?? DEFAULT_CODED_SIZE;
     return Promise.resolve({
-      codec: FAKE_CODEC,
-      codedWidth: size,
-      codedHeight: size,
+      ...codedShapeOf(this.options),
       description: undefined,
       isFullRange: true,
     });
@@ -94,6 +92,17 @@ export class FakeVideoTrack implements VideoTrackReader {
       data: Uint8Array.from([frame & BYTE_MASK, (frame >>> BITS_PER_BYTE) & BYTE_MASK]),
     };
   }
+}
+
+function codedShapeOf(
+  options: FakeVideoTrackOptions,
+): Pick<VideoTrackDescription, 'codedWidth' | 'codedHeight' | 'codec'> {
+  const size = options.codedSize ?? DEFAULT_CODED_SIZE;
+  return {
+    codedWidth: options.codedWidth ?? size,
+    codedHeight: options.codedHeight ?? size,
+    codec: options.codec ?? FAKE_CODEC,
+  };
 }
 
 /**

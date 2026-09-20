@@ -1,5 +1,7 @@
-import { describeVideoTrackReaderContract } from './VideoTrackReader.contract';
+import { describe, expect, it } from 'vitest';
+
 import { FakeVideoTrack } from './FakeVideoTrack';
+import { describeVideoTrackReaderContract } from './VideoTrackReader.contract';
 
 describeVideoTrackReaderContract(
   'FakeVideoTrack',
@@ -9,3 +11,28 @@ describeVideoTrackReaderContract(
     ),
   { frameCount: 30, frameRate: 10, framesPerGop: 10 },
 );
+
+describe('FakeVideoTrack shape options', () => {
+  it('describes a packed proxy track with its own width, height and codec', async () => {
+    const track = new FakeVideoTrack({
+      trackIndex: 0,
+      frameRate: 30,
+      frameCount: 3,
+      framesPerGop: 3,
+      codedWidth: 1664,
+      codedHeight: 832,
+      codec: 'avc1.fake',
+    });
+    expect(track.description).toEqual({
+      trackIndex: 0,
+      codedWidth: 1664,
+      codedHeight: 832,
+      codec: 'avc1.fake',
+    });
+    await expect(track.decoderConfiguration()).resolves.toMatchObject({
+      codedWidth: 1664,
+      codedHeight: 832,
+      codec: 'avc1.fake',
+    });
+  });
+});

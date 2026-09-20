@@ -86,8 +86,14 @@ canvas:active {
 }
 
 :host([data-status='loading']) .overlay.loading,
+:host([data-status='buffering']) .overlay.loading,
 :host([data-status='error']) .overlay.error {
   display: flex;
+}
+
+:host([data-status='buffering']) .overlay.loading {
+  background: transparent;
+  pointer-events: none;
 }
 
 .spinner {

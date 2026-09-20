@@ -1,19 +1,42 @@
 import type { PlayerState } from '@gyroview/core';
 
-export type TransportEventName = 'seeking' | 'seeked' | 'play' | 'pause';
+export type TransportEventName = 'seeking' | 'seeked' | 'play' | 'playing' | 'waiting' | 'pause';
+
+const STOPPED_STATES: ReadonlySet<PlayerState> = new Set<PlayerState>(['ready', 'paused', 'ended']);
+
+/**
+ * What flowing states announce: frames flow, or playback holds for them.
+ */
+const FLOW_EVENTS: ReadonlyMap<PlayerState, TransportEventName> = new Map<
+  PlayerState,
+  TransportEventName
+>([
+  ['playing', 'playing'],
+  ['buffering', 'waiting'],
+]);
 
 /**
  * The transport events a session state change means to a listener who thinks in media-element
- * terms: a seek is bracketed by `seeking` and `seeked`, and resuming after it is not a new
- * `play`, nor is landing paused after it a new `pause`.
+ * terms: `play` when playback is asked for, `waiting` while it holds for frames, `playing` when
+ * frames flow, `pause` when it stops, and a seek bracketed by `seeking` and `seeked` without
+ * repeating `play` or `pause`.
  */
 export function transportEventsFor(
   previous: PlayerState | undefined,
   next: PlayerState,
 ): readonly TransportEventName[] {
   if (next === 'seeking') return ['seeking'];
-  const events: TransportEventName[] = previous === 'seeking' ? ['seeked'] : [];
-  if (previous !== 'seeking' && next === 'playing') events.push('play');
-  if (previous !== 'seeking' && next === 'paused') events.push('pause');
-  return events;
+  if (previous === 'seeking') return next === 'buffering' ? ['seeked', 'waiting'] : ['seeked'];
+  if (next === 'paused') return previous === 'ready' ? [] : ['pause'];
+  return flowEventsFor(previous, next);
+}
+
+function flowEventsFor(
+  previous: PlayerState | undefined,
+  next: PlayerState,
+): readonly TransportEventName[] {
+  const flow = FLOW_EVENTS.get(next);
+  if (flow === undefined) return [];
+  const isStarting = previous === undefined || STOPPED_STATES.has(previous);
+  return isStarting ? ['play', flow] : [flow];
 }

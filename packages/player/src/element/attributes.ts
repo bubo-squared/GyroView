@@ -34,6 +34,10 @@ export const ViewAttribute = {
 
 export const PlaybackAttribute = {
   Autoplay: 'autoplay',
+  /**
+   * `none` keeps the decoders idle until play; anything else (the default) shows the first frame.
+   */
+  Preload: 'preload',
   Muted: 'muted',
   Loop: 'loop',
   Stabilization: 'stabilization',
@@ -170,4 +174,10 @@ function problemsWith(
   return value === null
     ? []
     : [`ignoring ${attribute}="${value}"; expected one of ${choices.join(', ')}`];
+}
+
+const PRELOAD_NONE = 'none';
+
+export function shouldPreload(value: string | null): boolean {
+  return value?.trim().toLowerCase() !== PRELOAD_NONE;
 }

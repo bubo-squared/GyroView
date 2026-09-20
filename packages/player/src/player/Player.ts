@@ -16,33 +16,18 @@ import {
   type ViewState,
 } from '@gyroview/core';
 
-import { FrameLoop, type FrameScheduler } from './FrameLoop';
+import { FrameLoop } from './FrameLoop';
 import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
+import type { LoadOptions, PlayerParts } from './PlayerOptions';
 import { transportEventsFor } from './transportEvents';
 import { Viewport } from './Viewport';
-import { buildPipeline, type Pipeline, type PipelineHost } from '../composition/buildPipeline';
+import { buildPipeline, type Pipeline } from '../composition/buildPipeline';
 import { Disposables } from '../composition/Disposables';
 import { hasErrorCode, isAbortError } from '../composition/errorCodes';
 import type { OpenedRecording } from '../composition/OpenedRecording';
 import { openRecording } from '../composition/openRecording';
-import type { RecordingPorts } from '../composition/ports';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
-
-export interface PlayerParts {
-  readonly host: PipelineHost;
-  readonly ports: RecordingPorts<VideoFrame>;
-  readonly scheduler?: FrameScheduler;
-}
-
-export interface LoadOptions {
-  readonly view?: ViewState;
-  readonly stabilization?: StabilizationMode;
-  /**
-   * Start as soon as the recording is ready; a refusal by the autoplay policy is a warning.
-   */
-  readonly autoplay?: boolean;
-}
 
 /**
  * What is running for the loaded recording; disposed as one.
@@ -97,8 +82,12 @@ export class Player {
     return this.loaded?.opened.duration ?? seconds(0);
   }
 
+  /**
+   * False while playing or holding for frames, as a media element's `paused`.
+   */
   public get isPaused(): boolean {
-    return this.loaded?.pipeline.session.state !== 'playing';
+    const state = this.loaded?.pipeline.session.state;
+    return state !== 'playing' && state !== 'buffering';
   }
 
   public get view(): ViewState {
@@ -142,6 +131,7 @@ export class Player {
       }
       this.loading = undefined;
       this.attach(loaded);
+      if (options.preload !== false) loaded.pipeline.session.preload();
       if (options.autoplay) await this.autoplay();
     } catch (error) {
       if (controller.signal.aborted || isAbortError(error)) return;
@@ -180,6 +170,13 @@ export class Player {
 
   public seek(time: Seconds): void {
     this.loaded?.pipeline.session.seek(time);
+  }
+
+  /**
+   * Seeks to the key frame at or before `time`: quick to show while a seek bar is dragged.
+   */
+  public async scrub(time: Seconds): Promise<void> {
+    await this.loaded?.pipeline.session.scrub(time);
   }
 
   public setView(view: ViewState): void {
@@ -311,8 +308,8 @@ export class Player {
   }
 
   private emitTransport(name: ReturnType<typeof transportEventsFor>[number]): void {
-    if (name === 'play' || name === 'pause') this.events.emit(name, undefined);
-    else this.events.emit(name, this.currentTime);
+    if (name === 'seeking' || name === 'seeked') this.events.emit(name, this.currentTime);
+    else this.events.emit(name, undefined);
   }
 
   private onEnded(): void {

@@ -5,6 +5,8 @@ const RELAYED_EVENTS: readonly (keyof PlayerEvents & string)[] = [
   'statuschange',
   'ready',
   'play',
+  'playing',
+  'waiting',
   'pause',
   'ended',
   'timeupdate',

@@ -9,6 +9,7 @@ export const COMMAND_NAMES = [
   'pause',
   'stop',
   'seek',
+  'scrub',
   'lookAt',
   'resetView',
   'zoom',

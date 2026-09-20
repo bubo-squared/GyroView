@@ -12,7 +12,7 @@ describe('GyroView.embed', () => {
     for (const container of containers.splice(0)) container.remove();
   });
 
-  it('adds an iframe pointing at the embed page with the options and this origin', () => {
+  it('adds an iframe pointing at the embed page with the options and this origin', async () => {
     const container = document.createElement('div');
     document.body.append(container);
     containers.push(container);
@@ -36,7 +36,7 @@ describe('GyroView.embed', () => {
 
     embedded.destroy();
     expect(container.querySelector('iframe')).toBeNull();
-    void expect(embedded.handle.play()).rejects.toMatchObject({
+    await expect(embedded.handle.play()).rejects.toMatchObject({
       message: 'the embed was destroyed',
     });
   });

@@ -1,6 +1,7 @@
 export type { BlobInput, MediaInput, PlayerSource, Quality, UrlInput } from './PlayerSource';
 export type { ImuFrameSummary, PlayerMetadata } from './PlayerMetadata';
-export { Player, type LoadOptions, type PlayerParts } from './player/Player';
+export { Player } from './player/Player';
+export type { LoadOptions, PlayerParts } from './player/PlayerOptions';
 export type { PlayerEvents, PlayerStatus } from './player/PlayerEvents';
 export { browserPorts, type BrowserPortsOptions } from './composition/browserPorts';
 export type { RecordingPorts, SourceOpener } from './composition/ports';

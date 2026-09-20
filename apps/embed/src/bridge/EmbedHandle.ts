@@ -30,6 +30,8 @@ export interface EmbedEvents extends Record<string, unknown> {
   readonly statuschange: PlayerStatus;
   readonly ready: PlayerMetadata;
   readonly play: undefined;
+  readonly playing: undefined;
+  readonly waiting: undefined;
   readonly pause: undefined;
   readonly ended: undefined;
   readonly timeupdate: number;
@@ -90,6 +92,13 @@ export class EmbedHandle {
 
   public seek(time: number): Promise<void> {
     return this.command('seek', time);
+  }
+
+  /**
+   * Seeks to the key frame at or before `time`: quick, for a dragged seek bar.
+   */
+  public scrub(time: number): Promise<void> {
+    return this.command('scrub', time);
   }
 
   public lookAt(yaw: number, pitch: number): Promise<void> {
@@ -200,33 +209,44 @@ function errorFrom(error: SerializedError): GyroViewError {
   return new GyroViewError(error.code as GyroViewErrorCode, error.message);
 }
 
+type StateUpdater = (state: EmbedState, detail: unknown) => EmbedState;
+
+function withTime(state: EmbedState, detail: unknown): EmbedState {
+  return { ...state, currentTime: detail as number };
+}
+
 /**
- * The mirror after one event: status, time, view and stabilization follow their events, the
- * metadata arrives with `ready`.
+ * How each event moves the mirror: status, time, view and stabilization follow their events,
+ * the metadata arrives with `ready`.
  */
-function stateAfter(state: EmbedState, name: string, detail: unknown): EmbedState {
-  switch (name) {
-    case 'statuschange': {
+const STATE_UPDATERS: ReadonlyMap<string, StateUpdater> = new Map<string, StateUpdater>([
+  [
+    'statuschange',
+    (state, detail): EmbedState => {
       const status = detail as EmbedState['status'];
-      return { ...state, status, isPaused: status !== 'playing' };
-    }
-    case 'timeupdate':
-    case 'seeking':
-    case 'seeked': {
-      return { ...state, currentTime: detail as number };
-    }
-    case 'ready': {
+      return { ...state, status, isPaused: status !== 'playing' && status !== 'buffering' };
+    },
+  ],
+  ['timeupdate', withTime],
+  ['seeking', withTime],
+  ['seeked', withTime],
+  [
+    'ready',
+    (state, detail): EmbedState => {
       const metadata = detail as NonNullable<EmbedState['metadata']>;
       return { ...state, metadata, duration: metadata.duration };
-    }
-    case 'viewchange': {
-      return { ...state, view: detail as EmbedState['view'] };
-    }
-    case 'stabilizationchange': {
-      return { ...state, stabilization: detail as EmbedState['stabilization'] };
-    }
-    default: {
-      return state;
-    }
-  }
+    },
+  ],
+  ['viewchange', (state, detail): EmbedState => ({ ...state, view: detail as EmbedState['view'] })],
+  [
+    'stabilizationchange',
+    (state, detail): EmbedState => ({
+      ...state,
+      stabilization: detail as EmbedState['stabilization'],
+    }),
+  ],
+]);
+
+function stateAfter(state: EmbedState, name: string, detail: unknown): EmbedState {
+  return STATE_UPDATERS.get(name)?.(state, detail) ?? state;
 }

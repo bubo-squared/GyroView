@@ -20,6 +20,8 @@ const FORWARDED_EVENTS = [
   'statuschange',
   'ready',
   'play',
+  'playing',
+  'waiting',
   'pause',
   'ended',
   'timeupdate',

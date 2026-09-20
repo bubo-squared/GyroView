@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isBooleanAttributeSet,
+  shouldPreload,
   parseNumber,
   projectionFromAttribute,
   sourceFromAttributes,
@@ -86,5 +87,11 @@ describe('view and playback attributes', () => {
     expect(isBooleanAttributeSet('')).toBe(true);
     expect(isBooleanAttributeSet('false')).toBe(true);
     expect(isBooleanAttributeSet(null)).toBe(false);
+  });
+
+  it('preloads unless told none', () => {
+    expect(shouldPreload(null)).toBe(true);
+    expect(shouldPreload('auto')).toBe(true);
+    expect(shouldPreload('None')).toBe(false);
   });
 });

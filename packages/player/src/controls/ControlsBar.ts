@@ -32,6 +32,8 @@ export class ControlsBar {
   private readonly parts: ControlParts;
   private readonly unsubscribe: (() => void)[] = [];
   private isScrubbing = false;
+  private scrubTarget: number | undefined;
+  private scrubbing: Promise<void> | undefined;
 
   public constructor(
     root: ParentNode,
@@ -41,7 +43,7 @@ export class ControlsBar {
     this.bindTransport();
     this.bindSeek();
     this.bindSound();
-    this.bindMenu();
+    this.bindMenu(root);
     this.bindPlayer();
     this.reflectPlayback();
     this.reflectSound();
@@ -80,12 +82,44 @@ export class ControlsBar {
     const { seek } = this.parts;
     seek.addEventListener('input', () => {
       this.isScrubbing = true;
-      this.showTime(Number(seek.value));
+      const time = Number(seek.value);
+      this.showTime(time);
+      this.scrubTo(time);
     });
     seek.addEventListener('change', () => {
       this.isScrubbing = false;
-      this.player.seek(seconds(Number(seek.value)));
+      void this.seekExactly(Number(seek.value));
     });
+  }
+
+  /**
+   * One scrub in flight at a time; a newer target replaces one still waiting, so the picture
+   * follows the thumb without queueing every position it passed.
+   */
+  private scrubTo(time: number): void {
+    this.scrubTarget = time;
+    this.scrubbing ??= this.drainScrubs();
+  }
+
+  private async drainScrubs(): Promise<void> {
+    try {
+      while (this.scrubTarget !== undefined) {
+        const target = this.scrubTarget;
+        this.scrubTarget = undefined;
+        await this.player.scrub(seconds(target));
+      }
+    } finally {
+      this.scrubbing = undefined;
+    }
+  }
+
+  /**
+   * The exact seek waits for a scrub still in flight, which would otherwise land after it.
+   */
+  private async seekExactly(time: number): Promise<void> {
+    this.scrubTarget = undefined;
+    await this.scrubbing;
+    this.player.seek(seconds(time));
   }
 
   private bindSound(): void {
@@ -100,12 +134,17 @@ export class ControlsBar {
     });
   }
 
-  private bindMenu(): void {
+  private bindMenu(root: ParentNode): void {
     const { settings, menu, stabilization, projection, quality } = this.parts;
     settings.addEventListener('click', () => {
-      const isOpen = menu.hidden;
-      menu.hidden = !isOpen;
-      settings.setAttribute('aria-expanded', String(isOpen));
+      this.setMenuOpen(menu.hidden);
+    });
+    root.addEventListener('pointerdown', (event) => {
+      const isInside = event.composedPath().some((node) => node === menu || node === settings);
+      if (!isInside) this.setMenuOpen(false);
+    });
+    root.addEventListener('keydown', (event) => {
+      if (event instanceof KeyboardEvent && event.key === 'Escape') this.setMenuOpen(false);
     });
     stabilization.addEventListener('change', () => {
       const mode = stabilizationFromAttribute(stabilization.value);
@@ -146,6 +185,11 @@ export class ControlsBar {
     );
   }
 
+  private setMenuOpen(isOpen: boolean): void {
+    this.parts.menu.hidden = !isOpen;
+    this.parts.settings.setAttribute('aria-expanded', String(isOpen));
+  }
+
   private async togglePlay(): Promise<void> {
     if (!this.player.isPaused) {
       this.player.pause();
@@ -155,7 +199,7 @@ export class ControlsBar {
   }
 
   private reflectPlayback(): void {
-    const isPlaying = this.player.status === 'playing';
+    const isPlaying = !this.player.isPaused;
     const label = isPlaying ? 'Pause' : 'Play';
     for (const button of [this.parts.play, this.parts.bigPlay]) {
       button.setAttribute('aria-label', label);

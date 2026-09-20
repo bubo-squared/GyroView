@@ -58,7 +58,16 @@ function harness(): Harness {
   player.events.on('statuschange', (status) => {
     statuses.push(status);
   });
-  for (const name of ['play', 'pause', 'ended', 'seeking', 'seeked', 'ready'] as const) {
+  for (const name of [
+    'play',
+    'playing',
+    'waiting',
+    'pause',
+    'ended',
+    'seeking',
+    'seeked',
+    'ready',
+  ] as const) {
     player.events.on(name, () => {
       events.push(name);
     });
@@ -136,7 +145,20 @@ describe('Player over the synthetic X5 recording', () => {
     player.stop();
     expect(player.currentTime).toBe(0);
     expect(player.status).toBe('paused');
-    expect(events).toEqual(['ready', 'play', 'pause', 'seeking', 'seeked', 'seeking', 'seeked']);
+    // Whether play found the preloaded frames already primed decides if a `waiting` precedes
+    // `playing`; the transport sequence around it does not depend on decode timing.
+    const transport = events.filter((name) => name !== 'waiting');
+    expect(transport).toEqual([
+      'ready',
+      'play',
+      'playing',
+      'pause',
+      'seeking',
+      'seeked',
+      'seeking',
+      'seeked',
+    ]);
+    expect(events.indexOf('playing')).toBeGreaterThan(events.indexOf('play'));
   });
 
   it('ends at the end of the clip and, when looping, starts over', async () => {

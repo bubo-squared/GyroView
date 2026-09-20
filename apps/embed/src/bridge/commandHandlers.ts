@@ -84,6 +84,7 @@ export const COMMAND_HANDLERS: Readonly<Record<CommandName, Handler>> = {
   seek: (element, parameters): void => {
     element.seek(numberAt(parameters, 0));
   },
+  scrub: (element, parameters): Promise<void> => element.scrub(numberAt(parameters, 0)),
   lookAt: (element, parameters): void => {
     element.lookAt(numberAt(parameters, 0), numberAt(parameters, 1));
   },

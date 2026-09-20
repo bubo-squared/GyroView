@@ -9,6 +9,7 @@ import {
 import {
   OBSERVED_ATTRIBUTES,
   PlaybackAttribute,
+  shouldPreload,
   SourceAttribute,
   stabilizationFromAttribute,
   ViewAttribute,
@@ -37,6 +38,7 @@ const STRING_ATTRIBUTES = [
   ...Object.values(SourceAttribute),
   PlaybackAttribute.Stabilization,
   PlaybackAttribute.Poster,
+  PlaybackAttribute.Preload,
   ViewAttribute.Projection,
 ];
 const NUMBER_ATTRIBUTES = [ViewAttribute.FieldOfView, ViewAttribute.Yaw, ViewAttribute.Pitch];
@@ -187,6 +189,13 @@ export class GyroViewElement extends HTMLElement {
     this.player.seek(seconds(time));
   }
 
+  /**
+   * Seeks to the key frame at or before `time`: quick to show while a seek bar is dragged.
+   */
+  public scrub(time: number): Promise<void> {
+    return this.player.scrub(seconds(time));
+  }
+
   public lookAt(yaw: number, pitch: number): void {
     this.player.lookAt(degrees(yaw), degrees(pitch));
   }
@@ -273,6 +282,7 @@ export class GyroViewElement extends HTMLElement {
       .load(source, {
         view: this.viewFromAttributes(),
         autoplay: this.autoplay,
+        preload: shouldPreload(read(PlaybackAttribute.Preload)),
         ...(stabilization && { stabilization }),
       })
       .catch(ignoreReportedFailure);

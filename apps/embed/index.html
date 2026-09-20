@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GyroView developer page</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 1rem;
+        font-family: system-ui, sans-serif;
+        background: #14161a;
+        color: #e8e8e8;
+      }
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+      }
+      h1 {
+        grid-column: 1 / -1;
+        font-size: 1.25rem;
+        margin: 0;
+      }
+      gyro-view {
+        width: 100%;
+        border-radius: 8px;
+      }
+      form,
+      section {
+        display: grid;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        border: 1px solid #2c2f36;
+        border-radius: 8px;
+      }
+      label {
+        display: grid;
+        gap: 0.2rem;
+        font-size: 0.85rem;
+      }
+      input,
+      select,
+      button {
+        font: inherit;
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+        font-size: 0.8rem;
+      }
+      ul {
+        margin: 0;
+        padding-left: 1.2rem;
+        font-size: 0.85rem;
+      }
+      .samples button {
+        background: none;
+        border: 0;
+        color: #4cc2ff;
+        cursor: pointer;
+        text-decoration: underline;
+        padding: 0;
+      }
+      .stage {
+        display: grid;
+        gap: 1rem;
+      }
+      @media (max-width: 800px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>GyroView developer page</h1>
+      <div class="stage">
+        <gyro-view controls muted></gyro-view>
+        <section>
+          <h2>Debug</h2>
+          <pre class="status"></pre>
+          <ul class="warnings"></ul>
+          <pre class="metadata"></pre>
+        </section>
+      </div>
+      <div class="stage">
+        <form class="url-source">
+          <h2>Recording by URL</h2>
+          <label
+            >Recording URL
+            <input name="url" type="text" placeholder="https://host/VID_..._00_001.insv"
+          /></label>
+          <label>Second lens URL (split-file recordings) <input name="url2" type="text" /></label>
+          <label>Proxy (auto, none or a URL) <input name="proxy" type="text" value="auto" /></label>
+          <label
+            >Quality
+            <select name="quality">
+              <option value="auto">auto</option>
+              <option value="full">full</option>
+              <option value="proxy">proxy</option>
+            </select>
+          </label>
+          <button type="submit">Load URL</button>
+          <ul class="samples"></ul>
+        </form>
+        <form class="file-source">
+          <h2>Local files</h2>
+          <label>Recording <input name="main" type="file" accept=".insv,.mp4,video/mp4" /></label>
+          <label
+            >Second lens file <input name="second" type="file" accept=".insv,.mp4,video/mp4"
+          /></label>
+          <label
+            >Proxy <input name="proxyFile" type="file" accept=".lrv,.insv,.mp4,video/mp4"
+          /></label>
+          <button type="submit">Load files</button>
+        </form>
+        <section>
+          <h2>Embed</h2>
+          <a class="embed-link" href="embed.html" target="_blank" rel="noopener"
+            >Open embed.html for this recording</a
+          >
+          <pre class="snippet"></pre>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="/src/pages/developmentMain.ts"></script>
+  </body>
+</html>

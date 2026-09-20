@@ -10,6 +10,7 @@
     "vite.config.ts",
     "vite.snippet.config.ts",
     "vite.component.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.node.config.ts"
   ]
 }

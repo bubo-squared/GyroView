@@ -7,6 +7,7 @@ export default defineConfig({
       'packages/adapters/*/vitest.config.ts',
       'tools/*/vitest.config.ts',
       'apps/*/vitest.config.ts',
+      'apps/*/vitest.node.config.ts',
       'tools/integration/vitest.browser.config.ts',
     ],
     coverage: {

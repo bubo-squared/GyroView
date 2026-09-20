@@ -1,24 +1,29 @@
 # GyroView
 
-Browser player for raw Insta360 `.insv` recordings (X3, X4, X5). Plays the camera's
-dual-fisheye files directly as a 360 video, stitched and gyro-stabilized on the GPU,
-and embeds on any website as a `<gyro-view>` web component or an iframe.
+Browser player for raw Insta360 `.insv` recordings (X3, X4, X5). It plays the camera's
+dual-fisheye files directly as a 360 video, stitched and gyro-stabilized on the GPU, and embeds
+on any website as a `<gyro-view>` web component or an iframe. No Insta360 Studio export step.
 
-## Status
+## Features
 
-Phases 0 to 6 are complete: feasibility (`spike/README.md`), format parsing and the CLI
-(`packages/core`, `tools/insv-inspect`), the media pipeline (HTTP ranges, demuxing, lockstep
-WebCodecs decoding, the playback session with its buffering state, the audio clock over Media
-Source Extensions, capability probing and companion-file discovery), GPU stitching with
-Three.js including exposure matching along the seam (`packages/adapters/three`), gyro
-stabilization (orientation integration, lock, horizon and follow modes), the `<gyro-view>`
-player (`packages/player`), the embed site (`apps/embed`) and the deployment notes
-(`docs/DEPLOYMENT.md`). Still open: verification on X3 and X4 recordings and on an iPhone,
-which need the files and the device.
+- Plays the raw file over HTTP byte ranges or from a local file; the camera's proxy and the
+  second lens file are found beside it when they exist.
+- Decodes both lens tracks in hardware with WebCodecs, in lockstep, with the recording's own
+  audio as the clock; sound waits for the picture rather than running ahead.
+- Stitches through the factory calibration in one GPU pass, with a feathered seam and
+  exposure matching between the lenses; three projections and full look-around.
+- Stabilizes from the gyro: lock, horizon or follow, sampled at each frame's mid-exposure.
+- Ships as an element (`gyro-view.js`) and as an iframe (`embed.html` plus `embed.js`) with
+  the same API and events, plus a developer page for trying recordings.
+
+Verified on Insta360 X5 recordings; other cameras' format variants are implemented from
+documentation and covered by synthetic fixtures. `docs/ROADMAP.md` says exactly what is
+verified, what is waiting on real files or devices, and what could come next.
 
 ## Using the player
 
-Two ways in; both play the recording from a URL that serves byte ranges (see below).
+Both ways play a recording from a URL whose server answers byte ranges (see "Serving
+recordings").
 
 ### As an element
 
@@ -53,14 +58,13 @@ version, frame time source, gyro and IMU frame, audio, proxy), `statuschange` (`
 `waiting`, `playing`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `frame`,
 `viewchange`, `stabilizationchange`, `warning` (a feature degraded: no gyro, unverified IMU
 frame, silent clock, proxy in use) and `error` (`code` and `message`; the codes are listed in
-`docs/DEPLOYMENT.md`). Sound follows the picture: playback holds in `buffering` (`waiting`)
-until frames are decoded, on starting, after a seek and whenever decoding falls behind.
+`docs/DEPLOYMENT.md`).
 
 Keyboard: space or K play/pause, J and L seek, arrows look around (Shift + arrows seek), plus
 and minus zoom, 0 resets the view, M mutes, F fills the screen. Mouse and touch: drag to look,
 wheel or pinch to zoom, tap to play or pause.
 
-Styling: the host element sizes the player (it is a block with a 16:9 aspect ratio by default);
+Styling: the host element sizes the player (a block with a 16:9 aspect ratio by default);
 `--gyro-view-accent`, `--gyro-view-controls-background`, `--gyro-view-text`,
 `--gyro-view-font` and `--gyro-view-radius` theme the controls; `::part(canvas)`,
 `::part(controls)`, `::part(poster)` and `::part(stage)` reach the parts.
@@ -93,20 +97,11 @@ query parameter (`controls=0` hides the controls).
 ## Serving recordings
 
 The player reads the multi-gigabyte file in byte ranges straight from the camera's layout, so
-the server hosting the recordings must:
-
-- answer `Range` requests with `206 Partial Content` and `Accept-Ranges: bytes` (every static
-  file server and object store does; a server that answers `200` with the whole file is
-  reported as `range-unsupported`);
-- answer `HEAD` with `Content-Length` (or `405`, in which case a one-byte range is used);
-- when the page is on another origin, send CORS headers:
-  `Access-Control-Allow-Origin: <page origin>` (or `*`), `Access-Control-Allow-Methods: GET,
-HEAD`, `Access-Control-Allow-Headers: Range` and `Access-Control-Expose-Headers:
-Content-Range, Content-Length, Accept-Ranges`. A missing header shows as
-  `source-unreadable` with a hint to check CORS.
-
-The camera's proxy (`LRV_..._01_...lrv`) and the second lens file (`..._10_...insv`) are
-looked for beside the recording under their camera names; both are optional.
+the server hosting the recordings must answer `Range` requests with `206`, answer `HEAD` with
+`Content-Length`, and send CORS headers when the page is on another origin (a refusal is
+reported as `cors`). The player page itself must be served over HTTPS, because WebCodecs
+exists only in secure contexts. `docs/DEPLOYMENT.md` has the exact headers, the hosting layout
+and the error codes.
 
 Browsers decode HEVC only in hardware: 5.7K plays on recent laptops and phones, 8K needs a
 Level 6 decoder (Apple Silicon, recent NVIDIA and Intel). When the recording cannot be decoded
@@ -122,7 +117,9 @@ pnpm verify       # typecheck, lint, format check, dependency rules, tests
 pnpm test:watch
 pnpm --filter @gyroview/embed dev     # developer page at http://localhost:5180 with the local samples
 pnpm --filter @gyroview/embed build   # static site, embed.js and gyro-view.js in apps/embed/dist
+pnpm inspect <file.insv>              # print what the core understands about a recording
 pnpm fixtures:build                   # regenerate the synthetic recordings in test/fixtures
+pnpm --filter @gyroview/core run test:mutation   # Stryker over the core
 ```
 
 Browser adapters, the player and the embed site are tested in headless Chromium and WebKit
@@ -130,13 +127,29 @@ through Playwright. The end-to-end tests in `tools/integration/src/browser` play
 sample recordings; they skip when the samples are absent (as in CI) and drive the installed
 Google Chrome when there is one, because Playwright's own Chromium build has no HEVC decoder.
 
-See `docs/ARCHITECTURE.md` for how the code is organised and `CONTRIBUTING.md` for the
-architecture rules and the definition of done.
+### Local samples
 
-## Local samples
-
-Sample recordings are large and live outside the repository. `samples/` holds
-symlinks to local folders and is git-ignored, as are all `.insv`, `.insp` and `.lrv` files.
-Small byte slices cut from them live in `test/fixtures/` with a manifest of their origin, and
+Sample recordings are large and live outside the repository. `samples/` holds symlinks to
+local folders and is git-ignored, as are all `.insv`, `.insp` and `.lrv` files. Small byte
+slices cut from them live in `test/fixtures/x5` with a manifest of their origin;
 `test/fixtures/synthetic` holds tiny two-track recordings with a real X5 trailer for the
-player's tests.
+browser tests; `test/fixtures/thirdparty` holds two MIT-licensed trailer fixtures.
+
+## Documentation
+
+| Document               | What it answers                                                               |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `docs/ARCHITECTURE.md` | How the code is organised; every package and key component.                   |
+| `docs/ROADMAP.md`      | What is done and verified, what waits on real files or devices, what is next. |
+| `docs/DEPLOYMENT.md`   | Hosting the bundles and the recordings; every error code.                     |
+| `docs/FORMAT.md`       | The `.insv` byte layout as the player reads it.                               |
+| `docs/GLOSSARY.md`     | The vocabulary used in code and documents.                                    |
+| `docs/FEASIBILITY.md`  | The measurements the design rests on.                                         |
+| `docs/adr/`            | One record per non-obvious decision, with the alternatives considered.        |
+| `CONTRIBUTING.md`      | The dependency rule, the definition of done, the review checklist.            |
+
+Architecture decision records: 0001 hexagonal architecture, 0002 WebCodecs over video
+elements, 0003 mediabunny as the demuxer, 0004 format variants selected from the file, 0005
+calibration string interpretation, 0006 Node 24 toolchain, 0007 the audio element as the
+clock, 0008 stitching frames and poses, 0009 IMU frame and stabilization, 0010 player
+composition and embedding, 0011 sound follows the picture, 0012 gain matching along the seam.

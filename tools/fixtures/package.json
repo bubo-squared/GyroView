@@ -1,0 +1,20 @@
+{
+  "name": "@gyroview/fixtures",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Developer tool: assembles the synthetic recordings in test/fixtures from the committed byte slices.",
+  "type": "module",
+  "scripts": {
+    "build": "tsx src/main.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gyroview/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.1",
+    "tsx": "^4.20.0",
+    "vitest": "4.1.11"
+  }
+}

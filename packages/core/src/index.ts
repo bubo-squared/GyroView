@@ -9,6 +9,7 @@ export type { ResourceLocator } from './ports/ResourceLocator';
 export { ByteRange } from './shared/binary/ByteRange';
 
 // Domain models
+export { RecordType } from './domain/format/constants';
 export type { BoxDescriptor, TrailerWrapper } from './domain/format/boxes/BoxLayout';
 export { RecordingFileName } from './domain/format/naming/RecordingFileName';
 export type {

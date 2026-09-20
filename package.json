@@ -22,7 +22,8 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm depcruise && pnpm test",
     "spike": "pnpm --filter @gyroview/spike dev",
     "spike:serve-samples": "pnpm --filter @gyroview/spike serve-samples",
-    "inspect": "pnpm --filter @gyroview/insv-inspect inspect --"
+    "inspect": "pnpm --filter @gyroview/insv-inspect inspect --",
+    "fixtures:build": "pnpm --filter @gyroview/fixtures build"
   },
   "devDependencies": {
     "@types/node": "26.6.1",

@@ -22,3 +22,11 @@ ffmpeg -f lavfi -i "testsrc=size=64x64:rate=10" -f lavfi -i "testsrc2=size=64x64
   -c:a aac -b:a 64k -ac 2 -movflags +faststart \
   test/fixtures/synthetic/dual-track-aac-64px-10fps-3s.mp4
 ```
+
+`x5-trailer-dual-track-64px-10fps-3s.mp4` and `x5-trailer-dual-track-aac-64px-10fps-3s.mp4`:
+the two files above followed by an `inst`-wrapped, indexed Insta360 trailer assembled from the
+office X5 byte slices in `test/fixtures/x5/office` (the info record with its calibration, the
+first 2000 gyro samples, the first 16 exposure entries). They are what the player opens in its
+browser tests: layout detection sees two square tracks, frame times fall back to the track
+timestamps because the exposure record is shorter than the video, and the gyro covers the first
+two seconds. Regenerate with `pnpm fixtures:build` (`tools/fixtures`).

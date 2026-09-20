@@ -6,10 +6,12 @@ and embeds on any website as a `<gyro-view>` web component or an iframe.
 
 ## Status
 
-Phases 0 to 2 are complete: feasibility (`spike/README.md`), format parsing and the CLI
-(`packages/core`, `tools/insv-inspect`), and the media pipeline (HTTP ranges, demuxing, lockstep
+Phases 0 to 4 are complete: feasibility (`spike/README.md`), format parsing and the CLI
+(`packages/core`, `tools/insv-inspect`), the media pipeline (HTTP ranges, demuxing, lockstep
 WebCodecs decoding, the playback session, the audio clock over Media Source Extensions,
-capability probing and companion-file discovery). Phase 3, rendering, is next.
+capability probing and companion-file discovery), GPU stitching with Three.js
+(`packages/adapters/three`) and gyro stabilization (orientation integration, lock, horizon and
+follow modes). Phase 5, the `<gyro-view>` player and the embed page, is next.
 
 ## Development
 

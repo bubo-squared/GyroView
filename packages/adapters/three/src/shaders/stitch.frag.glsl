@@ -2,6 +2,7 @@
 
 uniform int uLensCount;
 uniform mat3 uViewRotation;
+uniform mat3 uStabilization;
 uniform int uProjection;
 uniform float uTanHalfFov;
 uniform float uAspect;
@@ -46,7 +47,7 @@ vec2 canvasPixel(int i, vec3 d, float theta) {
 
 void main() {
   vec3 dirView = rayFromNdc(vNdc, uProjection, uTanHalfFov, uAspect);
-  vec3 dirBody = uViewRotation * dirView;
+  vec3 dirBody = uStabilization * (uViewRotation * dirView);
   vec3 sum = vec3(0.0);
   float weightSum = 0.0;
   for (int i = 0; i < MAX_LENSES; i++) {

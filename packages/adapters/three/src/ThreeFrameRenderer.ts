@@ -2,8 +2,9 @@ import {
   clampView,
   DEFAULT_VIEW,
   GyroViewError,
-  type FrameSink,
+  type Matrix3 as CoreMatrix3,
   type Presentation,
+  type StabilizableFrameSink,
   type StitchingSetup,
   type Vector3 as CoreVector3,
   type ViewState,
@@ -27,7 +28,13 @@ import lensModels from './shaders/lensModels.glsl?raw';
 import precision from './shaders/precision.glsl?raw';
 import rays from './shaders/rays.glsl?raw';
 import stitchFragment from './shaders/stitch.frag.glsl?raw';
-import { applyView, createStitchUniforms, MAX_LENSES, type StitchUniforms } from './stitchUniforms';
+import {
+  applyStabilization,
+  applyView,
+  createStitchUniforms,
+  MAX_LENSES,
+  type StitchUniforms,
+} from './stitchUniforms';
 
 export interface ThreeFrameRendererOptions {
   readonly view?: ViewState;
@@ -60,7 +67,7 @@ const RGBA_CHANNELS = 4;
  * FrameSink over Three.js: uploads each lens frame to a texture and draws the stitched view with
  * one fullscreen pass of `stitch.frag.glsl`. Stabilization plugs in as a rotation later.
  */
-export class ThreeFrameRenderer implements FrameSink<VideoFrame> {
+export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   private viewState: ViewState;
   private hasFrames = false;
 
@@ -116,6 +123,13 @@ export class ThreeFrameRenderer implements FrameSink<VideoFrame> {
   public setLensGain(lensIndex: number, gain: CoreVector3): void {
     this.parts.uniforms.uLensGain.value[lensIndex]?.set(...gain);
     this.render();
+  }
+
+  /**
+   * Turns the whole picture: the stabilized frame the viewer looks around in, into the body.
+   */
+  public setStabilization(rotation: CoreMatrix3): void {
+    applyStabilization(this.parts.uniforms, rotation);
   }
 
   public present(presentation: Presentation<VideoFrame>): void {

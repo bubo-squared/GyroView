@@ -52,3 +52,7 @@ The vocabulary used in code, tests and documents. One name per concept; no synon
 | Stitching setup      | Everything the renderer needs per lens (frame index, region, canvas window, pose, projection parameters), computed once from calibration and layout.                   |
 | Frame renderer       | The FrameSink that draws stitched frame pairs on the GPU; one fullscreen pass, one texture per decoded frame.                                                          |
 | Seam difference      | Mean absolute pixel difference between the two lenses in the overlap band of an equirectangular render; an inspection figure, not a quality gate.                      |
+| IMU frame            | How the gyro record's axes lie in the body frame; chosen from model and firmware, verified per recording by rendering (ADR 0009).                                      |
+| World frame          | Gravity down along y, the body's forward at the start along z; orientations are body to world.                                                                         |
+| Orientation track    | The camera's body-to-world orientation per gyro sample, integrated from the gyro and pulled towards gravity.                                                           |
+| Stabilizer           | Strategy turning a frame's orientation into the rotation the renderer applies for a stabilization mode (off, lock, horizon, follow).                                   |

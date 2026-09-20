@@ -6,6 +6,9 @@ import {
   degrees,
   EquidistantModel,
   FULL_FRAME,
+  LockStabilization,
+  quaternionFromAxisAngle,
+  radians,
   seconds,
   type CalibrationSet,
   type DecodedFrame,
@@ -176,6 +179,28 @@ describe('ThreeFrameRenderer', () => {
     const seam = pixelAt(renderer, SEAM_COLUMN - 1, HEIGHT / 2);
     expect(seam.r).toBeLessThan(DIM);
     expect(seam.b).toBeGreaterThan(FAINT);
+  });
+
+  it('applies a lock stabilization: a camera turned around shows lens 1 ahead', () => {
+    const renderer = open();
+    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    const turnedAround = quaternionFromAxisAngle([0, 1, 0], radians(Math.PI));
+    renderer.setStabilization(new LockStabilization().rotationFor(turnedAround));
+    presentRedAndBlue(renderer);
+    expect(pixelAt(renderer, WIDTH / 2, HEIGHT / 2).b).toBeGreaterThan(BRIGHT);
+    expect(pixelAt(renderer, 0, HEIGHT / 2).r).toBeGreaterThan(BRIGHT);
+  });
+
+  it('applies a lock stabilization: a camera pointing at the sky shows lens 0 at the zenith', () => {
+    const renderer = open();
+    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    const pointingUp = quaternionFromAxisAngle([1, 0, 0], radians(Math.PI / 2));
+    renderer.setStabilization(new LockStabilization().rotationFor(pointingUp));
+    presentRedAndBlue(renderer);
+    expect(pixelAt(renderer, WIDTH / 2, 0).r).toBeGreaterThan(BRIGHT);
+    expect(pixelAt(renderer, WIDTH / 2, HEIGHT - 1).b).toBeGreaterThan(BRIGHT);
+    expect(pixelAt(renderer, WIDTH / 2, HEIGHT / 2 - 1).r).toBeGreaterThan(BRIGHT);
+    expect(pixelAt(renderer, WIDTH / 2, HEIGHT / 2).b).toBeGreaterThan(BRIGHT);
   });
 
   it('clamps the view it is given', () => {

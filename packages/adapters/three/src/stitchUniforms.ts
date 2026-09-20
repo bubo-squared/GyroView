@@ -30,6 +30,7 @@ const LENS_RADIAL_POLYNOMIAL = 1;
 export interface StitchUniforms {
   readonly uLensCount: IUniform<number>;
   readonly uViewRotation: IUniform<Matrix3>;
+  readonly uStabilization: IUniform<Matrix3>;
   readonly uProjection: IUniform<number>;
   readonly uTanHalfFov: IUniform<number>;
   readonly uAspect: IUniform<number>;
@@ -69,11 +70,18 @@ function viewUniforms(
   setup: StitchingSetup,
 ): Pick<
   StitchUniforms,
-  'uLensCount' | 'uViewRotation' | 'uProjection' | 'uTanHalfFov' | 'uAspect' | 'uFeather'
+  | 'uLensCount'
+  | 'uViewRotation'
+  | 'uStabilization'
+  | 'uProjection'
+  | 'uTanHalfFov'
+  | 'uAspect'
+  | 'uFeather'
 > {
   return {
     uLensCount: { value: setup.lenses.length },
     uViewRotation: { value: new Matrix3() },
+    uStabilization: { value: new Matrix3() },
     uProjection: { value: PROJECTION_CODES.rectilinear },
     uTanHalfFov: { value: 1 },
     uAspect: { value: 1 },
@@ -127,6 +135,10 @@ function samplingUniforms(
     uLensTexture: { value: lenses.map((lens) => lens.frameIndex) },
     uLensGain: { value: lenses.map(() => new Vector3(1, 1, 1)) },
   };
+}
+
+export function applyStabilization(uniforms: StitchUniforms, rotation: CoreMatrix3): void {
+  uniforms.uStabilization.value = toThreeMatrix(rotation);
 }
 
 export function applyView(uniforms: StitchUniforms, view: ViewState, aspect: number): void {

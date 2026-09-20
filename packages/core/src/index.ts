@@ -39,6 +39,31 @@ export type {
 } from './domain/format/layout/VideoTrackDescription';
 export type { ParsedGyroRecord } from './domain/format/records/gyro/parseGyroRecord';
 export { GyroTrack, type GyroSample } from './domain/motion/gyro/GyroTrack';
+export {
+  ALIGNED_IMU_FRAME,
+  imuFrame,
+  imuFrameFor,
+  toBodyFrame,
+  X5_IMU_FRAME,
+  type ImuFrame,
+  type ImuFrameHints,
+  type SignedAxis,
+} from './domain/motion/imu/ImuFrame';
+export {
+  DEFAULT_INTEGRATION_OPTIONS,
+  OrientationTrack,
+  type IntegrationOptions,
+  type OrientationTrackParts,
+} from './domain/motion/orientation/OrientationTrack';
+export type { StabilizationMode, Stabilizer } from './domain/motion/stabilization/Stabilizer';
+export {
+  FollowStabilization,
+  HorizonStabilization,
+  LockStabilization,
+  OffStabilization,
+  stabilizerFor,
+  type FollowOptions,
+} from './domain/motion/stabilization/stabilizers';
 export { ExposureRecord, type ExposureEntry } from './domain/motion/exposure/ExposureRecord';
 export { CaptureClock, type CaptureClockUnit } from './domain/motion/timing/CaptureClock';
 export { FrameTimes, type FrameTime } from './domain/motion/timing/FrameTimes';
@@ -81,6 +106,10 @@ export {
   type StitchingInputs,
   type StitchingSetup,
 } from './application/stitching/StitchingSetup';
+export {
+  StabilizingFrameSink,
+  type StabilizingParts,
+} from './application/stitching/StabilizingFrameSink';
 export type { PixelPoint } from './domain/optics/PixelPoint';
 export { EquidistantModel, type EquidistantParameters } from './domain/optics/EquidistantModel';
 export { MeiModel, type MeiParameters } from './domain/optics/MeiModel';
@@ -105,6 +134,18 @@ export {
   transposeMatrix,
   type Matrix3,
 } from './shared/math/Matrix3';
+export {
+  conjugateQuaternion,
+  IDENTITY_QUATERNION,
+  multiplyQuaternions,
+  normalizeQuaternion,
+  quaternionFromAxisAngle,
+  quaternionFromRotationVector,
+  quaternionToMatrix,
+  rotateVector,
+  slerpQuaternions,
+  type Quaternion,
+} from './shared/math/Quaternion';
 export type {
   ReadonlyFloat32Array,
   ReadonlyFloat64Array,
@@ -147,7 +188,7 @@ export {
 } from './application/playback/probeDecoding';
 export { Signal } from './shared/async/Signal';
 export type { PlaybackClock } from './ports/PlaybackClock';
-export type { FrameSink, Presentation } from './ports/FrameSink';
+export type { FrameSink, Presentation, StabilizableFrameSink } from './ports/FrameSink';
 export { WallClock } from './domain/playback/WallClock';
 export { PlayerStateMachine, type PlayerState } from './domain/playback/PlayerState';
 export { TypedEmitter } from './shared/events/TypedEmitter';

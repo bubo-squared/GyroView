@@ -1,19 +1,22 @@
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 
 export type PlayerState =
-  'ready' | 'playing' | 'paused' | 'seeking' | 'ended' | 'error' | 'disposed';
+  'ready' | 'playing' | 'buffering' | 'paused' | 'seeking' | 'ended' | 'error' | 'disposed';
 
 /**
  * Every legal transition; anything else is a programming error. A session is `ready` from
- * construction (its parts are already open), `error` leads only to `disposed`, and `disposed`
- * is terminal. Buffering is not a state yet: underrun handling belongs to the hardening phase.
+ * construction (its parts are already open). `buffering` is playing without a picture to show:
+ * the clock waits for the decoders, on starting, after a seek and when they fall behind. A
+ * seek always resumes through `buffering` or lands `paused`; the end is reached from `playing`
+ * only; `error` leads only to `disposed`, which is terminal.
  */
 const TRANSITIONS: Readonly<Record<PlayerState, readonly PlayerState[]>> = {
-  ready: ['playing', 'paused', 'seeking', 'error', 'disposed'],
-  playing: ['paused', 'seeking', 'ended', 'error', 'disposed'],
-  paused: ['playing', 'seeking', 'error', 'disposed'],
-  seeking: ['playing', 'paused', 'error', 'disposed'],
-  ended: ['playing', 'seeking', 'error', 'disposed'],
+  ready: ['playing', 'buffering', 'paused', 'seeking', 'error', 'disposed'],
+  playing: ['buffering', 'paused', 'seeking', 'ended', 'error', 'disposed'],
+  buffering: ['playing', 'paused', 'seeking', 'error', 'disposed'],
+  paused: ['playing', 'buffering', 'seeking', 'error', 'disposed'],
+  seeking: ['buffering', 'paused', 'error', 'disposed'],
+  ended: ['seeking', 'error', 'disposed'],
   error: ['disposed'],
   disposed: [],
 };

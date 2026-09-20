@@ -120,4 +120,17 @@ describe('FramePairQueue', () => {
       code: 'invariant-violation',
     });
   });
+
+  it('tells its observer about every pair kept, never about pushes after closing', () => {
+    let pushes = 0;
+    const queue = new FramePairQueue<Probe>(2, () => {
+      pushes += 1;
+    });
+    queue.push(pair(0));
+    queue.push(pair(1));
+    expect(pushes).toBe(2);
+    queue.close();
+    queue.push(pair(2));
+    expect(pushes).toBe(2);
+  });
 });

@@ -75,7 +75,7 @@ describe('PlaybackSession lifecycle', () => {
     const { session, decoderPort, states, advance } = sessionHarness({ clock });
     await expect(session.play()).rejects.toBe(refusal);
     expect(session.state).toBe('paused');
-    expect(states).toEqual(['playing', 'paused']);
+    expect(states).toEqual(['buffering', 'playing', 'paused']);
     await advance(0);
     expect(decoderPort.openDecoders).toBe(2);
     session.dispose();
@@ -126,8 +126,9 @@ describe('PlaybackSession lifecycle', () => {
   it('closes decoders that appear only after it was disposed', async () => {
     const port = new GatedPort();
     const { session } = sessionHarness({ parts: { decoderPort: port } });
-    await session.play();
+    const playing = session.play();
     session.dispose();
+    await playing;
     port.gate.resolve();
     await settle();
     expect(port.inner.decodersCreated).toHaveLength(2);

@@ -11,4 +11,13 @@ describe('Deferred', () => {
     expect(deferred.isSettled).toBe(true);
     await expect(deferred.promise).resolves.toBe('first');
   });
+
+  it('rejects with the first reason and ignores later settlements', async () => {
+    const deferred = new Deferred<string>();
+    deferred.reject(new Error('first'));
+    deferred.reject(new Error('second'));
+    deferred.resolve('late');
+    expect(deferred.isSettled).toBe(true);
+    await expect(deferred.promise).rejects.toThrow('first');
+  });
 });

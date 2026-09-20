@@ -14,7 +14,13 @@ export class FramePairQueue<Handle = unknown> {
   private roomWaiters: (() => void)[] = [];
   private isClosed = false;
 
-  public constructor(public readonly capacity: number) {
+  /**
+   * `onPush` hears about every pair kept, so a consumer waiting for frames need not poll.
+   */
+  public constructor(
+    public readonly capacity: number,
+    private readonly onPush: () => void = doNothing,
+  ) {
     ensureInvariant(
       Number.isSafeInteger(capacity) && capacity > 0,
       'queue capacity must be positive',
@@ -49,8 +55,12 @@ export class FramePairQueue<Handle = unknown> {
    * Adds a pair; a closed queue closes the pair instead of keeping it.
    */
   public push(pair: FramePair<Handle>): void {
-    if (this.isClosed) closeFramePair(pair);
-    else this.pairs.push(pair);
+    if (this.isClosed) {
+      closeFramePair(pair);
+      return;
+    }
+    this.pairs.push(pair);
+    this.onPush();
   }
 
   /**
@@ -91,4 +101,8 @@ export class FramePairQueue<Handle = unknown> {
     this.roomWaiters = [];
     for (const resolve of waiters) resolve();
   }
+}
+
+function doNothing(): void {
+  // The default observer.
 }

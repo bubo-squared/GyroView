@@ -58,7 +58,7 @@ describe('PlaybackSession transport', () => {
     await session.play();
     await session.play();
     await settle();
-    expect(states).toEqual(['playing']);
+    expect(states).toEqual(['buffering', 'playing']);
     expect(decoderPort.decodersCreated).toHaveLength(2);
     session.dispose();
   });

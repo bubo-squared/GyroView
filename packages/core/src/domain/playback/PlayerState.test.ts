@@ -4,11 +4,12 @@ import { PlayerStateMachine, transitionsFrom, type PlayerState } from './PlayerS
 import { captureError } from '../../../test/support/errors';
 
 const EXPECTED_TRANSITIONS: Readonly<Record<PlayerState, readonly PlayerState[]>> = {
-  ready: ['playing', 'paused', 'seeking', 'error', 'disposed'],
-  playing: ['paused', 'seeking', 'ended', 'error', 'disposed'],
-  paused: ['playing', 'seeking', 'error', 'disposed'],
-  seeking: ['playing', 'paused', 'error', 'disposed'],
-  ended: ['playing', 'seeking', 'error', 'disposed'],
+  ready: ['playing', 'buffering', 'paused', 'seeking', 'error', 'disposed'],
+  playing: ['buffering', 'paused', 'seeking', 'ended', 'error', 'disposed'],
+  buffering: ['playing', 'paused', 'seeking', 'error', 'disposed'],
+  paused: ['playing', 'buffering', 'seeking', 'error', 'disposed'],
+  seeking: ['buffering', 'paused', 'error', 'disposed'],
+  ended: ['seeking', 'error', 'disposed'],
   error: ['disposed'],
   disposed: [],
 };
@@ -17,7 +18,16 @@ describe('PlayerStateMachine', () => {
   it('starts ready and walks the happy path', () => {
     const machine = new PlayerStateMachine();
     expect(machine.state).toBe('ready');
-    for (const next of ['playing', 'paused', 'seeking', 'playing', 'ended', 'playing'] as const) {
+    for (const next of [
+      'buffering',
+      'playing',
+      'paused',
+      'seeking',
+      'buffering',
+      'playing',
+      'ended',
+      'seeking',
+    ] as const) {
       machine.transitionTo(next);
       expect(machine.state).toBe(next);
     }

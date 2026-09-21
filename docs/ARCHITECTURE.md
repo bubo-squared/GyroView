@@ -128,9 +128,10 @@ reader; `Deferred` and `Signal` for waiting without timers (the core has none).
 One package per external technology; none imports another.
 
 - **`node`**: `FileRandomAccessSource` over the file system, for the CLI and Node tests.
-- **`fetch`**: `HttpRangeSource` reads byte ranges over HTTP and reports the server's
-  shortcomings with distinct codes (`range-unsupported`, `cors`, `source-unreadable`);
-  `HttpResourceLocator` answers "does it exist" with one HEAD.
+- **`fetch`**: `HttpRangeSource` reads byte ranges over HTTP, past the browser's own cache
+  (ADR 0013), and reports the server's shortcomings with distinct codes
+  (`range-unsupported`, `cors`, `source-unreadable`); `HttpResourceLocator` answers "does it
+  exist" with one HEAD.
 - **`blob`**: `BlobRandomAccessSource` slices a `File` from a picker or a drop.
 - **`mediabunny`**: the demuxer and track readers over the mediabunny library, and
   `MediabunnyAudioSegmenter`, which re-packages the AAC track into fragmented MP4 without

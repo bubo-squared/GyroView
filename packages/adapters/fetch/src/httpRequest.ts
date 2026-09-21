@@ -5,6 +5,7 @@ export type HttpMethod = 'GET' | 'HEAD';
 export interface HttpRequestOptions {
   /**
    * Extra request settings, for example credentials or headers. `Range` is set by the caller.
+   * Requests bypass the browser's HTTP cache unless these settings choose another `cache` mode.
    */
   readonly requestInit?: RequestInit;
   readonly fetch?: typeof fetch;
@@ -14,6 +15,14 @@ export interface HttpRequest {
   readonly method: HttpMethod;
   readonly headers?: Record<string, string>;
 }
+
+/**
+ * Browsers keep byte ranges of one URL as a sparse cache entry and revalidate them with
+ * conditional requests. A 304 to such a request makes the browser answer from that entry, and
+ * Chrome has been seen to hand back an empty body for a range it believed it held (ADR 0013).
+ * The demuxer caches what it needs itself, so nothing is lost by leaving the cache out.
+ */
+const CACHE_MODE: RequestCache = 'no-store';
 
 /**
  * One request with the shared settings merged in. A request that fails outright is told apart
@@ -28,6 +37,7 @@ export async function httpRequest(
   const doFetch = options.fetch ?? fetch;
   try {
     return await doFetch(url, {
+      cache: CACHE_MODE,
       ...options.requestInit,
       method: request.method,
       headers: { ...headersOf(options.requestInit), ...request.headers },

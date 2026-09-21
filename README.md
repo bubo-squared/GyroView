@@ -152,4 +152,5 @@ Architecture decision records: 0001 hexagonal architecture, 0002 WebCodecs over 
 elements, 0003 mediabunny as the demuxer, 0004 format variants selected from the file, 0005
 calibration string interpretation, 0006 Node 24 toolchain, 0007 the audio element as the
 clock, 0008 stitching frames and poses, 0009 IMU frame and stabilization, 0010 player
-composition and embedding, 0011 sound follows the picture, 0012 gain matching along the seam.
+composition and embedding, 0011 sound follows the picture, 0012 gain matching along the seam,
+0013 byte-range reads bypass the browser cache.

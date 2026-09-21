@@ -48,4 +48,29 @@ describe('httpRequest', () => {
     expect(new Headers(seen[0]?.headers).get('range')).toBe('bytes=0-1');
     expect(new Headers(seen[0]?.headers).get('x-test')).toBe('yes');
   });
+
+  it('keeps every request out of the browser cache, which serves byte ranges unreliably', async () => {
+    const seen: RequestInit[] = [];
+    const recording: typeof fetch = (_input, init) => {
+      if (init) seen.push(init);
+      return Promise.resolve(new Response(null, { status: 206 }));
+    };
+    await httpRequest(URL_UNDER_TEST, { method: 'GET' }, { fetch: recording });
+    await httpRequest(URL_UNDER_TEST, { method: 'HEAD' }, { fetch: recording, requestInit: {} });
+    expect(seen.map((init) => init.cache)).toEqual(['no-store', 'no-store']);
+  });
+
+  it('lets the shared request settings choose another cache mode', async () => {
+    const seen: RequestInit[] = [];
+    const recording: typeof fetch = (_input, init) => {
+      if (init) seen.push(init);
+      return Promise.resolve(new Response(null, { status: 206 }));
+    };
+    await httpRequest(
+      URL_UNDER_TEST,
+      { method: 'GET' },
+      { fetch: recording, requestInit: { cache: 'default' } },
+    );
+    expect(seen[0]?.cache).toBe('default');
+  });
 });

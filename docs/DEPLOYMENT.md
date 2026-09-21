@@ -41,6 +41,10 @@ bucket) hosting `.insv` and `.lrv` files must:
 
   Without them the browser hides the response and the player reports `cors`.
 
+The player asks for every range with `cache: no-store`, so `Cache-Control` and `ETag` on the
+recordings matter to CDNs but never to the browser: it must not answer a range from its own
+cache (ADR 0013).
+
 The camera's companion files are looked for beside the recording under their camera names
 (`LRV_..._01_...lrv` for the proxy, `..._10_...insv` for the other lens of a split-file
 recording), with `HEAD` requests. Both are optional.

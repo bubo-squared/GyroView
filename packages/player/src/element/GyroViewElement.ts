@@ -96,9 +96,13 @@ export class GyroViewElement extends HTMLElement {
     defineLiveSettings(this, this.player);
     this.controlsBar = new ControlsBar(shadow, {
       player: this.player,
+      togglePlay: this.togglePlayLater,
       toggleFullscreen: this.toggleFullscreenLater,
       changeQuality: (quality): void => {
         this.quality = quality;
+      },
+      warn: (message): void => {
+        this.warn(message);
       },
     });
     this.gestures = new ViewGestures(canvas, this.player, this.togglePlayLater);

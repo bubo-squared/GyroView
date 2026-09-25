@@ -15,14 +15,10 @@ export interface KeyboardHost extends ShortcutTarget {
  */
 export class KeyboardBinding {
   public constructor(
-    private readonly element: HTMLElement,
+    element: HTMLElement,
     private readonly host: KeyboardHost,
   ) {
     element.addEventListener('keydown', this.onKeyDown);
-  }
-
-  public dispose(): void {
-    this.element.removeEventListener('keydown', this.onKeyDown);
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {

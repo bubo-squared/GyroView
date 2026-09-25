@@ -246,6 +246,16 @@ describe('<gyro-view>', () => {
     expect(element.muted).toBe(false);
   });
 
+  it('warns about a setting attribute naming a choice it does not know, and keeps the setting', async () => {
+    const element = await createReady();
+    const warned = nextEvent<string>(element, 'warning');
+    element.setAttribute('view-mode', 'little-planet');
+    expect(await warned).toBe(
+      'ignoring view-mode="little-planet"; expected one of normal, equirectangular, raw-lenses',
+    );
+    expect(element.viewMode).toBe('normal');
+  });
+
   it('refuses a setting value it cannot take', async () => {
     const element = await createReady();
     const setStabilization = (value: string): void => {

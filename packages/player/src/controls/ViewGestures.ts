@@ -30,14 +30,6 @@ export class ViewGestures {
     surface.addEventListener('wheel', this.onWheel, { passive: false });
   }
 
-  public dispose(): void {
-    this.surface.removeEventListener('pointerdown', this.onPointerDown);
-    this.surface.removeEventListener('pointermove', this.onPointerMove);
-    this.surface.removeEventListener('pointerup', this.onPointerUp);
-    this.surface.removeEventListener('pointercancel', this.onPointerUp);
-    this.surface.removeEventListener('wheel', this.onWheel);
-  }
-
   private readonly onPointerDown = (event: PointerEvent): void => {
     if (this.pointers.size === 0) this.dragDistance = 0;
     this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });

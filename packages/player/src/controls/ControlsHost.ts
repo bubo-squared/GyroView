@@ -17,10 +17,3 @@ export interface ControlsHost {
   changeQuality(quality: Quality): void;
   warn(message: string): void;
 }
-
-/**
- * A widget bound to the player until disposed.
- */
-export interface ControlWidget {
-  dispose(): void;
-}

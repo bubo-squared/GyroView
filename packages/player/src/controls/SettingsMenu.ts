@@ -1,5 +1,5 @@
 import type { ControlParts } from './controlParts';
-import type { ControlsHost, ControlWidget } from './ControlsHost';
+import type { ControlsHost } from './ControlsHost';
 import { qualityOf, stabilizationModeOf, viewModeOf } from '../choices';
 import type { Player } from '../player/Player';
 import type { Quality } from '../PlayerSource';
@@ -14,9 +14,7 @@ export type MenuParts = Pick<
  * proxy, quality. Opens on the button, closes on Escape or a press outside, and shows each
  * setting as it is now.
  */
-export class SettingsMenu implements ControlWidget {
-  private readonly unsubscribe: readonly (() => void)[];
-
+export class SettingsMenu {
   public constructor(
     root: ParentNode,
     private readonly parts: MenuParts,
@@ -25,17 +23,15 @@ export class SettingsMenu implements ControlWidget {
     this.bindOpening(root);
     this.bindChoices();
     const { events } = this.player;
-    this.unsubscribe = [
-      events.on('stabilizationchange', (mode) => {
-        parts.stabilization.value = mode;
-      }),
-      events.on('viewmodechange', (mode) => {
-        parts.viewMode.value = mode;
-      }),
-      events.on('ready', (metadata) => {
-        parts.qualityRow.hidden = metadata.proxyName === undefined;
-      }),
-    ];
+    events.on('stabilizationchange', (mode) => {
+      parts.stabilization.value = mode;
+    });
+    events.on('viewmodechange', (mode) => {
+      parts.viewMode.value = mode;
+    });
+    events.on('ready', (metadata) => {
+      parts.qualityRow.hidden = metadata.proxyName === undefined;
+    });
     parts.stabilization.value = this.player.stabilization;
     parts.viewMode.value = this.player.viewMode;
   }
@@ -46,10 +42,6 @@ export class SettingsMenu implements ControlWidget {
 
   public setQuality(quality: Quality): void {
     this.parts.quality.value = quality;
-  }
-
-  public dispose(): void {
-    for (const unsubscribe of this.unsubscribe) unsubscribe();
   }
 
   private bindOpening(root: ParentNode): void {

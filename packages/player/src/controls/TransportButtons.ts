@@ -1,5 +1,5 @@
 import type { ControlParts } from './controlParts';
-import type { ControlsHost, ControlWidget } from './ControlsHost';
+import type { ControlsHost } from './ControlsHost';
 
 const PLAY_GLYPH = '▶';
 const PAUSE_GLYPH = '⏸';
@@ -12,9 +12,7 @@ export type TransportParts = Pick<
 /**
  * Play and pause, stop, reset the view and fullscreen; the play buttons say what a press does.
  */
-export class TransportButtons implements ControlWidget {
-  private readonly unsubscribe: () => void;
-
+export class TransportButtons {
   public constructor(
     private readonly parts: TransportParts,
     host: ControlsHost,
@@ -34,14 +32,10 @@ export class TransportButtons implements ControlWidget {
     parts.fullscreen.addEventListener('click', () => {
       host.toggleFullscreen();
     });
-    this.unsubscribe = player.events.on('statuschange', () => {
+    player.events.on('statuschange', () => {
       this.reflect(player.isPaused);
     });
     this.reflect(player.isPaused);
-  }
-
-  public dispose(): void {
-    this.unsubscribe();
   }
 
   private reflect(isPaused: boolean): void {

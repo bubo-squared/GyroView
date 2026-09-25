@@ -103,9 +103,18 @@ function problemsWith(
   value: string | null,
   choices: readonly string[],
 ): readonly string[] {
-  return value === null
-    ? []
-    : [`ignoring ${attribute}="${value}"; expected one of ${choices.join(', ')}`];
+  return value === null ? [] : [ignoredChoiceWarning(attribute, value, choices)];
+}
+
+/**
+ * The `warning` for an attribute naming a choice the element does not know.
+ */
+export function ignoredChoiceWarning(
+  attribute: string,
+  value: string,
+  choices: readonly string[],
+): string {
+  return `ignoring ${attribute}="${value}"; expected one of ${choices.join(', ')}`;
 }
 
 const PRELOAD_NONE = 'none';

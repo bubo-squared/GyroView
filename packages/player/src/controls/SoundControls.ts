@@ -1,5 +1,4 @@
 import type { ControlParts } from './controlParts';
-import type { ControlWidget } from './ControlsHost';
 import type { Player } from '../player/Player';
 
 const SOUND_GLYPH = '🔊';
@@ -10,9 +9,7 @@ export type SoundParts = Pick<ControlParts, 'mute' | 'volume'>;
 /**
  * The mute button and the volume slider, showing the sound however it was last changed.
  */
-export class SoundControls implements ControlWidget {
-  private readonly unsubscribe: () => void;
-
+export class SoundControls {
   public constructor(
     private readonly parts: SoundParts,
     private readonly player: Player,
@@ -24,14 +21,10 @@ export class SoundControls implements ControlWidget {
       player.setVolume(Number(parts.volume.value));
       if (player.isMuted) player.setMuted(false);
     });
-    this.unsubscribe = player.events.on('volumechange', () => {
+    player.events.on('volumechange', () => {
       this.reflect();
     });
     this.reflect();
-  }
-
-  public dispose(): void {
-    this.unsubscribe();
   }
 
   private reflect(): void {

@@ -1,7 +1,7 @@
 import { messageOf, seconds } from '@gyroview/core';
 
 import type { ControlParts } from './controlParts';
-import type { ControlsHost, ControlWidget } from './ControlsHost';
+import type { ControlsHost } from './ControlsHost';
 import { formatTime } from './formatTime';
 import type { Player } from '../player/Player';
 
@@ -11,8 +11,7 @@ export type SeekParts = Pick<ControlParts, 'seek' | 'time'>;
  * The seek bar and the time beside it: dragging scrubs to key frames, releasing seeks exactly,
  * and the bar follows playback while it is not held.
  */
-export class SeekBar implements ControlWidget {
-  private readonly unsubscribe: readonly (() => void)[];
+export class SeekBar {
   private isScrubbing = false;
   private scrubTarget: number | undefined;
   private scrubbing: Promise<void> | undefined;
@@ -23,27 +22,21 @@ export class SeekBar implements ControlWidget {
   ) {
     this.bindInput();
     const { events } = this.player;
-    this.unsubscribe = [
-      events.on('ready', (metadata) => {
-        parts.seek.max = String(metadata.duration);
-        this.showTime(this.player.currentTime);
-      }),
-      events.on('statuschange', () => {
-        this.showTime(this.player.currentTime);
-      }),
-      events.on('timeupdate', (time) => {
-        this.follow(time);
-      }),
-    ];
+    events.on('ready', (metadata) => {
+      parts.seek.max = String(metadata.duration);
+      this.showTime(this.player.currentTime);
+    });
+    events.on('statuschange', () => {
+      this.showTime(this.player.currentTime);
+    });
+    events.on('timeupdate', (time) => {
+      this.follow(time);
+    });
     this.showTime(this.player.currentTime);
   }
 
   private get player(): Player {
     return this.host.player;
-  }
-
-  public dispose(): void {
-    for (const unsubscribe of this.unsubscribe) unsubscribe();
   }
 
   private bindInput(): void {

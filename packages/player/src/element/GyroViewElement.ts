@@ -71,8 +71,6 @@ export class GyroViewElement extends HTMLElement {
   declare public volume: number;
   private readonly player: Player;
   private readonly controlsBar: ControlsBar;
-  private readonly gestures: ViewGestures;
-  private readonly keyboard: KeyboardBinding;
   private readonly fullscreen = new FullscreenToggle(this);
   private readonly idle: IdleWatcher;
   private readonly posterImage: HTMLImageElement;
@@ -101,12 +99,10 @@ export class GyroViewElement extends HTMLElement {
       changeQuality: (quality): void => {
         this.quality = quality;
       },
-      warn: (message): void => {
-        this.warn(message);
-      },
+      warn: this.warnLater,
     });
-    this.gestures = new ViewGestures(canvas, this.player, this.togglePlayLater);
-    this.keyboard = this.bindKeyboard();
+    new ViewGestures(canvas, this.player, this.togglePlayLater);
+    this.bindKeyboard();
     this.idle = new IdleWatcher(this, () => this.player.status === 'playing');
     this.observePlayer();
   }
@@ -162,7 +158,8 @@ export class GyroViewElement extends HTMLElement {
     } else if (VIEW_ATTRIBUTES.includes(name)) {
       this.player.setView(viewAfterAttribute(this.player.view, name, value));
     } else {
-      applyPlaybackAttribute({ player: this.player, posterImage: this.posterImage }, name, value);
+      const targets = { player: this.player, posterImage: this.posterImage, warn: this.warnLater };
+      applyPlaybackAttribute(targets, name, value);
     }
   }
 
@@ -230,8 +227,12 @@ export class GyroViewElement extends HTMLElement {
     this.scheduleLoad();
   }
 
-  private bindKeyboard(): KeyboardBinding {
-    return new KeyboardBinding(this, {
+  /**
+   * The controls, gestures and keyboard live as long as the element: their listeners sit on its
+   * own shadow tree, canvas and host, and on its player.
+   */
+  private bindKeyboard(): void {
+    new KeyboardBinding(this, {
       player: this.player,
       togglePlay: this.togglePlayLater,
       toggleFullscreen: this.toggleFullscreenLater,
@@ -241,6 +242,10 @@ export class GyroViewElement extends HTMLElement {
       },
     });
   }
+
+  private readonly warnLater = (message: string): void => {
+    this.warn(message);
+  };
 
   private readonly togglePlayLater = (): void => {
     if (!this.player.isPaused) {

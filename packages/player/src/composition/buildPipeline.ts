@@ -61,11 +61,16 @@ export interface Pipeline {
  * Half a millisecond: two lens tracks stamp the same instant within rounding of the timescale.
  */
 const PAIR_TOLERANCE_SECONDS = 0.0005;
+/**
+ * Packets queued in each decoder, and decoded pairs held for presentation: a few frames keep a
+ * hardware decoder busy and absorb jitter, while a seek has little to discard.
+ */
+const MAX_PENDING_PACKETS = 4;
+const QUEUE_CAPACITY = 4;
 const PIPELINE_OPTIONS: DecodePipelineOptions = {
-  maxPendingPackets: 4,
+  maxPendingPackets: MAX_PENDING_PACKETS,
   pairTolerance: seconds(PAIR_TOLERANCE_SECONDS),
 };
-const QUEUE_CAPACITY = 4;
 /**
  * Seconds of sound kept buffered past the playhead; a seek discards and refills it.
  */

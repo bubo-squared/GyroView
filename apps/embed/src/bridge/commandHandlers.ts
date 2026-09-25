@@ -63,8 +63,12 @@ function stateOf(element: GyroViewElement): EmbedState {
   };
 }
 
-function load(element: GyroViewElement, request: LoadRequest): void {
+/**
+ * Names the new source on the element and follows the load it causes to the end.
+ */
+function load(element: GyroViewElement, request: LoadRequest): Promise<void> {
   for (const name of LOAD_ATTRIBUTES) writeAttribute(element, name, request[name]);
+  return element.load();
 }
 
 function writeAttribute(element: Element, name: string, value: string | undefined): void {
@@ -115,8 +119,6 @@ export const COMMAND_HANDLERS: Readonly<Record<CommandName, Handler>> = {
   setLoop: (element, parameters): void => {
     element.loop = isFlagAt(parameters, 0);
   },
-  load: (element, parameters): void => {
-    load(element, loadRequestAt(parameters));
-  },
+  load: (element, parameters): Promise<void> => load(element, loadRequestAt(parameters)),
   getState: stateOf,
 };

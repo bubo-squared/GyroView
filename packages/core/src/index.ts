@@ -230,6 +230,7 @@ export {
   type LensProbeResult,
   type LensProbeVerdict,
 } from './application/playback/probeDecoding';
+export { Deferred } from './shared/async/Deferred';
 export { Signal } from './shared/async/Signal';
 export type { PlaybackClock } from './ports/PlaybackClock';
 export type { FrameSink, Presentation, StabilizableFrameSink } from './ports/FrameSink';

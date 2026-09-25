@@ -53,7 +53,8 @@ lens images side by side, unstitched and as recorded) and `stabilization` (`off`
 property does, however it was last changed. The other attributes are mirrored by properties
 (`gainMatch` for `gain-match`).
 
-API: `play()`, `pause()`, `stop()`, `seek(seconds)`, `scrub(seconds)` (to the key frame at or
+API: `load()` (resolves once the recording is ready), `play()` (waits for a load in progress),
+`pause()`, `stop()`, `seek(seconds)`, `scrub(seconds)` (to the key frame at or
 before the time, for a dragged seek bar), `currentTime`, `duration`, `paused`, `status`,
 `metadata`, `view`, `lookAt(yaw, pitch)`, `resetView()`, `zoom(steps)`, `setViewMode(mode)`,
 `setStabilization(mode)`, `volume`, `toggleFullscreen()`, `loadFiles({ main, second, proxy })`.

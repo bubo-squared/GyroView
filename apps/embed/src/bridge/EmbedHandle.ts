@@ -140,6 +140,9 @@ export class EmbedHandle {
     return this.command('setLoop', isLooping);
   }
 
+  /**
+   * Resolves once the recording is ready; rejects with the failure.
+   */
   public load(request: LoadRequest): Promise<void> {
     return this.command('load', request);
   }

@@ -78,7 +78,7 @@ export class GyroViewElement extends HTMLElement {
   private readonly posterImage: HTMLImageElement;
   private readonly errorMessage: HTMLElement;
   private readonly errorCode: HTMLElement;
-  private isLoadScheduled = false;
+  private scheduledLoad: Promise<void> | undefined;
   private files: FileSource | undefined;
 
   public constructor() {
@@ -210,6 +210,15 @@ export class GyroViewElement extends HTMLElement {
   }
 
   /**
+   * Loads what the attributes (or the files handed in) name: the change already waiting to be
+   * read, or else now. Resolves once the recording is ready; rejects with the failure, which is
+   * dispatched as an `error` event too.
+   */
+  public load(): Promise<void> {
+    return this.scheduledLoad ?? this.reload();
+  }
+
+  /**
    * Plays local files instead of the `src` attributes, until those change again.
    */
   public loadFiles(files: FileSource): void {
@@ -245,35 +254,37 @@ export class GyroViewElement extends HTMLElement {
     void this.toggleFullscreen();
   };
 
-  /**
-   * Attribute changes arrive one at a time; one microtask later they are read together so a
-   * `src` set with its `src2` loads once.
-   */
   private scheduleLoad(): void {
-    if (this.isLoadScheduled || !this.isConnected) return;
-    this.isLoadScheduled = true;
-    queueMicrotask(() => {
-      this.isLoadScheduled = false;
-      this.reload();
-    });
+    if (this.scheduledLoad || !this.isConnected) return;
+    const scheduled = this.loadAfterPendingChanges();
+    this.scheduledLoad = scheduled;
+    void scheduled.catch(ignoreReportedFailure);
   }
 
-  private reload(): void {
+  /**
+   * Attribute changes arrive one at a time; a microtask later they are read together, so a `src`
+   * set with its `src2` loads once.
+   */
+  private async loadAfterPendingChanges(): Promise<void> {
+    await Promise.resolve();
+    this.scheduledLoad = undefined;
+    await this.reload();
+  }
+
+  private reload(): Promise<void> {
     const read = (attribute: string): string | null => this.getAttribute(attribute);
     const { source, problems } = elementSourceOf(read, document.baseURI, this.files);
     for (const problem of problems) this.warn(problem);
     delete this.dataset['hasFrame'];
     if (!source) {
       this.player.unload();
-      return;
+      return Promise.resolve();
     }
     this.controlsBar.setQuality(source.quality);
-    void this.player
-      .load(source, {
-        autoplay: this.autoplay,
-        preload: shouldPreload(read(PlaybackAttribute.Preload)),
-      })
-      .catch(ignoreReportedFailure);
+    return this.player.load(source, {
+      autoplay: this.autoplay,
+      preload: shouldPreload(read(PlaybackAttribute.Preload)),
+    });
   }
 
   /**

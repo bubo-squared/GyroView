@@ -1,4 +1,5 @@
 import {
+  Deferred,
   GyroViewError,
   seconds,
   stabilizerFor,
@@ -17,6 +18,7 @@ import { FrameLoop } from './FrameLoop';
 import { loadRecording, type LoadedRecording } from './loadRecording';
 import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
 import type { LoadOptions, PlayerParts } from './PlayerOptions';
+import { IDLE, statusOf, type LoadingPhase, type PlayerPhase } from './PlayerPhase';
 import { PlayerView } from './PlayerView';
 import { transportEventsFor } from './transportEvents';
 import { hasErrorCode, isAbortError, messageOf } from '../composition/errorCodes';
@@ -34,9 +36,7 @@ const DEFAULT_STABILIZATION: StabilizationMode = 'lock';
 export class Player {
   public readonly events = new TypedEmitter<PlayerEvents>();
   private readonly loop: FrameLoop;
-  private loaded: LoadedRecording | undefined;
-  private loading: AbortController | undefined;
-  private failure: GyroViewError | undefined;
+  private phase: PlayerPhase = IDLE;
   private readonly viewing = new PlayerView(this.events);
   private stabilizationMode: StabilizationMode = DEFAULT_STABILIZATION;
   private isGainMatching = true;
@@ -53,8 +53,7 @@ export class Player {
   }
 
   public get status(): PlayerStatus {
-    if (this.loading) return 'loading';
-    return this.failure ? 'error' : (this.loaded?.pipeline.session.state ?? 'idle');
+    return statusOf(this.phase);
   }
 
   public get metadata(): PlayerMetadata | undefined {
@@ -112,46 +111,43 @@ export class Player {
    */
   public async load(source: PlayerSource, options: LoadOptions = {}): Promise<void> {
     this.unload();
-    const controller = new AbortController();
-    this.loading = controller;
+    const loading: LoadingPhase = {
+      kind: 'loading',
+      controller: new AbortController(),
+      settled: new Deferred(),
+    };
+    this.phase = loading;
     this.setStatus('loading');
     try {
-      const loaded = await this.open(source, controller.signal);
-      // A newer load may have started between the last abort check and here; its parts belong
-      // to nobody now.
-      if (controller.signal.aborted) {
-        loaded.dispose();
-        return;
-      }
-      this.loading = undefined;
-      this.attach(loaded);
-      if (options.preload !== false) loaded.pipeline.session.preload();
-      if (options.autoplay) await this.autoplay();
+      await this.complete(loading, source, options);
     } catch (error) {
-      if (controller.signal.aborted || isAbortError(error)) return;
-      this.loading = undefined;
+      if (loading.controller.signal.aborted || isAbortError(error)) return;
       throw this.failWith(error);
+    } finally {
+      loading.settled.resolve();
     }
   }
 
   public unload(): void {
-    this.loading?.abort();
-    this.loading = undefined;
-    this.failure = undefined;
+    const previous = this.phase;
+    this.phase = IDLE;
+    if (previous.kind === 'loading') previous.controller.abort();
     this.loop.stop();
     this.lastPresentation = undefined;
     this.lastSessionState = undefined;
-    const { loaded } = this;
-    this.loaded = undefined;
     this.viewing.attach(undefined);
-    loaded?.dispose();
+    if (previous.kind === 'loaded') previous.loaded.dispose();
     this.setStatus('idle');
   }
 
   /**
-   * Rejects with `playback-blocked` when the browser wants a user gesture first.
+   * Starts playback, after a load in progress is ready, as a media element's `play()` does.
+   * Rejects with the load's failure, or with `playback-blocked` when the browser wants a user
+   * gesture first; with nothing loaded there is nothing to start.
    */
   public async play(): Promise<void> {
+    await this.loadInProgress();
+    if (this.phase.kind === 'failed') throw this.phase.failure;
     await this.loaded?.pipeline.session.play();
   }
 
@@ -245,6 +241,31 @@ export class Player {
     this.events.emit('volumechange', { volume: this.volume, isMuted: this.isMuted });
   };
 
+  private get loaded(): LoadedRecording | undefined {
+    return this.phase.kind === 'loaded' ? this.phase.loaded : undefined;
+  }
+
+  private async loadInProgress(): Promise<void> {
+    if (this.phase.kind === 'loading') await this.phase.settled.promise;
+  }
+
+  private async complete(
+    loading: LoadingPhase,
+    source: PlayerSource,
+    options: LoadOptions,
+  ): Promise<void> {
+    const loaded = await this.open(source, loading.controller.signal);
+    // A newer load may have started between the last abort check and here; its parts belong to
+    // nobody now.
+    if (loading.controller.signal.aborted) {
+      loaded.dispose();
+      return;
+    }
+    this.attach(loaded);
+    if (options.preload !== false) loaded.pipeline.session.preload();
+    if (options.autoplay) await this.autoplay();
+  }
+
   private async open(source: PlayerSource, signal: AbortSignal): Promise<LoadedRecording> {
     return loadRecording({
       source,
@@ -259,7 +280,7 @@ export class Player {
   }
 
   private attach(loaded: LoadedRecording): void {
-    this.loaded = loaded;
+    this.phase = { kind: 'loaded', loaded };
     this.viewing.attach(loaded.pipeline.renderer);
     const { session } = loaded.pipeline;
     loaded.pipeline.stabilizing?.setStabilizer(stabilizerFor(this.stabilizationMode));
@@ -350,7 +371,7 @@ export class Player {
         : new GyroViewError('invariant-violation', 'the player failed unexpectedly', {
             cause: error,
           });
-    this.failure = failure;
+    this.phase = { kind: 'failed', failure };
     this.setStatus('error');
     this.events.emit('error', failure);
     return failure;

@@ -99,6 +99,14 @@ describe('the embed bridge over a message channel', () => {
     expect(afterSettings.status).toBe('paused');
   });
 
+  it('resolves a load once the recording is ready, so a play right after it starts', async () => {
+    const { handle } = bridge();
+    await handle.load({ src: recordingUrl });
+    expect(handle.state.status).toBe('ready');
+    await handle.play();
+    await waitFor(() => handle.state.status === 'playing', 'playing');
+  });
+
   it('mirrors the sound as the player changes it', async () => {
     const { handle } = bridge();
     await handle.setMuted(true);
@@ -140,7 +148,9 @@ describe('the embed bridge over a message channel', () => {
     const failure = new Promise<unknown>((resolve) => {
       handle.events.on('error', resolve);
     });
-    await handle.load({ src: `${recordingUrl}.missing` });
+    await expect(handle.load({ src: `${recordingUrl}.missing` })).rejects.toMatchObject({
+      code: 'source-unreadable',
+    });
     expect(await failure).toEqual({
       code: 'source-unreadable',
       message: expect.stringContaining('.missing') as string,

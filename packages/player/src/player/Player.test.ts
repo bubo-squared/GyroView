@@ -250,6 +250,20 @@ describe('Player over the synthetic X5 recording', () => {
     expect(player.status).toBe('ready');
   });
 
+  it('plays once a load in progress is ready, as a media element does', async () => {
+    const { player } = open();
+    const loading = player.load(sourceOf(X5_RECORDING_URL));
+    await player.play();
+    await loading;
+    expect(player.status).toBe('playing');
+  });
+
+  it('refuses to play after a failed load with that failure', async () => {
+    const { player } = open();
+    await expect(player.load(sourceOf(`${X5_RECORDING_URL}.missing`))).rejects.toThrow();
+    await expect(player.play()).rejects.toMatchObject({ code: 'source-unreadable' });
+  });
+
   it('lets a newer load supersede an older one quietly and ignores transport before a load', async () => {
     const { player, events, errors } = open();
     await player.play();

@@ -15,37 +15,31 @@ import {
   type ViewState,
 } from '@gyroview/core';
 import {
-  BufferGeometry,
-  Camera,
-  Float32BufferAttribute,
-  GLSL3,
   LinearFilter,
   Mesh,
   NoColorSpace,
-  RawShaderMaterial,
   Scene,
   VideoFrameTexture,
   WebGLRenderer,
+  type BufferGeometry,
 } from 'three';
 
+import { createFullscreenTriangle, PASS_THROUGH_CAMERA } from './fullscreenPass';
 import { GainMatching } from './gainMatch/GainMatching';
 import { GainMatchPass } from './gainMatch/GainMatchPass';
-import constants from './shaders/constants.glsl?raw';
-import fullscreenVertex from './shaders/fullscreen.vert.glsl?raw';
-import lensModels from './shaders/lensModels.glsl?raw';
-import lensSampling from './shaders/lensSampling.glsl?raw';
-import precision from './shaders/precision.glsl?raw';
-import rays from './shaders/rays.glsl?raw';
-import screenAreas from './shaders/screenAreas.glsl?raw';
-import stitchFragment from './shaders/stitch.frag.glsl?raw';
 import {
   applyStabilization,
   applyView,
   createStitchUniforms,
   MAX_LENSES,
-  SHADER_DEFINES,
   type StitchUniforms,
 } from './stitchUniforms';
+import {
+  compileViewMaterials,
+  createViewMaterials,
+  distinctMaterials,
+  type ViewMaterials,
+} from './viewMaterials';
 
 export interface ThreeFrameRendererOptions {
   readonly view?: ViewState;
@@ -60,25 +54,17 @@ export interface ThreeFrameRendererOptions {
 interface RendererParts {
   readonly renderer: WebGLRenderer;
   readonly scene: Scene;
-  readonly material: RawShaderMaterial;
-  readonly geometry: BufferGeometry;
+  /**
+   * The fullscreen triangle; its material is the current view mode's program.
+   */
+  readonly pass: Mesh<BufferGeometry, ViewMaterials[ViewMode]>;
+  readonly materials: ViewMaterials;
   readonly textures: readonly VideoFrameTexture[];
   readonly uniforms: StitchUniforms;
+  readonly lensCount: number;
 }
 
-/**
- * One triangle covering the clip square: two corners lie beyond it so its hypotenuse clears the
- * far edge. The fragment shader turns every pixel into a ray.
- */
-const BEYOND_CLIP = 3;
-const FULLSCREEN_TRIANGLE = [-1, -1, 0, BEYOND_CLIP, -1, 0, -1, BEYOND_CLIP, 0];
-const POSITION_COMPONENTS = 3;
 const RGBA_CHANNELS = 4;
-
-/**
- * The raw shader ignores the camera; three still wants one to render a scene.
- */
-const PASS_THROUGH_CAMERA = new Camera();
 
 /**
  * What the renderer starts drawing with.
@@ -89,9 +75,9 @@ interface InitialDrawing {
 }
 
 /**
- * FrameSink over Three.js: uploads each lens frame to a texture and draws the stitched view with
- * one fullscreen pass of `stitch.frag.glsl`, turned by the view and the stabilization rotations
- * and laid out on the viewport as the view mode says.
+ * FrameSink over Three.js: uploads each lens frame to a texture and draws one fullscreen pass per
+ * frame, laid out on the viewport as the view mode says: the stitched view of `stitch.frag.glsl`,
+ * turned by the view and stabilization rotations, or the raw lens images side by side.
  */
 export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   private viewState: ViewState;
@@ -130,21 +116,15 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
     const renderer = createRenderer(canvas, options.preserveDrawingBuffer ?? false);
     const textures = Array.from({ length: setup.frameCount }, () => createLensTexture());
     const uniforms = createStitchUniforms(setup, textures);
-    const material = createMaterial(uniforms);
-    const geometry = new BufferGeometry();
-    geometry.setAttribute(
-      'position',
-      new Float32BufferAttribute(FULLSCREEN_TRIANGLE, POSITION_COMPONENTS),
-    );
+    const materials = createViewMaterials(uniforms);
+    const viewMode = options.viewMode ?? DEFAULT_VIEW_MODE;
+    const pass = new Mesh(createFullscreenTriangle(), materials[viewMode]);
+    compileViewMaterials(renderer, pass.geometry, materials);
     const scene = new Scene();
-    scene.add(new Mesh(geometry, material));
-    // Compiling now surfaces a broken shader here rather than at the first presented frame.
-    renderer.compile(scene, PASS_THROUGH_CAMERA);
-    const parts = { renderer, scene, material, geometry, textures, uniforms };
-    return new ThreeFrameRenderer(parts, canvas, {
-      view: options.view ?? DEFAULT_VIEW,
-      viewMode: options.viewMode ?? DEFAULT_VIEW_MODE,
-    });
+    scene.add(pass);
+    const lensCount = setup.lenses.length;
+    const parts = { renderer, scene, pass, materials, textures, uniforms, lensCount };
+    return new ThreeFrameRenderer(parts, canvas, { view: options.view ?? DEFAULT_VIEW, viewMode });
   }
 
   public get view(): ViewState {
@@ -165,6 +145,7 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   public setViewMode(mode: ViewMode): void {
     this.ensureLive();
     this.viewModeValue = mode;
+    this.parts.pass.material = this.parts.materials[mode];
     this.applyView();
     this.render();
   }
@@ -259,8 +240,8 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
     this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     this.gainMatching?.dispose();
     for (const texture of this.parts.textures) texture.dispose();
-    this.parts.material.dispose();
-    this.parts.geometry.dispose();
+    for (const material of distinctMaterials(this.parts.materials)) material.dispose();
+    this.parts.pass.geometry.dispose();
     this.parts.renderer.dispose();
   }
 
@@ -286,6 +267,7 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
       view: this.viewState,
       mode: this.viewModeValue,
       viewportAspect: this.canvas.width / Math.max(this.canvas.height, 1),
+      lensCount: this.parts.lensCount,
     });
   }
 
@@ -326,26 +308,6 @@ function rejectShaders(gl: WebGLRenderingContext, shaders: readonly WebGLShader[
     .filter(Boolean)
     .join('\n');
   throw new GyroViewError('render-unavailable', `the stitching shader did not compile: ${log}`);
-}
-
-function createMaterial(uniforms: StitchUniforms): RawShaderMaterial {
-  return new RawShaderMaterial({
-    glslVersion: GLSL3,
-    defines: { ...SHADER_DEFINES },
-    vertexShader: fullscreenVertex,
-    fragmentShader: [
-      precision,
-      constants,
-      screenAreas,
-      rays,
-      lensModels,
-      lensSampling,
-      stitchFragment,
-    ].join('\n'),
-    uniforms: { ...uniforms },
-    depthTest: false,
-    depthWrite: false,
-  });
 }
 
 function createLensTexture(): VideoFrameTexture {

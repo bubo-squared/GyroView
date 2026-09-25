@@ -202,6 +202,12 @@ describe('<gyro-view>', () => {
     expect(control(element, '.view-mode', HTMLSelectElement).value).toBe('equirectangular');
     element.setAttribute('view-mode', 'bogus');
     expect(control(element, '.view-mode', HTMLSelectElement).value).toBe('equirectangular');
+    const options = control(element, '.view-mode', HTMLSelectElement).options;
+    expect([...options].map((option) => option.value)).toEqual([
+      'normal',
+      'equirectangular',
+      'raw-lenses',
+    ]);
 
     const changed = nextEvent<string>(element, 'stabilizationchange');
     element.setStabilization('off');

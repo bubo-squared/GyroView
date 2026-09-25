@@ -79,6 +79,7 @@ describe('view and playback attributes', () => {
     expect(stabilizationFromAttribute('wobble')).toBeUndefined();
     expect(stabilizationFromAttribute(null)).toBeUndefined();
     expect(viewModeFromAttribute(' Equirectangular ')).toBe('equirectangular');
+    expect(viewModeFromAttribute('RAW-LENSES')).toBe('raw-lenses');
     expect(viewModeFromAttribute('stereographic')).toBeUndefined();
   });
 

@@ -148,6 +148,9 @@ One package per external technology; none imports another.
   every pixel of the view mode's screen area into a ray (rectilinear for the normal view,
   equirectangular for the panorama; pixels outside the area stay black), applies the view and
   stabilization rotations, projects through each lens model and blends across the feather band.
+  The raw lenses view swaps in `rawLenses.frag.glsl`, which copies each lens's frame region into
+  its tile; `viewMaterials` holds one program per view mode and `fullscreenPass` the triangle,
+  camera and material setup every pass shares.
   `stitchUniforms` is the only place uniform names are spelled. `gainMatch/GainMatchPass`
   renders the seam ring per lens into a tiny target and `GainMatching` feeds the core's
   `GainMatcher` with the read-back.

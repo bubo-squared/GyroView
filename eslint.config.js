@@ -102,6 +102,9 @@ export default defineConfig(
           format: ['camelCase', 'UPPER_CASE', 'PascalCase'],
         },
         { selector: 'objectLiteralProperty', format: ['camelCase', 'PascalCase'] },
+        // A key that needs quotes is data spelled as the outside world spells it (an attribute
+        // name, a kebab-case choice), not an identifier this codebase names.
+        { selector: 'objectLiteralProperty', modifiers: ['requiresQuotes'], format: null },
         { selector: 'typeLike', format: ['PascalCase'] },
         { selector: 'enumMember', format: ['PascalCase'] },
         { selector: 'import', format: null },

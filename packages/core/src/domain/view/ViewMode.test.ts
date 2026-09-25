@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { lensTiles } from './screenLayout';
 import { DEFAULT_VIEW_MODE, VIEW_MODES, viewModeRulesFor } from './ViewMode';
 import { DEFAULT_VIEW, viewRotation } from './ViewState';
 import { transformVector } from '../../shared/math/Matrix3';
@@ -16,7 +17,7 @@ function expectVector(actual: Vector3, expected: Vector3): void {
 
 describe('view modes', () => {
   it('offers the normal view first and by default', () => {
-    expect(VIEW_MODES).toEqual(['normal', 'equirectangular']);
+    expect(VIEW_MODES).toEqual(['normal', 'equirectangular', 'raw-lenses']);
     expect(DEFAULT_VIEW_MODE).toBe('normal');
   });
 
@@ -36,7 +37,7 @@ describe('view modes', () => {
     it('zooms and draws with the full view rotation over the whole screen', () => {
       expect(normal.zoom(DEFAULT_VIEW, 1).fieldOfView).toBeCloseTo(90 / 1.1, 9);
       expect(normal.rotation(TILTED)).toEqual(viewRotation(TILTED));
-      expect(normal.screenAreas(16 / 9)).toEqual([{ x: 0, y: 0, width: 1, height: 1 }]);
+      expect(normal.screenAreas(16 / 9, 2)).toEqual([{ x: 0, y: 0, width: 1, height: 1 }]);
     });
   });
 
@@ -62,10 +63,25 @@ describe('view modes', () => {
     });
 
     it('draws a 2:1 panorama centred in the viewport', () => {
-      const [area] = equirectangular.screenAreas(16 / 9);
+      const [area] = equirectangular.screenAreas(16 / 9, 2);
       expect(area?.width).toBe(1);
       expect(area?.height).toBeCloseTo(8 / 9, 12);
-      expect(equirectangular.screenAreas(1)).toEqual([{ x: 0, y: 0.25, width: 1, height: 0.5 }]);
+      expect(equirectangular.screenAreas(1, 2)).toEqual([{ x: 0, y: 0.25, width: 1, height: 0.5 }]);
+    });
+  });
+
+  describe('raw lenses', () => {
+    const rawLenses = viewModeRulesFor('raw-lenses');
+
+    it('ignores every gesture: the lens images are shown as recorded', () => {
+      expect(rawLenses.pan(TILTED, { x: 90, y: 90 }, VIEWPORT_WIDTH)).toEqual(TILTED);
+      expect(rawLenses.turn(TILTED, degrees(5), degrees(5))).toEqual(TILTED);
+      expect(rawLenses.zoom(TILTED, 2)).toEqual(TILTED);
+    });
+
+    it('gives every lens its own square tile', () => {
+      expect(rawLenses.screenAreas(16 / 9, 2)).toEqual(lensTiles(2, 16 / 9));
+      expect(rawLenses.screenAreas(9 / 16, 2)).toEqual(lensTiles(2, 9 / 16));
     });
   });
 });

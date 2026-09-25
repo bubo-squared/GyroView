@@ -299,6 +299,65 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelAt(renderer, { column: 32, row: 18 }, size).r).toBeGreaterThan(BRIGHT);
   });
 
+  it('shows the raw lenses side by side and unstitched: no pose, stabilization or gain', () => {
+    const renderer = open();
+    renderer.setViewMode('raw-lenses');
+    const turnedAround = quaternionFromAxisAngle([0, 1, 0], radians(Math.PI));
+    renderer.setStabilization(new LockStabilization().rotationFor(turnedAround));
+    renderer.setLensGain(0, [0, 0, 0]);
+    presentRedAndBlue(renderer);
+    expect(pixelAt(renderer, { column: 16, row: 16 }).r).toBeGreaterThan(BRIGHT);
+    expect(pixelAt(renderer, { column: 48, row: 16 }).b).toBeGreaterThan(BRIGHT);
+    expect(pixelAt(renderer, { column: 48, row: 16 }).r).toBeLessThan(DIM);
+  });
+
+  it('draws each raw lens image as decoded, its top-left corner at the top-left of its tile', () => {
+    const renderer = open();
+    renderer.setViewMode('raw-lenses');
+    present(renderer, [gradientFrame(), solidFrame('#000000')]);
+    const topLeft = pixelAt(renderer, { column: 1, row: 1 });
+    const topRight = pixelAt(renderer, { column: 30, row: 1 });
+    const bottomLeft = pixelAt(renderer, { column: 1, row: 30 });
+    expect([topLeft.r, topLeft.g].every((value) => value < DIM)).toBe(true);
+    expect(topRight.r).toBeGreaterThan(BRIGHT);
+    expect(topRight.g).toBeLessThan(DIM);
+    expect(bottomLeft.r).toBeLessThan(DIM);
+    expect(bottomLeft.g).toBeGreaterThan(BRIGHT);
+  });
+
+  it('shows the halves of a packed frame as the two raw lens tiles', () => {
+    const renderer = open(
+      buildStitchingSetup({ calibration: syntheticCalibration(), layout: PACKED }),
+    );
+    renderer.setViewMode('raw-lenses');
+    present(renderer, [halvesFrame('#ff0000', '#0000ff')]);
+    expect(pixelAt(renderer, { column: 16, row: 16 }).r).toBeGreaterThan(BRIGHT);
+    expect(pixelAt(renderer, { column: 16, row: 16 }).b).toBeLessThan(DIM);
+    expect(pixelAt(renderer, { column: 48, row: 16 }).b).toBeGreaterThan(BRIGHT);
+  });
+
+  it('stacks the raw lens tiles on a portrait viewport with black bars around them', () => {
+    const size = { width: 32, height: 72 };
+    const renderer = open(undefined, size);
+    renderer.setViewMode('raw-lenses');
+    presentRedAndBlue(renderer);
+    expect(pixelAt(renderer, { column: 16, row: 20 }, size).r).toBeGreaterThan(BRIGHT);
+    expect(pixelAt(renderer, { column: 16, row: 52 }, size).b).toBeGreaterThan(BRIGHT);
+    for (const row of [0, 71]) {
+      const bar = pixelAt(renderer, { column: 16, row }, size);
+      expect(bar.r + bar.g + bar.b).toBe(0);
+    }
+  });
+
+  it('goes back to the stitched view when the mode returns to normal', () => {
+    const renderer = open();
+    renderer.setViewMode('raw-lenses');
+    presentRedAndBlue(renderer);
+    renderer.setViewMode('normal');
+    expect(pixelAt(renderer, { column: 48, row: 16 }).r).toBeGreaterThan(BRIGHT);
+    expect(renderer.viewMode).toBe('normal');
+  });
+
   it('silences a lens through its gain so the other can be inspected alone', () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');

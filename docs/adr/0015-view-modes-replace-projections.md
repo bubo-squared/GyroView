@@ -11,9 +11,10 @@ projection was a field of the view state, so it travelled with every view change
 `viewchange` event, and each projection needed its own field-of-view range and drag rate.
 
 The little planet is a creative effect; a viewer of raw recordings wants to look around in an
-ordinary picture, and sometimes to see the whole recording at once as the equirectangular
-video an export would produce. Choosing between those is a choice of what the player shows,
-not of where the viewer looks.
+ordinary picture, sometimes to see the whole recording at once as the equirectangular video an
+export would produce, and sometimes to see what each lens actually recorded before any
+stitching, to judge exposure, framing or the seam. Choosing between those is a choice of what
+the player shows, not of where the viewer looks.
 
 ## Decision
 
@@ -28,6 +29,12 @@ stabilization mode: the `view-mode` attribute, `setViewMode`, the `viewmodechang
   viewport rather than stretched. It stays level: only the yaw, which picks the direction at
   its centre, follows drags (a whole turn per viewport width) and arrow keys; pitch and zoom are
   ignored. Stabilization applies as in the normal view.
+- `raw-lenses`: each lens's region of its decoded frame exactly as the decoder delivered it,
+  unstitched: no lens pose, no stabilization, no exposure gain, no drag or zoom. The images
+  appear as the sensors are mounted, so they need not be upright or turned alike. The lenses
+  get square tiles, in a row or stacked, whichever gives the larger tiles on the viewport, with
+  black bars around. Tiles are square because every accepted layout has square lens images
+  (square tracks, or the halves of a 2:1 packed frame).
 
 Each mode is a rules object in `core/domain/view/ViewMode.ts` (strategy): how a drag, a turn
 and a zoom move the view, the rotation the picture is drawn with, and where on the viewport
@@ -48,5 +55,8 @@ attributes) is obeyed in any mode.
 
 The `projection` attribute and URL parameter are gone without an alias (nothing was published
 yet). A zoom in the equirectangular view announces an unchanged view. The renderer receives
-the mode beside the view and lays the picture out in the screen area the mode chooses; pixels
-outside it are black.
+the mode beside the view and lays the picture out in the screen areas the mode chooses; pixels
+outside them are black. The raw lenses are drawn by a second shader program over the same
+uniforms, compiled with the stitch when the renderer is created, so switching modes swaps
+programs without a pause. Gain matching keeps measuring while the raw lenses show; its gains
+apply again when a stitched mode returns.

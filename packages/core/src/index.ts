@@ -103,7 +103,12 @@ export {
   type ViewMode,
   type ViewModeRules,
 } from './domain/view/ViewMode';
-export { fittedRectangle, WHOLE_SCREEN, type ScreenRectangle } from './domain/view/screenLayout';
+export {
+  fittedRectangle,
+  lensTiles,
+  WHOLE_SCREEN,
+  type ScreenRectangle,
+} from './domain/view/screenLayout';
 export { lookAt, type DragDelta } from './domain/view/viewGestures';
 export {
   EQUIRECTANGULAR_ASPECT,

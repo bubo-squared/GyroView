@@ -16,8 +16,8 @@ ahead; the first frame shows before play; the seek bar scrubs to key frames.
 **Stitching.** One GPU pass per frame through the factory calibration (unified, polynomial or
 equidistant lens model), with a feathered blend across the overlap and per-channel exposure
 matching measured along the seam. A normal rectilinear view of 30 to 120 degrees with drag,
-pinch, wheel and keyboard look-around, and the whole sphere as a level, letterboxed
-equirectangular panorama (ADR 0015).
+pinch, wheel and keyboard look-around; the whole sphere as a level, letterboxed
+equirectangular panorama; and the raw lens images side by side, unstitched (ADR 0015).
 
 **Stabilization.** Gyro and accelerometer integrated into the camera's orientation, sampled at
 each frame's mid-exposure; lock, horizon and follow modes, or off.

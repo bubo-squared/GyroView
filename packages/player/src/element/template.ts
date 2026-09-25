@@ -42,6 +42,7 @@ export const ELEMENT_TEMPLATE = `
         <select class="view-mode" aria-label="View">
           <option value="normal">Normal</option>
           <option value="equirectangular">Equirectangular</option>
+          <option value="raw-lenses">Raw lenses</option>
         </select>
       </label>
       <label class="quality-row" hidden>Quality

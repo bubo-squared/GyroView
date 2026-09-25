@@ -46,7 +46,7 @@ export const PlaybackAttribute = {
   Loop: 'loop',
   Stabilization: 'stabilization',
   /**
-   * `normal`, `equirectangular` or `raw-lenses`: what the picture shows.
+   * `normal`, `equirectangular` or `raw-lenses`: what the picture shows (ADR 0015).
    */
   ViewMode: 'view-mode',
   Controls: 'controls',

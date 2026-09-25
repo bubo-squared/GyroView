@@ -13,6 +13,39 @@ export const WHOLE_SCREEN: ScreenRectangle = { x: 0, y: 0, width: 1, height: 1 }
 const CENTRE = 0.5;
 
 /**
+ * One square tile per lens, in a row or in a column, whichever gives the larger tiles on this
+ * viewport, centred with bars around. Square because every lens layout the player accepts has
+ * square lens images: square tracks, or the halves of a 2:1 packed frame.
+ */
+export function lensTiles(lensCount: number, viewportAspect: number): ScreenRectangle[] {
+  const row = fittedRectangle(lensCount, viewportAspect);
+  const column = fittedRectangle(1 / lensCount, viewportAspect);
+  const rowTileHeight = row.height;
+  const columnTileHeight = column.height / lensCount;
+  return rowTileHeight >= columnTileHeight
+    ? tilesAcross(row, lensCount)
+    : tilesDown(column, lensCount);
+}
+
+function tilesAcross(area: ScreenRectangle, count: number): ScreenRectangle[] {
+  const width = area.width / count;
+  return Array.from({ length: count }, (_unused, index) => ({
+    ...area,
+    x: area.x + index * width,
+    width,
+  }));
+}
+
+function tilesDown(area: ScreenRectangle, count: number): ScreenRectangle[] {
+  const height = area.height / count;
+  return Array.from({ length: count }, (_unused, index) => ({
+    ...area,
+    y: area.y + index * height,
+    height,
+  }));
+}
+
+/**
  * The largest centred rectangle of the content's shape inside the viewport. Both aspects are
  * width over height; the bars it leaves go above and below wider content, beside narrower.
  */

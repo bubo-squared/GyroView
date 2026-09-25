@@ -110,7 +110,7 @@ describe('the embed bridge over a message channel', () => {
     });
     await expect(handle.setViewMode('stereographic')).rejects.toMatchObject({
       code: 'invariant-violation',
-      message: 'embed command argument 0 must be one of normal, equirectangular',
+      message: 'embed command argument 0 must be one of normal, equirectangular, raw-lenses',
     });
     await expect(handle.load({ src: 5 as unknown as string })).rejects.toMatchObject({
       code: 'invariant-violation',

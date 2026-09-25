@@ -17,9 +17,13 @@ import { Matrix3, Vector2, Vector3, Vector4, type IUniform, type Texture } from 
  */
 export const MAX_LENSES = 2;
 
+/**
+ * Which rays the stitch casts; the raw lenses are drawn by their own program, which ignores it.
+ */
 const VIEW_MODE_CODES: Readonly<Record<ViewMode, number>> = {
   normal: 0,
   equirectangular: 1,
+  'raw-lenses': 2,
 };
 const LENS_MEI = 0;
 const LENS_RADIAL_POLYNOMIAL = 1;
@@ -158,18 +162,22 @@ export function applyStabilization(uniforms: StitchUniforms, rotation: CoreMatri
 }
 
 /**
- * What the picture is drawn from: where the viewer looks, how the mode shows it, and the shape of
- * the viewport (width over height).
+ * What the picture is drawn from: where the viewer looks, how the mode shows it, the shape of the
+ * viewport (width over height) and how many lenses there are to show.
  */
 export interface ViewDrawing {
   readonly view: ViewState;
   readonly mode: ViewMode;
   readonly viewportAspect: number;
+  readonly lensCount: number;
 }
 
 export function applyView(uniforms: StitchUniforms, drawing: ViewDrawing): void {
   const rules = viewModeRulesFor(drawing.mode);
-  const areas = padded(rules.screenAreas(drawing.viewportAspect), 'a view mode fills one area');
+  const areas = padded(
+    rules.screenAreas(drawing.viewportAspect, drawing.lensCount),
+    'a view mode fills one area per lens at most',
+  );
   uniforms.uViewRotation.value = toThreeMatrix(rules.rotation(drawing.view));
   uniforms.uViewMode.value = VIEW_MODE_CODES[drawing.mode];
   uniforms.uPlaneHalfExtent.value = planeHalfExtentOf(drawing.view);

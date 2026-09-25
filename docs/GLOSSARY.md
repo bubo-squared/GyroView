@@ -46,7 +46,7 @@ The vocabulary used in code, tests and documents. One name per concept; no synon
 | Abort (a run)        | Ending a decode pipeline run early, discarding pending decodes. Distinct from pausing the clock and from the transport's stop (pause and rewind).                        |
 | Body frame           | The camera's own frame: x right, y down, z forward along lens 0's optical axis. Stabilization and view rotations are expressed in it.                                    |
 | Lens pose            | The rotation from the body frame into one lens's frame (`lensRotation`): the lens's half turn plus the calibration's yaw, pitch and roll (ADR 0008).                     |
-| Canvas window        | The part of a lens's calibration canvas square that the recorded frame shows; the info record's sensor window, else the whole square.                                    |
+| Canvas window        | The part of a lens's calibration canvas square that the recorded frame shows: the whole square (ADR 0014); the info record's sensor window is not applied.               |
 | Feather band         | The angles from a lens's optical axis between which its blend weight fades from one to zero, centred on the overlap of the two lenses.                                   |
 | View state           | Where the viewer looks (yaw, pitch), the horizontal field of view and the projection (rectilinear, stereographic, equirectangular).                                      |
 | Stitching setup      | Everything the renderer needs per lens (frame index, region, canvas window, pose, projection parameters), computed once from calibration and layout.                     |

@@ -2,15 +2,17 @@ import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
   DEFAULT_VIEW,
-  equirectangularPixelOf,
   LensDecodePipeline,
+  type CalibrationSet,
   type FramePair,
+  type LensStitch,
   type StitchingSetup,
   type WindowCrop,
 } from '@gyroview/core';
 import { commands } from '@vitest/browser/context';
 import { afterEach, describe, expect, it, type TestContext } from 'vitest';
 
+import { imageCircleOf, type PixelPoint } from './imageCircle';
 import {
   closeAll,
   openSample,
@@ -32,16 +34,12 @@ const BLACK_THRESHOLD = 8;
  * image circles' corners and dark scene content, not stitching holes.
  */
 const MIN_COVERAGE = 0.97;
-const FULL_TURN_DEGREES = 360;
-const SEAM_BAND_DEGREES = 8;
-const SEAM_ROWS_DEGREES = 50;
 /**
- * The two lenses meet at yaw +-90: body left and right.
+ * How far, as a fraction of the lens frame's width, the image circle's centre may lie from
+ * where the calibration's principal point lands on the frame. Lens decentring and the halo
+ * along the rim account for up to about 0.75 % on the sailing frames.
  */
-const SEAM_COLUMNS = [
-  equirectangularPixelOf([-1, 0, 0], { width: WIDTH, height: HEIGHT }).column,
-  equirectangularPixelOf([1, 0, 0], { width: WIDTH, height: HEIGHT }).column,
-];
+const MAX_CENTRE_OFFSET_FRACTION = 0.01;
 
 /**
  * Fraction of pixels that received some picture; the stitched sphere has no holes.
@@ -57,123 +55,17 @@ function coverageOf(pixels: Uint8ClampedArray): number {
   return lit / (pixels.length / RGBA_CHANNELS);
 }
 
-/**
- * Mean absolute difference between what lens 0 and lens 1 see in the overlap band around the
- * yaw +-90 seams, over rows away from the poles. Lower means the two projections agree.
- */
-function seamDifference(lens0: Uint8ClampedArray, lens1: Uint8ClampedArray): number {
-  const columnsPerDegree = WIDTH / FULL_TURN_DEGREES;
-  const rowsPerDegree = HEIGHT / (FULL_TURN_DEGREES / 2);
-  const bandColumns = Math.round(SEAM_BAND_DEGREES * columnsPerDegree);
-  const rowSpan = Math.round(SEAM_ROWS_DEGREES * rowsPerDegree);
-  const sum = { total: 0, count: 0 };
-  for (let row = HEIGHT / 2 - rowSpan; row < HEIGHT / 2 + rowSpan; row += 1) {
-    for (const seamColumn of SEAM_COLUMNS) {
-      for (let column = seamColumn - bandColumns; column < seamColumn + bandColumns; column += 1) {
-        accumulateDifference(sum, { lens0, lens1 }, (row * WIDTH + column) * RGBA_CHANNELS);
-      }
-    }
-  }
-  return sum.total / sum.count;
-}
-
-interface LensPixels {
-  readonly lens0: Uint8ClampedArray;
-  readonly lens1: Uint8ClampedArray;
-}
-
-function accumulateDifference(
-  sum: { total: number; count: number },
-  pixels: LensPixels,
-  offset: number,
-): void {
-  for (let channel = 0; channel < RGBA_CHANNELS - 1; channel += 1) {
-    const difference =
-      (pixels.lens0[offset + channel] ?? 0) - (pixels.lens1[offset + channel] ?? 0);
-    sum.total += Math.abs(difference);
-    sum.count += 1;
-  }
-}
-
-interface CircleExtent {
-  readonly width: number;
-  readonly height: number;
-  readonly firstLitColumn: number;
-  readonly lastLitColumn: number;
-  readonly firstLitRow: number;
-  readonly lastLitRow: number;
-}
-
-const LIT_THRESHOLD = 24;
-
-function isLit(data: Uint8ClampedArray, index: number): boolean {
-  const offset = index * RGBA_CHANNELS;
-  return (data[offset] ?? 0) + (data[offset + 1] ?? 0) + (data[offset + 2] ?? 0) > LIT_THRESHOLD;
-}
-
-/**
- * Where the fisheye image circle ends in a decoded frame, along the row and column through its
- * centre: a black margin on a side means the encoder kept the whole canvas square there, a
- * circle touching the edge means it was cut by the sensor window.
- */
-function imageCircleExtent(frame: VideoFrame): CircleExtent {
-  const width = frame.displayWidth;
-  const height = frame.displayHeight;
-  const scratch = document.createElement('canvas');
-  scratch.width = width;
-  scratch.height = height;
-  const context = scratch.getContext('2d');
-  if (!context) throw new Error('no 2d context');
-  context.drawImage(frame, 0, 0);
-  const row = context.getImageData(0, Math.floor(height / 2), width, 1).data;
-  const column = context.getImageData(Math.floor(width / 2), 0, 1, height).data;
-  const litColumns = Array.from({ length: width }, (_unused, index) => index).filter((index) =>
-    isLit(row, index),
-  );
-  const litRows = Array.from({ length: height }, (_unused, index) => index).filter((index) =>
-    isLit(column, index),
-  );
-  return {
-    width,
-    height,
-    firstLitColumn: litColumns[0] ?? -1,
-    lastLitColumn: litColumns.at(-1) ?? -1,
-    firstLitRow: litRows[0] ?? -1,
-    lastLitRow: litRows.at(-1) ?? -1,
-  };
-}
-
 function jsonDataUrl(value: unknown): string {
   return `data:application/json;base64,${btoa(JSON.stringify(value, undefined, 2))}`;
-}
-
-function renderLensesApart(
-  canvas: HTMLCanvasElement,
-  setup: StitchingSetup,
-  pair: FramePair<VideoFrame>,
-): { readonly lens0: Uint8ClampedArray; readonly lens1: Uint8ClampedArray } {
-  const renderer = ThreeFrameRenderer.create(canvas, setup, {
-    preserveDrawingBuffer: true,
-    view: { ...DEFAULT_VIEW, projection: 'equirectangular' },
-  });
-  try {
-    renderer.present({ pair, mediaTime: pair.timestamp, frameIndex: undefined });
-    renderer.setLensGain(1, [0, 0, 0]);
-    const lens0 = renderer.readPixels();
-    renderer.setLensGain(1, [1, 1, 1]);
-    renderer.setLensGain(0, [0, 0, 0]);
-    const lens1 = renderer.readPixels();
-    return { lens0, lens1 };
-  } finally {
-    renderer.dispose();
-  }
 }
 
 interface StitchedFrame {
   readonly canvas: HTMLCanvasElement;
   readonly renderer: ThreeFrameRenderer;
   readonly pair: FramePair<VideoFrame>;
-  readonly setup: (windowCrop: WindowCrop | undefined) => StitchingSetup;
+  readonly setup: StitchingSetup;
+  readonly calibration: CalibrationSet;
+  readonly windowCrop: WindowCrop | undefined;
 }
 
 async function stitchOneFrame(
@@ -194,8 +86,7 @@ async function stitchOneFrame(
   });
   const [pair] = pairs;
   if (!pair) throw new Error('no pair decoded');
-  const setup = (windowCrop: WindowCrop | undefined): StitchingSetup =>
-    buildStitchingSetup({ calibration, layout: opened.layout, windowCrop });
+  const setup = buildStitchingSetup({ calibration, layout: opened.layout });
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
@@ -203,7 +94,7 @@ async function stitchOneFrame(
   cleanups.push(() => {
     canvas.remove();
   });
-  const renderer = ThreeFrameRenderer.create(canvas, setup(opened.recording.info.windowCrop), {
+  const renderer = ThreeFrameRenderer.create(canvas, setup, {
     preserveDrawingBuffer: true,
     view: { ...DEFAULT_VIEW, projection: 'equirectangular' },
   });
@@ -211,7 +102,94 @@ async function stitchOneFrame(
     renderer.dispose();
   });
   renderer.present({ pair, mediaTime: pair.timestamp, frameIndex: undefined });
-  return { canvas, renderer, pair, setup };
+  return {
+    canvas,
+    renderer,
+    pair,
+    setup,
+    calibration,
+    windowCrop: opened.recording.info.windowCrop,
+  };
+}
+
+interface CentreMeasurement {
+  readonly lensIndex: number;
+  readonly frameWidth: number;
+  readonly circle: {
+    readonly centre: PixelPoint;
+    readonly radius: number;
+    readonly rmsResidual: number;
+  };
+  readonly onWholeSquare: PixelPoint;
+  readonly onSensorWindow: PixelPoint | undefined;
+  readonly distanceToWholeSquare: number;
+  readonly distanceToSensorWindow: number | undefined;
+}
+
+/**
+ * Where the calibration's principal point lands on the lens frame if the frame shows the given
+ * part of the canvas square: `origin` and `span` in canvas pixels.
+ */
+function principalPointOnFrame(
+  lens: LensStitch,
+  stitched: StitchedFrame,
+  window: { readonly origin: PixelPoint; readonly span: PixelPoint },
+): PixelPoint {
+  const calibrated = stitched.calibration.lenses.find((c) => c.lensIndex === lens.lensIndex);
+  if (!calibrated) throw new Error(`no calibration for lens ${lens.lensIndex}`);
+  const side = stitched.calibration.canvas.height;
+  const frame = stitched.pair.frames[lens.frameIndex]?.handle;
+  if (!frame) throw new Error(`no frame ${lens.frameIndex}`);
+  const width = lens.region.width * frame.displayWidth;
+  const height = lens.region.height * frame.displayHeight;
+  const localX =
+    calibrated.model.principalPoint.x - Math.floor(calibrated.model.principalPoint.x / side) * side;
+  return {
+    x: ((localX - window.origin.x) / window.span.x) * width,
+    y: ((calibrated.model.principalPoint.y - window.origin.y) / window.span.y) * height,
+  };
+}
+
+function sensorWindowOf(
+  crop: WindowCrop | undefined,
+): { origin: PixelPoint; span: PixelPoint } | undefined {
+  return crop?.cropWidth === undefined || crop.cropHeight === undefined
+    ? undefined
+    : {
+        origin: { x: crop.cropOffsetX ?? 0, y: crop.cropOffsetY ?? 0 },
+        span: { x: crop.cropWidth, y: crop.cropHeight },
+      };
+}
+
+function distance(a: PixelPoint, b: PixelPoint): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/**
+ * The image circle of one lens frame against the two readings of the canvas window: the whole
+ * square (what the core uses) and the info record's sensor window at its offset (what ADR 0008
+ * assumed).
+ */
+function measureCentre(lens: LensStitch, stitched: StitchedFrame): CentreMeasurement {
+  const frame = stitched.pair.frames[lens.frameIndex]?.handle;
+  if (!frame) throw new Error(`no frame ${lens.frameIndex}`);
+  const side = stitched.calibration.canvas.height;
+  const circle = imageCircleOf(frame, lens.region);
+  const onWholeSquare = principalPointOnFrame(lens, stitched, {
+    origin: { x: 0, y: 0 },
+    span: { x: side, y: side },
+  });
+  const sensorWindow = sensorWindowOf(stitched.windowCrop);
+  const onSensorWindow = sensorWindow && principalPointOnFrame(lens, stitched, sensorWindow);
+  return {
+    lensIndex: lens.lensIndex,
+    frameWidth: lens.region.width * frame.displayWidth,
+    circle: { centre: circle.centre, radius: circle.radius, rmsResidual: circle.rmsResidual },
+    onWholeSquare,
+    onSensorWindow,
+    distanceToWholeSquare: distance(circle.centre, onWholeSquare),
+    distanceToSensorWindow: onSensorWindow && distance(circle.centre, onSensorWindow),
+  };
 }
 
 describe('stitching one frame of the real recordings', () => {
@@ -247,43 +225,22 @@ describe('stitching one frame of the real recordings', () => {
       );
     });
 
-    it(`records where the image circle of each ${sample.name} frame meets the frame edges`, async (context) => {
-      const { pair } = await stitchOneFrame(context, sample, cleanups);
-      const extents = pair.frames.map((frame) => imageCircleExtent(frame.handle));
+    it(`finds the image circle of each ${sample.name} frame centred on the whole canvas square, not on the sensor window (ADR 0014)`, async (context) => {
+      const stitched = await stitchOneFrame(context, sample, cleanups);
+      const measurements = stitched.setup.lenses.map((lens) => measureCentre(lens, stitched));
       const saved = await commands.saveArtifact(
         `${slug}-${RENDER_TIME}s-image-circle.json`,
-        jsonDataUrl(extents),
+        jsonDataUrl(measurements),
       );
       expect(saved).toContain('.artifacts');
-    });
-
-    it(`measures how well the two lenses of the ${sample.name} agree at the seams with and without the sensor crop window`, async (context) => {
-      const { pair, setup } = await stitchOneFrame(context, sample, cleanups);
-      const crop = {
-        sensorWidth: 5376,
-        sensorHeight: 5376,
-        cropWidth: 5312,
-        cropHeight: 5312,
-        cropOffsetX: 0,
-        cropOffsetY: 0,
-      };
-      const differences = new Map<string, number>();
-      for (const [name, windowCrop] of [
-        ['sensor crop window', crop],
-        ['whole canvas square', undefined],
-      ] as const) {
-        const canvas = document.createElement('canvas');
-        canvas.width = WIDTH;
-        canvas.height = HEIGHT;
-        const apart = renderLensesApart(canvas, setup(windowCrop), pair);
-        differences.set(name, seamDifference(apart.lens0, apart.lens1));
+      for (const measured of measurements) {
+        expect(measured.distanceToWholeSquare).toBeLessThan(
+          MAX_CENTRE_OFFSET_FRACTION * measured.frameWidth,
+        );
+        if (measured.distanceToSensorWindow !== undefined) {
+          expect(measured.distanceToWholeSquare).toBeLessThan(measured.distanceToSensorWindow);
+        }
       }
-      const saved = await commands.saveArtifact(
-        `${slug}-${RENDER_TIME}s-seam-differences.json`,
-        jsonDataUrl(Object.fromEntries(differences)),
-      );
-      expect(saved).toContain('.artifacts');
-      expect(differences.size).toBe(2);
     });
   }
 });

@@ -26,9 +26,10 @@ events and controls; `embed.html` in an iframe driven by `embed.js` over a valid
 origin-checked message protocol; a developer page.
 
 **Verified on real recordings.** Two Insta360 X5 files (5.7K60 and 8K30, firmware 1.7 and
-1.11): layout, calibration, timing, the X5 IMU frame (by a world-stillness ranking), lock and
-horizon stabilization, seam continuity, audio-locked playback and seeking. Other cameras and
-layouts are covered by synthetic fixtures built from the documented format variants.
+1.11): layout, calibration, timing, the canvas-to-frame mapping (by the image circle's centre
+in every frame, ADR 0014), the X5 IMU frame (by a world-stillness ranking), lock and horizon
+stabilization, seam continuity, audio-locked playback and seeking. Other cameras and layouts
+are covered by synthetic fixtures built from the documented format variants.
 
 ## Waiting on something only a user can supply
 
@@ -47,6 +48,9 @@ layouts are covered by synthetic fixtures built from the documented format varia
 
 - Stitching is a fixed template: objects closer than about three metres show parallax
   ghosting in the blend band.
+- The frame is mapped onto the whole calibration square; a 1.2 % scale uncertainty (about
+  half a degree at the seam) remains until another camera's window record or a Studio export
+  settles it (ADR 0014).
 - Recordings split into several `_NNN` segment files play one segment at a time.
 - Playback speed is 1x; no buffered-ranges display (decoding is on demand).
 - Firefox and Android are best effort: Firefox has WebCodecs only on desktop, Android

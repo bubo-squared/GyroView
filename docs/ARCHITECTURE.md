@@ -97,8 +97,8 @@ Use cases that orchestrate the domain through ports.
   (first frame while ready) and `scrub` (seek to the key frame at or before a time).
 - `playback/probeDecoding` decodes the first key frame of every lens track under a deadline
   before anything else is built, because platforms say yes to codecs they then fail on.
-- `stitching/StitchingSetup` joins calibration, layout and sensor window into the per-lens
-  numbers a renderer binds; `StabilizingFrameSink` wraps a `StabilizableFrameSink` and sets the
+- `stitching/StitchingSetup` joins calibration and layout into the per-lens numbers a
+  renderer binds (each frame shows its whole calibration square, ADR 0014); `StabilizingFrameSink` wraps a `StabilizableFrameSink` and sets the
   stabilization rotation for each frame's mid-exposure orientation before presenting it.
 
 ### Ports: `core/src/ports`

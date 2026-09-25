@@ -1,4 +1,3 @@
-import type { WindowCrop } from '../../domain/format/info/RecordingInfo';
 import type { FrameRegion, LensLayout, LensSource } from '../../domain/format/layout/LensLayout';
 import type { CalibrationSet, LensCalibration } from '../../domain/optics/LensCalibration';
 import type { LensProjectionParameters } from '../../domain/optics/LensModel';
@@ -53,7 +52,6 @@ export interface StitchingSetup {
 export interface StitchingInputs {
   readonly calibration: CalibrationSet;
   readonly layout: LensLayout;
-  readonly windowCrop: WindowCrop | undefined;
   readonly feather?: FeatherBand;
 }
 
@@ -108,7 +106,7 @@ export function buildStitchingSetup(inputs: StitchingInputs): StitchingSetup {
       lensIndex: source.lensIndex,
       frameIndex: frames.findIndex((key) => isSameSource(key, source)),
       region: source.region,
-      window: canvasWindowOf(calibration, lens, inputs.windowCrop),
+      window: canvasWindowOf(calibration, lens),
       rotation: lensRotation(lens),
       projection: lens.model.projection,
       halfFieldOfView: lens.model.halfFieldOfView,
@@ -130,57 +128,14 @@ function lensOf(calibration: CalibrationSet, lensIndex: number): LensCalibration
 }
 
 /**
- * The sensor window the info record describes, complete enough to place on the canvas.
- */
-interface SensorWindow {
-  readonly sensorWidth: number;
-  readonly sensorHeight: number;
-  readonly cropWidth: number;
-  readonly cropHeight: number;
-  readonly cropOffsetX: number;
-  readonly cropOffsetY: number;
-}
-
-function sensorWindowOf(crop: WindowCrop | undefined): SensorWindow | undefined {
-  const isComplete =
-    crop?.sensorWidth !== undefined &&
-    crop.sensorHeight !== undefined &&
-    crop.cropWidth !== undefined &&
-    crop.cropHeight !== undefined;
-  return isComplete
-    ? {
-        sensorWidth: crop.sensorWidth,
-        sensorHeight: crop.sensorHeight,
-        cropWidth: crop.cropWidth,
-        cropHeight: crop.cropHeight,
-        cropOffsetX: crop.cropOffsetX ?? 0,
-        cropOffsetY: crop.cropOffsetY ?? 0,
-      }
-    : undefined;
-}
-
-/**
  * The canvas holds the lens images side by side in squares of its height; each lens's square is
- * the one holding its principal point. The encoded frame shows the sensor window the info
- * record describes, in sensor pixels, which the canvas square represents at calibration
- * resolution (both 5376 on the X5, so the scale is one there). Without a complete window the
- * frame is taken to show the whole square. Verified on X5 frames (ADR 0008).
+ * the one holding its principal point, and the encoded frame shows that whole square. The info
+ * record's sensor window (5312 of 5376 at offset 0 on the X5) is deliberately not applied: the
+ * fisheye image circle sits at the centre of every X5 frame, where the whole square puts the
+ * principal point, not 32 canvas pixels off where the window would (ADR 0014).
  */
-function canvasWindowOf(
-  calibration: CalibrationSet,
-  lens: LensCalibration,
-  crop: WindowCrop | undefined,
-): CanvasWindow {
+function canvasWindowOf(calibration: CalibrationSet, lens: LensCalibration): CanvasWindow {
   const side = calibration.canvas.height;
   const squareX = Math.floor(lens.model.principalPoint.x / side) * side;
-  const sensor = sensorWindowOf(crop);
-  if (!sensor) return { x: squareX, y: 0, width: side, height: side };
-  const scaleX = side / sensor.sensorWidth;
-  const scaleY = side / sensor.sensorHeight;
-  return {
-    x: squareX + sensor.cropOffsetX * scaleX,
-    y: sensor.cropOffsetY * scaleY,
-    width: sensor.cropWidth * scaleX,
-    height: sensor.cropHeight * scaleY,
-  };
+  return { x: squareX, y: 0, width: side, height: side };
 }

@@ -45,14 +45,6 @@ const GRADIENT_SIZE = 256;
  * A colour channel encodes a canvas coordinate in 256 steps; the parity check allows two.
  */
 const GRADIENT_TOLERANCE = 2 / 255;
-const X5_CROP = {
-  sensorWidth: 5376,
-  sensorHeight: 5376,
-  cropWidth: 5312,
-  cropHeight: 5312,
-  cropOffsetX: 0,
-  cropOffsetY: 0,
-};
 /**
  * The office X5 calibration (ADR 0005): two Mei lenses on a 10752 x 5376 canvas.
  */
@@ -211,12 +203,7 @@ describe('ThreeFrameRenderer', () => {
     document.body.append(canvas);
     canvases.push(canvas);
     const stitching =
-      setup ??
-      buildStitchingSetup({
-        calibration: syntheticCalibration(),
-        layout: MULTI_TRACK,
-        windowCrop: undefined,
-      });
+      setup ?? buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
     const renderer = ThreeFrameRenderer.create(canvas, stitching, { preserveDrawingBuffer: true });
     renderers.push(renderer);
     return renderer;
@@ -344,11 +331,7 @@ describe('ThreeFrameRenderer', () => {
 
   it('draws both halves of a packed frame as the two lenses', () => {
     const renderer = open(
-      buildStitchingSetup({
-        calibration: syntheticCalibration(),
-        layout: PACKED,
-        windowCrop: undefined,
-      }),
+      buildStitchingSetup({ calibration: syntheticCalibration(), layout: PACKED }),
     );
     renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
     present(renderer, [halvesFrame('#ff0000', '#0000ff')]);
@@ -356,9 +339,9 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelTowards(renderer, [0, 0, -1]).b).toBeGreaterThan(BRIGHT);
   });
 
-  it('samples a Mei lens within its sensor window exactly where the core model projects', () => {
+  it('samples a Mei lens within its canvas square exactly where the core model projects', () => {
     const calibration = parseOffsetString(OFFICE_MEI);
-    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK, windowCrop: X5_CROP });
+    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
     const size = { width: 512, height: 256 };
     const renderer = open(setup, size);
     renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });

@@ -1,6 +1,7 @@
 # ADR 0008: Frames, lens poses and the canvas window used for stitching
 
-Status: accepted (2026-09-18), verified on the X5 office and sailing recordings and the office LRV
+Status: accepted (2026-09-18), verified on the X5 office and sailing recordings and the office LRV.
+The canvas-window decision below is superseded by ADR 0014: the frame shows the whole square.
 
 ## Context
 

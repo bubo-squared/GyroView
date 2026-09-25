@@ -30,27 +30,6 @@ const PACKED: LensLayout = {
   evidence: [],
 };
 
-const X5_CROP = {
-  sensorWidth: 5376,
-  sensorHeight: 5376,
-  cropWidth: 5312,
-  cropHeight: 5312,
-  cropOffsetX: 0,
-  cropOffsetY: 0,
-};
-
-/**
- * A sensor half the canvas resolution with an off-centre window, as another camera might report.
- */
-const HALF_RESOLUTION_CROP = {
-  sensorWidth: 2688,
-  sensorHeight: 2688,
-  cropWidth: 2656,
-  cropHeight: 2640,
-  cropOffsetX: 16,
-  cropOffsetY: 8,
-};
-
 const SPLIT_FILES: LensLayout = {
   kind: 'split-files',
   sources: [
@@ -76,16 +55,16 @@ describe('lensFrameOrder', () => {
 describe('buildStitchingSetup', () => {
   const calibration = parseOffsetString(OFFICE_CALIBRATION.offsetV3);
 
-  it('maps each lens onto its frame, canvas square and sensor window', () => {
-    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK, windowCrop: X5_CROP });
+  it('maps each lens onto its frame and the whole canvas square holding its principal point', () => {
+    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
     expect(setup.frameCount).toBe(2);
     expect(setup.feather).toBe(DEFAULT_FEATHER);
     expect(setup.lenses.map((lens) => [lens.lensIndex, lens.frameIndex])).toEqual([
       [0, 0],
       [1, 1],
     ]);
-    expect(setup.lenses[0]?.window).toEqual({ x: 0, y: 0, width: 5312, height: 5312 });
-    expect(setup.lenses[1]?.window).toEqual({ x: 5376, y: 0, width: 5312, height: 5312 });
+    expect(setup.lenses[0]?.window).toEqual({ x: 0, y: 0, width: 5376, height: 5376 });
+    expect(setup.lenses[1]?.window).toEqual({ x: 5376, y: 0, width: 5376, height: 5376 });
     expect(setup.lenses[0]?.projection.kind).toBe('mei');
     const backLens = setup.lenses[1];
     if (!backLens) throw new Error('no second lens');
@@ -93,27 +72,8 @@ describe('buildStitchingSetup', () => {
     expect(forwardInLens[2]).toBeCloseTo(1, 2);
   });
 
-  it('scales an off-centre sensor window onto the canvas square', () => {
-    const setup = buildStitchingSetup({
-      calibration,
-      layout: MULTI_TRACK,
-      windowCrop: HALF_RESOLUTION_CROP,
-    });
-    expect(setup.lenses[0]?.window).toEqual({ x: 32, y: 16, width: 5312, height: 5280 });
-    expect(setup.lenses[1]?.window).toEqual({ x: 5376 + 32, y: 16, width: 5312, height: 5280 });
-  });
-
-  it('ignores a window whose sensor size is missing', () => {
-    const setup = buildStitchingSetup({
-      calibration,
-      layout: MULTI_TRACK,
-      windowCrop: { ...X5_CROP, sensorWidth: undefined },
-    });
-    expect(setup.lenses[0]?.window).toEqual({ x: 0, y: 0, width: 5376, height: 5376 });
-  });
-
   it('gives each file of a split-file pair its own frame', () => {
-    const setup = buildStitchingSetup({ calibration, layout: SPLIT_FILES, windowCrop: undefined });
+    const setup = buildStitchingSetup({ calibration, layout: SPLIT_FILES });
     expect(setup.frameCount).toBe(2);
     expect(setup.lenses.map((lens) => lens.frameIndex)).toEqual([0, 1]);
   });
@@ -123,19 +83,12 @@ describe('buildStitchingSetup', () => {
     if (!first) throw new Error('no lens');
     const twice = { ...calibration, lenses: [first, first] };
     expect(
-      captureError(() =>
-        buildStitchingSetup({ calibration: twice, layout: MULTI_TRACK, windowCrop: undefined }),
-      ),
+      captureError(() => buildStitchingSetup({ calibration: twice, layout: MULTI_TRACK })),
     ).toMatchObject({ code: 'invalid-calibration' });
   });
 
-  it('uses the whole canvas square when the info record has no crop', () => {
-    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK, windowCrop: undefined });
-    expect(setup.lenses[1]?.window).toEqual({ x: 5376, y: 0, width: 5376, height: 5376 });
-  });
-
   it('shares one frame between the halves of a packed layout', () => {
-    const setup = buildStitchingSetup({ calibration, layout: PACKED, windowCrop: undefined });
+    const setup = buildStitchingSetup({ calibration, layout: PACKED });
     expect(setup.frameCount).toBe(1);
     expect(setup.lenses.map((lens) => [lens.frameIndex, lens.region])).toEqual([
       [0, LEFT_HALF],
@@ -145,11 +98,9 @@ describe('buildStitchingSetup', () => {
 
   it('refuses a layout whose lens count differs from the calibration', () => {
     const oneLens: LensLayout = { ...PACKED, sources: PACKED.sources.slice(0, 1) };
-    expect(
-      captureError(() =>
-        buildStitchingSetup({ calibration, layout: oneLens, windowCrop: undefined }),
-      ),
-    ).toMatchObject({ code: 'unsupported-layout' });
+    expect(captureError(() => buildStitchingSetup({ calibration, layout: oneLens }))).toMatchObject(
+      { code: 'unsupported-layout' },
+    );
   });
 
   it('exposes the polynomial and legacy calibrations as radial polynomials', () => {
@@ -157,7 +108,6 @@ describe('buildStitchingSetup', () => {
       const setup = buildStitchingSetup({
         calibration: parseOffsetString(text),
         layout: MULTI_TRACK,
-        windowCrop: undefined,
       });
       expect(setup.lenses.every((lens) => lens.projection.kind === 'radial-polynomial')).toBe(true);
     }

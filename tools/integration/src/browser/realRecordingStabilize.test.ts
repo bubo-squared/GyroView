@@ -143,7 +143,6 @@ describe('stabilizing the real recordings', () => {
       const setup = buildStitchingSetup({
         calibration,
         layout: opened.layout,
-        windowCrop: recording.info.windowCrop,
       });
       const renderer = ThreeFrameRenderer.create(canvas, setup, {
         preserveDrawingBuffer: true,

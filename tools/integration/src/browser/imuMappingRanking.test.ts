@@ -179,7 +179,6 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
       const setup = buildStitchingSetup({
         calibration,
         layout: opened.layout,
-        windowCrop: recording.info.windowCrop,
       });
       const renderer = ThreeFrameRenderer.create(canvas, setup, {
         preserveDrawingBuffer: true,

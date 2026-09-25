@@ -157,11 +157,7 @@ function wallClock(warning: string): ChosenClock {
 }
 
 function stitchingSetupOf(opened: OpenedRecording): ReturnType<typeof buildStitchingSetup> {
-  return buildStitchingSetup({
-    calibration: opened.calibration,
-    layout: opened.layout,
-    windowCrop: opened.recording.info.windowCrop,
-  });
+  return buildStitchingSetup({ calibration: opened.calibration, layout: opened.layout });
 }
 
 interface SinkChoice {

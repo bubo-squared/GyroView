@@ -9,7 +9,7 @@ import {
 } from '@gyroview/core';
 import { EncodedPacketSink, type EncodedPacket, type InputAudioTrack } from 'mediabunny';
 
-import { toBytes } from './bufferSources';
+import { copyOfBytes } from './bufferSources';
 
 const UNKNOWN_CODEC = 'unknown';
 
@@ -56,7 +56,7 @@ export class MediabunnyAudioTrackReader implements AudioTrackReader {
       codec: config.codec,
       sampleRate: config.sampleRate,
       channelCount: config.numberOfChannels,
-      description: config.description === undefined ? undefined : toBytes(config.description),
+      description: config.description === undefined ? undefined : copyOfBytes(config.description),
     };
   }
 

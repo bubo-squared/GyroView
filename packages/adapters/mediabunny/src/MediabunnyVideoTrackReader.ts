@@ -9,7 +9,7 @@ import {
 } from '@gyroview/core';
 import { EncodedPacketSink, type EncodedPacket, type InputVideoTrack } from 'mediabunny';
 
-import { toBytes } from './bufferSources';
+import { copyOfBytes } from './bufferSources';
 
 /**
  * VideoTrackReader over one mediabunny video track. Packets handed out are plain data; the
@@ -56,7 +56,7 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
       codec: config.codec,
       codedWidth: config.codedWidth ?? this.description.codedWidth,
       codedHeight: config.codedHeight ?? this.description.codedHeight,
-      description: config.description === undefined ? undefined : toBytes(config.description),
+      description: config.description === undefined ? undefined : copyOfBytes(config.description),
       isFullRange: config.colorSpace?.fullRange ?? undefined,
     };
   }

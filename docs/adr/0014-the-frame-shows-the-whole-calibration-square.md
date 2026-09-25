@@ -50,9 +50,11 @@ up, while the parallax ghost of the door handle a metre away stays, as it must.
 ## What stays open
 
 The whole square and a 5312 window centred in it put the principal point at the same place
-and differ only by a 1.2 % scale, about half a degree at the seam; the image circle cannot
-tell them apart and the residual seam registration on these recordings is dominated by
-parallax. The whole square is the reading with fewer assumptions and is kept until a
+and differ only by a 1.2 % scale. At the seam that is about two degrees of relative shift, not
+half a degree: a scale error `s` moves each lens's content by `s * r / (dr/dtheta)`, about
+1.57 radians per unit of scale at the rim of these lenses, and the two lenses move in opposite
+directions. The image circle cannot tell the two readings apart and the seam registration on
+these recordings is dominated by parallax. The whole square is the reading with fewer assumptions and is kept until a
 recording whose window record differs from the X5's, or an Insta360 Studio export, decides it.
 The semantics of the window record for other cameras and modes remain unknown.
 

@@ -47,7 +47,19 @@ are covered by synthetic fixtures built from the documented format variants.
 ## Known limits
 
 - Stitching is a fixed template: objects closer than about three metres show parallax
-  ghosting in the blend band.
+  ghosting in the blend band, and people within a metre of the camera are cut or doubled
+  along the seam.
+- The seam on the X5 files also shows a vertical step at the side seams and a strip missing
+  near the nadir and doubled near the zenith. Measured across the overlap band (2026-09-25),
+  these amount to a turn of the back lens of about 1.0 degree about lens 0's axis (twice the
+  factory roll difference between the lenses, so a sign convention somewhere in ADR 0008's
+  reading of the calibration angles) plus an offset along the seam of 2 to 4 degrees that
+  carries the scene's parallax on top of a scale error of about 1 percent. A rigid refinement
+  of the back lens's pose and the radial scale, estimated from the seam while the recording
+  plays, was built and withdrawn the same day: on the office recording it removed the step,
+  on the sailing recording the people within a metre of the camera dominated the estimate,
+  the biased correction misaligned everything else, and the near people stayed torn, since
+  no rigid calibration aligns two depths at once with lenses 3.2 cm apart.
 - The frame is mapped onto the whole calibration square; a 1.2 % scale uncertainty (about
   half a degree at the seam) remains until another camera's window record or a Studio export
   settles it (ADR 0014).
@@ -61,8 +73,11 @@ are covered by synthetic fixtures built from the documented format variants.
 In rough order of value, none started:
 
 1. Device-orientation look-around on phones (turn the phone to look).
-2. Parallax-aware stitching using the calibration's lens translation and a chosen stitching
-   distance.
+2. Parallax-aware stitching. A single stitching distance (the calibration's lens translation
+   and a chosen depth) helps only what sits at that depth; serving near people and a far
+   horizon at once needs a local alignment of the blend band per azimuth, measured from what
+   both lenses see there (optical-flow style, what Insta360 calls dynamic stitching), which
+   would also absorb the pose and scale errors above without a rigid correction.
 3. WebGPU external textures for the frame upload, once WebGPU video import is broad enough.
 4. Multi-segment recordings played as one.
 5. `.insp` photos through the same stitcher.

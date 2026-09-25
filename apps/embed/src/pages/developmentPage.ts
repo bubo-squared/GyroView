@@ -1,4 +1,9 @@
-import { defineGyroView, type GyroViewElement, type PlayerMetadata } from '@gyroview/player';
+import {
+  defineGyroView,
+  GYRO_VIEW_TAG,
+  type GyroViewElement,
+  type PlayerMetadata,
+} from '@gyroview/player';
 
 import { FpsCounter } from './FpsCounter';
 import {
@@ -51,7 +56,7 @@ function fileOf(form: HTMLFormElement, name: string): File | undefined {
 export function startDevelopmentPage(): void {
   defineGyroView();
   const parts: DevelopmentPageParts = {
-    player: part('gyro-view', HTMLElement) as GyroViewElement,
+    player: part(GYRO_VIEW_TAG, HTMLElement) as GyroViewElement,
     urlForm: part('form.url-source', HTMLFormElement),
     fileForm: part('form.file-source', HTMLFormElement),
     samples: part('.samples', HTMLElement),

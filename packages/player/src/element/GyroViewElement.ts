@@ -10,11 +10,10 @@ import {
 import {
   OBSERVED_ATTRIBUTES,
   PlaybackAttribute,
-  shouldPreload,
   SourceAttribute,
-  viewAfterAttribute,
   ViewAttribute,
-} from './attributes';
+} from './attributeNames';
+import { shouldPreload, viewAfterAttribute } from './attributes';
 import { elementSourceOf, type FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
 import { IdleWatcher } from './IdleWatcher';

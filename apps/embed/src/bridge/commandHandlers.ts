@@ -1,12 +1,16 @@
 import { GyroViewError, STABILIZATION_MODES, VIEW_MODES } from '@gyroview/core';
 import type { GyroViewElement } from '@gyroview/player';
+import { SourceAttribute } from '@gyroview/player/attributes';
 
 import type { EmbedState, LoadRequest } from './EmbedState';
 import type { CommandName } from '../protocol/messages';
 
 type Handler = (element: GyroViewElement, parameters: readonly unknown[]) => unknown;
 
-const LOAD_ATTRIBUTES = ['src', 'src2', 'proxy', 'quality'] as const;
+/**
+ * A load names a new source: every source attribute, absent ones removed.
+ */
+const LOAD_ATTRIBUTES = Object.values(SourceAttribute);
 
 function invalid(what: string): GyroViewError {
   return new GyroViewError('invariant-violation', `embed command argument ${what}`);

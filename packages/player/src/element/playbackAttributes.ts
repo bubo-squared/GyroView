@@ -1,6 +1,6 @@
+import { PlaybackAttribute } from './attributeNames';
 import {
   isBooleanAttributeSet,
-  PlaybackAttribute,
   shouldMatchGains,
   stabilizationFromAttribute,
   viewModeFromAttribute,

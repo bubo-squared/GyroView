@@ -1,9 +1,5 @@
-import {
-  qualityFromAttribute,
-  SourceAttribute,
-  sourceFromAttributes,
-  type AttributeReader,
-} from './attributes';
+import { SourceAttribute } from './attributeNames';
+import { qualityFromAttribute, sourceFromAttributes, type AttributeReader } from './attributes';
 import type { PlayerSource } from '../PlayerSource';
 
 /**

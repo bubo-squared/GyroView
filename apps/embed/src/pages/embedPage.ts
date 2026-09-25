@@ -1,4 +1,4 @@
-import { defineGyroView, type GyroViewElement } from '@gyroview/player';
+import { defineGyroView, GYRO_VIEW_TAG, type GyroViewElement } from '@gyroview/player';
 
 import { embedderOriginOf } from './embedderOrigin';
 import { windowEndpoint } from '../bridge/Endpoint';
@@ -11,7 +11,7 @@ import { embedPageRequestOf } from '../bridge/embedUrl';
  */
 export function startEmbedPage(page: Window & typeof globalThis): GyroViewElement {
   defineGyroView();
-  const element = page.document.createElement('gyro-view') as GyroViewElement;
+  const element = page.document.createElement(GYRO_VIEW_TAG) as GyroViewElement;
   const { attributes } = embedPageRequestOf(new URLSearchParams(page.location.search));
   for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
   page.document.body.append(element);

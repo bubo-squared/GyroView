@@ -8,6 +8,7 @@ import {
   type ViewState,
 } from '@gyroview/core';
 
+import { SourceAttribute, ViewAttribute } from './attributeNames';
 import {
   DEFAULT_QUALITY,
   QUALITIES,
@@ -20,50 +21,6 @@ import {
  * Reads one attribute of the element, `null` when absent, like `Element.getAttribute`.
  */
 export type AttributeReader = (name: string) => string | null;
-
-/**
- * The attributes `<gyro-view>` understands. `Source` ones name what to play; changing any of
- * them reloads. `View` ones move the picture without reloading.
- */
-export const SourceAttribute = {
-  Src: 'src',
-  Src2: 'src2',
-  Proxy: 'proxy',
-  Quality: 'quality',
-} as const;
-
-export const ViewAttribute = {
-  FieldOfView: 'fov',
-  Yaw: 'yaw',
-  Pitch: 'pitch',
-} as const;
-
-export const PlaybackAttribute = {
-  Autoplay: 'autoplay',
-  /**
-   * `none` keeps the decoders idle until play; anything else (the default) shows the first frame.
-   */
-  Preload: 'preload',
-  /**
-   * `off` leaves the lenses' exposure as recorded; anything else (the default) matches them.
-   */
-  GainMatch: 'gain-match',
-  Muted: 'muted',
-  Loop: 'loop',
-  Stabilization: 'stabilization',
-  /**
-   * `normal`, `equirectangular` or `raw-lenses`: what the picture shows (ADR 0015).
-   */
-  ViewMode: 'view-mode',
-  Controls: 'controls',
-  Poster: 'poster',
-} as const;
-
-export const OBSERVED_ATTRIBUTES: readonly string[] = [
-  ...Object.values(SourceAttribute),
-  ...Object.values(ViewAttribute),
-  ...Object.values(PlaybackAttribute),
-];
 
 const PROXY_AUTO = 'auto';
 const PROXY_NONE = 'none';

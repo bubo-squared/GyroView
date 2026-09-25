@@ -1,6 +1,8 @@
+import { PlaybackAttribute, SourceAttribute, ViewAttribute } from '@gyroview/player/attributes';
+
 /**
- * What an embedding page may ask of the player, mirrored one to one on `<gyro-view>`'s
- * attributes and carried to `embed.html` as query parameters.
+ * What an embedding page may ask of the player, one option per `<gyro-view>` attribute, carried
+ * to `embed.html` as query parameters named after the attributes.
  */
 export interface EmbedOptions {
   readonly src: string;
@@ -12,6 +14,15 @@ export interface EmbedOptions {
   readonly pitch?: number;
   readonly stabilization?: string;
   readonly viewMode?: string;
+  /**
+   * `none` keeps the decoders idle until play.
+   */
+  readonly preload?: string;
+  /**
+   * `off` leaves the lenses' exposure as recorded.
+   */
+  readonly gainMatch?: string;
+  readonly poster?: string;
   readonly autoplay?: boolean;
   readonly muted?: boolean;
   readonly loop?: boolean;
@@ -26,22 +37,45 @@ export interface EmbedOptions {
  */
 export const ORIGIN_PARAMETER = 'origin';
 
-type StringOption = 'src' | 'src2' | 'proxy' | 'quality' | 'stabilization' | 'viewMode';
+type StringOption =
+  | 'src'
+  | 'src2'
+  | 'proxy'
+  | 'quality'
+  | 'stabilization'
+  | 'viewMode'
+  | 'preload'
+  | 'gainMatch'
+  | 'poster';
+type NumberOption = 'fov' | 'yaw' | 'pitch';
+type FlagOption = 'autoplay' | 'muted' | 'loop';
 
 /**
- * Each string option's query parameter, which is also the attribute it becomes on the element.
+ * Each option's query parameter, which is also the attribute it becomes on the element; records,
+ * so an option cannot be left without one.
  */
-const STRING_PARAMETERS: ReadonlyMap<StringOption, string> = new Map<StringOption, string>([
-  ['src', 'src'],
-  ['src2', 'src2'],
-  ['proxy', 'proxy'],
-  ['quality', 'quality'],
-  ['stabilization', 'stabilization'],
-  ['viewMode', 'view-mode'],
-]);
-const NUMBER_PARAMETERS = ['fov', 'yaw', 'pitch'] as const;
-const FLAG_PARAMETERS = ['autoplay', 'muted', 'loop'] as const;
-const CONTROLS_PARAMETER = 'controls';
+const STRING_PARAMETERS: Readonly<Record<StringOption, string>> = {
+  src: SourceAttribute.Src,
+  src2: SourceAttribute.Src2,
+  proxy: SourceAttribute.Proxy,
+  quality: SourceAttribute.Quality,
+  stabilization: PlaybackAttribute.Stabilization,
+  viewMode: PlaybackAttribute.ViewMode,
+  preload: PlaybackAttribute.Preload,
+  gainMatch: PlaybackAttribute.GainMatch,
+  poster: PlaybackAttribute.Poster,
+};
+const NUMBER_PARAMETERS: Readonly<Record<NumberOption, string>> = {
+  fov: ViewAttribute.FieldOfView,
+  yaw: ViewAttribute.Yaw,
+  pitch: ViewAttribute.Pitch,
+};
+const FLAG_PARAMETERS: Readonly<Record<FlagOption, string>> = {
+  autoplay: PlaybackAttribute.Autoplay,
+  muted: PlaybackAttribute.Muted,
+  loop: PlaybackAttribute.Loop,
+};
+const CONTROLS_PARAMETER = PlaybackAttribute.Controls;
 const FLAG_ON = '1';
 const FLAG_OFF = '0';
 const TRUTHY = new Set(['1', 'true', 'yes', '']);
@@ -55,16 +89,16 @@ export function embedUrlFor(
   embedderOrigin: string,
 ): string {
   const url = new URL(embedPageUrl);
-  for (const [option, parameter] of STRING_PARAMETERS) {
+  for (const [option, parameter] of entriesOf(STRING_PARAMETERS)) {
     const value = options[option];
     if (value !== undefined) url.searchParams.set(parameter, value);
   }
-  for (const name of NUMBER_PARAMETERS) {
-    const value = options[name];
-    if (value !== undefined) url.searchParams.set(name, String(value));
+  for (const [option, parameter] of entriesOf(NUMBER_PARAMETERS)) {
+    const value = options[option];
+    if (value !== undefined) url.searchParams.set(parameter, String(value));
   }
-  for (const name of FLAG_PARAMETERS) {
-    if (options[name] === true) url.searchParams.set(name, FLAG_ON);
+  for (const [option, parameter] of entriesOf(FLAG_PARAMETERS)) {
+    if (options[option] === true) url.searchParams.set(parameter, FLAG_ON);
   }
   if (options.controls === false) url.searchParams.set(CONTROLS_PARAMETER, FLAG_OFF);
   url.searchParams.set(ORIGIN_PARAMETER, embedderOrigin);
@@ -84,7 +118,8 @@ export interface EmbedPageRequest {
  */
 export function embedPageRequestOf(query: URLSearchParams): EmbedPageRequest {
   const attributes: Record<string, string> = {};
-  for (const name of [...STRING_PARAMETERS.values(), ...NUMBER_PARAMETERS]) {
+  const valued = [...Object.values(STRING_PARAMETERS), ...Object.values(NUMBER_PARAMETERS)];
+  for (const name of valued) {
     const value = query.get(name);
     if (value !== null && value !== '') attributes[name] = value;
   }
@@ -96,11 +131,20 @@ export function embedPageRequestOf(query: URLSearchParams): EmbedPageRequest {
  * The boolean attributes the query switches on; controls are on unless switched off.
  */
 function flagAttributesOf(query: URLSearchParams): readonly string[] {
-  const flags = FLAG_PARAMETERS.filter((name) => isFlagOn(query.get(name)));
+  const flags = Object.values(FLAG_PARAMETERS).filter((name) => isFlagOn(query.get(name)));
   const controls = query.get(CONTROLS_PARAMETER);
   return controls === null || isFlagOn(controls) ? [...flags, CONTROLS_PARAMETER] : flags;
 }
 
 function isFlagOn(value: string | null): boolean {
   return value !== null && TRUTHY.has(value.toLowerCase());
+}
+
+/**
+ * `Object.entries` with the record's own key type, which TypeScript widens to `string`.
+ */
+function entriesOf<Key extends string>(
+  record: Readonly<Record<Key, string>>,
+): readonly (readonly [Key, string])[] {
+  return Object.entries(record) as [Key, string][];
 }

@@ -126,7 +126,8 @@ function showStatus(parts: DevelopmentPageParts, fps: number): void {
     `status: ${player.status}`,
     `time: ${player.currentTime.toFixed(2)} / ${player.duration.toFixed(2)} s`,
     `fps: ${fps}`,
-    `view: yaw ${view.yaw.toFixed(1)} pitch ${view.pitch.toFixed(1)} fov ${view.fieldOfView.toFixed(1)} ${view.projection}`,
+    `view: yaw ${view.yaw.toFixed(1)} pitch ${view.pitch.toFixed(1)} fov ${view.fieldOfView.toFixed(1)}`,
+    `view mode: ${player.viewMode ?? 'normal'}`,
     `stabilization: ${player.stabilization ?? 'lock'}`,
   ].join('\n');
 }

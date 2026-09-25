@@ -2,11 +2,12 @@ import {
   degrees,
   degreesToRadians,
   ensureInvariant,
-  viewRotation,
+  viewModeRulesFor,
   type LensStitch,
   type Matrix3 as CoreMatrix3,
-  type Projection,
+  type ScreenRectangle,
   type StitchingSetup,
+  type ViewMode,
   type ViewState,
 } from '@gyroview/core';
 import { Matrix3, Vector2, Vector3, Vector4, type IUniform, type Texture } from 'three';
@@ -16,10 +17,9 @@ import { Matrix3, Vector2, Vector3, Vector4, type IUniform, type Texture } from 
  */
 export const MAX_LENSES = 2;
 
-const PROJECTION_CODES: Readonly<Record<Projection, number>> = {
-  rectilinear: 0,
-  stereographic: 1,
-  equirectangular: 2,
+const VIEW_MODE_CODES: Readonly<Record<ViewMode, number>> = {
+  normal: 0,
+  equirectangular: 1,
 };
 const LENS_MEI = 0;
 const LENS_RADIAL_POLYNOMIAL = 1;
@@ -30,14 +30,11 @@ const LENS_RADIAL_POLYNOMIAL = 1;
  */
 export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntries([
   ['MAX_LENSES', MAX_LENSES],
-  ['PROJECTION_RECTILINEAR', PROJECTION_CODES.rectilinear],
-  ['PROJECTION_STEREOGRAPHIC', PROJECTION_CODES.stereographic],
-  ['PROJECTION_EQUIRECTANGULAR', PROJECTION_CODES.equirectangular],
+  ['VIEW_NORMAL', VIEW_MODE_CODES.normal],
+  ['VIEW_EQUIRECTANGULAR', VIEW_MODE_CODES.equirectangular],
   ['LENS_MEI', LENS_MEI],
   ['LENS_RADIAL_POLYNOMIAL', LENS_RADIAL_POLYNOMIAL],
 ]);
-
-const QUARTER = 4;
 
 /**
  * Every uniform of `stitch.frag.glsl`, named exactly as declared there; the only place the
@@ -47,9 +44,10 @@ export interface StitchUniforms {
   readonly uLensCount: IUniform<number>;
   readonly uViewRotation: IUniform<Matrix3>;
   readonly uStabilization: IUniform<Matrix3>;
-  readonly uProjection: IUniform<number>;
+  readonly uViewMode: IUniform<number>;
   readonly uPlaneHalfExtent: IUniform<number>;
-  readonly uAspect: IUniform<number>;
+  readonly uPictureAspect: IUniform<number>;
+  readonly uScreenArea: IUniform<Vector4[]>;
   readonly uFeather: IUniform<Vector2>;
   readonly uLensRotation: IUniform<Matrix3[]>;
   readonly uLensKind: IUniform<number[]>;
@@ -72,7 +70,7 @@ export function createStitchUniforms(
   setup: StitchingSetup,
   textures: readonly Texture[],
 ): StitchUniforms {
-  const lenses = padded(setup.lenses);
+  const lenses = padded(setup.lenses, 'a stitching setup has one or two lenses');
   return {
     ...viewUniforms(setup),
     ...projectionUniforms(lenses),
@@ -89,18 +87,20 @@ function viewUniforms(
   | 'uLensCount'
   | 'uViewRotation'
   | 'uStabilization'
-  | 'uProjection'
+  | 'uViewMode'
   | 'uPlaneHalfExtent'
-  | 'uAspect'
+  | 'uPictureAspect'
+  | 'uScreenArea'
   | 'uFeather'
 > {
   return {
     uLensCount: { value: setup.lenses.length },
     uViewRotation: { value: new Matrix3() },
     uStabilization: { value: new Matrix3() },
-    uProjection: { value: PROJECTION_CODES.rectilinear },
+    uViewMode: { value: VIEW_MODE_CODES.normal },
     uPlaneHalfExtent: { value: 1 },
-    uAspect: { value: 1 },
+    uPictureAspect: { value: 1 },
+    uScreenArea: { value: Array.from({ length: MAX_LENSES }, () => new Vector4(0, 0, 1, 1)) },
     uFeather: { value: new Vector2(setup.feather.start, setup.feather.end) },
   };
 }
@@ -157,23 +157,40 @@ export function applyStabilization(uniforms: StitchUniforms, rotation: CoreMatri
   uniforms.uStabilization.value = toThreeMatrix(rotation);
 }
 
-export function applyView(uniforms: StitchUniforms, view: ViewState, aspect: number): void {
-  uniforms.uViewRotation.value = toThreeMatrix(viewRotation(view));
-  uniforms.uProjection.value = PROJECTION_CODES[view.projection];
-  uniforms.uPlaneHalfExtent.value = planeHalfExtentOf(view);
-  uniforms.uAspect.value = aspect;
+/**
+ * What the picture is drawn from: where the viewer looks, how the mode shows it, and the shape of
+ * the viewport (width over height).
+ */
+export interface ViewDrawing {
+  readonly view: ViewState;
+  readonly mode: ViewMode;
+  readonly viewportAspect: number;
+}
+
+export function applyView(uniforms: StitchUniforms, drawing: ViewDrawing): void {
+  const rules = viewModeRulesFor(drawing.mode);
+  const areas = padded(rules.screenAreas(drawing.viewportAspect), 'a view mode fills one area');
+  uniforms.uViewRotation.value = toThreeMatrix(rules.rotation(drawing.view));
+  uniforms.uViewMode.value = VIEW_MODE_CODES[drawing.mode];
+  uniforms.uPlaneHalfExtent.value = planeHalfExtentOf(drawing.view);
+  uniforms.uPictureAspect.value = aspectOf(areas[0], drawing.viewportAspect);
+  uniforms.uScreenArea.value = areas.map((area) => toVector4(area));
 }
 
 /**
- * Half the width of the image plane at the screen edge, so that the horizontal field of view is
- * the one the view names: `tan(fov / 2)` for a rectilinear view, `2 tan(fov / 4)` for the
- * stereographic one whose image radius is `2 tan(theta / 2)`.
+ * Half the width of the image plane at the picture's edge, so that the horizontal field of view
+ * is the one the view names.
  */
 function planeHalfExtentOf(view: ViewState): number {
-  const halfFieldOfView = degreesToRadians(degrees(view.fieldOfView / 2));
-  return view.projection === 'stereographic'
-    ? 2 * Math.tan(degreesToRadians(degrees(view.fieldOfView / QUARTER)))
-    : Math.tan(halfFieldOfView);
+  return Math.tan(degreesToRadians(degrees(view.fieldOfView / 2)));
+}
+
+function aspectOf(area: ScreenRectangle | undefined, viewportAspect: number): number {
+  return area ? (viewportAspect * area.width) / area.height : viewportAspect;
+}
+
+function toVector4(area: ScreenRectangle): Vector4 {
+  return new Vector4(area.x, area.y, area.width, area.height);
 }
 
 /**
@@ -214,13 +231,10 @@ function polynomialOf(lens: LensStitch): Vector4 {
 }
 
 /**
- * Uniform arrays have a fixed length; unused slots repeat the last lens and are never read.
+ * Uniform arrays have a fixed length; unused slots repeat the last entry and are never read.
  */
-function padded(lenses: readonly LensStitch[]): readonly LensStitch[] {
-  const last = lenses.at(-1);
-  ensureInvariant(
-    last !== undefined && lenses.length <= MAX_LENSES,
-    'a stitching setup has one or two lenses',
-  );
-  return Array.from({ length: MAX_LENSES }, (_unused, index) => lenses[index] ?? last);
+function padded<T>(entries: readonly T[], expectation: string): readonly T[] {
+  const last = entries.at(-1);
+  ensureInvariant(last !== undefined && entries.length <= MAX_LENSES, expectation);
+  return Array.from({ length: MAX_LENSES }, (_unused, index) => entries[index] ?? last);
 }

@@ -48,7 +48,8 @@ The vocabulary used in code, tests and documents. One name per concept; no synon
 | Lens pose            | The rotation from the body frame into one lens's frame (`lensRotation`): the lens's half turn plus the calibration's yaw, pitch and roll (ADR 0008).                     |
 | Canvas window        | The part of a lens's calibration canvas square that the recorded frame shows: the whole square (ADR 0014); the info record's sensor window is not applied.               |
 | Feather band         | The angles from a lens's optical axis between which its blend weight fades from one to zero, centred on the overlap of the two lenses.                                   |
-| View state           | Where the viewer looks (yaw, pitch), the horizontal field of view and the projection (rectilinear, stereographic, equirectangular).                                      |
+| View state           | Where the viewer looks (yaw, pitch) and the horizontal field of view, 30 to 120 degrees.                                                                                 |
+| View mode            | What the picture shows: `normal`, a rectilinear window into the stitched sphere; `equirectangular`, the whole sphere as a level, letterboxed 2:1 panorama (ADR 0015).    |
 | Stitching setup      | Everything the renderer needs per lens (frame index, region, canvas window, pose, projection parameters), computed once from calibration and layout.                     |
 | Frame renderer       | The FrameSink that draws stitched frame pairs on the GPU; one fullscreen pass, one texture per decoded frame.                                                            |
 | Seam difference      | Mean absolute pixel difference between the two lenses in the overlap band of an equirectangular render; an inspection figure, not a quality gate.                        |

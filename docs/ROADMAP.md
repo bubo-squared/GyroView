@@ -3,7 +3,7 @@
 What the player does today, what is verified on real material, what is waiting on something
 external, and what a next step could be. Dated so a reader can tell how current it is.
 
-## Done (as of 2026-09-20)
+## Done (as of 2026-09-25)
 
 **Playback of raw recordings.** Opens `.insv` files over HTTP byte ranges or from local
 files; reads the Insta360 trailer (indexed or bare, `inst`-wrapped or not), the protobuf info
@@ -15,8 +15,9 @@ ahead; the first frame shows before play; the seek bar scrubs to key frames.
 
 **Stitching.** One GPU pass per frame through the factory calibration (unified, polynomial or
 equidistant lens model), with a feathered blend across the overlap and per-channel exposure
-matching measured along the seam. Rectilinear, little-planet and equirectangular projections;
-drag, pinch, wheel and keyboard look-around.
+matching measured along the seam. A normal rectilinear view of 30 to 120 degrees with drag,
+pinch, wheel and keyboard look-around, and the whole sphere as a level, letterboxed
+equirectangular panorama (ADR 0015).
 
 **Stabilization.** Gyro and accelerometer integrated into the camera's orientation, sampled at
 each frame's mid-exposure; lock, horizon and follow modes, or off.

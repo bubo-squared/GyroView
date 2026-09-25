@@ -28,6 +28,7 @@ const FORWARDED_EVENTS = [
   'seeking',
   'seeked',
   'viewchange',
+  'viewmodechange',
   'stabilizationchange',
   'warning',
   'error',

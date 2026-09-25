@@ -231,7 +231,7 @@ describe('ThreeFrameRenderer', () => {
 
   it('shows lens 0 straight ahead, lens 1 behind, and swaps the lenses across the seam in an equirectangular view', () => {
     const renderer = open();
-    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    renderer.setViewMode('equirectangular');
     presentRedAndBlue(renderer);
     const ahead = pixelTowards(renderer, [0, 0, 1]);
     expect(ahead.r).toBeGreaterThan(BRIGHT);
@@ -260,23 +260,48 @@ describe('ThreeFrameRenderer', () => {
     expect(up.b).toBeGreaterThan(MIXED);
   });
 
-  it('gives the little planet a real horizontal field of view: 90 degrees stays within lens 0, 180 reaches the seam at the edge', () => {
+  it('gives the normal view a real horizontal field of view: turned 60 degrees with 60 across, its right edge meets the seam', () => {
     const renderer = open();
     presentRedAndBlue(renderer);
-    renderer.setView({ ...DEFAULT_VIEW, projection: 'stereographic', fieldOfView: degrees(90) });
+    renderer.setView({ ...DEFAULT_VIEW, fieldOfView: degrees(120) });
     expect(pixelAt(renderer, RIGHT_EDGE).r).toBeGreaterThan(BRIGHT);
     expect(pixelAt(renderer, RIGHT_EDGE).b).toBeLessThan(DIM);
-    renderer.setView({ ...DEFAULT_VIEW, projection: 'stereographic', fieldOfView: degrees(180) });
+    renderer.setView({ ...DEFAULT_VIEW, yaw: degrees(60), fieldOfView: degrees(60) });
     const edge = pixelAt(renderer, RIGHT_EDGE);
     expect(edge.r).toBeGreaterThan(FAINT);
     expect(edge.b).toBeGreaterThan(FAINT);
-    renderer.setView({ ...DEFAULT_VIEW, projection: 'stereographic', fieldOfView: degrees(300) });
-    expect(pixelAt(renderer, RIGHT_EDGE).b).toBeGreaterThan(BRIGHT);
+  });
+
+  it('keeps the equirectangular panorama level: pitch is ignored, yaw picks the centre', () => {
+    const renderer = open();
+    renderer.setViewMode('equirectangular');
+    presentRedAndBlue(renderer);
+    renderer.setView({ ...DEFAULT_VIEW, pitch: degrees(90) });
+    expect(pixelAt(renderer, CENTRE).r).toBeGreaterThan(BRIGHT);
+    expect(pixelAt(renderer, CENTRE).b).toBeLessThan(DIM);
+    renderer.setView({ ...DEFAULT_VIEW, yaw: degrees(180) });
+    expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
+    expect(renderer.viewMode).toBe('equirectangular');
+  });
+
+  it('letterboxes the equirectangular panorama to 2:1 on a wider-than-tall viewport', () => {
+    const size = { width: 64, height: 36 };
+    const renderer = open(undefined, size);
+    renderer.setViewMode('equirectangular');
+    presentRedAndBlue(renderer);
+    for (const row of [0, 1, 34, 35]) {
+      const bar = pixelAt(renderer, { column: 32, row }, size);
+      expect(bar.r + bar.g + bar.b).toBe(0);
+    }
+    const zenith = pixelAt(renderer, { column: 32, row: 2 }, size);
+    expect(zenith.r).toBeGreaterThan(FAINT);
+    expect(zenith.b).toBeGreaterThan(FAINT);
+    expect(pixelAt(renderer, { column: 32, row: 18 }, size).r).toBeGreaterThan(BRIGHT);
   });
 
   it('silences a lens through its gain so the other can be inspected alone', () => {
     const renderer = open();
-    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    renderer.setViewMode('equirectangular');
     presentRedAndBlue(renderer);
     renderer.setLensGain(0, [0, 0, 0]);
     const seam = equirectangularPixelOf([1, 0, 0], SIZE);
@@ -287,7 +312,7 @@ describe('ThreeFrameRenderer', () => {
 
   it('matches the darker lens to the brighter one along the seam when gain matching is on', async () => {
     const renderer = open();
-    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    renderer.setViewMode('equirectangular');
     renderer.setGainMatching(true);
     present(renderer, [solidFrame('rgb(200, 200, 200)'), solidFrame('rgb(100, 100, 100)')]);
     expect(pixelTowards(renderer, [0, 0, -1]).g).toBeLessThan(110);
@@ -301,7 +326,7 @@ describe('ThreeFrameRenderer', () => {
 
   it('leaves the lenses as recorded while gain matching is off', async () => {
     const renderer = open();
-    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    renderer.setViewMode('equirectangular');
     present(renderer, [solidFrame('rgb(200, 200, 200)'), solidFrame('rgb(100, 100, 100)')]);
     await renderer.matchGainsNow();
     expect(pixelTowards(renderer, [0, 0, -1]).g).toBeLessThan(110);
@@ -309,7 +334,7 @@ describe('ThreeFrameRenderer', () => {
 
   it('applies a lock stabilization: a camera turned around shows lens 1 ahead', () => {
     const renderer = open();
-    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    renderer.setViewMode('equirectangular');
     const turnedAround = quaternionFromAxisAngle([0, 1, 0], radians(Math.PI));
     renderer.setStabilization(new LockStabilization().rotationFor(turnedAround));
     presentRedAndBlue(renderer);
@@ -319,7 +344,7 @@ describe('ThreeFrameRenderer', () => {
 
   it('applies a lock stabilization: a camera pointing at the sky shows lens 0 at the zenith', () => {
     const renderer = open();
-    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    renderer.setViewMode('equirectangular');
     const pointingUp = quaternionFromAxisAngle([1, 0, 0], radians(Math.PI / 2));
     renderer.setStabilization(new LockStabilization().rotationFor(pointingUp));
     presentRedAndBlue(renderer);
@@ -333,7 +358,7 @@ describe('ThreeFrameRenderer', () => {
     const renderer = open(
       buildStitchingSetup({ calibration: syntheticCalibration(), layout: PACKED }),
     );
-    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    renderer.setViewMode('equirectangular');
     present(renderer, [halvesFrame('#ff0000', '#0000ff')]);
     expect(pixelTowards(renderer, [0, 0, 1]).r).toBeGreaterThan(BRIGHT);
     expect(pixelTowards(renderer, [0, 0, -1]).b).toBeGreaterThan(BRIGHT);
@@ -344,7 +369,7 @@ describe('ThreeFrameRenderer', () => {
     const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
     const size = { width: 512, height: 256 };
     const renderer = open(setup, size);
-    renderer.setView({ ...DEFAULT_VIEW, projection: 'equirectangular' });
+    renderer.setViewMode('equirectangular');
     present(renderer, [gradientFrame(), solidFrame('#000000')]);
     const [lens] = setup.lenses;
     const [calibrated] = calibration.lenses;

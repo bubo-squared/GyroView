@@ -1,9 +1,11 @@
 import {
   DEFAULT_VIEW,
+  DEFAULT_VIEW_MODE,
   GyroViewError,
   TypedEmitter,
   type GyroViewErrorCode,
   type StabilizationMode,
+  type ViewMode,
   type ViewState,
 } from '@gyroview/core';
 import type { PlayerMetadata, PlayerStatus } from '@gyroview/player';
@@ -38,6 +40,7 @@ export interface EmbedEvents extends Record<string, unknown> {
   readonly seeking: number;
   readonly seeked: number;
   readonly viewchange: ViewState;
+  readonly viewmodechange: ViewMode;
   readonly stabilizationchange: StabilizationMode;
   readonly warning: string;
   readonly error: SerializedError;
@@ -49,6 +52,7 @@ const INITIAL_STATE: EmbedState = {
   duration: 0,
   isPaused: true,
   view: DEFAULT_VIEW,
+  viewMode: DEFAULT_VIEW_MODE,
   stabilization: 'lock',
   metadata: undefined,
 };
@@ -115,6 +119,10 @@ export class EmbedHandle {
 
   public setStabilization(mode: string): Promise<void> {
     return this.command('setStabilization', mode);
+  }
+
+  public setViewMode(mode: string): Promise<void> {
+    return this.command('setViewMode', mode);
   }
 
   public setVolume(volume: number): Promise<void> {
@@ -216,8 +224,8 @@ function withTime(state: EmbedState, detail: unknown): EmbedState {
 }
 
 /**
- * How each event moves the mirror: status, time, view and stabilization follow their events,
- * the metadata arrives with `ready`.
+ * How each event moves the mirror: status, time, view, view mode and stabilization follow their
+ * events, the metadata arrives with `ready`.
  */
 const STATE_UPDATERS: ReadonlyMap<string, StateUpdater> = new Map<string, StateUpdater>([
   [
@@ -238,6 +246,10 @@ const STATE_UPDATERS: ReadonlyMap<string, StateUpdater> = new Map<string, StateU
     },
   ],
   ['viewchange', (state, detail): EmbedState => ({ ...state, view: detail as EmbedState['view'] })],
+  [
+    'viewmodechange',
+    (state, detail): EmbedState => ({ ...state, viewMode: detail as EmbedState['viewMode'] }),
+  ],
   [
     'stabilizationchange',
     (state, detail): EmbedState => ({

@@ -2,7 +2,6 @@ import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   isProperRotation,
   buildStitchingSetup,
-  DEFAULT_VIEW,
   IDENTITY_MATRIX3,
   imuFrame,
   imuFrameFor,
@@ -182,7 +181,7 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
       });
       const renderer = ThreeFrameRenderer.create(canvas, setup, {
         preserveDrawingBuffer: true,
-        view: { ...DEFAULT_VIEW, projection: 'equirectangular' },
+        viewMode: 'equirectangular',
       });
       cleanups.push(() => {
         renderer.dispose();

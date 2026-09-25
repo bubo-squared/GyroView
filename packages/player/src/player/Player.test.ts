@@ -173,25 +173,37 @@ describe('Player over the synthetic X5 recording', () => {
     expect(player.isLooping).toBe(true);
   });
 
-  it('keeps view and stabilization across loads and redraws while paused', async () => {
+  it('keeps view, view mode and stabilization across loads and redraws while paused', async () => {
     const { player } = open();
     const views: number[] = [];
+    const modes: string[] = [];
     player.events.on('viewchange', (view) => {
       views.push(view.yaw);
     });
+    player.events.on('viewmodechange', (mode) => {
+      modes.push(mode);
+    });
     player.lookAt(degrees(400), degrees(10));
     player.setStabilization('horizon');
+    player.setViewMode('equirectangular');
 
     await player.load(sourceOf(X5_RECORDING_URL));
 
     expect(player.view).toMatchObject({ yaw: 40, pitch: 10 });
     expect(player.stabilization).toBe('horizon');
+    expect(player.viewMode).toBe('equirectangular');
+    player.zoom(1);
+    expect(player.view.fieldOfView).toBe(90);
+    player.setViewMode('normal');
     player.zoom(1);
     expect(player.view.fieldOfView).toBeLessThan(90);
+    player.turn(degrees(5), degrees(-5));
+    expect(player.view).toMatchObject({ yaw: 45, pitch: 5 });
     player.resetView();
     expect(player.view).toMatchObject({ yaw: 0, pitch: 0, fieldOfView: 90 });
     player.setStabilization('off');
-    expect(views).toEqual([40, 40, 0]);
+    expect(views).toEqual([40, 40, 40, 45, 0]);
+    expect(modes).toEqual(['equirectangular', 'normal']);
   });
 
   it('follows the recording audio when the browser can play it, else warns', async () => {

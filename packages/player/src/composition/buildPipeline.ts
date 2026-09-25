@@ -13,6 +13,7 @@ import {
   type PlaybackClock,
   type Presentation,
   type VideoDecoderPort,
+  type ViewMode,
   type ViewState,
 } from '@gyroview/core';
 
@@ -32,6 +33,7 @@ export interface PipelineParts {
   readonly host: PipelineHost;
   readonly decoderPort: VideoDecoderPort<VideoFrame>;
   readonly view: ViewState;
+  readonly viewMode: ViewMode;
   /**
    * Told about every presented pair, after the renderer drew it.
    */
@@ -116,6 +118,7 @@ interface Drawing extends SinkChoice {
 function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
   const renderer = ThreeFrameRenderer.create(parts.host.canvas, stitchingSetupOf(parts.opened), {
     view: parts.view,
+    viewMode: parts.viewMode,
   });
   disposables.add(() => {
     renderer.dispose();

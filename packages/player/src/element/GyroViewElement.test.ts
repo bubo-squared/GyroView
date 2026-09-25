@@ -193,8 +193,15 @@ describe('<gyro-view>', () => {
 
     element.setAttribute('pitch', '15');
     element.fov = 60;
-    element.setAttribute('projection', 'stereographic');
-    expect(element.view).toMatchObject({ pitch: 15, fieldOfView: 60, projection: 'stereographic' });
+    expect(element.view).toMatchObject({ pitch: 15, fieldOfView: 60 });
+
+    const modeChanged = nextEvent<string>(element, 'viewmodechange');
+    element.setViewMode('equirectangular');
+    expect(await modeChanged).toBe('equirectangular');
+    expect(element.viewMode).toBe('equirectangular');
+    expect(control(element, '.view-mode', HTMLSelectElement).value).toBe('equirectangular');
+    element.setAttribute('view-mode', 'bogus');
+    expect(control(element, '.view-mode', HTMLSelectElement).value).toBe('equirectangular');
 
     const changed = nextEvent<string>(element, 'stabilizationchange');
     element.setStabilization('off');

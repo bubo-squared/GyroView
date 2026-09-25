@@ -1,7 +1,6 @@
 import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
-  DEFAULT_VIEW,
   LensDecodePipeline,
   type CalibrationSet,
   type FramePair,
@@ -96,7 +95,7 @@ async function stitchOneFrame(
   });
   const renderer = ThreeFrameRenderer.create(canvas, setup, {
     preserveDrawingBuffer: true,
-    view: { ...DEFAULT_VIEW, projection: 'equirectangular' },
+    viewMode: 'equirectangular',
   });
   cleanups.push(() => {
     renderer.dispose();

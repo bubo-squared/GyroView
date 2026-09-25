@@ -22,8 +22,7 @@ function seekBy(delta: number): Action {
 
 function lookBy(yawDelta: number, pitchDelta: number): Action {
   return ({ player }): void => {
-    const { view } = player;
-    player.lookAt(degrees(view.yaw + yawDelta), degrees(view.pitch + pitchDelta));
+    player.turn(degrees(yawDelta), degrees(pitchDelta));
   };
 }
 

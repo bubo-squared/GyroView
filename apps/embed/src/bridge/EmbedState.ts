@@ -1,4 +1,4 @@
-import type { StabilizationMode, ViewState } from '@gyroview/core';
+import type { StabilizationMode, ViewMode, ViewState } from '@gyroview/core';
 import type { PlayerMetadata, PlayerStatus } from '@gyroview/player';
 
 /**
@@ -11,6 +11,7 @@ export interface EmbedState {
   readonly duration: number;
   readonly isPaused: boolean;
   readonly view: ViewState;
+  readonly viewMode: ViewMode;
   readonly stabilization: StabilizationMode;
   readonly metadata: PlayerMetadata | undefined;
 }

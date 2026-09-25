@@ -1,4 +1,9 @@
-import { GyroViewError, type StabilizationMode } from '@gyroview/core';
+import {
+  DEFAULT_VIEW_MODE,
+  GyroViewError,
+  VIEW_MODES,
+  type StabilizationMode,
+} from '@gyroview/core';
 import type { GyroViewElement } from '@gyroview/player';
 
 import type { EmbedState, LoadRequest } from './EmbedState';
@@ -26,11 +31,14 @@ function isFlagAt(parameters: readonly unknown[], index: number): boolean {
   return value;
 }
 
-function stabilizationAt(parameters: readonly unknown[]): StabilizationMode {
+function choiceAt<Choice extends string>(
+  parameters: readonly unknown[],
+  choices: readonly Choice[],
+): Choice {
   const value = parameters[0];
-  const mode = STABILIZATION_MODES.find((candidate) => candidate === value);
-  if (!mode) throw invalid(`0 must be one of ${STABILIZATION_MODES.join(', ')}`);
-  return mode;
+  const choice = choices.find((candidate) => candidate === value);
+  if (!choice) throw invalid(`0 must be one of ${choices.join(', ')}`);
+  return choice;
 }
 
 function loadRequestAt(parameters: readonly unknown[]): LoadRequest {
@@ -53,6 +61,7 @@ function stateOf(element: GyroViewElement): EmbedState {
     isPaused: element.paused,
     view: element.view,
     stabilization: element.stabilization as StabilizationMode,
+    viewMode: VIEW_MODES.find((mode) => mode === element.viewMode) ?? DEFAULT_VIEW_MODE,
     metadata: element.metadata,
   };
 }
@@ -95,7 +104,10 @@ export const COMMAND_HANDLERS: Readonly<Record<CommandName, Handler>> = {
     element.zoom(numberAt(parameters, 0));
   },
   setStabilization: (element, parameters): void => {
-    element.setStabilization(stabilizationAt(parameters));
+    element.setStabilization(choiceAt(parameters, STABILIZATION_MODES));
+  },
+  setViewMode: (element, parameters): void => {
+    element.setViewMode(choiceAt(parameters, VIEW_MODES));
   },
   setVolume: (element, parameters): void => {
     element.volume = numberAt(parameters, 0);

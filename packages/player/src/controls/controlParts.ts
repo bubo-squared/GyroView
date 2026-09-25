@@ -17,7 +17,7 @@ export interface ControlParts {
   readonly fullscreen: HTMLButtonElement;
   readonly menu: HTMLElement;
   readonly stabilization: HTMLSelectElement;
-  readonly projection: HTMLSelectElement;
+  readonly viewMode: HTMLSelectElement;
   readonly qualityRow: HTMLElement;
   readonly quality: HTMLSelectElement;
 }
@@ -50,7 +50,7 @@ export function queryControlParts(root: ParentNode): ControlParts {
     fullscreen: queryShadow(root, '.fullscreen', HTMLButtonElement),
     menu: queryShadow(root, '.menu', HTMLElement),
     stabilization: queryShadow(root, '.stabilization', HTMLSelectElement),
-    projection: queryShadow(root, '.projection', HTMLSelectElement),
+    viewMode: queryShadow(root, '.view-mode', HTMLSelectElement),
     qualityRow: queryShadow(root, '.quality-row', HTMLElement),
     quality: queryShadow(root, '.quality', HTMLSelectElement),
   };

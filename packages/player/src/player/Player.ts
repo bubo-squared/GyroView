@@ -4,36 +4,24 @@ import {
   stabilizerFor,
   TypedEmitter,
   type Degrees,
+  type DragDelta,
   type PlayerState,
   type Presentation,
   type Seconds,
   type StabilizationMode,
+  type ViewMode,
   type ViewState,
 } from '@gyroview/core';
 
 import { FrameLoop } from './FrameLoop';
+import { openLoaded, type Loaded } from './loadedRecording';
 import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
 import type { LoadOptions, PlayerParts } from './PlayerOptions';
 import { PlayerView } from './PlayerView';
 import { transportEventsFor } from './transportEvents';
-import { Viewport } from './Viewport';
-import { buildPipeline, type Pipeline } from '../composition/buildPipeline';
-import { Disposables } from '../composition/Disposables';
 import { hasErrorCode, isAbortError, messageOf } from '../composition/errorCodes';
-import type { OpenedRecording } from '../composition/OpenedRecording';
-import { openRecording } from '../composition/openRecording';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
-
-/**
- * What is running for the loaded recording; disposed as one.
- */
-interface Loaded {
-  readonly opened: OpenedRecording;
-  readonly pipeline: Pipeline;
-  readonly viewport: Viewport;
-  dispose(): void;
-}
 
 const DEFAULT_STABILIZATION: StabilizationMode = 'lock';
 
@@ -48,9 +36,7 @@ export class Player {
   private loaded: Loaded | undefined;
   private loading: AbortController | undefined;
   private failure: GyroViewError | undefined;
-  private readonly viewing = new PlayerView((view) => {
-    this.events.emit('viewchange', view);
-  });
+  private readonly viewing = new PlayerView(this.events);
   private stabilizationMode: StabilizationMode = DEFAULT_STABILIZATION;
   private isGainMatching = true;
   private isLoopingValue = false;
@@ -91,6 +77,10 @@ export class Player {
 
   public get view(): ViewState {
     return this.viewing.current;
+  }
+
+  public get viewMode(): ViewMode {
+    return this.viewing.viewMode;
   }
 
   public get stabilization(): StabilizationMode {
@@ -191,12 +181,30 @@ export class Player {
     this.viewing.lookAt(yaw, pitch);
   }
 
+  /**
+   * The viewer dragged the picture by `delta` on a viewport `viewportWidth` pixels wide.
+   */
+  public pan(delta: DragDelta, viewportWidth: number): void {
+    this.viewing.pan(delta, viewportWidth);
+  }
+
+  /**
+   * The viewer turned by the given angles, as the arrow keys do.
+   */
+  public turn(yawDelta: Degrees, pitchDelta: Degrees): void {
+    this.viewing.turn(yawDelta, pitchDelta);
+  }
+
   public zoom(steps: number): void {
     this.viewing.zoom(steps);
   }
 
   public resetView(): void {
     this.viewing.reset();
+  }
+
+  public setViewMode(mode: ViewMode): void {
+    this.viewing.setMode(mode);
   }
 
   public setStabilization(mode: StabilizationMode): void {
@@ -232,40 +240,22 @@ export class Player {
   }
 
   private applyOptions(options: LoadOptions): void {
-    if (options.view) this.viewing.restore(options.view);
+    this.viewing.restore(options);
     if (options.stabilization) this.stabilizationMode = options.stabilization;
     if (options.gainMatching !== undefined) this.isGainMatching = options.gainMatching;
   }
 
   private async open(source: PlayerSource, signal: AbortSignal): Promise<Loaded> {
-    const opened = await openRecording(source, this.parts.ports, signal);
-    const disposables = new Disposables();
-    disposables.add(() => {
-      opened.dispose();
+    return openLoaded({
+      source,
+      parts: this.parts,
+      view: this.viewing.current,
+      viewMode: this.viewing.viewMode,
+      onPresent: (presentation): void => {
+        this.onPresent(presentation);
+      },
+      signal,
     });
-    try {
-      const pipeline = await buildPipeline({
-        opened,
-        host: this.parts.host,
-        decoderPort: this.parts.ports.decoderPort,
-        view: this.viewing.current,
-        onPresent: (presentation): void => {
-          this.onPresent(presentation);
-        },
-      });
-      disposables.add(() => {
-        pipeline.dispose();
-      });
-      signal.throwIfAborted();
-      const viewport = new Viewport(this.parts.host.canvas, pipeline.renderer);
-      disposables.add(() => {
-        viewport.dispose();
-      });
-      return { opened, pipeline, viewport, dispose: disposables.toDisposer() };
-    } catch (error) {
-      disposables.disposeAll();
-      throw error;
-    }
   }
 
   private attach(loaded: Loaded): void {

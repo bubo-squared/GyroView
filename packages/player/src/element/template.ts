@@ -38,11 +38,10 @@ export const ELEMENT_TEMPLATE = `
           <option value="follow">Follow</option>
         </select>
       </label>
-      <label>Projection
-        <select class="projection" aria-label="Projection">
-          <option value="rectilinear">Normal</option>
-          <option value="stereographic">Little planet</option>
-          <option value="equirectangular">Flat 360</option>
+      <label>View
+        <select class="view-mode" aria-label="View">
+          <option value="normal">Normal</option>
+          <option value="equirectangular">Equirectangular</option>
         </select>
       </label>
       <label class="quality-row" hidden>Quality

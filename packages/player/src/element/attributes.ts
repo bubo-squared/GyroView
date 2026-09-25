@@ -1,9 +1,10 @@
 import {
   clampView,
   degrees,
+  VIEW_MODES,
   type Degrees,
-  type Projection,
   type StabilizationMode,
+  type ViewMode,
   type ViewState,
 } from '@gyroview/core';
 
@@ -29,7 +30,6 @@ export const ViewAttribute = {
   FieldOfView: 'fov',
   Yaw: 'yaw',
   Pitch: 'pitch',
-  Projection: 'projection',
 } as const;
 
 export const PlaybackAttribute = {
@@ -45,6 +45,10 @@ export const PlaybackAttribute = {
   Muted: 'muted',
   Loop: 'loop',
   Stabilization: 'stabilization',
+  /**
+   * `normal`, `equirectangular` or `raw-lenses`: what the picture shows.
+   */
+  ViewMode: 'view-mode',
   Controls: 'controls',
   Poster: 'poster',
 } as const;
@@ -56,7 +60,6 @@ export const OBSERVED_ATTRIBUTES: readonly string[] = [
 ];
 
 const STABILIZATION_MODES: readonly StabilizationMode[] = ['off', 'lock', 'horizon', 'follow'];
-const PROJECTIONS: readonly Projection[] = ['rectilinear', 'stereographic', 'equirectangular'];
 const QUALITIES: readonly Quality[] = ['auto', 'full', 'proxy'];
 const PROXY_AUTO = 'auto';
 const PROXY_NONE = 'none';
@@ -123,7 +126,6 @@ export function viewFromAttributes(read: AttributeReader, fallback: ViewState): 
     yaw: angleOf(read(ViewAttribute.Yaw), fallback.yaw),
     pitch: angleOf(read(ViewAttribute.Pitch), fallback.pitch),
     fieldOfView: angleOf(read(ViewAttribute.FieldOfView), fallback.fieldOfView),
-    projection: projectionFromAttribute(read(ViewAttribute.Projection)) ?? fallback.projection,
   });
 }
 
@@ -140,8 +142,8 @@ export function stabilizationFromAttribute(value: string | null): StabilizationM
   return parseChoice(value, STABILIZATION_MODES);
 }
 
-export function projectionFromAttribute(value: string | null): Projection | undefined {
-  return parseChoice(value, PROJECTIONS);
+export function viewModeFromAttribute(value: string | null): ViewMode | undefined {
+  return parseChoice(value, VIEW_MODES);
 }
 
 /**

@@ -76,8 +76,11 @@ rotation the renderer applies.
 (`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`) and the
 `WallClock` used when a recording has no audio.
 
-**`view`**: `ViewState` (yaw, pitch, field of view, projection) with clamping, the view
-rotation, the pure drag/zoom/look-at gestures, and the equirectangular mapping used by tests.
+**`view`**: `ViewState` (yaw, pitch, field of view) with clamping and the view rotation;
+`ViewMode` with one rules object per mode (how drags, arrow keys and zoom move the view, the
+rotation the picture is drawn with, where it goes on the viewport; ADR 0015); `screenLayout`
+for letterboxing; the pure drag/zoom/look-at gestures; and the equirectangular mapping used by
+tests.
 
 ### Application: `core/src/application`
 
@@ -142,7 +145,8 @@ One package per external technology; none imports another.
   Extensions (`ManagedMediaSource` where it exists), so the recording's own sound is the master
   clock; `SourceBufferFeeder` keeps a window buffered and evicts behind the playhead.
 - **`three`**: `ThreeFrameRenderer`, one fullscreen pass of `stitch.frag.glsl` that turns
-  every pixel into a ray (rectilinear, stereographic or equirectangular), applies the view and
+  every pixel of the view mode's screen area into a ray (rectilinear for the normal view,
+  equirectangular for the panorama; pixels outside the area stay black), applies the view and
   stabilization rotations, projects through each lens model and blends across the feather band.
   `stitchUniforms` is the only place uniform names are spelled. `gainMatch/GainMatchPass`
   renders the seam ring per lens into a tiny target and `GainMatching` feeds the core's

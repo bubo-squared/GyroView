@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { embedPageRequestOf, embedUrlFor } from './embedUrl';
 
 const PAGE = 'https://player.example/embed.html';
+/**
+ * The `viewMode` option travels under its attribute's name.
+ */
+const VIEW_MODE_ATTRIBUTE = 'view-mode';
 
 describe('embedUrlFor and embedPageRequestOf', () => {
   it('carries every option as a query parameter and reads it back as attributes', () => {
@@ -15,7 +19,7 @@ describe('embedUrlFor and embedPageRequestOf', () => {
         fov: 75,
         yaw: -30,
         stabilization: 'horizon',
-        projection: 'stereographic',
+        viewMode: 'equirectangular',
         autoplay: true,
         muted: true,
         controls: false,
@@ -34,7 +38,7 @@ describe('embedUrlFor and embedPageRequestOf', () => {
         fov: '75',
         yaw: '-30',
         stabilization: 'horizon',
-        projection: 'stereographic',
+        [VIEW_MODE_ATTRIBUTE]: 'equirectangular',
         autoplay: '',
         muted: '',
       },

@@ -91,20 +91,22 @@ export { lensRotation } from './domain/optics/lensPose';
 export {
   clampView,
   DEFAULT_VIEW,
-  fieldOfViewBoundsFor,
+  FIELD_OF_VIEW_BOUNDS,
   viewRotation,
   type FieldOfViewBounds,
-  type Projection,
   type ViewState,
 } from './domain/view/ViewState';
 export {
-  degreesPerPixel,
-  lookAt,
-  panView,
-  zoomView,
-  type DragDelta,
-} from './domain/view/viewGestures';
+  DEFAULT_VIEW_MODE,
+  VIEW_MODES,
+  viewModeRulesFor,
+  type ViewMode,
+  type ViewModeRules,
+} from './domain/view/ViewMode';
+export { fittedRectangle, WHOLE_SCREEN, type ScreenRectangle } from './domain/view/screenLayout';
+export { lookAt, type DragDelta } from './domain/view/viewGestures';
 export {
+  EQUIRECTANGULAR_ASPECT,
   equirectangularDirectionOf,
   equirectangularPixelOf,
   type EquirectangularPixel,

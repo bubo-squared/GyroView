@@ -6,10 +6,10 @@ import {
   shouldMatchGains,
   shouldPreload,
   parseNumber,
-  projectionFromAttribute,
   sourceFromAttributes,
   stabilizationFromAttribute,
   viewFromAttributes,
+  viewModeFromAttribute,
 } from './attributes';
 
 const BASE = 'https://site.example/pages/embed.html';
@@ -60,12 +60,10 @@ describe('sourceFromAttributes', () => {
 });
 
 describe('view and playback attributes', () => {
-  it('builds a clamped view from fov, yaw, pitch and projection over the fallback', () => {
-    const view = viewFromAttributes(
-      readerOf({ fov: '75', yaw: '370', projection: 'Stereographic' }),
-      DEFAULT_VIEW,
-    );
-    expect(view).toEqual({ yaw: 10, pitch: 0, fieldOfView: 75, projection: 'stereographic' });
+  it('builds a clamped view from fov, yaw and pitch over the fallback', () => {
+    const view = viewFromAttributes(readerOf({ fov: '75', yaw: '370' }), DEFAULT_VIEW);
+    expect(view).toEqual({ yaw: 10, pitch: 0, fieldOfView: 75 });
+    expect(viewFromAttributes(readerOf({ fov: '300' }), DEFAULT_VIEW).fieldOfView).toBe(120);
   });
 
   it('keeps the fallback for absent or unreadable numbers', () => {
@@ -76,12 +74,12 @@ describe('view and playback attributes', () => {
     expect(parseNumber('NaN')).toBeUndefined();
   });
 
-  it('accepts only the known stabilization modes and projections, case-insensitively', () => {
+  it('accepts only the known stabilization and view modes, case-insensitively', () => {
     expect(stabilizationFromAttribute('Horizon')).toBe('horizon');
     expect(stabilizationFromAttribute('wobble')).toBeUndefined();
     expect(stabilizationFromAttribute(null)).toBeUndefined();
-    expect(projectionFromAttribute('equirectangular')).toBe('equirectangular');
-    expect(projectionFromAttribute('fisheye')).toBeUndefined();
+    expect(viewModeFromAttribute(' Equirectangular ')).toBe('equirectangular');
+    expect(viewModeFromAttribute('stereographic')).toBeUndefined();
   });
 
   it('treats boolean attributes as set by presence', () => {

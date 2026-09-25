@@ -3,6 +3,7 @@ import {
   PlaybackAttribute,
   shouldMatchGains,
   stabilizationFromAttribute,
+  viewModeFromAttribute,
 } from './attributes';
 import type { Player } from '../player/Player';
 
@@ -22,6 +23,13 @@ const APPLIERS: ReadonlyMap<string, AttributeApplier> = new Map<string, Attribut
     ({ player }, value): void => {
       const mode = stabilizationFromAttribute(value);
       if (mode) player.setStabilization(mode);
+    },
+  ],
+  [
+    PlaybackAttribute.ViewMode,
+    ({ player }, value): void => {
+      const mode = viewModeFromAttribute(value);
+      if (mode) player.setViewMode(mode);
     },
   ],
   [

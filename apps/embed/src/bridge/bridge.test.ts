@@ -87,6 +87,11 @@ describe('the embed bridge over a message channel', () => {
     expect(handle.state.view).toMatchObject({ yaw: 30, pitch: 10 });
     expect(handle.state.view.fieldOfView).toBeLessThan(90);
     expect(handle.state.stabilization).toBe('horizon');
+    expect(handle.state.viewMode).toBe('normal');
+    await handle.setViewMode('equirectangular');
+    expect(handle.state.viewMode).toBe('equirectangular');
+    const afterModeChange = await handle.getState();
+    expect(afterModeChange.viewMode).toBe('equirectangular');
     await handle.setMuted(true);
     await handle.setVolume(0.3);
     await handle.setLoop(true);
@@ -102,6 +107,10 @@ describe('the embed bridge over a message channel', () => {
     });
     await expect(handle.setStabilization('wobble')).rejects.toMatchObject({
       code: 'invariant-violation',
+    });
+    await expect(handle.setViewMode('stereographic')).rejects.toMatchObject({
+      code: 'invariant-violation',
+      message: 'embed command argument 0 must be one of normal, equirectangular',
     });
     await expect(handle.load({ src: 5 as unknown as string })).rejects.toMatchObject({
       code: 'invariant-violation',

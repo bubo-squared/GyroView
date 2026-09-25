@@ -7,17 +7,14 @@ import {
 } from '../../shared/math/Matrix3';
 import { degrees, degreesToRadians, type Degrees } from '../../shared/units/angle';
 
-export type Projection = 'rectilinear' | 'stereographic' | 'equirectangular';
-
 /**
- * Where the viewer looks and how the sphere is flattened. Angles are in the camera body frame:
- * yaw positive looks right, pitch positive looks up; the field of view is horizontal.
+ * Where the viewer looks. Angles are in the camera body frame: yaw positive looks right, pitch
+ * positive looks up; the field of view is horizontal.
  */
 export interface ViewState {
   readonly yaw: Degrees;
   readonly pitch: Degrees;
   readonly fieldOfView: Degrees;
-  readonly projection: Projection;
 }
 
 export interface FieldOfViewBounds {
@@ -25,56 +22,46 @@ export interface FieldOfViewBounds {
   readonly max: Degrees;
 }
 
-const NARROWEST_DEGREES = 30;
-const RECTILINEAR_WIDEST_DEGREES = 120;
 /**
- * A little planet needs more than a half turn to show the ground curling round the horizon.
+ * From a short telephoto to a wide angle: past 120 degrees a rectilinear view stretches its
+ * edges more than it shows.
  */
-const STEREOGRAPHIC_WIDEST_DEGREES = 300;
+const NARROWEST_DEGREES = 30;
+const WIDEST_DEGREES = 120;
 const DEFAULT_FIELD_OF_VIEW_DEGREES = 90;
 const MAX_PITCH_DEGREES = 90;
 const HALF_TURN_DEGREES = 180;
 const FULL_TURN_DEGREES = 360;
 
-/**
- * Each projection tolerates its own range; the equirectangular one always shows the whole
- * sphere and keeps the field of view only so switching back is seamless.
- */
-const FIELD_OF_VIEW_BOUNDS: Readonly<Record<Projection, FieldOfViewBounds>> = {
-  rectilinear: { min: degrees(NARROWEST_DEGREES), max: degrees(RECTILINEAR_WIDEST_DEGREES) },
-  stereographic: { min: degrees(NARROWEST_DEGREES), max: degrees(STEREOGRAPHIC_WIDEST_DEGREES) },
-  equirectangular: { min: degrees(NARROWEST_DEGREES), max: degrees(RECTILINEAR_WIDEST_DEGREES) },
+export const FIELD_OF_VIEW_BOUNDS: FieldOfViewBounds = {
+  min: degrees(NARROWEST_DEGREES),
+  max: degrees(WIDEST_DEGREES),
 };
 
-const DEFAULT_FIELD_OF_VIEW = degrees(DEFAULT_FIELD_OF_VIEW_DEGREES);
+export const DEFAULT_FIELD_OF_VIEW = degrees(DEFAULT_FIELD_OF_VIEW_DEGREES);
 export const FULL_TURN = degrees(FULL_TURN_DEGREES);
 
 export const DEFAULT_VIEW: ViewState = {
   yaw: degrees(0),
   pitch: degrees(0),
   fieldOfView: DEFAULT_FIELD_OF_VIEW,
-  projection: 'rectilinear',
 };
-
-export function fieldOfViewBoundsFor(projection: Projection): FieldOfViewBounds {
-  return FIELD_OF_VIEW_BOUNDS[projection];
-}
 
 /**
  * Keeps the view inside the sphere: yaw wrapped to (-180, 180], pitch within the poles, field
- * of view within the projection's range. Non-finite angles are a programming error.
+ * of view within its bounds. Non-finite angles are a programming error.
  */
 export function clampView(view: ViewState): ViewState {
   ensureInvariant(
     [view.yaw, view.pitch, view.fieldOfView].every((angle) => Number.isFinite(angle)),
     'view angles must be finite',
   );
-  const bounds = fieldOfViewBoundsFor(view.projection);
+  const { min, max } = FIELD_OF_VIEW_BOUNDS;
   return {
     ...view,
     yaw: wrapHalfTurn(view.yaw),
     pitch: degrees(Math.min(Math.max(view.pitch, -MAX_PITCH_DEGREES), MAX_PITCH_DEGREES)),
-    fieldOfView: degrees(Math.min(Math.max(view.fieldOfView, bounds.min), bounds.max)),
+    fieldOfView: degrees(Math.min(Math.max(view.fieldOfView, min), max)),
   };
 }
 

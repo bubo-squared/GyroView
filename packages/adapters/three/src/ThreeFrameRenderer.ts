@@ -1,6 +1,7 @@
 import {
   clampView,
   DEFAULT_VIEW,
+  DEFAULT_VIEW_MODE,
   ensureInvariant,
   GyroViewError,
   type Matrix3 as CoreMatrix3,
@@ -10,6 +11,7 @@ import {
   type StabilizableFrameSink,
   type StitchingSetup,
   type Vector3 as CoreVector3,
+  type ViewMode,
   type ViewState,
 } from '@gyroview/core';
 import {
@@ -34,6 +36,7 @@ import lensModels from './shaders/lensModels.glsl?raw';
 import lensSampling from './shaders/lensSampling.glsl?raw';
 import precision from './shaders/precision.glsl?raw';
 import rays from './shaders/rays.glsl?raw';
+import screenAreas from './shaders/screenAreas.glsl?raw';
 import stitchFragment from './shaders/stitch.frag.glsl?raw';
 import {
   applyStabilization,
@@ -46,6 +49,7 @@ import {
 
 export interface ThreeFrameRendererOptions {
   readonly view?: ViewState;
+  readonly viewMode?: ViewMode;
   /**
    * Keep the drawing buffer after a frame so it can be read back or captured (tests, seam
    * inspection); costs a copy per frame, so off by default.
@@ -77,11 +81,21 @@ const RGBA_CHANNELS = 4;
 const PASS_THROUGH_CAMERA = new Camera();
 
 /**
+ * What the renderer starts drawing with.
+ */
+interface InitialDrawing {
+  readonly view: ViewState;
+  readonly viewMode: ViewMode;
+}
+
+/**
  * FrameSink over Three.js: uploads each lens frame to a texture and draws the stitched view with
- * one fullscreen pass of `stitch.frag.glsl`, turned by the view and the stabilization rotations.
+ * one fullscreen pass of `stitch.frag.glsl`, turned by the view and the stabilization rotations
+ * and laid out on the viewport as the view mode says.
  */
 export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   private viewState: ViewState;
+  private viewModeValue: ViewMode;
   /**
    * False until the first pair arrives and again after a context loss: the textures then hold
    * frames the session has closed, which must not be uploaded again.
@@ -94,9 +108,10 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   private constructor(
     private readonly parts: RendererParts,
     private readonly canvas: HTMLCanvasElement,
-    view: ViewState,
+    initial: InitialDrawing,
   ) {
-    this.viewState = clampView(view);
+    this.viewState = clampView(initial.view);
+    this.viewModeValue = initial.viewMode;
     this.applyView();
     canvas.addEventListener('webglcontextlost', this.onContextLost);
   }
@@ -126,16 +141,30 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
     // Compiling now surfaces a broken shader here rather than at the first presented frame.
     renderer.compile(scene, PASS_THROUGH_CAMERA);
     const parts = { renderer, scene, material, geometry, textures, uniforms };
-    return new ThreeFrameRenderer(parts, canvas, options.view ?? DEFAULT_VIEW);
+    return new ThreeFrameRenderer(parts, canvas, {
+      view: options.view ?? DEFAULT_VIEW,
+      viewMode: options.viewMode ?? DEFAULT_VIEW_MODE,
+    });
   }
 
   public get view(): ViewState {
     return this.viewState;
   }
 
+  public get viewMode(): ViewMode {
+    return this.viewModeValue;
+  }
+
   public setView(view: ViewState): void {
     this.ensureLive();
     this.viewState = clampView(view);
+    this.applyView();
+    this.render();
+  }
+
+  public setViewMode(mode: ViewMode): void {
+    this.ensureLive();
+    this.viewModeValue = mode;
     this.applyView();
     this.render();
   }
@@ -253,8 +282,11 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   }
 
   private applyView(): void {
-    const aspect = this.canvas.width / Math.max(this.canvas.height, 1);
-    applyView(this.parts.uniforms, this.viewState, aspect);
+    applyView(this.parts.uniforms, {
+      view: this.viewState,
+      mode: this.viewModeValue,
+      viewportAspect: this.canvas.width / Math.max(this.canvas.height, 1),
+    });
   }
 
   private ensureLive(): void {
@@ -301,9 +333,15 @@ function createMaterial(uniforms: StitchUniforms): RawShaderMaterial {
     glslVersion: GLSL3,
     defines: { ...SHADER_DEFINES },
     vertexShader: fullscreenVertex,
-    fragmentShader: [precision, constants, rays, lensModels, lensSampling, stitchFragment].join(
-      '\n',
-    ),
+    fragmentShader: [
+      precision,
+      constants,
+      screenAreas,
+      rays,
+      lensModels,
+      lensSampling,
+      stitchFragment,
+    ].join('\n'),
     uniforms: { ...uniforms },
     depthTest: false,
     depthWrite: false,

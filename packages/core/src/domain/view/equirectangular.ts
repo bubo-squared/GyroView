@@ -13,6 +13,11 @@ export interface EquirectangularPixel {
   readonly row: number;
 }
 
+/**
+ * A full turn across for a half turn from top to bottom.
+ */
+export const EQUIRECTANGULAR_ASPECT = 2;
+
 const HALF_TURN = Math.PI;
 const QUARTER_TURN = Math.PI / 2;
 const PIXEL_CENTRE = 0.5;

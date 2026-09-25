@@ -14,6 +14,7 @@ export const COMMAND_NAMES = [
   'resetView',
   'zoom',
   'setStabilization',
+  'setViewMode',
   'setVolume',
   'setMuted',
   'setLoop',

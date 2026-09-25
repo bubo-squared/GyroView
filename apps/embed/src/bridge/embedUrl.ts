@@ -11,7 +11,7 @@ export interface EmbedOptions {
   readonly yaw?: number;
   readonly pitch?: number;
   readonly stabilization?: string;
-  readonly projection?: string;
+  readonly viewMode?: string;
   readonly autoplay?: boolean;
   readonly muted?: boolean;
   readonly loop?: boolean;
@@ -26,14 +26,19 @@ export interface EmbedOptions {
  */
 export const ORIGIN_PARAMETER = 'origin';
 
-const STRING_PARAMETERS = [
-  'src',
-  'src2',
-  'proxy',
-  'quality',
-  'stabilization',
-  'projection',
-] as const;
+type StringOption = 'src' | 'src2' | 'proxy' | 'quality' | 'stabilization' | 'viewMode';
+
+/**
+ * Each string option's query parameter, which is also the attribute it becomes on the element.
+ */
+const STRING_PARAMETERS: ReadonlyMap<StringOption, string> = new Map<StringOption, string>([
+  ['src', 'src'],
+  ['src2', 'src2'],
+  ['proxy', 'proxy'],
+  ['quality', 'quality'],
+  ['stabilization', 'stabilization'],
+  ['viewMode', 'view-mode'],
+]);
 const NUMBER_PARAMETERS = ['fov', 'yaw', 'pitch'] as const;
 const FLAG_PARAMETERS = ['autoplay', 'muted', 'loop'] as const;
 const CONTROLS_PARAMETER = 'controls';
@@ -50,9 +55,9 @@ export function embedUrlFor(
   embedderOrigin: string,
 ): string {
   const url = new URL(embedPageUrl);
-  for (const name of STRING_PARAMETERS) {
-    const value = options[name];
-    if (value !== undefined) url.searchParams.set(name, value);
+  for (const [option, parameter] of STRING_PARAMETERS) {
+    const value = options[option];
+    if (value !== undefined) url.searchParams.set(parameter, value);
   }
   for (const name of NUMBER_PARAMETERS) {
     const value = options[name];
@@ -79,7 +84,7 @@ export interface EmbedPageRequest {
  */
 export function embedPageRequestOf(query: URLSearchParams): EmbedPageRequest {
   const attributes: Record<string, string> = {};
-  for (const name of [...STRING_PARAMETERS, ...NUMBER_PARAMETERS]) {
+  for (const name of [...STRING_PARAMETERS.values(), ...NUMBER_PARAMETERS]) {
     const value = query.get(name);
     if (value !== null && value !== '') attributes[name] = value;
   }

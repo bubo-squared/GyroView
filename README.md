@@ -11,7 +11,8 @@ on any website as a `<gyro-view>` web component or an iframe. No Insta360 Studio
 - Decodes both lens tracks in hardware with WebCodecs, in lockstep, with the recording's own
   audio as the clock; sound waits for the picture rather than running ahead.
 - Stitches through the factory calibration in one GPU pass, with a feathered seam and
-  exposure matching between the lenses; three projections and full look-around.
+  exposure matching between the lenses; a normal view to look around in and the whole sphere
+  as an equirectangular panorama.
 - Stabilizes from the gyro: lock, horizon or follow, sampled at each frame's mid-exposure.
 - Ships as an element (`gyro-view.js`) and as an iframe (`embed.html` plus `embed.js`) with
   the same API and events, plus a developer page for trying recordings.
@@ -43,26 +44,28 @@ found by itself when it sits beside `src` under the camera's name), `proxy` (`au
 the URL of the camera's low-resolution `LRV` file), `quality` (`auto`, `full`, `proxy`),
 `autoplay`, `muted`, `loop`, `controls`, `poster`, `preload` (`none` keeps the decoders idle
 until play; otherwise the first frame shows at once), `gain-match` (`off` leaves the lenses'
-exposure as recorded), `fov`, `yaw`, `pitch`, `projection` (`rectilinear`, `stereographic`,
-`equirectangular`) and `stabilization` (`off`, `lock`, `horizon`, `follow`). Every attribute
-is also a property (`gainMatch` for `gain-match`).
+exposure as recorded), `fov` (30 to 120 degrees), `yaw`, `pitch`, `view-mode` (`normal`, or
+`equirectangular` for the whole sphere as a level 2:1 panorama) and `stabilization` (`off`,
+`lock`, `horizon`, `follow`). Every attribute is also a property (`gainMatch` for `gain-match`,
+`viewMode` for `view-mode`).
 
 API: `play()`, `pause()`, `stop()`, `seek(seconds)`, `scrub(seconds)` (to the key frame at or
 before the time, for a dragged seek bar), `currentTime`, `duration`, `paused`, `status`,
-`metadata`, `view`, `lookAt(yaw, pitch)`, `resetView()`, `zoom(steps)`, `setStabilization(mode)`,
-`volume`, `toggleFullscreen()`, `loadFiles({ main, second, proxy })`.
+`metadata`, `view`, `lookAt(yaw, pitch)`, `resetView()`, `zoom(steps)`, `setViewMode(mode)`,
+`setStabilization(mode)`, `volume`, `toggleFullscreen()`, `loadFiles({ main, second, proxy })`.
 
 Events (`CustomEvent`s, payload in `detail`): `ready` (metadata: camera, layout, calibration
 version, frame time source, gyro and IMU frame, audio, proxy), `statuschange` (`idle`,
 `loading`, `ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`), `play`,
 `waiting`, `playing`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `frame`,
-`viewchange`, `stabilizationchange`, `warning` (a feature degraded: no gyro, unverified IMU
+`viewchange`, `viewmodechange`, `stabilizationchange`, `warning` (a feature degraded: no gyro, unverified IMU
 frame, silent clock, proxy in use) and `error` (`code` and `message`; the codes are listed in
 `docs/DEPLOYMENT.md`).
 
 Keyboard: space or K play/pause, J and L seek, arrows look around (Shift + arrows seek), plus
 and minus zoom, 0 resets the view, M mutes, F fills the screen. Mouse and touch: drag to look,
-wheel or pinch to zoom, tap to play or pause.
+wheel or pinch to zoom, tap to play or pause. The equirectangular panorama only turns sideways
+and does not zoom.
 
 Styling: the host element sizes the player (a block with a 16:9 aspect ratio by default);
 `--gyro-view-accent`, `--gyro-view-controls-background`, `--gyro-view-text`,
@@ -87,12 +90,13 @@ Styling: the host element sizes the player (a block with a 16:9 aspect ratio by 
 
 `GyroView.embed` puts an `<iframe allow="fullscreen; autoplay">` pointing at `embed.html`
 in the container and returns the same API as the element, as promises over `postMessage`
-(`play`, `pause`, `stop`, `seek`, `scrub`, `lookAt`, `resetView`, `zoom`, `setStabilization`,
-`setVolume`, `setMuted`, `setLoop`, `load`, `getState`), the player's events on
+(`play`, `pause`, `stop`, `seek`, `scrub`, `lookAt`, `resetView`, `zoom`, `setViewMode`,
+`setStabilization`, `setVolume`, `setMuted`, `setLoop`, `load`, `getState`), the player's events on
 `handle.events`, and a `state` mirror. The frame talks only to the page that embedded it and
 the page only to the frame. Without the snippet, an iframe of
 `embed.html?src=...&stabilization=lock&muted=1` plays on its own; every attribute above is a
-query parameter (`controls=0` hides the controls).
+query parameter (`controls=0` hides the controls; the snippet's `viewMode` option is the
+`view-mode` parameter).
 
 ## Serving recordings
 
@@ -154,4 +158,4 @@ calibration string interpretation, 0006 Node 24 toolchain, 0007 the audio elemen
 clock, 0008 stitching frames and poses, 0009 IMU frame and stabilization, 0010 player
 composition and embedding, 0011 sound follows the picture, 0012 gain matching along the seam,
 0013 byte-range reads bypass the browser cache, 0014 the frame shows the whole calibration
-square.
+square, 0015 view modes replace projections.

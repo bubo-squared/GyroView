@@ -1,4 +1,4 @@
-import { clampView, FULL_TURN, type ViewState } from './ViewState';
+import { clampView, type ViewState } from './ViewState';
 import { degrees, type Degrees } from '../../shared/units/angle';
 
 /**
@@ -15,12 +15,10 @@ export interface DragDelta {
 const ZOOM_STEP = 1.1;
 
 /**
- * Angle covered by one pixel across the viewport: the field of view in the perspective
- * projections, the whole turn in the equirectangular one, which always shows all of it.
+ * Angle covered by one pixel across the viewport: the field of view spread over its width.
  */
 export function degreesPerPixel(view: ViewState, viewportWidth: number): Degrees {
-  const spanned = view.projection === 'equirectangular' ? FULL_TURN : view.fieldOfView;
-  return degrees(spanned / Math.max(viewportWidth, 1));
+  return degrees(view.fieldOfView / Math.max(viewportWidth, 1));
 }
 
 /**
@@ -37,8 +35,7 @@ export function panView(view: ViewState, delta: DragDelta, viewportWidth: number
 }
 
 /**
- * Narrows the field of view by `steps` zoom steps (negative widens), within the projection's
- * range.
+ * Narrows the field of view by `steps` zoom steps (negative widens), within its bounds.
  */
 export function zoomView(view: ViewState, steps: number): ViewState {
   return clampView({ ...view, fieldOfView: degrees(view.fieldOfView / ZOOM_STEP ** steps) });

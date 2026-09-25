@@ -3,6 +3,7 @@ import {
   seconds,
   type GyroViewError,
   type StabilizationMode,
+  type ViewMode,
   type ViewState,
 } from '@gyroview/core';
 
@@ -14,6 +15,7 @@ import {
   stabilizationFromAttribute,
   ViewAttribute,
   viewFromAttributes,
+  viewModeFromAttribute,
 } from './attributes';
 import { elementSourceOf, type FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
@@ -40,7 +42,7 @@ const STRING_ATTRIBUTES = [
   PlaybackAttribute.Poster,
   PlaybackAttribute.Preload,
   PlaybackAttribute.GainMatch,
-  ViewAttribute.Projection,
+  PlaybackAttribute.ViewMode,
 ];
 const NUMBER_ATTRIBUTES = [ViewAttribute.FieldOfView, ViewAttribute.Yaw, ViewAttribute.Pitch];
 const BOOLEAN_ATTRIBUTES = [
@@ -64,7 +66,7 @@ export class GyroViewElement extends HTMLElement {
   declare public proxy: string | null;
   declare public quality: string | null;
   declare public stabilization: string | null;
-  declare public projection: string | null;
+  declare public viewMode: string | null;
   declare public poster: string | null;
   declare public fov: number | undefined;
   declare public yaw: number | undefined;
@@ -213,6 +215,10 @@ export class GyroViewElement extends HTMLElement {
     this.stabilization = mode;
   }
 
+  public setViewMode(mode: ViewMode): void {
+    this.viewMode = mode;
+  }
+
   public toggleFullscreen(): Promise<void> {
     return this.fullscreen.toggle();
   }
@@ -276,6 +282,7 @@ export class GyroViewElement extends HTMLElement {
       return;
     }
     const stabilization = stabilizationFromAttribute(read(PlaybackAttribute.Stabilization));
+    const viewMode = viewModeFromAttribute(read(PlaybackAttribute.ViewMode));
     this.player.setMuted(this.muted);
     this.player.setLooping(this.loop);
     this.controlsBar.setQuality(source.quality);
@@ -285,6 +292,7 @@ export class GyroViewElement extends HTMLElement {
         autoplay: this.autoplay,
         preload: shouldPreload(read(PlaybackAttribute.Preload)),
         ...(stabilization && { stabilization }),
+        ...(viewMode && { viewMode }),
       })
       .catch(ignoreReportedFailure);
   }

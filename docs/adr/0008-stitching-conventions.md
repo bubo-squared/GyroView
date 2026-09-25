@@ -28,7 +28,8 @@ shows as an upside-down lens, a swapped side or a double edge at the seam.
   margin of about 12 frame pixels on each side, but the decoded frames are lit from the first
   column and row to the last on both recordings.
 - **View**: yaw positive looks right, pitch positive looks up, field of view is horizontal;
-  equirectangular, rectilinear and stereographic rays share one shader.
+  the normal view's rectilinear rays and the panorama's equirectangular rays share one shader
+  (the stereographic projection was dropped by ADR 0015).
 - **Blend**: weight `1 - smoothstep(85 deg, 95 deg, theta)` per lens, normalised; radial
   polynomial and Mei projections evaluated in the fragment shader from parameters the core
   exposes (`LensModel.projection`).

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { clampView, DEFAULT_VIEW, fieldOfViewBoundsFor, viewRotation } from './ViewState';
+import { clampView, DEFAULT_VIEW, FIELD_OF_VIEW_BOUNDS, viewRotation } from './ViewState';
 import { transformVector } from '../../shared/math/Matrix3';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { degrees } from '../../shared/units/angle';
@@ -13,8 +13,8 @@ function expectVector(actual: Vector3, expected: Vector3): void {
 }
 
 describe('ViewState', () => {
-  it('looks forward by default with a 90 degree rectilinear view', () => {
-    expect(DEFAULT_VIEW).toEqual({ yaw: 0, pitch: 0, fieldOfView: 90, projection: 'rectilinear' });
+  it('looks forward by default with a 90 degree view', () => {
+    expect(DEFAULT_VIEW).toEqual({ yaw: 0, pitch: 0, fieldOfView: 90 });
     expectVector(transformVector(viewRotation(DEFAULT_VIEW), FORWARD), FORWARD);
   });
 
@@ -25,45 +25,25 @@ describe('ViewState', () => {
     expectVector(transformVector(pitched, FORWARD), [0, -1, 0]);
   });
 
+  it('keeps the field of view within an ordinary lens range', () => {
+    expect(FIELD_OF_VIEW_BOUNDS).toEqual({ min: 30, max: 120 });
+  });
+
   it('wraps the yaw, clamps the pitch at the poles and the field of view to its range', () => {
     const overshoot = {
-      ...DEFAULT_VIEW,
       yaw: degrees(190),
       pitch: degrees(100),
       fieldOfView: degrees(200),
     };
-    expect(clampView(overshoot)).toEqual({
-      yaw: -170,
-      pitch: 90,
-      fieldOfView: 120,
-      projection: 'rectilinear',
-    });
+    expect(clampView(overshoot)).toEqual({ yaw: -170, pitch: 90, fieldOfView: 120 });
     const undershoot = {
-      ...DEFAULT_VIEW,
       yaw: degrees(-180),
       pitch: degrees(-95),
       fieldOfView: degrees(5),
     };
-    expect(clampView(undershoot)).toEqual({
-      yaw: 180,
-      pitch: -90,
-      fieldOfView: 30,
-      projection: 'rectilinear',
-    });
+    expect(clampView(undershoot)).toEqual({ yaw: 180, pitch: -90, fieldOfView: 30 });
     expect(clampView({ ...DEFAULT_VIEW, yaw: degrees(-540) }).yaw).toBe(180);
     expect(clampView({ ...DEFAULT_VIEW, yaw: degrees(180) }).yaw).toBe(180);
-  });
-
-  it('lets a little planet go far wider than a rectilinear view', () => {
-    expect(fieldOfViewBoundsFor('stereographic').max).toBe(300);
-    expect(
-      clampView({ ...DEFAULT_VIEW, projection: 'stereographic', fieldOfView: degrees(250) })
-        .fieldOfView,
-    ).toBe(250);
-    expect(
-      clampView({ ...DEFAULT_VIEW, projection: 'rectilinear', fieldOfView: degrees(250) })
-        .fieldOfView,
-    ).toBe(120);
   });
 
   it('refuses non-finite angles', () => {

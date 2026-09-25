@@ -3,7 +3,7 @@ import { seconds, type StabilizationMode } from '@gyroview/core';
 import { queryControlParts, type ControlParts } from './controlParts';
 import { formatTime } from './formatTime';
 import type { Player } from '../player/Player';
-import { projectionFromAttribute, stabilizationFromAttribute } from '../element/attributes';
+import { stabilizationFromAttribute, viewModeFromAttribute } from '../element/attributes';
 import type { Quality } from '../PlayerSource';
 
 /**
@@ -135,7 +135,7 @@ export class ControlsBar {
   }
 
   private bindMenu(root: ParentNode): void {
-    const { settings, menu, stabilization, projection, quality } = this.parts;
+    const { settings, menu, stabilization, viewMode, quality } = this.parts;
     settings.addEventListener('click', () => {
       this.setMenuOpen(menu.hidden);
     });
@@ -150,9 +150,9 @@ export class ControlsBar {
       const mode = stabilizationFromAttribute(stabilization.value);
       if (mode) this.player.setStabilization(mode);
     });
-    projection.addEventListener('change', () => {
-      const chosen = projectionFromAttribute(projection.value);
-      if (chosen) this.player.setView({ ...this.player.view, projection: chosen });
+    viewMode.addEventListener('change', () => {
+      const mode = viewModeFromAttribute(viewMode.value);
+      if (mode) this.player.setViewMode(mode);
     });
     quality.addEventListener('change', () => {
       const chosen = QUALITIES.find((candidate) => candidate === quality.value);
@@ -179,8 +179,8 @@ export class ControlsBar {
       events.on('stabilizationchange', (mode) => {
         this.reflectStabilization(mode);
       }),
-      events.on('viewchange', (view) => {
-        this.parts.projection.value = view.projection;
+      events.on('viewmodechange', (mode) => {
+        this.parts.viewMode.value = mode;
       }),
     );
   }
@@ -207,7 +207,7 @@ export class ControlsBar {
     this.parts.play.textContent = isPlaying ? PAUSE_GLYPH : PLAY_GLYPH;
     this.showTime(this.player.currentTime);
     this.reflectStabilization(this.player.stabilization);
-    this.parts.projection.value = this.player.view.projection;
+    this.parts.viewMode.value = this.player.viewMode;
   }
 
   private reflectStabilization(mode: StabilizationMode): void {

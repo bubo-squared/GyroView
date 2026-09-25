@@ -1,14 +1,19 @@
 uniform mat3 uViewRotation;
 uniform mat3 uStabilization;
-uniform int uProjection;
+uniform int uViewMode;
 uniform float uPlaneHalfExtent;
-uniform float uAspect;
+uniform float uPictureAspect;
 
 in vec2 vNdc;
 out vec4 outColor;
 
 void main() {
-  vec3 dirView = rayFromNdc(vNdc, uProjection, uPlaneHalfExtent, uAspect);
+  vec2 point = pointInArea(vNdc, uScreenArea[0]);
+  if (!isInArea(point)) {
+    outColor = vec4(0.0, 0.0, 0.0, 1.0);
+    return;
+  }
+  vec3 dirView = rayThroughPicture(point, uViewMode, uPlaneHalfExtent, uPictureAspect);
   vec3 dirBody = uStabilization * (uViewRotation * dirView);
   vec3 sum = vec3(0.0);
   float weightSum = 0.0;

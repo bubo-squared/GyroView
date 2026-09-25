@@ -1,65 +1,94 @@
-import { DEFAULT_VIEW, degrees, type ViewState } from '@gyroview/core';
+import { DEFAULT_VIEW, degrees, TypedEmitter, type ViewMode, type ViewState } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
+import type { PlayerEvents } from './PlayerEvents';
 import { PlayerView, type ViewSurface } from './PlayerView';
+
+const VIEWPORT_WIDTH = 900;
 
 interface Recorded {
   readonly view: PlayerView;
-  readonly drawn: ViewState[];
-  readonly announced: ViewState[];
+  readonly drawn: (ViewState | ViewMode)[];
+  readonly views: ViewState[];
+  readonly modes: ViewMode[];
 }
 
 function recordedView(): Recorded {
-  const drawn: ViewState[] = [];
-  const announced: ViewState[] = [];
-  const view = new PlayerView((state) => {
-    announced.push(state);
+  const drawn: (ViewState | ViewMode)[] = [];
+  const views: ViewState[] = [];
+  const modes: ViewMode[] = [];
+  const events = new TypedEmitter<PlayerEvents>();
+  events.on('viewchange', (state) => {
+    views.push(state);
   });
+  events.on('viewmodechange', (mode) => {
+    modes.push(mode);
+  });
+  const view = new PlayerView(events);
   const surface: ViewSurface = {
     setView: (state) => {
       drawn.push(state);
     },
+    setViewMode: (mode) => {
+      drawn.push(mode);
+    },
   };
   view.attach(surface);
-  return { view, drawn, announced };
+  return { view, drawn, views, modes };
 }
 
 describe('PlayerView', () => {
-  it('starts on the default view', () => {
-    expect(recordedView().view.current).toEqual(DEFAULT_VIEW);
+  it('starts on the default view in the normal mode', () => {
+    const { view } = recordedView();
+    expect(view.current).toEqual(DEFAULT_VIEW);
+    expect(view.viewMode).toBe('normal');
   });
 
   it('clamps every change, draws it and announces it', () => {
-    const { view, drawn, announced } = recordedView();
+    const { view, drawn, views } = recordedView();
     view.set({ ...DEFAULT_VIEW, yaw: degrees(190), fieldOfView: degrees(500) });
     const expected = { ...DEFAULT_VIEW, yaw: -170, fieldOfView: 120 };
     expect(view.current).toEqual(expected);
     expect(drawn).toEqual([expected]);
-    expect(announced).toEqual([expected]);
+    expect(views).toEqual([expected]);
   });
 
-  it('looks, zooms and resets through the same change', () => {
-    const { view, announced } = recordedView();
+  it('looks, turns, zooms and resets through the same change', () => {
+    const { view, views } = recordedView();
     view.lookAt(degrees(30), degrees(-10));
+    view.turn(degrees(5), degrees(5));
     view.zoom(1);
     view.reset();
-    expect(announced.map((state) => [state.yaw, state.pitch])).toEqual([
+    expect(views.map((state) => [state.yaw, state.pitch])).toEqual([
       [30, -10],
-      [30, -10],
+      [35, -5],
+      [35, -5],
       [0, 0],
     ]);
-    expect(announced[1]?.fieldOfView).toBeCloseTo(90 / 1.1, 9);
+    expect(views[2]?.fieldOfView).toBeCloseTo(90 / 1.1, 9);
     expect(view.current).toEqual(DEFAULT_VIEW);
   });
 
-  it('restores the view of a coming load quietly and still announces without a renderer', () => {
-    const { view, drawn, announced } = recordedView();
-    view.restore({ ...DEFAULT_VIEW, pitch: degrees(120) });
+  it('switches the mode, draws and announces it, and lets the mode rule the gestures', () => {
+    const { view, drawn, modes } = recordedView();
+    view.setMode('equirectangular');
+    expect(view.viewMode).toBe('equirectangular');
+    expect(drawn).toEqual(['equirectangular']);
+    expect(modes).toEqual(['equirectangular']);
+    view.pan({ x: 90, y: 90 }, VIEWPORT_WIDTH);
+    view.zoom(3);
+    expect(view.current).toEqual({ ...DEFAULT_VIEW, yaw: -36 });
+  });
+
+  it('restores the view and mode of a coming load quietly and still announces without a renderer', () => {
+    const { view, drawn, views, modes } = recordedView();
+    view.restore({ view: { ...DEFAULT_VIEW, pitch: degrees(120) }, viewMode: 'equirectangular' });
     expect(view.current.pitch).toBe(90);
-    expect(announced).toEqual([]);
+    expect(view.viewMode).toBe('equirectangular');
+    expect([...views, ...modes]).toEqual([]);
     view.attach(undefined);
     view.lookAt(degrees(10), degrees(0));
     expect(drawn).toEqual([]);
-    expect(announced).toHaveLength(1);
+    expect(views).toHaveLength(1);
   });
 });

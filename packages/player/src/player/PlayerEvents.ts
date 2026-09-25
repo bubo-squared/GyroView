@@ -3,6 +3,7 @@ import type {
   PlayerState,
   Seconds,
   StabilizationMode,
+  ViewMode,
   ViewState,
 } from '@gyroview/core';
 
@@ -35,6 +36,7 @@ export interface PlayerEvents extends Record<string, unknown> {
    */
   readonly frame: Seconds;
   readonly viewchange: ViewState;
+  readonly viewmodechange: ViewMode;
   readonly stabilizationchange: StabilizationMode;
   /**
    * A feature degraded gracefully (no gyro, unverified IMU frame, silent clock, proxy).

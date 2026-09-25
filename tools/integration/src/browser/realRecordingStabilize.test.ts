@@ -2,7 +2,6 @@ import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
   conjugateQuaternion,
-  DEFAULT_VIEW,
   equirectangularPixelOf,
   imuFrameFor,
   LensDecodePipeline,
@@ -146,7 +145,7 @@ describe('stabilizing the real recordings', () => {
       });
       const renderer = ThreeFrameRenderer.create(canvas, setup, {
         preserveDrawingBuffer: true,
-        view: { ...DEFAULT_VIEW, projection: 'equirectangular' },
+        viewMode: 'equirectangular',
       });
       cleanups.push(() => {
         renderer.dispose();

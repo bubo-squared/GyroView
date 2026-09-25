@@ -41,6 +41,13 @@ export class GyroViewError extends Error {
 }
 
 /**
+ * The human-readable part of anything thrown: an error's message, or the value as text.
+ */
+export function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
  * Guards a constructor or factory precondition with the shared error type.
  */
 export function ensureInvariant(isSatisfied: boolean, message: string): asserts isSatisfied {

@@ -163,6 +163,7 @@ export { parseOffsetString } from './domain/optics/parseOffsetString';
 export {
   ensureInvariant,
   GyroViewError,
+  messageOf,
   type GyroViewErrorCode,
 } from './shared/errors/GyroViewError';
 export {

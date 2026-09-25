@@ -2,6 +2,7 @@ import {
   DEFAULT_STABILIZATION_MODE,
   Deferred,
   GyroViewError,
+  messageOf,
   seconds,
   stabilizerFor,
   TypedEmitter,
@@ -22,7 +23,7 @@ import type { LoadOptions, PlayerParts } from './PlayerOptions';
 import { IDLE, statusOf, type LoadingPhase, type PlayerPhase } from './PlayerPhase';
 import { PlayerView } from './PlayerView';
 import { transportEventsFor } from './transportEvents';
-import { hasErrorCode, isAbortError, messageOf } from '../composition/errorCodes';
+import { hasErrorCode, isAbortError } from '../composition/errorCodes';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
 

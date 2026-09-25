@@ -3,7 +3,7 @@ import { seconds, type StabilizationMode } from '@gyroview/core';
 import { queryControlParts, type ControlParts } from './controlParts';
 import { formatTime } from './formatTime';
 import type { Player } from '../player/Player';
-import { stabilizationFromAttribute, viewModeFromAttribute } from '../element/attributes';
+import { stabilizationModeOf, viewModeOf } from '../choices';
 import { QUALITIES, type Quality } from '../PlayerSource';
 
 /**
@@ -144,11 +144,11 @@ export class ControlsBar {
       if (event instanceof KeyboardEvent && event.key === 'Escape') this.setMenuOpen(false);
     });
     stabilization.addEventListener('change', () => {
-      const mode = stabilizationFromAttribute(stabilization.value);
+      const mode = stabilizationModeOf(stabilization.value);
       if (mode) this.player.setStabilization(mode);
     });
     viewMode.addEventListener('change', () => {
-      const mode = viewModeFromAttribute(viewMode.value);
+      const mode = viewModeOf(viewMode.value);
       if (mode) this.player.setViewMode(mode);
     });
     quality.addEventListener('change', () => {

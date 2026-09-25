@@ -75,6 +75,14 @@ module.exports = {
       to: { path: '^packages/adapters/(?!node/)' },
     },
     {
+      name: 'controls-do-not-know-the-element',
+      comment:
+        'The element composes the controls and hands them a host; the controls never reach back.',
+      severity: 'error',
+      from: { path: '^packages/player/src/controls/' },
+      to: { path: '^packages/player/src/element/' },
+    },
+    {
       name: 'apps-use-the-player-not-the-adapters',
       comment: 'Apps compose the player; only the player composes adapters.',
       severity: 'error',

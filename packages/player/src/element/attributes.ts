@@ -1,21 +1,8 @@
-import {
-  clampView,
-  degrees,
-  STABILIZATION_MODES,
-  VIEW_MODES,
-  type StabilizationMode,
-  type ViewMode,
-  type ViewState,
-} from '@gyroview/core';
+import { clampView, degrees, type ViewState } from '@gyroview/core';
 
 import { SourceAttribute, ViewAttribute } from './attributeNames';
-import {
-  DEFAULT_QUALITY,
-  QUALITIES,
-  type MediaInput,
-  type PlayerSource,
-  type Quality,
-} from '../PlayerSource';
+import { qualityOf } from '../choices';
+import { DEFAULT_QUALITY, QUALITIES, type MediaInput, type PlayerSource } from '../PlayerSource';
 
 /**
  * Reads one attribute of the element, `null` when absent, like `Element.getAttribute`.
@@ -41,7 +28,7 @@ export function sourceFromAttributes(read: AttributeReader, baseUrl: string): Pa
   const main = read(SourceAttribute.Src);
   if (main === null || main.trim() === '') return { source: undefined, problems: [] };
   const qualityValue = read(SourceAttribute.Quality);
-  const quality = qualityFromAttribute(qualityValue);
+  const quality = qualityOf(qualityValue);
   const problems = quality === undefined ? problemsWith('quality', qualityValue, QUALITIES) : [];
   const second = read(SourceAttribute.Src2);
   const proxy = proxyFromAttribute(read(SourceAttribute.Proxy), baseUrl);
@@ -98,18 +85,6 @@ export function viewAfterAttribute(view: ViewState, name: string, value: string 
     : clampView({ ...view, [angle]: degrees(parsed) });
 }
 
-export function qualityFromAttribute(value: string | null): Quality | undefined {
-  return parseChoice(value, QUALITIES);
-}
-
-export function stabilizationFromAttribute(value: string | null): StabilizationMode | undefined {
-  return parseChoice(value, STABILIZATION_MODES);
-}
-
-export function viewModeFromAttribute(value: string | null): ViewMode | undefined {
-  return parseChoice(value, VIEW_MODES);
-}
-
 /**
  * HTML boolean attributes are true by presence, whatever their value.
  */
@@ -121,19 +96,6 @@ export function parseNumber(value: string | null): number | undefined {
   if (value === null || value.trim() === '') return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-/**
- * The choice named by the attribute, matched without regard to case; undefined when absent
- * or unknown.
- */
-function parseChoice<Choice extends string>(
-  value: string | null,
-  choices: readonly Choice[],
-): Choice | undefined {
-  if (value === null) return undefined;
-  const wanted = value.trim().toLowerCase();
-  return choices.find((choice) => choice === wanted);
 }
 
 function problemsWith(

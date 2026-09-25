@@ -1,5 +1,6 @@
 import { SourceAttribute } from './attributeNames';
-import { qualityFromAttribute, sourceFromAttributes, type AttributeReader } from './attributes';
+import { sourceFromAttributes, type AttributeReader } from './attributes';
+import { qualityOf } from '../choices';
 import type { PlayerSource } from '../PlayerSource';
 
 /**
@@ -27,7 +28,7 @@ export function elementSourceOf(
 ): ElementSource {
   const parsed = sourceFromAttributes(read, baseUrl);
   if (!files) return parsed;
-  const quality = qualityFromAttribute(read(SourceAttribute.Quality));
+  const quality = qualityOf(read(SourceAttribute.Quality));
   return { source: fileSourceOf(files, quality), problems: parsed.problems };
 }
 

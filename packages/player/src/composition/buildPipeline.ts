@@ -15,6 +15,7 @@ import {
   type VideoDecoderPort,
   type ViewMode,
   type ViewState,
+  messageOf,
 } from '@gyroview/core';
 
 import { Disposables } from './Disposables';
@@ -150,8 +151,7 @@ async function clockFor(
     return { clock, kind: 'audio', warnings: [] };
   } catch (error) {
     // Sound is a comfort, the picture is the point: a broken audio path must not stop playback.
-    const reason = error instanceof Error ? error.message : String(error);
-    return wallClock(`${AUDIO_FAILED_WARNING} (${reason})`);
+    return wallClock(`${AUDIO_FAILED_WARNING} (${messageOf(error)})`);
   }
 }
 

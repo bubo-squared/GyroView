@@ -1,6 +1,6 @@
 import { degrees, GyroViewError, type Degrees, type ViewState } from '@gyroview/core';
 
-import { stabilizationFromAttribute, viewModeFromAttribute } from './attributes';
+import { stabilizationModeOf, viewModeOf } from '../choices';
 import type { Player } from '../player/Player';
 
 interface Accessor {
@@ -19,13 +19,13 @@ export function defineLiveSettings(element: HTMLElement, player: Player): void {
     stabilization: {
       get: (): unknown => player.stabilization,
       set: (value): void => {
-        player.setStabilization(choiceOf(value, stabilizationFromAttribute, 'stabilization'));
+        player.setStabilization(accepted(value, stabilizationModeOf, 'stabilization'));
       },
     },
     viewMode: {
       get: (): unknown => player.viewMode,
       set: (value): void => {
-        player.setViewMode(choiceOf(value, viewModeFromAttribute, 'viewMode'));
+        player.setViewMode(accepted(value, viewModeOf, 'viewMode'));
       },
     },
     ...viewAccessors(player),
@@ -69,7 +69,7 @@ function soundAccessors(player: Player): Record<string, Accessor> {
   };
 }
 
-function choiceOf<Choice>(
+function accepted<Choice>(
   value: unknown,
   parse: (text: string | null) => Choice | undefined,
   property: string,

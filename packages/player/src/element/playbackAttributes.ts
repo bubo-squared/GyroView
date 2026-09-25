@@ -1,10 +1,6 @@
 import { PlaybackAttribute } from './attributeNames';
-import {
-  isBooleanAttributeSet,
-  shouldMatchGains,
-  stabilizationFromAttribute,
-  viewModeFromAttribute,
-} from './attributes';
+import { isBooleanAttributeSet, shouldMatchGains } from './attributes';
+import { stabilizationModeOf, viewModeOf } from '../choices';
 import type { Player } from '../player/Player';
 
 export interface PlaybackTargets {
@@ -21,14 +17,14 @@ const APPLIERS: ReadonlyMap<string, AttributeApplier> = new Map<string, Attribut
   [
     PlaybackAttribute.Stabilization,
     ({ player }, value): void => {
-      const mode = stabilizationFromAttribute(value);
+      const mode = stabilizationModeOf(value);
       if (mode) player.setStabilization(mode);
     },
   ],
   [
     PlaybackAttribute.ViewMode,
     ({ player }, value): void => {
-      const mode = viewModeFromAttribute(value);
+      const mode = viewModeOf(value);
       if (mode) player.setViewMode(mode);
     },
   ],

@@ -7,9 +7,7 @@ import {
   shouldPreload,
   parseNumber,
   sourceFromAttributes,
-  stabilizationFromAttribute,
   viewAfterAttribute,
-  viewModeFromAttribute,
 } from './attributes';
 
 const BASE = 'https://site.example/pages/embed.html';
@@ -72,15 +70,6 @@ describe('view and playback attributes', () => {
     expect(viewAfterAttribute(DEFAULT_VIEW, 'loop', '5')).toBe(DEFAULT_VIEW);
     expect(parseNumber('1e3')).toBe(1000);
     expect(parseNumber('NaN')).toBeUndefined();
-  });
-
-  it('accepts only the known stabilization and view modes, case-insensitively', () => {
-    expect(stabilizationFromAttribute('Horizon')).toBe('horizon');
-    expect(stabilizationFromAttribute('wobble')).toBeUndefined();
-    expect(stabilizationFromAttribute(null)).toBeUndefined();
-    expect(viewModeFromAttribute(' Equirectangular ')).toBe('equirectangular');
-    expect(viewModeFromAttribute('RAW-LENSES')).toBe('raw-lenses');
-    expect(viewModeFromAttribute('stereographic')).toBeUndefined();
   });
 
   it('treats boolean attributes as set by presence', () => {

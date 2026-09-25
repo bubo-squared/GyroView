@@ -1,4 +1,4 @@
-import { GyroViewError } from '@gyroview/core';
+import { GyroViewError, messageOf } from '@gyroview/core';
 import type { GyroViewElement } from '@gyroview/player';
 
 import { COMMAND_HANDLERS } from './commandHandlers';
@@ -78,6 +78,6 @@ function serializeError(error: unknown): SerializedError {
     ? { code: error.code, message: error.message }
     : {
         code: 'invariant-violation',
-        message: error instanceof Error ? error.message : String(error),
+        message: messageOf(error),
       };
 }

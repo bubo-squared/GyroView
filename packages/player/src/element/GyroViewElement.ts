@@ -1,5 +1,6 @@
 import {
   degrees,
+  messageOf,
   seconds,
   type GyroViewError,
   type StabilizationMode,
@@ -243,9 +244,7 @@ export class GyroViewElement extends HTMLElement {
       return;
     }
     void this.player.play().catch((error: unknown) => {
-      this.warn(
-        `playback could not start: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      this.warn(`playback could not start: ${messageOf(error)}`);
     });
   };
 

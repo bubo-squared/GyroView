@@ -7,7 +7,7 @@ import type {
 import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';
 import type { Signal } from '../../shared/async/Signal';
-import { GyroViewError } from '../../shared/errors/GyroViewError';
+import { GyroViewError, messageOf } from '../../shared/errors/GyroViewError';
 import { seconds } from '../../shared/units/time';
 
 export type LensProbeVerdict =
@@ -161,7 +161,7 @@ function unsupported(configuration: VideoDecoderConfiguration): Outcome {
 }
 
 function failedWith(error: unknown): Outcome {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = messageOf(error);
   const isUnsupported = error instanceof GyroViewError && error.code === 'codec-unsupported';
   return {
     verdict: isUnsupported ? 'unsupported-configuration' : 'decode-failed',

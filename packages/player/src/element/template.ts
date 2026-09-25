@@ -1,4 +1,39 @@
+import {
+  STABILIZATION_MODES,
+  VIEW_MODES,
+  type StabilizationMode,
+  type ViewMode,
+} from '@gyroview/core';
+
 import styles from './styles.css?raw';
+import { QUALITIES, type Quality } from '../PlayerSource';
+
+/**
+ * The menu's words for each choice; a record, so a new mode cannot be left without a label.
+ */
+const STABILIZATION_LABELS: Readonly<Record<StabilizationMode, string>> = {
+  off: 'Off',
+  lock: 'Lock',
+  horizon: 'Horizon',
+  follow: 'Follow',
+};
+const VIEW_MODE_LABELS: Readonly<Record<ViewMode, string>> = {
+  normal: 'Normal',
+  equirectangular: 'Equirectangular',
+  'raw-lenses': 'Raw lenses',
+};
+const QUALITY_LABELS: Readonly<Record<Quality, string>> = {
+  auto: 'Auto',
+  full: 'Full',
+  proxy: 'Proxy',
+};
+
+function optionsOf<Choice extends string>(
+  choices: readonly Choice[],
+  labels: Readonly<Record<Choice, string>>,
+): string {
+  return choices.map((choice) => `<option value="${choice}">${labels[choice]}</option>`).join('');
+}
 
 /**
  * The shadow tree, built once per element. Class names are the contract between this markup,
@@ -32,24 +67,17 @@ export const ELEMENT_TEMPLATE = `
     <div class="menu" hidden>
       <label>Stabilization
         <select class="stabilization" aria-label="Stabilization">
-          <option value="off">Off</option>
-          <option value="lock">Lock</option>
-          <option value="horizon">Horizon</option>
-          <option value="follow">Follow</option>
+          ${optionsOf(STABILIZATION_MODES, STABILIZATION_LABELS)}
         </select>
       </label>
       <label>View
         <select class="view-mode" aria-label="View">
-          <option value="normal">Normal</option>
-          <option value="equirectangular">Equirectangular</option>
-          <option value="raw-lenses">Raw lenses</option>
+          ${optionsOf(VIEW_MODES, VIEW_MODE_LABELS)}
         </select>
       </label>
       <label class="quality-row" hidden>Quality
         <select class="quality" aria-label="Quality">
-          <option value="auto">Auto</option>
-          <option value="full">Full</option>
-          <option value="proxy">Proxy</option>
+          ${optionsOf(QUALITIES, QUALITY_LABELS)}
         </select>
       </label>
     </div>

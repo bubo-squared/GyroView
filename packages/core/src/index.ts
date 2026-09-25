@@ -58,7 +58,12 @@ export {
   type IntegrationOptions,
   type OrientationTrackParts,
 } from './domain/motion/orientation/OrientationTrack';
-export type { StabilizationMode, Stabilizer } from './domain/motion/stabilization/Stabilizer';
+export {
+  DEFAULT_STABILIZATION_MODE,
+  STABILIZATION_MODES,
+  type StabilizationMode,
+  type Stabilizer,
+} from './domain/motion/stabilization/Stabilizer';
 export {
   FollowStabilization,
   HorizonStabilization,

@@ -1,4 +1,5 @@
 import {
+  DEFAULT_STABILIZATION_MODE,
   DEFAULT_VIEW,
   DEFAULT_VIEW_MODE,
   GyroViewError,
@@ -56,7 +57,7 @@ const INITIAL_STATE: EmbedState = {
   isMuted: false,
   view: DEFAULT_VIEW,
   viewMode: DEFAULT_VIEW_MODE,
-  stabilization: 'lock',
+  stabilization: DEFAULT_STABILIZATION_MODE,
   metadata: undefined,
 };
 

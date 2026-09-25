@@ -4,7 +4,7 @@ import { queryControlParts, type ControlParts } from './controlParts';
 import { formatTime } from './formatTime';
 import type { Player } from '../player/Player';
 import { stabilizationFromAttribute, viewModeFromAttribute } from '../element/attributes';
-import type { Quality } from '../PlayerSource';
+import { QUALITIES, type Quality } from '../PlayerSource';
 
 /**
  * What the bar asks of the element beyond the player itself.
@@ -22,7 +22,6 @@ const PLAY_GLYPH = '▶';
 const PAUSE_GLYPH = '⏸';
 const SOUND_GLYPH = '🔊';
 const MUTED_GLYPH = '🔇';
-const QUALITIES: readonly Quality[] = ['auto', 'full', 'proxy'];
 
 /**
  * Binds the control bar in the shadow tree to the player: transport, seek bar, volume, the

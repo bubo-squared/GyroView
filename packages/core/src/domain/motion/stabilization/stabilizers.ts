@@ -15,8 +15,6 @@ import { WORLD_DOWN } from '../orientation/gravity';
  * The picture moves with the camera, as recorded.
  */
 export class OffStabilization implements Stabilizer {
-  public readonly mode = 'off';
-
   public rotationFor(): Matrix3 {
     return IDENTITY_MATRIX3;
   }
@@ -26,8 +24,6 @@ export class OffStabilization implements Stabilizer {
  * The view is fixed to the world: camera motion disappears entirely.
  */
 export class LockStabilization implements Stabilizer {
-  public readonly mode = 'lock';
-
   public rotationFor(orientation: Quaternion): Matrix3 {
     return quaternionToMatrix(conjugateQuaternion(orientation));
   }
@@ -37,8 +33,6 @@ export class LockStabilization implements Stabilizer {
  * The horizon stays level but the view turns with the camera's heading.
  */
 export class HorizonStabilization implements Stabilizer {
-  public readonly mode = 'horizon';
-
   public rotationFor(orientation: Quaternion): Matrix3 {
     const heading = quaternionFromAxisAngle(WORLD_DOWN, headingOf(orientation));
     return multiplyMatrices(
@@ -71,7 +65,6 @@ const DEFAULT_FOLLOW_OPTIONS: FollowOptions = {
  * The view follows the camera's direction smoothly, removing shake but not intended motion.
  */
 export class FollowStabilization implements Stabilizer {
-  public readonly mode = 'follow';
   private smoothed: Quaternion | undefined;
   private previousTime: Seconds | undefined;
 
@@ -99,21 +92,18 @@ export class FollowStabilization implements Stabilizer {
   }
 }
 
+const STABILIZERS: Readonly<Record<StabilizationMode, () => Stabilizer>> = {
+  off: () => new OffStabilization(),
+  lock: () => new LockStabilization(),
+  horizon: () => new HorizonStabilization(),
+  follow: () => new FollowStabilization(),
+};
+
+/**
+ * A fresh strategy for the mode; stateful ones start from nothing.
+ */
 export function stabilizerFor(mode: StabilizationMode): Stabilizer {
-  switch (mode) {
-    case 'off': {
-      return new OffStabilization();
-    }
-    case 'lock': {
-      return new LockStabilization();
-    }
-    case 'horizon': {
-      return new HorizonStabilization();
-    }
-    case 'follow': {
-      return new FollowStabilization();
-    }
-  }
+  return STABILIZERS[mode]();
 }
 
 /**

@@ -1,4 +1,5 @@
 import {
+  DEFAULT_STABILIZATION_MODE,
   Deferred,
   GyroViewError,
   seconds,
@@ -25,8 +26,6 @@ import { hasErrorCode, isAbortError, messageOf } from '../composition/errorCodes
 import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
 
-const DEFAULT_STABILIZATION: StabilizationMode = 'lock';
-
 /**
  * Headless player: the facade every host (the element, the embed bridge) drives. Owns one
  * loaded recording at a time, relays the session's events in media-element terms, and owns the
@@ -38,7 +37,7 @@ export class Player {
   private readonly loop: FrameLoop;
   private phase: PlayerPhase = IDLE;
   private readonly viewing = new PlayerView(this.events);
-  private stabilizationMode: StabilizationMode = DEFAULT_STABILIZATION;
+  private stabilizationMode: StabilizationMode = DEFAULT_STABILIZATION_MODE;
   private isGainMatching = true;
   private isLoopingValue = false;
   private lastStatus: PlayerStatus = 'idle';

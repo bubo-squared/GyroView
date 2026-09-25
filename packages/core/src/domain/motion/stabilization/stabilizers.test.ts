@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { STABILIZATION_MODES } from './Stabilizer';
 import {
   FollowStabilization,
   HorizonStabilization,
@@ -110,7 +111,11 @@ describe('stabilizers', () => {
   });
 
   it('builds the strategy for each mode', () => {
-    const modes = ['off', 'lock', 'horizon', 'follow'] as const;
-    expect(modes.map((mode) => stabilizerFor(mode).mode)).toEqual([...modes]);
+    expect(STABILIZATION_MODES.map((mode) => stabilizerFor(mode).constructor)).toEqual([
+      OffStabilization,
+      LockStabilization,
+      HorizonStabilization,
+      FollowStabilization,
+    ]);
   });
 });

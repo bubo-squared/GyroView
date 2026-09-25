@@ -1,13 +1,20 @@
 import {
   clampView,
   degrees,
+  STABILIZATION_MODES,
   VIEW_MODES,
   type StabilizationMode,
   type ViewMode,
   type ViewState,
 } from '@gyroview/core';
 
-import type { MediaInput, PlayerSource, Quality } from '../PlayerSource';
+import {
+  DEFAULT_QUALITY,
+  QUALITIES,
+  type MediaInput,
+  type PlayerSource,
+  type Quality,
+} from '../PlayerSource';
 
 /**
  * Reads one attribute of the element, `null` when absent, like `Element.getAttribute`.
@@ -58,8 +65,6 @@ export const OBSERVED_ATTRIBUTES: readonly string[] = [
   ...Object.values(PlaybackAttribute),
 ];
 
-const STABILIZATION_MODES: readonly StabilizationMode[] = ['off', 'lock', 'horizon', 'follow'];
-const QUALITIES: readonly Quality[] = ['auto', 'full', 'proxy'];
 const PROXY_AUTO = 'auto';
 const PROXY_NONE = 'none';
 
@@ -88,7 +93,7 @@ export function sourceFromAttributes(read: AttributeReader, baseUrl: string): Pa
     second: second === null || second.trim() === '' ? undefined : urlInput(second, baseUrl),
     proxy: proxy.input,
     shouldDiscoverProxy: proxy.shouldDiscover,
-    quality: quality ?? 'auto',
+    quality: quality ?? DEFAULT_QUALITY,
   };
   return { source, problems };
 }

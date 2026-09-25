@@ -21,6 +21,9 @@ export type MediaInput = UrlInput | BlobInput;
  */
 export type Quality = 'auto' | 'full' | 'proxy';
 
+export const QUALITIES: readonly Quality[] = ['auto', 'full', 'proxy'];
+export const DEFAULT_QUALITY: Quality = 'auto';
+
 /**
  * Everything that names what to play. The second input is the other lens's file of a
  * split-file recording; the proxy is the camera's low-resolution rendition.

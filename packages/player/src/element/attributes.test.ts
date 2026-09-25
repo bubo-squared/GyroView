@@ -1,4 +1,4 @@
-import { DEFAULT_VIEW } from '@gyroview/core';
+import { DEFAULT_VIEW, degrees } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,7 +8,7 @@ import {
   parseNumber,
   sourceFromAttributes,
   stabilizationFromAttribute,
-  viewFromAttributes,
+  viewAfterAttribute,
   viewModeFromAttribute,
 } from './attributes';
 
@@ -60,16 +60,16 @@ describe('sourceFromAttributes', () => {
 });
 
 describe('view and playback attributes', () => {
-  it('builds a clamped view from fov, yaw and pitch over the fallback', () => {
-    const view = viewFromAttributes(readerOf({ fov: '75', yaw: '370' }), DEFAULT_VIEW);
-    expect(view).toEqual({ yaw: 10, pitch: 0, fieldOfView: 75 });
-    expect(viewFromAttributes(readerOf({ fov: '300' }), DEFAULT_VIEW).fieldOfView).toBe(120);
+  it('changes only the angle the attribute names, clamped, and keeps the others', () => {
+    const turned = { ...DEFAULT_VIEW, pitch: degrees(-20) };
+    expect(viewAfterAttribute(turned, 'yaw', '370')).toEqual({ ...turned, yaw: 10 });
+    expect(viewAfterAttribute(turned, 'fov', '300').fieldOfView).toBe(120);
   });
 
-  it('keeps the fallback for absent or unreadable numbers', () => {
-    expect(viewFromAttributes(readerOf({ fov: 'wide', pitch: '' }), DEFAULT_VIEW)).toEqual(
-      DEFAULT_VIEW,
-    );
+  it('keeps the view for an absent or unreadable value or another attribute', () => {
+    expect(viewAfterAttribute(DEFAULT_VIEW, 'fov', 'wide')).toBe(DEFAULT_VIEW);
+    expect(viewAfterAttribute(DEFAULT_VIEW, 'pitch', null)).toBe(DEFAULT_VIEW);
+    expect(viewAfterAttribute(DEFAULT_VIEW, 'loop', '5')).toBe(DEFAULT_VIEW);
     expect(parseNumber('1e3')).toBe(1000);
     expect(parseNumber('NaN')).toBeUndefined();
   });

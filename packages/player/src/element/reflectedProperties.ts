@@ -18,22 +18,6 @@ export function defineStringProperties(element: HTMLElement, names: readonly str
   }
 }
 
-export function defineNumberProperties(element: HTMLElement, names: readonly string[]): void {
-  for (const name of names) {
-    Object.defineProperty(element, propertyNameOf(name), {
-      configurable: true,
-      enumerable: true,
-      get(this: HTMLElement): number | undefined {
-        const value = this.getAttribute(name);
-        return value === null ? undefined : Number(value);
-      },
-      set(this: HTMLElement, value: number | undefined): void {
-        writeAttribute(this, name, value === undefined ? null : String(value));
-      },
-    });
-  }
-}
-
 export function defineBooleanProperties(element: HTMLElement, names: readonly string[]): void {
   for (const name of names) {
     Object.defineProperty(element, propertyNameOf(name), {

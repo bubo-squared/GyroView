@@ -47,8 +47,11 @@ until play; otherwise the first frame shows at once), `gain-match` (`off` leaves
 exposure as recorded), `fov` (30 to 120 degrees), `yaw`, `pitch`, `view-mode` (`normal`;
 `equirectangular` for the whole sphere as a level 2:1 panorama; `raw-lenses` for the decoded
 lens images side by side, unstitched and as recorded) and `stabilization` (`off`, `lock`,
-`horizon`, `follow`). Every attribute is also a property (`gainMatch` for `gain-match`,
-`viewMode` for `view-mode`).
+`horizon`, `follow`). The settings (`stabilization`, `view-mode`, `fov`, `yaw`, `pitch`,
+`muted`, `loop`) are applied when their attribute changes, and their properties (`viewMode` for
+`view-mode`, plus `volume`) report and change the setting in effect, as a video's `muted`
+property does, however it was last changed. The other attributes are mirrored by properties
+(`gainMatch` for `gain-match`).
 
 API: `play()`, `pause()`, `stop()`, `seek(seconds)`, `scrub(seconds)` (to the key frame at or
 before the time, for a dragged seek bar), `currentTime`, `duration`, `paused`, `status`,
@@ -159,4 +162,4 @@ calibration string interpretation, 0006 Node 24 toolchain, 0007 the audio elemen
 clock, 0008 stitching frames and poses, 0009 IMU frame and stabilization, 0010 player
 composition and embedding, 0011 sound follows the picture, 0012 gain matching along the seam,
 0013 byte-range reads bypass the browser cache, 0014 the frame shows the whole calibration
-square, 0015 view modes replace projections.
+square, 0015 view modes replace projections, 0016 the player owns its settings.

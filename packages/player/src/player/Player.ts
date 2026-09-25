@@ -27,8 +27,9 @@ const DEFAULT_STABILIZATION: StabilizationMode = 'lock';
 
 /**
  * Headless player: the facade every host (the element, the embed bridge) drives. Owns one
- * loaded recording at a time, relays the session's events in media-element terms and keeps
- * the view and stabilization settings across loads. Everything DOM it touches is handed in.
+ * loaded recording at a time, relays the session's events in media-element terms, and owns the
+ * settings (view, view mode, stabilization, gain matching, sound, loop), which carry over from
+ * load to load. Everything DOM it touches is handed in.
  */
 export class Player {
   public readonly events = new TypedEmitter<PlayerEvents>();
@@ -112,7 +113,6 @@ export class Player {
     this.unload();
     const controller = new AbortController();
     this.loading = controller;
-    this.applyOptions(options);
     this.setStatus('loading');
     try {
       const loaded = await this.open(source, controller.signal);
@@ -237,12 +237,6 @@ export class Player {
   public dispose(): void {
     this.unload();
     this.events.removeAll();
-  }
-
-  private applyOptions(options: LoadOptions): void {
-    this.viewing.restore(options);
-    if (options.stabilization) this.stabilizationMode = options.stabilization;
-    if (options.gainMatching !== undefined) this.isGainMatching = options.gainMatching;
   }
 
   private async open(source: PlayerSource, signal: AbortSignal): Promise<LoadedRecording> {

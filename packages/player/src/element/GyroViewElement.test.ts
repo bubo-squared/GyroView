@@ -148,7 +148,7 @@ describe('<gyro-view>', () => {
     await waitFor(() => element.paused, 'pause by keyboard');
 
     key('m');
-    expect(element.muted).toBe(false);
+    expect(element.muted).toBe(true);
     key('ArrowRight');
     expect(element.view.yaw).toBe(5);
     key('-');
@@ -221,6 +221,40 @@ describe('<gyro-view>', () => {
       setTimeout(resolve, 50);
     });
     expect(readies).toEqual([]);
+  });
+
+  it('keeps a setting chosen in the menu when a change of quality reloads', async () => {
+    const element = await createReady({ stabilization: 'horizon' });
+    const menuChoice = control(element, '.stabilization', HTMLSelectElement);
+    menuChoice.value = 'off';
+    menuChoice.dispatchEvent(new Event('change'));
+    const reloaded = nextEvent(element, 'ready');
+    element.quality = 'full';
+    await reloaded;
+    expect(element.stabilization).toBe('off');
+    expect(menuChoice.value).toBe('off');
+  });
+
+  it('reports the settings in effect whether or not an attribute names them', async () => {
+    const element = await createReady();
+    expect(element.stabilization).toBe('lock');
+    expect(element.viewMode).toBe('normal');
+    expect(element.fov).toBe(90);
+    expect(element.muted).toBe(false);
+  });
+
+  it('refuses a setting value it cannot take', async () => {
+    const element = await createReady();
+    const setStabilization = (value: string): void => {
+      (element as unknown as { stabilization: string }).stabilization = value;
+    };
+    expect(() => {
+      setStabilization('wobble');
+    }).toThrow(expect.objectContaining({ code: 'invalid-argument' }));
+    expect(() => {
+      element.fov = NaN;
+    }).toThrow(expect.objectContaining({ code: 'invalid-argument' }));
+    expect(element.stabilization).toBe('lock');
   });
 
   it('shows an error overlay for a source it cannot read and recovers on a new src', async () => {

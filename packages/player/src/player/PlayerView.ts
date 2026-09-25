@@ -15,7 +15,6 @@ import {
 } from '@gyroview/core';
 
 import type { PlayerEvents } from './PlayerEvents';
-import type { LoadOptions } from './PlayerOptions';
 
 /**
  * The part of the renderer the view drives.
@@ -40,14 +39,6 @@ export class PlayerView {
 
   public get viewMode(): ViewMode {
     return this.mode;
-  }
-
-  /**
-   * The view and mode the next load starts from. Not announced: nothing shows them yet.
-   */
-  public restore(options: Pick<LoadOptions, 'view' | 'viewMode'>): void {
-    if (options.view) this.state = clampView(options.view);
-    if (options.viewMode) this.mode = options.viewMode;
   }
 
   /**

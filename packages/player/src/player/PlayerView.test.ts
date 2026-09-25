@@ -91,12 +91,8 @@ describe('PlayerView', () => {
     expect(drawn).toEqual(['equirectangular']);
   });
 
-  it('restores the view and mode of a coming load quietly and still announces without a renderer', () => {
-    const { view, drawn, views, modes } = recordedView();
-    view.restore({ view: { ...DEFAULT_VIEW, pitch: degrees(120) }, viewMode: 'equirectangular' });
-    expect(view.current.pitch).toBe(90);
-    expect(view.viewMode).toBe('equirectangular');
-    expect([...views, ...modes]).toEqual([]);
+  it('still announces changes between loads, with no renderer to draw them', () => {
+    const { view, drawn, views } = recordedView();
     view.attach(undefined);
     view.lookAt(degrees(10), degrees(0));
     expect(drawn).toEqual([]);

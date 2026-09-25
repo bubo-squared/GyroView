@@ -1,5 +1,3 @@
-import type { StabilizationMode, ViewMode, ViewState } from '@gyroview/core';
-
 import type { FrameScheduler } from './FrameLoop';
 import type { PipelineHost } from '../composition/buildPipeline';
 import type { RecordingPorts } from '../composition/ports';
@@ -10,10 +8,11 @@ export interface PlayerParts {
   readonly scheduler?: FrameScheduler;
 }
 
+/**
+ * What concerns one load only. The settings (view, view mode, stabilization, gain matching,
+ * sound, loop) belong to the player and carry over from load to load; set them on the player.
+ */
 export interface LoadOptions {
-  readonly view?: ViewState;
-  readonly viewMode?: ViewMode;
-  readonly stabilization?: StabilizationMode;
   /**
    * Start as soon as the recording is ready; a refusal by the autoplay policy is a warning.
    */
@@ -23,8 +22,4 @@ export interface LoadOptions {
    * canvas. Default true; off keeps the decoders idle until play.
    */
   readonly preload?: boolean;
-  /**
-   * Match the lenses' exposure along the seam. Default true.
-   */
-  readonly gainMatching?: boolean;
 }

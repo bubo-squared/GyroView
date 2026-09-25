@@ -99,6 +99,13 @@ describe('the embed bridge over a message channel', () => {
     expect(afterSettings.status).toBe('paused');
   });
 
+  it('reports the settings in effect though no attribute names them', async () => {
+    const { handle } = bridge();
+    const state = await handle.getState();
+    expect(state.stabilization).toBe('lock');
+    expect(state.viewMode).toBe('normal');
+  });
+
   it('rejects a command with a bad argument without breaking the others', async () => {
     const { handle, element } = bridge();
     await expect(handle.seek(NaN)).rejects.toMatchObject({

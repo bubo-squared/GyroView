@@ -2,7 +2,6 @@ import {
   clampView,
   degrees,
   VIEW_MODES,
-  type Degrees,
   type StabilizationMode,
   type ViewMode,
   type ViewState,
@@ -118,20 +117,23 @@ function urlInput(value: string, baseUrl: string): MediaInput {
   return { url: new URL(value.trim(), baseUrl).href };
 }
 
-/**
- * The view the attributes ask for, starting from `fallback` for whatever they leave out.
- */
-export function viewFromAttributes(read: AttributeReader, fallback: ViewState): ViewState {
-  return clampView({
-    yaw: angleOf(read(ViewAttribute.Yaw), fallback.yaw),
-    pitch: angleOf(read(ViewAttribute.Pitch), fallback.pitch),
-    fieldOfView: angleOf(read(ViewAttribute.FieldOfView), fallback.fieldOfView),
-  });
-}
+const VIEW_ANGLES: Readonly<Record<string, keyof ViewState>> = {
+  [ViewAttribute.FieldOfView]: 'fieldOfView',
+  [ViewAttribute.Yaw]: 'yaw',
+  [ViewAttribute.Pitch]: 'pitch',
+};
 
-function angleOf(value: string | null, fallback: Degrees): Degrees {
+/**
+ * The view after one view attribute changed: the angle it names replaces the view's; an absent
+ * or unreadable value leaves the view as it is. The other angles are not read again, so what the
+ * viewer changed since is kept.
+ */
+export function viewAfterAttribute(view: ViewState, name: string, value: string | null): ViewState {
+  const angle = VIEW_ANGLES[name];
   const parsed = parseNumber(value);
-  return parsed === undefined ? fallback : degrees(parsed);
+  return angle === undefined || parsed === undefined
+    ? view
+    : clampView({ ...view, [angle]: degrees(parsed) });
 }
 
 export function qualityFromAttribute(value: string | null): Quality | undefined {

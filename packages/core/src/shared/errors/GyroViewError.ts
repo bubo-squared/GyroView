@@ -8,6 +8,7 @@ export type GyroViewErrorCode =
   | 'cors'
   | 'decode'
   | 'index-out-of-range'
+  | 'invalid-argument'
   | 'invalid-byte-range'
   | 'invalid-calibration'
   | 'invalid-protobuf'

@@ -12,20 +12,15 @@ import {
   PlaybackAttribute,
   shouldPreload,
   SourceAttribute,
-  stabilizationFromAttribute,
+  viewAfterAttribute,
   ViewAttribute,
-  viewFromAttributes,
-  viewModeFromAttribute,
 } from './attributes';
 import { elementSourceOf, type FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
 import { IdleWatcher } from './IdleWatcher';
 import { applyPlaybackAttribute } from './playbackAttributes';
-import {
-  defineBooleanProperties,
-  defineNumberProperties,
-  defineStringProperties,
-} from './reflectedProperties';
+import { defineLiveSettings } from './liveSettings';
+import { defineBooleanProperties, defineStringProperties } from './reflectedProperties';
 import { relayPlayerEvents } from './relayPlayerEvents';
 import { ELEMENT_TEMPLATE } from './template';
 import { browserPorts } from '../composition/browserPorts';
@@ -36,28 +31,26 @@ import { ViewGestures } from '../controls/ViewGestures';
 import { Player } from '../player/Player';
 import type { PlayerStatus } from '../player/PlayerEvents';
 import type { PlayerMetadata } from '../PlayerMetadata';
+/**
+ * Attributes whose properties mirror them, as `img.src` does: what to play and how to present
+ * it. The live settings (stabilization, view mode, view angles, sound, loop) have properties of
+ * their own that report the player's current state.
+ */
 const STRING_ATTRIBUTES = [
   ...Object.values(SourceAttribute),
-  PlaybackAttribute.Stabilization,
   PlaybackAttribute.Poster,
   PlaybackAttribute.Preload,
   PlaybackAttribute.GainMatch,
-  PlaybackAttribute.ViewMode,
 ];
-const NUMBER_ATTRIBUTES = [ViewAttribute.FieldOfView, ViewAttribute.Yaw, ViewAttribute.Pitch];
-const BOOLEAN_ATTRIBUTES = [
-  PlaybackAttribute.Autoplay,
-  PlaybackAttribute.Muted,
-  PlaybackAttribute.Loop,
-  PlaybackAttribute.Controls,
-];
+const BOOLEAN_ATTRIBUTES = [PlaybackAttribute.Autoplay, PlaybackAttribute.Controls];
 const SOURCE_ATTRIBUTES: readonly string[] = Object.values(SourceAttribute);
 const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);
 
 /**
- * `<gyro-view>`: the player as an element. Attributes name what to play and how; properties
- * mirror them; the player's events are dispatched as `CustomEvent`s of the same name with the
- * payload in `detail`. Facade over {@link Player}, the controls and the gestures.
+ * `<gyro-view>`: the player as an element. Attributes name what to play and configure the
+ * settings; the settings' properties report what is in effect now, as a media element's `muted`
+ * does; the player's events are dispatched as `CustomEvent`s of the same name with the payload
+ * in `detail`. Facade over {@link Player}, the controls and the gestures (ADR 0016).
  */
 export class GyroViewElement extends HTMLElement {
   public static readonly observedAttributes = OBSERVED_ATTRIBUTES;
@@ -65,16 +58,17 @@ export class GyroViewElement extends HTMLElement {
   declare public src2: string | null;
   declare public proxy: string | null;
   declare public quality: string | null;
-  declare public stabilization: string | null;
-  declare public viewMode: string | null;
   declare public poster: string | null;
-  declare public fov: number | undefined;
-  declare public yaw: number | undefined;
-  declare public pitch: number | undefined;
   declare public autoplay: boolean;
+  declare public controls: boolean;
+  declare public stabilization: StabilizationMode;
+  declare public viewMode: ViewMode;
+  declare public fov: number;
+  declare public yaw: number;
+  declare public pitch: number;
   declare public muted: boolean;
   declare public loop: boolean;
-  declare public controls: boolean;
+  declare public volume: number;
   private readonly player: Player;
   private readonly controlsBar: ControlsBar;
   private readonly gestures: ViewGestures;
@@ -90,7 +84,6 @@ export class GyroViewElement extends HTMLElement {
   public constructor() {
     super();
     defineStringProperties(this, STRING_ATTRIBUTES);
-    defineNumberProperties(this, NUMBER_ATTRIBUTES);
     defineBooleanProperties(this, BOOLEAN_ATTRIBUTES);
     const shadow = this.attachShadow({ mode: 'open' });
     shadow.innerHTML = ELEMENT_TEMPLATE;
@@ -100,6 +93,7 @@ export class GyroViewElement extends HTMLElement {
     this.errorMessage = queryShadow(shadow, '.error-message', HTMLElement);
     this.errorCode = queryShadow(shadow, '.error-code', HTMLElement);
     this.player = new Player({ host: { canvas, audio }, ports: browserPorts() });
+    defineLiveSettings(this, this.player);
     this.controlsBar = new ControlsBar(shadow, {
       player: this.player,
       toggleFullscreen: this.toggleFullscreenLater,
@@ -141,14 +135,6 @@ export class GyroViewElement extends HTMLElement {
     return this.player.view;
   }
 
-  public get volume(): number {
-    return this.player.volume;
-  }
-
-  public set volume(volume: number) {
-    this.player.setVolume(volume);
-  }
-
   public connectedCallback(): void {
     if (!this.hasAttribute('tabindex')) this.tabIndex = 0;
     this.dataset['status'] = this.player.status;
@@ -170,7 +156,7 @@ export class GyroViewElement extends HTMLElement {
       this.files = undefined;
       this.scheduleLoad();
     } else if (VIEW_ATTRIBUTES.includes(name)) {
-      this.player.setView(this.viewFromAttributes());
+      this.player.setView(viewAfterAttribute(this.player.view, name, value));
     } else {
       applyPlaybackAttribute({ player: this.player, posterImage: this.posterImage }, name, value);
     }
@@ -281,24 +267,13 @@ export class GyroViewElement extends HTMLElement {
       this.player.unload();
       return;
     }
-    const stabilization = stabilizationFromAttribute(read(PlaybackAttribute.Stabilization));
-    const viewMode = viewModeFromAttribute(read(PlaybackAttribute.ViewMode));
-    this.player.setMuted(this.muted);
-    this.player.setLooping(this.loop);
     this.controlsBar.setQuality(source.quality);
     void this.player
       .load(source, {
-        view: this.viewFromAttributes(),
         autoplay: this.autoplay,
         preload: shouldPreload(read(PlaybackAttribute.Preload)),
-        ...(stabilization && { stabilization }),
-        ...(viewMode && { viewMode }),
       })
       .catch(ignoreReportedFailure);
-  }
-
-  private viewFromAttributes(): ViewState {
-    return viewFromAttributes((attribute) => this.getAttribute(attribute), this.player.view);
   }
 
   /**

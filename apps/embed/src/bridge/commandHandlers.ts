@@ -1,9 +1,4 @@
-import {
-  DEFAULT_VIEW_MODE,
-  GyroViewError,
-  VIEW_MODES,
-  type StabilizationMode,
-} from '@gyroview/core';
+import { GyroViewError, VIEW_MODES, type StabilizationMode } from '@gyroview/core';
 import type { GyroViewElement } from '@gyroview/player';
 
 import type { EmbedState, LoadRequest } from './EmbedState';
@@ -60,8 +55,8 @@ function stateOf(element: GyroViewElement): EmbedState {
     duration: element.duration,
     isPaused: element.paused,
     view: element.view,
-    stabilization: element.stabilization as StabilizationMode,
-    viewMode: VIEW_MODES.find((mode) => mode === element.viewMode) ?? DEFAULT_VIEW_MODE,
+    stabilization: element.stabilization,
+    viewMode: element.viewMode,
     metadata: element.metadata,
   };
 }

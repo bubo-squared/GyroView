@@ -103,6 +103,13 @@ export {
   type ViewMode,
   type ViewModeRules,
 } from './domain/view/ViewMode';
+export type {
+  EquirectangularPicture,
+  LensTilesPicture,
+  Picture,
+  PictureKind,
+  RectilinearPicture,
+} from './domain/view/Picture';
 export {
   fittedRectangle,
   lensTiles,

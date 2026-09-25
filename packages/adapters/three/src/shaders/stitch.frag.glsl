@@ -1,8 +1,8 @@
+// The stitched sphere through the picture's rays: each lens's texel for the ray, weighted across
+// the feather band and matched in exposure.
 uniform mat3 uViewRotation;
 uniform mat3 uStabilization;
-uniform int uViewMode;
-uniform float uPlaneHalfExtent;
-uniform float uPictureAspect;
+uniform vec3 uLensGain[MAX_LENSES];
 
 in vec2 vNdc;
 out vec4 outColor;
@@ -13,7 +13,7 @@ void main() {
     outColor = vec4(0.0, 0.0, 0.0, 1.0);
     return;
   }
-  vec3 dirView = rayThroughPicture(point, uViewMode, uPlaneHalfExtent, uPictureAspect);
+  vec3 dirView = rayThroughPicture(point);
   vec3 dirBody = uStabilization * (uViewRotation * dirView);
   vec3 sum = vec3(0.0);
   float weightSum = 0.0;

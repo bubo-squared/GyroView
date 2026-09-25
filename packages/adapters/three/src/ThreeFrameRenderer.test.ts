@@ -1,37 +1,28 @@
 import {
   buildStitchingSetup,
-  CalibrationVersion,
-  DEFAULT_HALF_FIELD_OF_VIEW,
   DEFAULT_VIEW,
   degrees,
-  EquidistantModel,
   equirectangularPixelOf,
-  FULL_FRAME,
-  LEFT_HALF,
   lensRotation,
   LockStabilization,
   parseOffsetString,
   quaternionFromAxisAngle,
   radians,
-  RIGHT_HALF,
   seconds,
   transformVector,
-  type CalibrationSet,
   type DecodedFrame,
-  type LensLayout,
   type Presentation,
   type StitchingSetup,
   type Vector3,
 } from '@gyroview/core';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { MULTI_TRACK, PACKED, syntheticCalibration } from './test/syntheticStitching';
 import { ThreeFrameRenderer } from './ThreeFrameRenderer';
 
 const WIDTH = 64;
 const HEIGHT = 32;
 const SIZE = { width: WIDTH, height: HEIGHT };
-const SQUARE = 1000;
-const HALF_SQUARE = 500;
 const BRIGHT = 200;
 const DIM = 40;
 const MIXED = 60;
@@ -50,48 +41,6 @@ const GRADIENT_TOLERANCE = 2 / 255;
  */
 const OFFICE_MEI =
   '2_2.000000_4296.660_4295.450_2689.890_2681.940_-0.002_0.377_90.524_0.000000_0.000000_0.000000_0.18113680_2.16784811_-3.49636626_-0.00016818_-0.00010206_10752_5376_113_2.000000_4281.830_4282.190_8082.100_2679.470_0.289_0.043_89.987_-0.000907_-0.000055_-0.032061_0.18382449_2.06260586_-3.21479726_0.00075291_0.00063732_10752_5376_113_197632';
-
-/**
- * Two ideal 200-degree lenses back to back on a canvas of two squares, no pose corrections.
- */
-function syntheticCalibration(): CalibrationSet {
-  const lens = (lensIndex: number): CalibrationSet['lenses'][number] => ({
-    lensIndex,
-    model: new EquidistantModel(
-      {
-        edgeRadius: HALF_SQUARE,
-        principalPoint: { x: lensIndex * SQUARE + HALF_SQUARE, y: HALF_SQUARE },
-      },
-      DEFAULT_HALF_FIELD_OF_VIEW,
-    ),
-    orientation: { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) },
-    translation: [0, 0, 0],
-    lensType: undefined,
-  });
-  return {
-    version: CalibrationVersion.Legacy,
-    canvas: { width: 2 * SQUARE, height: SQUARE },
-    lenses: [lens(0), lens(1)],
-  };
-}
-
-const MULTI_TRACK: LensLayout = {
-  kind: 'multi-track',
-  sources: [
-    { lensIndex: 0, inputIndex: 0, trackIndex: 0, region: FULL_FRAME },
-    { lensIndex: 1, inputIndex: 0, trackIndex: 1, region: FULL_FRAME },
-  ],
-  evidence: [],
-};
-
-const PACKED: LensLayout = {
-  kind: 'packed',
-  sources: [
-    { lensIndex: 0, inputIndex: 0, trackIndex: 0, region: LEFT_HALF },
-    { lensIndex: 1, inputIndex: 0, trackIndex: 0, region: RIGHT_HALF },
-  ],
-  evidence: [],
-};
 
 function frameOf(
   paint: (context: CanvasRenderingContext2D, size: number) => void,

@@ -1,8 +1,9 @@
 import { EQUIRECTANGULAR_ASPECT } from './equirectangular';
-import { fittedRectangle, lensTiles, WHOLE_SCREEN, type ScreenRectangle } from './screenLayout';
+import type { Picture } from './Picture';
+import { fittedRectangle, lensTiles, WHOLE_SCREEN } from './screenLayout';
 import { lookAt, panView, zoomView, type DragDelta } from './viewGestures';
 import { FULL_TURN, viewRotation, type ViewState } from './ViewState';
-import { IDENTITY_MATRIX3, rotationAboutY, type Matrix3 } from '../../shared/math/Matrix3';
+import { rotationAboutY } from '../../shared/math/Matrix3';
 import { degrees, degreesToRadians, type Degrees } from '../../shared/units/angle';
 
 /**
@@ -16,8 +17,8 @@ export const VIEW_MODES: readonly ViewMode[] = ['normal', 'equirectangular', 'ra
 export const DEFAULT_VIEW_MODE: ViewMode = 'normal';
 
 /**
- * Strategy: how one view mode answers the viewer's gestures and where it draws the picture. A
- * mode leaves alone what it does not show, so the normal view survives a detour through another.
+ * Strategy: how one view mode answers the viewer's gestures and what it draws. A mode leaves
+ * alone what it does not show, so the normal view survives a detour through another.
  */
 export interface ViewModeRules {
   /**
@@ -30,14 +31,9 @@ export interface ViewModeRules {
   turn(view: ViewState, yawDelta: Degrees, pitchDelta: Degrees): ViewState;
   zoom(view: ViewState, steps: number): ViewState;
   /**
-   * Turns the drawn picture's directions into the stabilized frame the viewer looks around in.
+   * The picture for this view on a viewport `viewportAspect` wide per unit of height.
    */
-  rotation(view: ViewState): Matrix3;
-  /**
-   * Where the picture goes on a viewport `viewportAspect` wide per unit of height: one area for
-   * a stitched picture, one per lens when the lenses are shown apart.
-   */
-  screenAreas(viewportAspect: number, lensCount: number): readonly ScreenRectangle[];
+  picture(view: ViewState, viewportAspect: number, lensCount: number): Picture;
 }
 
 const NORMAL: ViewModeRules = {
@@ -45,8 +41,12 @@ const NORMAL: ViewModeRules = {
   turn: (view, yawDelta, pitchDelta) =>
     lookAt(view, degrees(view.yaw + yawDelta), degrees(view.pitch + pitchDelta)),
   zoom: zoomView,
-  rotation: viewRotation,
-  screenAreas: () => [WHOLE_SCREEN],
+  picture: (view) => ({
+    kind: 'rectilinear',
+    rotation: viewRotation(view),
+    fieldOfView: view.fieldOfView,
+    area: WHOLE_SCREEN,
+  }),
 };
 
 /**
@@ -62,20 +62,25 @@ const EQUIRECTANGULAR: ViewModeRules = {
     ),
   turn: (view, yawDelta) => lookAt(view, degrees(view.yaw + yawDelta), view.pitch),
   zoom: (view) => view,
-  rotation: (view) => rotationAboutY(degreesToRadians(view.yaw)),
-  screenAreas: (viewportAspect) => [fittedRectangle(EQUIRECTANGULAR_ASPECT, viewportAspect)],
+  picture: (view, viewportAspect) => ({
+    kind: 'equirectangular',
+    rotation: rotationAboutY(degreesToRadians(view.yaw)),
+    area: fittedRectangle(EQUIRECTANGULAR_ASPECT, viewportAspect),
+  }),
 };
 
 /**
- * The decoded images as the camera recorded them: nothing turns, zooms or rotates them, so the
- * view waits unchanged for the stitched modes.
+ * The decoded images as the camera recorded them: nothing turns or zooms them, so the view waits
+ * unchanged for the stitched modes.
  */
 const RAW_LENSES: ViewModeRules = {
   pan: (view) => view,
   turn: (view) => view,
   zoom: (view) => view,
-  rotation: () => IDENTITY_MATRIX3,
-  screenAreas: (viewportAspect, lensCount) => lensTiles(lensCount, viewportAspect),
+  picture: (_view, viewportAspect, lensCount) => ({
+    kind: 'lens-tiles',
+    tiles: lensTiles(lensCount, viewportAspect),
+  }),
 };
 
 const RULES: Readonly<Record<ViewMode, ViewModeRules>> = {

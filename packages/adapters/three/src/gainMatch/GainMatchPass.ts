@@ -1,5 +1,6 @@
 import type { Vector3 } from '@gyroview/core';
 import {
+  Camera,
   Mesh,
   Scene,
   WebGLRenderTarget,
@@ -9,24 +10,16 @@ import {
 } from 'three';
 
 import { rowMeansOf } from './rowMeans';
-import {
-  createFullscreenTriangle,
-  createPassMaterial,
-  PASS_THROUGH_CAMERA,
-} from '../fullscreenPass';
-import analysisFragment from '../shaders/analysis.frag.glsl?raw';
-import constants from '../shaders/constants.glsl?raw';
-import lensModels from '../shaders/lensModels.glsl?raw';
-import lensSampling from '../shaders/lensSampling.glsl?raw';
-import precision from '../shaders/precision.glsl?raw';
-import { MAX_LENSES, type StitchUniforms } from '../stitchUniforms';
+import { createFullscreenTriangle, createPassMaterial } from '../fullscreenPass';
+import { RGBA_CHANNELS } from '../readback';
+import { MAX_LENSES, type RendererUniforms } from '../rendererUniforms';
+import { SEAM_ANALYSIS } from '../shaderPrograms';
 
 /**
  * Samples taken around the seam ring per lens: enough to average out content, few enough that
  * the read-back is negligible.
  */
 const SEAM_SAMPLES = 64;
-const RGBA = 4;
 
 /**
  * Renders what each lens sees along the seam ring into one row of a tiny target and reads the
@@ -37,23 +30,18 @@ export class GainMatchPass {
     depthBuffer: false,
     stencilBuffer: false,
   });
-  private readonly pixels = new Uint8Array(SEAM_SAMPLES * MAX_LENSES * RGBA);
+  private readonly pixels = new Uint8Array(SEAM_SAMPLES * MAX_LENSES * RGBA_CHANNELS);
+  private readonly camera = new Camera();
   private readonly scene = new Scene();
   private readonly material: RawShaderMaterial;
   private readonly geometry: BufferGeometry = createFullscreenTriangle();
 
   public constructor(
     private readonly renderer: WebGLRenderer,
-    uniforms: StitchUniforms,
+    uniforms: RendererUniforms,
     private readonly lensCount: number,
   ) {
-    this.material = createPassMaterial(uniforms, [
-      precision,
-      constants,
-      lensModels,
-      lensSampling,
-      analysisFragment,
-    ]);
+    this.material = createPassMaterial(uniforms, SEAM_ANALYSIS);
     this.scene.add(new Mesh(this.geometry, this.material));
   }
 
@@ -63,7 +51,7 @@ export class GainMatchPass {
   public async measure(): Promise<readonly Vector3[] | undefined> {
     const previousTarget = this.renderer.getRenderTarget();
     this.renderer.setRenderTarget(this.target);
-    this.renderer.render(this.scene, PASS_THROUGH_CAMERA);
+    this.renderer.render(this.scene, this.camera);
     this.renderer.setRenderTarget(previousTarget);
     await this.renderer.readRenderTargetPixelsAsync(
       this.target,

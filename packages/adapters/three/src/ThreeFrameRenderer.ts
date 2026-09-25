@@ -11,10 +11,12 @@ import {
   type StabilizableFrameSink,
   type StitchingSetup,
   type Vector3 as CoreVector3,
+  viewModeRulesFor,
   type ViewMode,
   type ViewState,
 } from '@gyroview/core';
 import {
+  Camera,
   LinearFilter,
   Mesh,
   NoColorSpace,
@@ -22,24 +24,26 @@ import {
   VideoFrameTexture,
   WebGLRenderer,
   type BufferGeometry,
+  type RawShaderMaterial,
 } from 'three';
 
-import { createFullscreenTriangle, PASS_THROUGH_CAMERA } from './fullscreenPass';
+import { createFullscreenTriangle } from './fullscreenPass';
 import { GainMatching } from './gainMatch/GainMatching';
 import { GainMatchPass } from './gainMatch/GainMatchPass';
 import {
-  applyStabilization,
-  applyView,
-  createStitchUniforms,
-  MAX_LENSES,
-  type StitchUniforms,
-} from './stitchUniforms';
+  compilePictureMaterials,
+  createPictureMaterials,
+  disposePictureMaterials,
+  type PictureMaterials,
+} from './pictureMaterials';
+import { RGBA_CHANNELS } from './readback';
 import {
-  compileViewMaterials,
-  createViewMaterials,
-  distinctMaterials,
-  type ViewMaterials,
-} from './viewMaterials';
+  applyPicture,
+  applyStabilization,
+  createRendererUniforms,
+  MAX_LENSES,
+  type RendererUniforms,
+} from './rendererUniforms';
 
 export interface ThreeFrameRendererOptions {
   readonly view?: ViewState;
@@ -54,17 +58,16 @@ export interface ThreeFrameRendererOptions {
 interface RendererParts {
   readonly renderer: WebGLRenderer;
   readonly scene: Scene;
+  readonly camera: Camera;
   /**
-   * The fullscreen triangle; its material is the current view mode's program.
+   * The fullscreen triangle; its material is the program of the picture on screen.
    */
-  readonly pass: Mesh<BufferGeometry, ViewMaterials[ViewMode]>;
-  readonly materials: ViewMaterials;
+  readonly pass: Mesh<BufferGeometry, RawShaderMaterial>;
+  readonly materials: PictureMaterials;
   readonly textures: readonly VideoFrameTexture[];
-  readonly uniforms: StitchUniforms;
+  readonly uniforms: RendererUniforms;
   readonly lensCount: number;
 }
-
-const RGBA_CHANNELS = 4;
 
 /**
  * What the renderer starts drawing with.
@@ -115,16 +118,19 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
     }
     const renderer = createRenderer(canvas, options.preserveDrawingBuffer ?? false);
     const textures = Array.from({ length: setup.frameCount }, () => createLensTexture());
-    const uniforms = createStitchUniforms(setup, textures);
-    const materials = createViewMaterials(uniforms);
-    const viewMode = options.viewMode ?? DEFAULT_VIEW_MODE;
-    const pass = new Mesh(createFullscreenTriangle(), materials[viewMode]);
-    compileViewMaterials(renderer, pass.geometry, materials);
+    const uniforms = createRendererUniforms(setup, textures);
+    const materials = createPictureMaterials(uniforms);
+    const pass = new Mesh(createFullscreenTriangle(), materials.rectilinear);
+    compilePictureMaterials(renderer, pass.geometry, materials);
     const scene = new Scene();
     scene.add(pass);
     const lensCount = setup.lenses.length;
-    const parts = { renderer, scene, pass, materials, textures, uniforms, lensCount };
-    return new ThreeFrameRenderer(parts, canvas, { view: options.view ?? DEFAULT_VIEW, viewMode });
+    const camera = new Camera();
+    const parts = { renderer, scene, camera, pass, materials, textures, uniforms, lensCount };
+    return new ThreeFrameRenderer(parts, canvas, {
+      view: options.view ?? DEFAULT_VIEW,
+      viewMode: options.viewMode ?? DEFAULT_VIEW_MODE,
+    });
   }
 
   public get view(): ViewState {
@@ -145,7 +151,6 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
   public setViewMode(mode: ViewMode): void {
     this.ensureLive();
     this.viewModeValue = mode;
-    this.parts.pass.material = this.parts.materials[mode];
     this.applyView();
     this.render();
   }
@@ -240,7 +245,7 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
     this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     this.gainMatching?.dispose();
     for (const texture of this.parts.textures) texture.dispose();
-    for (const material of distinctMaterials(this.parts.materials)) material.dispose();
+    disposePictureMaterials(this.parts.materials);
     this.parts.pass.geometry.dispose();
     this.parts.renderer.dispose();
   }
@@ -251,7 +256,7 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
 
   private render(): void {
     if (!this.hasFrames) return;
-    this.parts.renderer.render(this.parts.scene, PASS_THROUGH_CAMERA);
+    this.parts.renderer.render(this.parts.scene, this.parts.camera);
   }
 
   private applyGains(gains: readonly CoreVector3[]): void {
@@ -262,13 +267,19 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
     this.render();
   }
 
+  /**
+   * Asks the view mode what to draw for the view on this canvas, and switches to that picture's
+   * program.
+   */
   private applyView(): void {
-    applyView(this.parts.uniforms, {
-      view: this.viewState,
-      mode: this.viewModeValue,
-      viewportAspect: this.canvas.width / Math.max(this.canvas.height, 1),
-      lensCount: this.parts.lensCount,
-    });
+    const viewportAspect = this.canvas.width / Math.max(this.canvas.height, 1);
+    const picture = viewModeRulesFor(this.viewModeValue).picture(
+      this.viewState,
+      viewportAspect,
+      this.parts.lensCount,
+    );
+    this.parts.pass.material = this.parts.materials[picture.kind];
+    applyPicture(this.parts.uniforms, picture, viewportAspect);
   }
 
   private ensureLive(): void {

@@ -1,6 +1,5 @@
-// Everything about the lenses that both the stitch and the seam analysis need: the calibration
-// as uniforms, and how a body direction becomes a texel of one lens.
-uniform int uLensCount;
+// How a body direction becomes a texel of one lens, for the stitch and the seam analysis: the
+// calibration as uniforms, and the sampling through each lens model. Needs lensTextures.glsl.
 uniform vec2 uFeather;
 uniform mat3 uLensRotation[MAX_LENSES];
 uniform int uLensKind[MAX_LENSES];
@@ -12,11 +11,6 @@ uniform vec2 uLensTangential[MAX_LENSES];
 uniform vec4 uLensPolynomial[MAX_LENSES];
 uniform float uLensHalfFov[MAX_LENSES];
 uniform vec4 uLensWindow[MAX_LENSES];
-uniform vec4 uLensRegion[MAX_LENSES];
-uniform int uLensTexture[MAX_LENSES];
-uniform vec3 uLensGain[MAX_LENSES];
-uniform sampler2D uTexture0;
-uniform sampler2D uTexture1;
 
 struct LensSample {
   bool isImaged;
@@ -24,12 +18,6 @@ struct LensSample {
   float theta;
   vec4 color;
 };
-
-vec4 sampleLens(int textureIndex, vec2 uv) {
-  return textureIndex == 0
-    ? texture(uTexture0, uv)
-    : texture(uTexture1, uv);
-}
 
 vec2 canvasPixel(int i, vec3 d, float theta) {
   return uLensKind[i] == LENS_MEI

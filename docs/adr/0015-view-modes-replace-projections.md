@@ -37,10 +37,13 @@ stabilization mode: the `view-mode` attribute, `setViewMode`, the `viewmodechang
   (square tracks, or the halves of a 2:1 packed frame).
 
 Each mode is a rules object in `core/domain/view/ViewMode.ts` (strategy): how a drag, a turn
-and a zoom move the view, the rotation the picture is drawn with, and where on the viewport
-the picture goes. A mode leaves alone what it does not show, so the normal view comes back
-unchanged after a look at the panorama. A host setting the view directly (`lookAt`, the view
-attributes) is obeyed in any mode.
+and a zoom move the view, and the picture it draws for a view. A picture
+(`core/domain/view/Picture.ts`) is a union: a rectilinear or an equirectangular picture of the
+stitched sphere, with its rotation and its area of the viewport, or the lens images in tiles.
+The core decides which projection a mode uses; the renderer only knows how to draw each kind of
+picture. A mode leaves alone what it does not show, so the normal view comes back unchanged
+after a look at the panorama. A host setting the view directly (`lookAt`, the view attributes)
+is obeyed in any mode.
 
 ## Alternatives considered
 
@@ -54,9 +57,11 @@ attributes) is obeyed in any mode.
 ## Consequences
 
 The `projection` attribute and URL parameter are gone without an alias (nothing was published
-yet). A zoom in the equirectangular view announces an unchanged view. The renderer receives
-the mode beside the view and lays the picture out in the screen areas the mode chooses; pixels
-outside them are black. The raw lenses are drawn by a second shader program over the same
-uniforms, compiled with the stitch when the renderer is created, so switching modes swaps
-programs without a pause. Gain matching keeps measuring while the raw lenses show; its gains
-apply again when a stitched mode returns.
+yet). A zoom in the equirectangular view announces an unchanged view. The renderer asks the mode for the picture
+of the current view and draws it with that kind's program: the stitch assembled with the
+rectilinear or the equirectangular ray chunk, or the lens tiles pass, all over the same
+uniforms and all compiled when the renderer is created, so switching modes swaps programs
+without a pause. Pixels outside the picture's areas are black. A new mode that reuses a
+projection is a change to core alone; a new projection is one picture kind, one ray chunk and
+one program entry, each checked by the compiler. Gain matching keeps measuring while the raw
+lenses show; its gains apply again when a stitched mode returns.

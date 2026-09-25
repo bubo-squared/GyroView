@@ -2,13 +2,13 @@ import {
   degrees,
   degreesToRadians,
   ensureInvariant,
-  viewModeRulesFor,
+  IDENTITY_MATRIX3,
+  type Degrees,
   type LensStitch,
   type Matrix3 as CoreMatrix3,
+  type Picture,
   type ScreenRectangle,
   type StitchingSetup,
-  type ViewMode,
-  type ViewState,
 } from '@gyroview/core';
 import { Matrix3, Vector2, Vector3, Vector4, type IUniform, type Texture } from 'three';
 
@@ -17,14 +17,6 @@ import { Matrix3, Vector2, Vector3, Vector4, type IUniform, type Texture } from 
  */
 export const MAX_LENSES = 2;
 
-/**
- * Which rays the stitch casts; the raw lenses are drawn by their own program, which ignores it.
- */
-const VIEW_MODE_CODES: Readonly<Record<ViewMode, number>> = {
-  normal: 0,
-  equirectangular: 1,
-  'raw-lenses': 2,
-};
 const LENS_MEI = 0;
 const LENS_RADIAL_POLYNOMIAL = 1;
 
@@ -34,21 +26,18 @@ const LENS_RADIAL_POLYNOMIAL = 1;
  */
 export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntries([
   ['MAX_LENSES', MAX_LENSES],
-  ['VIEW_NORMAL', VIEW_MODE_CODES.normal],
-  ['VIEW_EQUIRECTANGULAR', VIEW_MODE_CODES.equirectangular],
   ['LENS_MEI', LENS_MEI],
   ['LENS_RADIAL_POLYNOMIAL', LENS_RADIAL_POLYNOMIAL],
 ]);
 
 /**
- * Every uniform of `stitch.frag.glsl`, named exactly as declared there; the only place the
- * TypeScript side spells uniform names.
+ * Every uniform the renderer's programs declare, named exactly as in the GLSL chunks and shared
+ * by all programs as the same objects; the only place the TypeScript side spells uniform names.
  */
-export interface StitchUniforms {
+export interface RendererUniforms {
   readonly uLensCount: IUniform<number>;
   readonly uViewRotation: IUniform<Matrix3>;
   readonly uStabilization: IUniform<Matrix3>;
-  readonly uViewMode: IUniform<number>;
   readonly uPlaneHalfExtent: IUniform<number>;
   readonly uPictureAspect: IUniform<number>;
   readonly uScreenArea: IUniform<Vector4[]>;
@@ -70,10 +59,10 @@ export interface StitchUniforms {
   readonly uTexture1: IUniform<Texture | null>;
 }
 
-export function createStitchUniforms(
+export function createRendererUniforms(
   setup: StitchingSetup,
   textures: readonly Texture[],
-): StitchUniforms {
+): RendererUniforms {
   const lenses = padded(setup.lenses, 'a stitching setup has one or two lenses');
   return {
     ...viewUniforms(setup),
@@ -87,11 +76,10 @@ export function createStitchUniforms(
 function viewUniforms(
   setup: StitchingSetup,
 ): Pick<
-  StitchUniforms,
+  RendererUniforms,
   | 'uLensCount'
   | 'uViewRotation'
   | 'uStabilization'
-  | 'uViewMode'
   | 'uPlaneHalfExtent'
   | 'uPictureAspect'
   | 'uScreenArea'
@@ -101,7 +89,6 @@ function viewUniforms(
     uLensCount: { value: setup.lenses.length },
     uViewRotation: { value: new Matrix3() },
     uStabilization: { value: new Matrix3() },
-    uViewMode: { value: VIEW_MODE_CODES.normal },
     uPlaneHalfExtent: { value: 1 },
     uPictureAspect: { value: 1 },
     uScreenArea: { value: Array.from({ length: MAX_LENSES }, () => new Vector4(0, 0, 1, 1)) },
@@ -112,7 +99,7 @@ function viewUniforms(
 function projectionUniforms(
   lenses: readonly LensStitch[],
 ): Pick<
-  StitchUniforms,
+  RendererUniforms,
   | 'uLensRotation'
   | 'uLensKind'
   | 'uLensPrincipalPoint'
@@ -140,7 +127,7 @@ function projectionUniforms(
 
 function samplingUniforms(
   lenses: readonly LensStitch[],
-): Pick<StitchUniforms, 'uLensWindow' | 'uLensRegion' | 'uLensTexture' | 'uLensGain'> {
+): Pick<RendererUniforms, 'uLensWindow' | 'uLensRegion' | 'uLensTexture' | 'uLensGain'> {
   return {
     uLensWindow: {
       value: lenses.map(
@@ -157,44 +144,66 @@ function samplingUniforms(
   };
 }
 
-export function applyStabilization(uniforms: StitchUniforms, rotation: CoreMatrix3): void {
+export function applyStabilization(uniforms: RendererUniforms, rotation: CoreMatrix3): void {
   uniforms.uStabilization.value = toThreeMatrix(rotation);
 }
 
 /**
- * What the picture is drawn from: where the viewer looks, how the mode shows it, the shape of the
- * viewport (width over height) and how many lenses there are to show.
+ * What one picture sets; a value a picture's program does not read stays neutral.
  */
-export interface ViewDrawing {
-  readonly view: ViewState;
-  readonly mode: ViewMode;
-  readonly viewportAspect: number;
-  readonly lensCount: number;
+interface PictureValues {
+  readonly rotation: CoreMatrix3;
+  readonly planeHalfExtent: number;
+  readonly pictureAspect: number;
+  readonly areas: readonly ScreenRectangle[];
 }
 
-export function applyView(uniforms: StitchUniforms, drawing: ViewDrawing): void {
-  const rules = viewModeRulesFor(drawing.mode);
-  const areas = padded(
-    rules.screenAreas(drawing.viewportAspect, drawing.lensCount),
-    'a view mode fills one area per lens at most',
-  );
-  uniforms.uViewRotation.value = toThreeMatrix(rules.rotation(drawing.view));
-  uniforms.uViewMode.value = VIEW_MODE_CODES[drawing.mode];
-  uniforms.uPlaneHalfExtent.value = planeHalfExtentOf(drawing.view);
-  uniforms.uPictureAspect.value = aspectOf(areas[0], drawing.viewportAspect);
-  uniforms.uScreenArea.value = areas.map((area) => toVector4(area));
+const NEUTRAL = { rotation: IDENTITY_MATRIX3, planeHalfExtent: 1, pictureAspect: 1 };
+
+/**
+ * Sets the uniforms `picture` is drawn from, on a viewport `viewportAspect` wide per unit of
+ * height.
+ */
+export function applyPicture(
+  uniforms: RendererUniforms,
+  picture: Picture,
+  viewportAspect: number,
+): void {
+  const values = valuesOf(picture, viewportAspect);
+  uniforms.uViewRotation.value = toThreeMatrix(values.rotation);
+  uniforms.uPlaneHalfExtent.value = values.planeHalfExtent;
+  uniforms.uPictureAspect.value = values.pictureAspect;
+  uniforms.uScreenArea.value = padded(
+    values.areas,
+    'a picture fills one area per lens at most',
+  ).map((area) => toVector4(area));
+}
+
+function valuesOf(picture: Picture, viewportAspect: number): PictureValues {
+  switch (picture.kind) {
+    case 'rectilinear': {
+      return {
+        rotation: picture.rotation,
+        planeHalfExtent: planeHalfExtentOf(picture.fieldOfView),
+        pictureAspect: (viewportAspect * picture.area.width) / picture.area.height,
+        areas: [picture.area],
+      };
+    }
+    case 'equirectangular': {
+      return { ...NEUTRAL, rotation: picture.rotation, areas: [picture.area] };
+    }
+    case 'lens-tiles': {
+      return { ...NEUTRAL, areas: picture.tiles };
+    }
+  }
 }
 
 /**
  * Half the width of the image plane at the picture's edge, so that the horizontal field of view
- * is the one the view names.
+ * is the one the picture names.
  */
-function planeHalfExtentOf(view: ViewState): number {
-  return Math.tan(degreesToRadians(degrees(view.fieldOfView / 2)));
-}
-
-function aspectOf(area: ScreenRectangle | undefined, viewportAspect: number): number {
-  return area ? (viewportAspect * area.width) / area.height : viewportAspect;
+function planeHalfExtentOf(fieldOfView: Degrees): number {
+  return Math.tan(degreesToRadians(degrees(fieldOfView / 2)));
 }
 
 function toVector4(area: ScreenRectangle): Vector4 {

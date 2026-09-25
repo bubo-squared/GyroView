@@ -1,6 +1,7 @@
 import type { Vector3 } from '@gyroview/core';
 
-const RGBA = 4;
+import { RGBA_CHANNELS } from '../readback';
+
 const CHANNEL_MAX = 255;
 
 /**
@@ -14,7 +15,9 @@ export function rowMeansOf(
 ): readonly Vector3[] | undefined {
   const means: Vector3[] = [];
   for (let row = 0; row < rowCount; row += 1) {
-    const mean = rowMean(pixels.subarray(row * width * RGBA, (row + 1) * width * RGBA));
+    const mean = rowMean(
+      pixels.subarray(row * width * RGBA_CHANNELS, (row + 1) * width * RGBA_CHANNELS),
+    );
     if (!mean) return undefined;
     means.push(mean);
   }
@@ -24,8 +27,8 @@ export function rowMeansOf(
 function rowMean(row: Uint8Array): Vector3 | undefined {
   const sum: [number, number, number] = [0, 0, 0];
   let count = 0;
-  for (let offset = 0; offset + RGBA <= row.length; offset += RGBA) {
-    if ((row[offset + RGBA - 1] ?? 0) === 0) continue;
+  for (let offset = 0; offset + RGBA_CHANNELS <= row.length; offset += RGBA_CHANNELS) {
+    if ((row[offset + RGBA_CHANNELS - 1] ?? 0) === 0) continue;
     sum[0] += row[offset] ?? 0;
     sum[1] += row[offset + 1] ?? 0;
     sum[2] += row[offset + 2] ?? 0;

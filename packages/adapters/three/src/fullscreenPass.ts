@@ -1,7 +1,7 @@
-import { BufferGeometry, Camera, Float32BufferAttribute, GLSL3, RawShaderMaterial } from 'three';
+import { BufferGeometry, Float32BufferAttribute, GLSL3, RawShaderMaterial } from 'three';
 
+import { SHADER_DEFINES, type RendererUniforms } from './rendererUniforms';
 import fullscreenVertex from './shaders/fullscreen.vert.glsl?raw';
-import { SHADER_DEFINES, type StitchUniforms } from './stitchUniforms';
 
 /**
  * One triangle covering the clip square: two corners lie beyond it so its hypotenuse clears the
@@ -10,11 +10,6 @@ import { SHADER_DEFINES, type StitchUniforms } from './stitchUniforms';
 const BEYOND_CLIP = 3;
 const FULLSCREEN_TRIANGLE = [-1, -1, 0, BEYOND_CLIP, -1, 0, -1, BEYOND_CLIP, 0];
 const POSITION_COMPONENTS = 3;
-
-/**
- * The raw shaders ignore the camera; three still wants one to render a scene.
- */
-export const PASS_THROUGH_CAMERA = new Camera();
 
 export function createFullscreenTriangle(): BufferGeometry {
   const geometry = new BufferGeometry();
@@ -26,18 +21,19 @@ export function createFullscreenTriangle(): BufferGeometry {
 }
 
 /**
- * A fullscreen pass over the shared lens uniforms: the fragment shader is the given GLSL
- * sources joined in order, with the constants of `stitchUniforms` defined.
+ * A fullscreen pass over the shared uniforms: the fragment shader is the given GLSL chunks joined
+ * in order, with the constants of `rendererUniforms` defined. The raw shaders ignore the camera
+ * three still wants to render with; each pass keeps its own.
  */
 export function createPassMaterial(
-  uniforms: StitchUniforms,
-  fragmentSources: readonly string[],
+  uniforms: RendererUniforms,
+  fragmentChunks: readonly string[],
 ): RawShaderMaterial {
   return new RawShaderMaterial({
     glslVersion: GLSL3,
     defines: { ...SHADER_DEFINES },
     vertexShader: fullscreenVertex,
-    fragmentShader: fragmentSources.join('\n'),
+    fragmentShader: fragmentChunks.join('\n'),
     uniforms: { ...uniforms },
     depthTest: false,
     depthWrite: false,

@@ -24,20 +24,30 @@ describe('view modes', () => {
   describe('normal', () => {
     const normal = viewModeRulesFor('normal');
 
-    it('drags by the field of view per viewport width and turns both ways', () => {
+    it('drags by the field of view per viewport width', () => {
       const panned = normal.pan(DEFAULT_VIEW, { x: 90, y: -90 }, VIEWPORT_WIDTH);
       expect(panned.yaw).toBeCloseTo(-9, 9);
       expect(panned.pitch).toBeCloseTo(-9, 9);
+    });
+
+    it('turns both ways', () => {
       expect(normal.turn(DEFAULT_VIEW, degrees(5), degrees(-5))).toMatchObject({
         yaw: 5,
         pitch: -5,
       });
     });
 
-    it('zooms and draws with the full view rotation over the whole screen', () => {
+    it('zooms in steps', () => {
       expect(normal.zoom(DEFAULT_VIEW, 1).fieldOfView).toBeCloseTo(90 / 1.1, 9);
-      expect(normal.rotation(TILTED)).toEqual(viewRotation(TILTED));
-      expect(normal.screenAreas(16 / 9, 2)).toEqual([{ x: 0, y: 0, width: 1, height: 1 }]);
+    });
+
+    it('draws a rectilinear picture turned by the whole view over the whole screen', () => {
+      expect(normal.picture(TILTED, 16 / 9, 2)).toEqual({
+        kind: 'rectilinear',
+        rotation: viewRotation(TILTED),
+        fieldOfView: 60,
+        area: { x: 0, y: 0, width: 1, height: 1 },
+      });
     });
   });
 
@@ -48,6 +58,9 @@ describe('view modes', () => {
       const panned = equirectangular.pan(TILTED, { x: 90, y: 200 }, VIEWPORT_WIDTH);
       expect(panned.yaw).toBeCloseTo(54, 9);
       expect(panned.pitch).toBe(30);
+    });
+
+    it('turns sideways only', () => {
       expect(equirectangular.turn(TILTED, degrees(5), degrees(5))).toEqual({
         ...TILTED,
         yaw: 95,
@@ -59,14 +72,16 @@ describe('view modes', () => {
     });
 
     it('stays level: turns by the yaw alone', () => {
-      expectVector(transformVector(equirectangular.rotation(TILTED), FORWARD), [1, 0, 0]);
+      const picture = equirectangular.picture(TILTED, 1, 2);
+      if (picture.kind !== 'equirectangular') throw new Error(`drew ${picture.kind}`);
+      expectVector(transformVector(picture.rotation, FORWARD), [1, 0, 0]);
     });
 
     it('draws a 2:1 panorama centred in the viewport', () => {
-      const [area] = equirectangular.screenAreas(16 / 9, 2);
-      expect(area?.width).toBe(1);
-      expect(area?.height).toBeCloseTo(8 / 9, 12);
-      expect(equirectangular.screenAreas(1, 2)).toEqual([{ x: 0, y: 0.25, width: 1, height: 0.5 }]);
+      expect(equirectangular.picture(TILTED, 1, 2)).toMatchObject({
+        kind: 'equirectangular',
+        area: { x: 0, y: 0.25, width: 1, height: 0.5 },
+      });
     });
   });
 
@@ -79,9 +94,11 @@ describe('view modes', () => {
       expect(rawLenses.zoom(TILTED, 2)).toEqual(TILTED);
     });
 
-    it('gives every lens its own square tile', () => {
-      expect(rawLenses.screenAreas(16 / 9, 2)).toEqual(lensTiles(2, 16 / 9));
-      expect(rawLenses.screenAreas(9 / 16, 2)).toEqual(lensTiles(2, 9 / 16));
+    it('draws every lens in its own square tile', () => {
+      expect(rawLenses.picture(TILTED, 9 / 16, 2)).toEqual({
+        kind: 'lens-tiles',
+        tiles: lensTiles(2, 9 / 16),
+      });
     });
   });
 });

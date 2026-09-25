@@ -77,8 +77,8 @@ rotation the renderer applies.
 `WallClock` used when a recording has no audio.
 
 **`view`**: `ViewState` (yaw, pitch, field of view) with clamping and the view rotation;
-`ViewMode` with one rules object per mode (how drags, arrow keys and zoom move the view, the
-rotation the picture is drawn with, where it goes on the viewport; ADR 0015); `screenLayout`
+`ViewMode` with one rules object per mode (how drags, arrow keys and zoom move the view, and the
+`Picture` it draws: rectilinear, equirectangular or lens tiles; ADR 0015); `screenLayout`
 for letterboxing; the pure drag/zoom/look-at gestures; and the equirectangular mapping used by
 tests.
 
@@ -144,14 +144,14 @@ One package per external technology; none imports another.
 - **`mse-audio`**: `MediaSourceAudioClock`, a hidden audio element fed through Media Source
   Extensions (`ManagedMediaSource` where it exists), so the recording's own sound is the master
   clock; `SourceBufferFeeder` keeps a window buffered and evicts behind the playhead.
-- **`three`**: `ThreeFrameRenderer`, one fullscreen pass of `stitch.frag.glsl` that turns
-  every pixel of the view mode's screen area into a ray (rectilinear for the normal view,
-  equirectangular for the panorama; pixels outside the area stay black), applies the view and
-  stabilization rotations, projects through each lens model and blends across the feather band.
-  The raw lenses view swaps in `rawLenses.frag.glsl`, which copies each lens's frame region into
-  its tile; `viewMaterials` holds one program per view mode and `fullscreenPass` the triangle,
-  camera and material setup every pass shares.
-  `stitchUniforms` is the only place uniform names are spelled. `gainMatch/GainMatchPass`
+- **`three`**: `ThreeFrameRenderer`, one fullscreen pass per frame with the program of the
+  picture the view mode asks for (`pictureMaterials`). The stitch (`stitch.frag.glsl` with the
+  `rectilinearRays` or `equirectangularRays` chunk) turns every pixel of the picture's area into
+  a ray, applies the view and stabilization rotations, projects through each lens model and
+  blends across the feather band; `rawLenses.frag.glsl` copies each lens's frame region into its
+  tile. `shaderPrograms` is the only place the order of GLSL chunks is known, `fullscreenPass`
+  holds the triangle and material setup every pass shares, and `rendererUniforms` is the only
+  place uniform names are spelled (a test checks them against the chunks). `gainMatch/GainMatchPass`
   renders the seam ring per lens into a tiny target and `GainMatching` feeds the core's
   `GainMatcher` with the read-back.
 

@@ -8,7 +8,7 @@ import {
   type ViewMode,
   type ViewState,
 } from '@gyroview/core';
-import type { PlayerMetadata, PlayerStatus } from '@gyroview/player';
+import type { PlayerMetadata, PlayerStatus, SoundLevel } from '@gyroview/player';
 
 import type { Endpoint } from './Endpoint';
 import type { EmbedState, LoadRequest } from './EmbedState';
@@ -42,6 +42,7 @@ export interface EmbedEvents extends Record<string, unknown> {
   readonly viewchange: ViewState;
   readonly viewmodechange: ViewMode;
   readonly stabilizationchange: StabilizationMode;
+  readonly volumechange: SoundLevel;
   readonly warning: string;
   readonly error: SerializedError;
 }
@@ -51,6 +52,8 @@ const INITIAL_STATE: EmbedState = {
   currentTime: 0,
   duration: 0,
   isPaused: true,
+  volume: 1,
+  isMuted: false,
   view: DEFAULT_VIEW,
   viewMode: DEFAULT_VIEW_MODE,
   stabilization: 'lock',
@@ -224,8 +227,8 @@ function withTime(state: EmbedState, detail: unknown): EmbedState {
 }
 
 /**
- * How each event moves the mirror: status, time, view, view mode and stabilization follow their
- * events, the metadata arrives with `ready`.
+ * How each event moves the mirror: status, time, view, view mode, stabilization and sound follow
+ * their events, the metadata arrives with `ready`.
  */
 const STATE_UPDATERS: ReadonlyMap<string, StateUpdater> = new Map<string, StateUpdater>([
   [
@@ -249,6 +252,13 @@ const STATE_UPDATERS: ReadonlyMap<string, StateUpdater> = new Map<string, StateU
   [
     'viewmodechange',
     (state, detail): EmbedState => ({ ...state, viewMode: detail as EmbedState['viewMode'] }),
+  ],
+  [
+    'volumechange',
+    (state, detail): EmbedState => {
+      const sound = detail as SoundLevel;
+      return { ...state, volume: sound.volume, isMuted: sound.isMuted };
+    },
   ],
   [
     'stabilizationchange',

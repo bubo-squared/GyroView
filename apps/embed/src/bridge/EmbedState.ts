@@ -10,6 +10,8 @@ export interface EmbedState {
   readonly currentTime: number;
   readonly duration: number;
   readonly isPaused: boolean;
+  readonly volume: number;
+  readonly isMuted: boolean;
   readonly view: ViewState;
   readonly viewMode: ViewMode;
   readonly stabilization: StabilizationMode;

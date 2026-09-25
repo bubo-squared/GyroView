@@ -62,7 +62,8 @@ Events (`CustomEvent`s, payload in `detail`): `ready` (metadata: camera, layout,
 version, frame time source, gyro and IMU frame, audio, proxy), `statuschange` (`idle`,
 `loading`, `ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`), `play`,
 `waiting`, `playing`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `frame`,
-`viewchange`, `viewmodechange`, `stabilizationchange`, `warning` (a feature degraded: no gyro,
+`viewchange`, `viewmodechange`, `stabilizationchange`, `volumechange` (`{ volume, isMuted }`),
+`warning` (a feature degraded: no gyro,
 unverified IMU frame, silent clock, proxy in use) and `error` (`code` and `message`; the codes
 are listed in `docs/DEPLOYMENT.md`).
 

@@ -49,6 +49,7 @@ export class Player {
     this.loop = new FrameLoop(() => {
       this.loaded?.pipeline.session.tick();
     }, parts.scheduler);
+    parts.host.audio.addEventListener('volumechange', this.onVolumeChange);
   }
 
   public get status(): PlayerStatus {
@@ -236,8 +237,13 @@ export class Player {
 
   public dispose(): void {
     this.unload();
+    this.parts.host.audio.removeEventListener('volumechange', this.onVolumeChange);
     this.events.removeAll();
   }
+
+  private readonly onVolumeChange = (): void => {
+    this.events.emit('volumechange', { volume: this.volume, isMuted: this.isMuted });
+  };
 
   private async open(source: PlayerSource, signal: AbortSignal): Promise<LoadedRecording> {
     return loadRecording({

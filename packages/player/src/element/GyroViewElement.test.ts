@@ -147,8 +147,11 @@ describe('<gyro-view>', () => {
     key('k');
     await waitFor(() => element.paused, 'pause by keyboard');
 
+    const muted = nextEvent(element, 'volumechange');
     key('m');
+    await muted;
     expect(element.muted).toBe(true);
+    expect(control(element, '.mute', HTMLButtonElement).getAttribute('aria-pressed')).toBe('true');
     key('ArrowRight');
     expect(element.view.yaw).toBe(5);
     key('-');

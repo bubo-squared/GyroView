@@ -125,12 +125,10 @@ export class ControlsBar {
   private bindSound(): void {
     this.parts.mute.addEventListener('click', () => {
       this.player.setMuted(!this.player.isMuted);
-      this.reflectSound();
     });
     this.parts.volume.addEventListener('input', () => {
       this.player.setVolume(Number(this.parts.volume.value));
       if (this.player.isMuted) this.player.setMuted(false);
-      this.reflectSound();
     });
   }
 
@@ -181,6 +179,9 @@ export class ControlsBar {
       }),
       events.on('viewmodechange', (mode) => {
         this.parts.viewMode.value = mode;
+      }),
+      events.on('volumechange', () => {
+        this.reflectSound();
       }),
     );
   }

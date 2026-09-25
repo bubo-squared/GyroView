@@ -54,6 +54,8 @@ function stateOf(element: GyroViewElement): EmbedState {
     currentTime: element.currentTime,
     duration: element.duration,
     isPaused: element.paused,
+    volume: element.volume,
+    isMuted: element.muted,
     view: element.view,
     stabilization: element.stabilization,
     viewMode: element.viewMode,

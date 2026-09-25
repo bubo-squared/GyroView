@@ -173,6 +173,16 @@ describe('Player over the synthetic X5 recording', () => {
     expect(player.isLooping).toBe(true);
   });
 
+  it('announces a change of volume or mute, whoever made it', async () => {
+    const { player } = open();
+    const heard = new Promise((resolve) => {
+      player.events.on('volumechange', resolve);
+    });
+    const wasMuted = player.isMuted;
+    player.setMuted(!wasMuted);
+    expect(await heard).toEqual({ volume: 1, isMuted: !wasMuted });
+  });
+
   it('keeps view, view mode and stabilization across loads and redraws while paused', async () => {
     const { player } = open();
     const views: number[] = [];

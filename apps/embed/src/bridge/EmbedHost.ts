@@ -30,6 +30,7 @@ const FORWARDED_EVENTS = [
   'viewchange',
   'viewmodechange',
   'stabilizationchange',
+  'volumechange',
   'warning',
   'error',
 ] as const;

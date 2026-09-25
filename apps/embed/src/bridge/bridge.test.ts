@@ -99,6 +99,15 @@ describe('the embed bridge over a message channel', () => {
     expect(afterSettings.status).toBe('paused');
   });
 
+  it('mirrors the sound as the player changes it', async () => {
+    const { handle } = bridge();
+    await handle.setMuted(true);
+    await handle.setVolume(0.25);
+    await waitFor(() => handle.state.isMuted && handle.state.volume === 0.25, 'the sound mirrored');
+    const state = await handle.getState();
+    expect(state).toMatchObject({ isMuted: true, volume: 0.25 });
+  });
+
   it('reports the settings in effect though no attribute names them', async () => {
     const { handle } = bridge();
     const state = await handle.getState();

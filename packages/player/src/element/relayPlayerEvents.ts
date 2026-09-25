@@ -16,6 +16,7 @@ const RELAYED_EVENTS: readonly (keyof PlayerEvents & string)[] = [
   'viewchange',
   'viewmodechange',
   'stabilizationchange',
+  'volumechange',
   'warning',
   'error',
 ];

@@ -2,7 +2,7 @@ export type { BlobInput, MediaInput, PlayerSource, Quality, UrlInput } from './P
 export type { ImuFrameSummary, PlayerMetadata } from './PlayerMetadata';
 export { Player } from './player/Player';
 export type { LoadOptions, PlayerParts } from './player/PlayerOptions';
-export type { PlayerEvents, PlayerStatus } from './player/PlayerEvents';
+export type { PlayerEvents, PlayerStatus, SoundLevel } from './player/PlayerEvents';
 export { browserPorts, type BrowserPortsOptions } from './composition/browserPorts';
 export type { RecordingPorts, SourceOpener } from './composition/ports';
 export { GyroViewElement } from './element/GyroViewElement';

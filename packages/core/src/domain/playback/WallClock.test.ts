@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { WallClock } from './WallClock';
-import { seconds } from '../../shared/units/time';
+import { describePlaybackClockContract } from '../../testing/PlaybackClock.contract';
+import { seconds, secondsToMilliseconds } from '../../shared/units/time';
 
 function clockAt(): { clock: WallClock; advance: (ms: number) => void } {
   let nowMs = 1000;
@@ -14,6 +15,17 @@ function clockAt(): { clock: WallClock; advance: (ms: number) => void } {
   };
 }
 
+describePlaybackClockContract(() => {
+  const { clock, advance } = clockAt();
+  return Promise.resolve({
+    clock,
+    letTimePass: (elapsed) => {
+      advance(secondsToMilliseconds(elapsed));
+      return Promise.resolve();
+    },
+  });
+});
+
 describe('WallClock', () => {
   it('stands still until started and then advances with wall time', async () => {
     const { clock, advance } = clockAt();
@@ -22,7 +34,6 @@ describe('WallClock', () => {
     await clock.start();
     advance(1500);
     expect(clock.currentTime).toBe(1.5);
-    expect(clock.isRunning).toBe(true);
   });
 
   it('holds its position while stopped and resumes from it', async () => {
@@ -46,16 +57,6 @@ describe('WallClock', () => {
     clock.seek(seconds(2));
     advance(500);
     expect(clock.currentTime).toBe(2.5);
-  });
-
-  it('applies the rate from the moment it changes', async () => {
-    const { clock, advance } = clockAt();
-    await clock.start();
-    advance(1000);
-    clock.setRate(2);
-    advance(1000);
-    expect(clock.currentTime).toBe(3);
-    expect(clock.rate).toBe(2);
   });
 
   it('stops on dispose', async () => {

@@ -1,6 +1,12 @@
 import { MediabunnyAudioSegmenter, MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
-import { GyroViewError, seconds, type AudioSegmentSource, type DemuxedInput } from '@gyroview/core';
-import { InMemoryRandomAccessSource } from '@gyroview/core/testing';
+import {
+  GyroViewError,
+  seconds,
+  secondsToMilliseconds,
+  type AudioSegmentSource,
+  type DemuxedInput,
+} from '@gyroview/core';
+import { describePlaybackClockContract, InMemoryRandomAccessSource } from '@gyroview/core/testing';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { MediaSourceAudioClock } from './MediaSourceAudioClock';
@@ -64,13 +70,15 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     input.dispose();
   });
 
-  it('is stopped at zero after opening and runs once started', async () => {
+  describePlaybackClockContract(async () => ({
+    clock: await openClock(),
+    letTimePass: (elapsed): Promise<void> => wait(secondsToMilliseconds(elapsed)),
+  }));
+
+  it('follows the audio once started, within the track', async () => {
     const clock = await openClock();
-    expect(clock.isRunning).toBe(false);
-    expect(clock.currentTime).toBe(0);
     await clock.start();
     await waitUntilPast(clock, 0.3, 4000);
-    expect(clock.isRunning).toBe(true);
     expect(clock.currentTime).toBeGreaterThan(0.3);
     expect(clock.currentTime).toBeLessThan(3);
     expect(clock.failure).toBeUndefined();
@@ -83,7 +91,6 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     clock.pause();
     const held = clock.currentTime;
     await wait(300);
-    expect(clock.isRunning).toBe(false);
     expect(clock.currentTime).toBeCloseTo(held, 2);
   });
 
@@ -103,7 +110,6 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     await clock.start();
     await waitUntilPast(clock, 2.95, 4000);
     await wait(200);
-    expect(clock.isRunning).toBe(false);
     expect(clock.hasEnded).toBe(true);
     expect(clock.currentTime).toBeCloseTo(3, 1);
     expect(clock.failure).toBeUndefined();
@@ -133,13 +139,8 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     const starting = clock.start();
     clock.pause();
     await expect(starting).resolves.toBeUndefined();
-    expect(clock.isRunning).toBe(false);
-  });
-
-  it('exposes the playback rate of the element', async () => {
-    const clock = await openClock();
-    expect(clock.rate).toBe(1);
-    clock.setRate(1.5);
-    expect(clock.rate).toBe(1.5);
+    const held = clock.currentTime;
+    await wait(300);
+    expect(clock.currentTime).toBeCloseTo(held, 2);
   });
 });

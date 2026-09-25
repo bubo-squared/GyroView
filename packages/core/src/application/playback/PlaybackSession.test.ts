@@ -130,7 +130,9 @@ describe('PlaybackSession transport', () => {
     for (let step = 0; step < 40; step += 1) await advance(100);
     expect(session.state).toBe('ended');
     expect(endedCount).toBe(1);
-    expect(clock.isRunning).toBe(false);
+    const held = clock.currentTime;
+    await advance(300);
+    expect(clock.currentTime).toBe(held);
     await session.play();
     expect(session.state).toBe('playing');
     expect(session.currentTime).toBeLessThan(0.1);

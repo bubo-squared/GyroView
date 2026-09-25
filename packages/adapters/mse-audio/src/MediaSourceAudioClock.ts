@@ -27,7 +27,7 @@ const DEFAULT_BUFFER_AHEAD_SECONDS = 30;
 
 /**
  * PlaybackClock over an audio element fed through Media Source Extensions with the recording's
- * own audio track, so the picture follows the sound and volume, mute and rate are the element's.
+ * own audio track, so the picture follows the sound and volume and mute are the element's.
  * The element is borrowed from the host; disposing detaches the media source from it.
  * See ADR 0007.
  */
@@ -80,20 +80,12 @@ export class MediaSourceAudioClock implements PlaybackClock {
     return seconds(this.element.currentTime);
   }
 
-  public get isRunning(): boolean {
-    return !this.element.paused && !this.element.ended;
-  }
-
   public get hasEnded(): boolean {
     return this.element.ended;
   }
 
   public get failure(): GyroViewError | undefined {
     return this.feeder.failure;
-  }
-
-  public get rate(): number {
-    return this.element.playbackRate;
   }
 
   /**
@@ -123,10 +115,6 @@ export class MediaSourceAudioClock implements PlaybackClock {
   public seek(time: Seconds): void {
     this.element.currentTime = time;
     this.feeder.restartFrom(time);
-  }
-
-  public setRate(rate: number): void {
-    this.element.playbackRate = rate;
   }
 
   public dispose(): void {

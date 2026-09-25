@@ -21,7 +21,6 @@ export class FakePlaybackClock implements PlaybackClock {
   public failure: GyroViewError | undefined;
   private position: Seconds = seconds(0);
   private isStarted = false;
-  private rateValue = 1;
 
   public constructor(private readonly options: FakePlaybackClockOptions = {}) {}
 
@@ -29,16 +28,15 @@ export class FakePlaybackClock implements PlaybackClock {
     return this.position;
   }
 
+  /**
+   * For the test to see: started, not paused, not ended.
+   */
   public get isRunning(): boolean {
     return this.isStarted && !this.hasEnded;
   }
 
   public get hasEnded(): boolean {
     return this.options.endsAt !== undefined && this.position >= this.options.endsAt;
-  }
-
-  public get rate(): number {
-    return this.rateValue;
   }
 
   public start(): Promise<void> {
@@ -55,21 +53,17 @@ export class FakePlaybackClock implements PlaybackClock {
     this.position = time;
   }
 
-  public setRate(rate: number): void {
-    this.rateValue = rate;
-  }
-
   public dispose(): void {
     this.isStarted = false;
   }
 
   /**
-   * Lets `elapsed` seconds of real time pass; the clock moves at its rate while running and
-   * never past its end.
+   * Lets `elapsed` seconds of real time pass; the clock moves with it while running and never
+   * past its end.
    */
   public advance(elapsed: Seconds): void {
     if (!this.isRunning) return;
-    const next = this.position + elapsed * this.rateValue;
+    const next = this.position + elapsed;
     const { endsAt } = this.options;
     this.position = seconds(endsAt === undefined ? next : Math.min(next, endsAt));
   }

@@ -8,10 +8,6 @@ import type { Seconds } from '../shared/units/time';
 export interface PlaybackClock {
   readonly currentTime: Seconds;
   /**
-   * Advancing right now: started, not paused, not ended.
-   */
-  readonly isRunning: boolean;
-  /**
    * The clock's own media ran out; it will not advance again until seeked. A clock that does
    * not end by itself keeps this false.
    */
@@ -21,7 +17,6 @@ export interface PlaybackClock {
    * every tick and reports it; the core has no timers or events to be told otherwise.
    */
   readonly failure: GyroViewError | undefined;
-  readonly rate: number;
   /**
    * Starts advancing. Rejects with `playback-blocked` when the platform refuses (autoplay
    * policy); the caller then waits for a user gesture.
@@ -29,6 +24,5 @@ export interface PlaybackClock {
   start(): Promise<void>;
   pause(): void;
   seek(time: Seconds): void;
-  setRate(rate: number): void;
   dispose(): void;
 }

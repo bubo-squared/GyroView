@@ -1,17 +1,19 @@
 import type { PlaybackClock } from '../../ports/PlaybackClock';
-import { seconds, type Seconds } from '../../shared/units/time';
-
-const MILLISECONDS_PER_SECOND = 1000;
+import {
+  milliseconds,
+  millisecondsToSeconds,
+  seconds,
+  type Seconds,
+} from '../../shared/units/time';
 
 /**
- * PlaybackClock that advances with real time at the chosen rate and never ends or fails by
- * itself. Used for recordings without an audio track and in tests, where `now` is injected.
+ * PlaybackClock that advances with real time and never ends or fails by itself. Used for
+ * recordings without an audio track and in tests, where `now` (milliseconds) is injected.
  */
 export class WallClock implements PlaybackClock {
   public readonly hasEnded = false;
   public readonly failure = undefined;
   private isRunningNow = false;
-  private rateValue = 1;
   private positionAtAnchor: Seconds = seconds(0);
   private anchorMs = 0;
 
@@ -19,16 +21,8 @@ export class WallClock implements PlaybackClock {
 
   public get currentTime(): Seconds {
     if (!this.isRunningNow) return this.positionAtAnchor;
-    const elapsed = (this.now() - this.anchorMs) / MILLISECONDS_PER_SECOND;
-    return seconds(this.positionAtAnchor + elapsed * this.rateValue);
-  }
-
-  public get isRunning(): boolean {
-    return this.isRunningNow;
-  }
-
-  public get rate(): number {
-    return this.rateValue;
+    const elapsed = millisecondsToSeconds(milliseconds(this.now() - this.anchorMs));
+    return seconds(this.positionAtAnchor + elapsed);
   }
 
   public start(): Promise<void> {
@@ -48,12 +42,6 @@ export class WallClock implements PlaybackClock {
   public seek(time: Seconds): void {
     this.positionAtAnchor = time;
     this.anchorMs = this.now();
-  }
-
-  public setRate(rate: number): void {
-    this.positionAtAnchor = this.currentTime;
-    this.anchorMs = this.now();
-    this.rateValue = rate;
   }
 
   public dispose(): void {

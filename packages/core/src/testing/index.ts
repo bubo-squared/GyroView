@@ -18,6 +18,7 @@ export {
 } from './FakeVideoDecoderPort';
 export { FakeFrameSink } from './FakeFrameSink';
 export { FakePlaybackClock, type FakePlaybackClockOptions } from './FakePlaybackClock';
+export { describePlaybackClockContract, type ClockUnderTest } from './PlaybackClock.contract';
 export { FakeResourceLocator } from './FakeResourceLocator';
 export { encodeBox } from './encodeBox';
 export {

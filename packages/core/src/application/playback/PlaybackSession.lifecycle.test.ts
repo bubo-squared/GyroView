@@ -46,7 +46,9 @@ describe('PlaybackSession lifecycle', () => {
     await advance(50);
     expect(session.state).toBe('error');
     expect(errors[0]?.code).toBe('codec-unsupported');
-    expect(clock.isRunning).toBe(false);
+    const held = clock.currentTime;
+    await advance(500);
+    expect(clock.currentTime).toBe(held);
     await settle();
     expect(decoderPort.openDecoders).toBe(0);
     session.dispose();
@@ -145,7 +147,9 @@ describe('PlaybackSession lifecycle', () => {
     expect(session.state).toBe('disposed');
     expect(states.at(-1)).toBe('disposed');
     expect(states.filter((state) => state === 'disposed')).toHaveLength(1);
-    expect(clock.isRunning).toBe(false);
+    const held = clock.currentTime;
+    await advance(300);
+    expect(clock.currentTime).toBe(held);
     expect(decoderPort.openFrames).toBe(0);
     expect(decoderPort.openDecoders).toBe(0);
     session.seek(seconds(1));

@@ -20,3 +20,5 @@ export const millisecondsToSeconds = (value: Milliseconds): Seconds =>
   seconds(value / MILLISECONDS_PER_SECOND);
 export const secondsToMicroseconds = (value: Seconds): Microseconds =>
   microseconds(value * MICROSECONDS_PER_SECOND);
+export const secondsToMilliseconds = (value: Seconds): Milliseconds =>
+  milliseconds(value * MILLISECONDS_PER_SECOND);

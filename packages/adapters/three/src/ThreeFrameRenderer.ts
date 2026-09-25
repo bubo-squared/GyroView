@@ -38,6 +38,7 @@ import {
 } from './pictureMaterials';
 import { RGBA_CHANNELS } from './readback';
 import {
+  applyLensGain,
   applyPicture,
   applyStabilization,
   createRendererUniforms,
@@ -116,7 +117,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
         `the renderer draws at most ${MAX_LENSES} lenses, the layout has ${setup.lenses.length}`,
       );
     }
-    const renderer = createRenderer(canvas, options.preserveDrawingBuffer ?? false);
+    const renderer = createRenderer(canvas, options);
     const textures = Array.from({ length: setup.frameCount }, () => createLensTexture());
     const uniforms = createRendererUniforms(setup, textures);
     const materials = createPictureMaterials(uniforms);
@@ -161,7 +162,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
    */
   public setLensGain(lensIndex: number, gain: CoreVector3): void {
     this.ensureLive();
-    this.parts.uniforms.uLensGain.value[lensIndex]?.set(...gain);
+    applyLensGain(this.parts.uniforms, lensIndex, gain);
     this.render();
   }
 
@@ -266,7 +267,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   private applyGains(gains: readonly CoreVector3[]): void {
     if (this.isDisposed) return;
     for (const [lensIndex, gain] of gains.entries()) {
-      this.parts.uniforms.uLensGain.value[lensIndex]?.set(...gain);
+      applyLensGain(this.parts.uniforms, lensIndex, gain);
     }
     this.render();
   }
@@ -293,11 +294,11 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
 
 function createRenderer(
   canvas: HTMLCanvasElement,
-  shouldPreserveDrawingBuffer: boolean,
+  options: ThreeFrameRendererOptions,
 ): WebGLRenderer {
   // The context attributes must be given here: three keeps a context it is handed as it is.
   const context = canvas.getContext('webgl2', {
-    preserveDrawingBuffer: shouldPreserveDrawingBuffer,
+    preserveDrawingBuffer: options.preserveDrawingBuffer ?? false,
     antialias: false,
     alpha: false,
     depth: false,

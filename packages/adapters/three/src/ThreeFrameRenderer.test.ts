@@ -318,6 +318,13 @@ describe('ThreeFrameRenderer', () => {
     expect(beforeSeam.b).toBeGreaterThan(FAINT);
   });
 
+  it('refuses a gain for a lens the setup does not have', () => {
+    const renderer = open();
+    expect(() => {
+      renderer.setLensGain(2, [1, 1, 1]);
+    }).toThrow(expect.objectContaining({ code: 'index-out-of-range' }));
+  });
+
   it('matches the darker lens to the brighter one along the seam when gain matching is on', async () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');

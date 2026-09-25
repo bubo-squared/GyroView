@@ -1,14 +1,17 @@
 import {
   degrees,
   degreesToRadians,
+  ensureIndexInRange,
   ensureInvariant,
   IDENTITY_MATRIX3,
   type Degrees,
+  type LensProjectionParameters,
   type LensStitch,
   type Matrix3 as CoreMatrix3,
   type Picture,
   type ScreenRectangle,
   type StitchingSetup,
+  type Vector3 as CoreVector3,
 } from '@gyroview/core';
 import { Matrix3, Vector2, Vector3, Vector4, type IUniform, type Texture } from 'three';
 
@@ -110,19 +113,59 @@ function projectionUniforms(
   | 'uLensPolynomial'
   | 'uLensHalfFov'
 > {
+  const slots = lenses.map((lens) => slotOf(lens.projection));
   return {
     uLensRotation: { value: lenses.map((lens) => toThreeMatrix(lens.rotation)) },
-    uLensKind: { value: lenses.map((lens) => kindOf(lens)) },
+    uLensKind: { value: slots.map((slot) => slot.kind) },
     uLensPrincipalPoint: { value: lenses.map((lens) => toVector2(lens.projection.principalPoint)) },
-    uLensFocal: { value: lenses.map((lens) => focalOf(lens)) },
-    uLensXi: {
-      value: lenses.map((lens) => (lens.projection.kind === 'mei' ? lens.projection.xi : 0)),
-    },
-    uLensRadial: { value: lenses.map((lens) => radialOf(lens)) },
-    uLensTangential: { value: lenses.map((lens) => tangentialOf(lens)) },
-    uLensPolynomial: { value: lenses.map((lens) => polynomialOf(lens)) },
+    uLensFocal: { value: slots.map((slot) => slot.focal) },
+    uLensXi: { value: slots.map((slot) => slot.xi) },
+    uLensRadial: { value: slots.map((slot) => slot.radial) },
+    uLensTangential: { value: slots.map((slot) => slot.tangential) },
+    uLensPolynomial: { value: slots.map((slot) => slot.polynomial) },
     uLensHalfFov: { value: lenses.map((lens) => lens.halfFieldOfView) },
   };
+}
+
+/**
+ * One lens model's parameters as the shader's per-lens slots; the slots a model does not use
+ * stay zero.
+ */
+interface ProjectionSlot {
+  readonly kind: number;
+  readonly focal: Vector2;
+  readonly xi: number;
+  readonly radial: Vector3;
+  readonly tangential: Vector2;
+  readonly polynomial: Vector4;
+}
+
+/**
+ * Exhaustive over the projection kinds: a new kind does not compile until it is packed.
+ */
+function slotOf(projection: LensProjectionParameters): ProjectionSlot {
+  switch (projection.kind) {
+    case 'mei': {
+      return {
+        kind: LENS_MEI,
+        focal: new Vector2(...projection.focal),
+        xi: projection.xi,
+        radial: new Vector3(...projection.radial),
+        tangential: new Vector2(...projection.tangential),
+        polynomial: new Vector4(),
+      };
+    }
+    case 'radial-polynomial': {
+      return {
+        kind: LENS_RADIAL_POLYNOMIAL,
+        focal: new Vector2(),
+        xi: 0,
+        radial: new Vector3(),
+        tangential: new Vector2(),
+        polynomial: new Vector4(...projection.coefficients),
+      };
+    }
+  }
 }
 
 function samplingUniforms(
@@ -146,6 +189,18 @@ function samplingUniforms(
 
 export function applyStabilization(uniforms: RendererUniforms, rotation: CoreMatrix3): void {
   uniforms.uStabilization.value = toThreeMatrix(rotation);
+}
+
+/**
+ * Sets one lens's per-channel multiplier; a lens the setup does not have is a defect.
+ */
+export function applyLensGain(
+  uniforms: RendererUniforms,
+  lensIndex: number,
+  gain: CoreVector3,
+): void {
+  ensureIndexInRange(lensIndex, uniforms.uLensCount.value, 'lens');
+  uniforms.uLensGain.value[lensIndex]?.set(...gain);
 }
 
 /**
@@ -217,34 +272,8 @@ function toThreeMatrix(m: CoreMatrix3): Matrix3 {
   return new Matrix3().set(...m);
 }
 
-function kindOf(lens: LensStitch): number {
-  return lens.projection.kind === 'mei' ? LENS_MEI : LENS_RADIAL_POLYNOMIAL;
-}
-
 function toVector2(point: { readonly x: number; readonly y: number }): Vector2 {
   return new Vector2(point.x, point.y);
-}
-
-function focalOf(lens: LensStitch): Vector2 {
-  return lens.projection.kind === 'mei'
-    ? new Vector2(lens.projection.focal[0], lens.projection.focal[1])
-    : new Vector2(0, 0);
-}
-
-function radialOf(lens: LensStitch): Vector3 {
-  return lens.projection.kind === 'mei' ? new Vector3(...lens.projection.radial) : new Vector3();
-}
-
-function tangentialOf(lens: LensStitch): Vector2 {
-  return lens.projection.kind === 'mei'
-    ? new Vector2(...lens.projection.tangential)
-    : new Vector2();
-}
-
-function polynomialOf(lens: LensStitch): Vector4 {
-  return lens.projection.kind === 'radial-polynomial'
-    ? new Vector4(...lens.projection.coefficients)
-    : new Vector4();
 }
 
 /**

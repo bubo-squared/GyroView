@@ -339,6 +339,17 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelTowards(renderer, [0, 0, 1]).g).toBeLessThan(210);
   });
 
+  it('matches both lenses of a packed frame, which share one texture', async () => {
+    const renderer = open(
+      buildStitchingSetup({ calibration: syntheticCalibration(), layout: PACKED }),
+    );
+    renderer.setViewMode('equirectangular');
+    renderer.enableGainMatching();
+    present(renderer, [halvesFrame('rgb(200, 200, 200)', 'rgb(100, 100, 100)')]);
+    await renderer.matchGainsNow();
+    expect(pixelTowards(renderer, [0, 0, -1]).g).toBeGreaterThan(190);
+  });
+
   it('leaves the lenses as recorded while gain matching is off', async () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');

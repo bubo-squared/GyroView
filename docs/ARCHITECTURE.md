@@ -100,6 +100,8 @@ Use cases that orchestrate the domain through ports.
   (first frame while ready) and `scrub` (seek to the key frame at or before a time).
 - `playback/probeDecoding` decodes the first key frame of every lens track under a deadline
   before anything else is built, because platforms say yes to codecs they then fail on.
+- `gainMatching/GainMatching` measures the seam through a `SeamMeter` every half second of
+  media, one measurement at a time, and applies the gains `GainMatcher` follows (ADR 0012).
 - `stitching/StitchingSetup` joins calibration and layout into the per-lens numbers a
   renderer binds (each frame shows its whole calibration square, ADR 0014); `StabilizingFrameSink` wraps a `StabilizableFrameSink` and sets the
   stabilization rotation for each frame's mid-exposure orientation before presenting it.
@@ -115,6 +117,7 @@ Use cases that orchestrate the domain through ports.
 | `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                            | `MediabunnyAudioSegmenter`                                            |
 | `FrameSink`          | present a frame pair (`StabilizableFrameSink` adds rotation)                      | `ThreeFrameRenderer`                                                  |
 | `PictureRenderer`    | a `StabilizableFrameSink` that also takes view, view mode, size and gain matching | `ThreeFrameRenderer`                                                  |
+| `SeamMeter`          | the mean colour each lens shows along the seam                                    | `GainMatchPass`                                                       |
 | `ResourceLocator`    | does this URL exist                                                               | `HttpResourceLocator`                                                 |
 
 Every port with a fake in `core/src/testing` has a contract suite that runs against the fake
@@ -155,8 +158,7 @@ One package per external technology; none imports another.
   tile. `shaderPrograms` is the only place the order of GLSL chunks is known, `fullscreenPass`
   holds the triangle and material setup every pass shares, and `rendererUniforms` is the only
   place uniform names are spelled (a test checks them against the chunks). `gainMatch/GainMatchPass`
-  renders the seam ring per lens into a tiny target and `GainMatching` feeds the core's
-  `GainMatcher` with the read-back.
+  is the `SeamMeter`: it renders the seam ring per lens into a tiny target and reads it back.
 
 ## The player: `packages/player`
 

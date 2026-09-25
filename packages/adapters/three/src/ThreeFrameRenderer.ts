@@ -3,6 +3,7 @@ import {
   DEFAULT_VIEW,
   DEFAULT_VIEW_MODE,
   ensureInvariant,
+  GainMatching,
   GyroViewError,
   type Matrix3 as CoreMatrix3,
   seconds,
@@ -28,7 +29,6 @@ import {
 } from 'three';
 
 import { createFullscreenTriangle } from './fullscreenPass';
-import { GainMatching } from './gainMatch/GainMatching';
 import { GainMatchPass } from './gainMatch/GainMatchPass';
 import {
   compilePictureMaterials,
@@ -173,7 +173,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   public enableGainMatching(): void {
     this.ensureLive();
     this.gainMatching ??= new GainMatching(
-      new GainMatchPass(this.parts.renderer, this.parts.uniforms, this.parts.textures.length),
+      new GainMatchPass(this.parts.renderer, this.parts.uniforms, this.parts.lensCount),
       (gains) => {
         this.applyGains(gains);
       },

@@ -156,6 +156,8 @@ export {
   gainsMatching,
   type GainMatchOptions,
 } from './domain/optics/gainMatch';
+export { GainMatching } from './application/gainMatching/GainMatching';
+export type { SeamMeter } from './ports/SeamMeter';
 export type { CalibrationChoice } from './domain/optics/selectCalibration';
 export { parseOffsetString } from './domain/optics/parseOffsetString';
 

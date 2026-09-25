@@ -14,7 +14,7 @@ import {
 } from '@gyroview/core';
 
 import { FrameLoop } from './FrameLoop';
-import { openLoaded, type Loaded } from './loadedRecording';
+import { loadRecording, type LoadedRecording } from './loadRecording';
 import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
 import type { LoadOptions, PlayerParts } from './PlayerOptions';
 import { PlayerView } from './PlayerView';
@@ -33,7 +33,7 @@ const DEFAULT_STABILIZATION: StabilizationMode = 'lock';
 export class Player {
   public readonly events = new TypedEmitter<PlayerEvents>();
   private readonly loop: FrameLoop;
-  private loaded: Loaded | undefined;
+  private loaded: LoadedRecording | undefined;
   private loading: AbortController | undefined;
   private failure: GyroViewError | undefined;
   private readonly viewing = new PlayerView(this.events);
@@ -245,8 +245,8 @@ export class Player {
     if (options.gainMatching !== undefined) this.isGainMatching = options.gainMatching;
   }
 
-  private async open(source: PlayerSource, signal: AbortSignal): Promise<Loaded> {
-    return openLoaded({
+  private async open(source: PlayerSource, signal: AbortSignal): Promise<LoadedRecording> {
+    return loadRecording({
       source,
       parts: this.parts,
       view: this.viewing.current,
@@ -258,7 +258,7 @@ export class Player {
     });
   }
 
-  private attach(loaded: Loaded): void {
+  private attach(loaded: LoadedRecording): void {
     this.loaded = loaded;
     this.viewing.attach(loaded.pipeline.renderer);
     const { session } = loaded.pipeline;

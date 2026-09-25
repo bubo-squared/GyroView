@@ -92,6 +92,7 @@ export {
   clampView,
   DEFAULT_VIEW,
   FIELD_OF_VIEW_BOUNDS,
+  isSameView,
   viewRotation,
   type FieldOfViewBounds,
   type ViewState,

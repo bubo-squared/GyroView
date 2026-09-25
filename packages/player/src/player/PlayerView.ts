@@ -3,6 +3,7 @@ import {
   clampView,
   DEFAULT_VIEW,
   DEFAULT_VIEW_MODE,
+  isSameView,
   lookAt,
   viewModeRulesFor,
   type Degrees,
@@ -23,7 +24,7 @@ export type ViewSurface = Pick<ThreeFrameRenderer, 'setView' | 'setViewMode'>;
 
 /**
  * Where the viewer looks and how the picture shows it: kept across loads, drawn by whichever
- * renderer is attached, and announced on every change. The viewer's gestures go through the
+ * renderer is attached, and announced when it changes. The viewer's gestures go through the
  * mode's rules; a host setting the view directly is obeyed as it is.
  */
 export class PlayerView {
@@ -57,12 +58,15 @@ export class PlayerView {
   }
 
   public set(view: ViewState): void {
-    this.state = clampView(view);
+    const next = clampView(view);
+    if (isSameView(next, this.state)) return;
+    this.state = next;
     this.surface?.setView(this.state);
     this.events.emit('viewchange', this.state);
   }
 
   public setMode(mode: ViewMode): void {
+    if (mode === this.mode) return;
     this.mode = mode;
     this.surface?.setViewMode(mode);
     this.events.emit('viewmodechange', mode);

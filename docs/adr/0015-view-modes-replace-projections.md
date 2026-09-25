@@ -57,7 +57,7 @@ is obeyed in any mode.
 ## Consequences
 
 The `projection` attribute and URL parameter are gone without an alias (nothing was published
-yet). A zoom in the equirectangular view announces an unchanged view. The renderer asks the mode for the picture
+yet). A gesture a mode ignores announces nothing. The renderer asks the mode for the picture
 of the current view and draws it with that kind's program: the stitch assembled with the
 rectilinear or the equirectangular ray chunk, or the lens tiles pass, all over the same
 uniforms and all compiled when the renderer is created, so switching modes swaps programs

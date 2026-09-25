@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { clampView, DEFAULT_VIEW, FIELD_OF_VIEW_BOUNDS, viewRotation } from './ViewState';
+import {
+  clampView,
+  DEFAULT_VIEW,
+  FIELD_OF_VIEW_BOUNDS,
+  isSameView,
+  viewRotation,
+} from './ViewState';
 import { transformVector } from '../../shared/math/Matrix3';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { degrees } from '../../shared/units/angle';
@@ -44,6 +50,13 @@ describe('ViewState', () => {
     expect(clampView(undershoot)).toEqual({ yaw: 180, pitch: -90, fieldOfView: 30 });
     expect(clampView({ ...DEFAULT_VIEW, yaw: degrees(-540) }).yaw).toBe(180);
     expect(clampView({ ...DEFAULT_VIEW, yaw: degrees(180) }).yaw).toBe(180);
+  });
+
+  it('tells views apart by every angle', () => {
+    expect(isSameView(DEFAULT_VIEW, { ...DEFAULT_VIEW })).toBe(true);
+    expect(isSameView(DEFAULT_VIEW, { ...DEFAULT_VIEW, yaw: degrees(1) })).toBe(false);
+    expect(isSameView(DEFAULT_VIEW, { ...DEFAULT_VIEW, pitch: degrees(1) })).toBe(false);
+    expect(isSameView(DEFAULT_VIEW, { ...DEFAULT_VIEW, fieldOfView: degrees(91) })).toBe(false);
   });
 
   it('refuses non-finite angles', () => {

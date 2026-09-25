@@ -65,6 +65,10 @@ export function clampView(view: ViewState): ViewState {
   };
 }
 
+export function isSameView(a: ViewState, b: ViewState): boolean {
+  return a.yaw === b.yaw && a.pitch === b.pitch && a.fieldOfView === b.fieldOfView;
+}
+
 /**
  * Turns view-space directions (z forward) into camera body directions: pitch about the body's
  * lateral axis first, then yaw about its vertical axis. Body y points down, so a positive

@@ -11,7 +11,7 @@ import type { PlayerSource } from '../PlayerSource';
 /**
  * What is running for the loaded recording; disposed as one.
  */
-export interface Loaded {
+export interface LoadedRecording {
   readonly opened: OpenedRecording;
   readonly pipeline: Pipeline;
   readonly viewport: Viewport;
@@ -34,7 +34,7 @@ export interface LoadRequest {
  * Opens the recording and builds everything that plays it on the host's canvas. Whatever was
  * built is disposed again when a step fails or the load is aborted.
  */
-export async function openLoaded(request: LoadRequest): Promise<Loaded> {
+export async function loadRecording(request: LoadRequest): Promise<LoadedRecording> {
   const { parts, signal } = request;
   const opened = await openRecording(request.source, parts.ports, signal);
   const disposables = new Disposables();

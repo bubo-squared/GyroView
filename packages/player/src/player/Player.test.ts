@@ -202,7 +202,7 @@ describe('Player over the synthetic X5 recording', () => {
     player.resetView();
     expect(player.view).toMatchObject({ yaw: 0, pitch: 0, fieldOfView: 90 });
     player.setStabilization('off');
-    expect(views).toEqual([40, 40, 40, 45, 0]);
+    expect(views).toEqual([40, 40, 45, 0]);
     expect(modes).toEqual(['equirectangular', 'normal']);
   });
 

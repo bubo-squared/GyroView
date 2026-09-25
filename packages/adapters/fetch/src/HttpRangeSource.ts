@@ -1,6 +1,12 @@
 import { GyroViewError, type ByteRange, type RandomAccessSource } from '@gyroview/core';
 
-import { discardBody, httpRequest, type HttpRequestOptions } from './httpRequest';
+import {
+  discardBody,
+  FIRST_BYTE_RANGE,
+  httpRequest,
+  type HttpMethod,
+  type HttpRequestOptions,
+} from './httpRequest';
 
 const HTTP_OK = 200;
 const HTTP_PARTIAL_CONTENT = 206;
@@ -97,7 +103,7 @@ export class HttpRangeSource implements RandomAccessSource {
    * Some servers omit Content-Length on HEAD; a one-byte range then reveals the total.
    */
   private async sizeFromContentRange(): Promise<number> {
-    const response = await this.request('GET', { Range: 'bytes=0-0' });
+    const response = await this.request('GET', { Range: FIRST_BYTE_RANGE });
     discardBody(response);
     const total = CONTENT_RANGE_TOTAL.exec(response.headers.get('content-range') ?? '')?.[1];
     if (total === undefined || response.status !== HTTP_PARTIAL_CONTENT) {
@@ -109,7 +115,7 @@ export class HttpRangeSource implements RandomAccessSource {
     return Number(total);
   }
 
-  private request(method: 'GET' | 'HEAD', headers?: Record<string, string>): Promise<Response> {
+  private request(method: HttpMethod, headers?: Record<string, string>): Promise<Response> {
     return httpRequest(this.url, { method, ...(headers && { headers }) }, this.options);
   }
 }

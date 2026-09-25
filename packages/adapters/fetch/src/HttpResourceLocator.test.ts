@@ -52,6 +52,18 @@ describe('HttpResourceLocator', () => {
     await expect(new HttpResourceLocator().exists(server.url)).resolves.toBe(false);
   });
 
+  it('spends no request explaining a failed lookup', async () => {
+    let calls = 0;
+    const offline: typeof fetch = () => {
+      calls += 1;
+      return Promise.reject(new TypeError('Failed to fetch'));
+    };
+    await expect(
+      new HttpResourceLocator({ fetch: offline }).exists('https://x.example/a'),
+    ).resolves.toBe(false);
+    expect(calls).toBe(1);
+  });
+
   it('falls back to a one-byte GET when HEAD is not allowed', async () => {
     const server = await serve();
     await expect(new HttpResourceLocator({ fetch: refusingHead }).exists(server.url)).resolves.toBe(

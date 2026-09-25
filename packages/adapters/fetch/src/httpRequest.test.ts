@@ -32,6 +32,18 @@ describe('httpRequest', () => {
     ).rejects.toMatchObject({ code: 'source-unreadable' });
   });
 
+  it('passes the abort of a caller on as it is, without probing the server', async () => {
+    const calls: (RequestInit | undefined)[] = [];
+    const aborted: typeof fetch = (_input, init) => {
+      calls.push(init);
+      return Promise.reject(new DOMException('the caller gave up', 'AbortError'));
+    };
+    await expect(
+      httpRequest(URL_UNDER_TEST, { method: 'GET' }, { fetch: aborted }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(calls).toHaveLength(1);
+  });
+
   it('passes the shared request settings and the request headers through', async () => {
     const seen: RequestInit[] = [];
     const recording: typeof fetch = (_input, init) => {

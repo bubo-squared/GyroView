@@ -2,6 +2,12 @@ import { GyroViewError } from '@gyroview/core';
 
 export type HttpMethod = 'GET' | 'HEAD';
 
+/**
+ * The Range header value that asks for the first byte only: enough to learn whether a resource
+ * is there, or its total size from Content-Range.
+ */
+export const FIRST_BYTE_RANGE = 'bytes=0-0';
+
 export interface HttpRequestOptions {
   /**
    * Extra request settings, for example credentials or headers. `Range` is set by the caller.
@@ -25,26 +31,43 @@ export interface HttpRequest {
 const CACHE_MODE: RequestCache = 'no-store';
 
 /**
- * One request with the shared settings merged in. A request that fails outright is told apart
- * from one the browser blocked for want of CORS headers: the latter is `cors`, the former
- * `source-unreadable`.
+ * One request with the shared settings merged in, failures explained: a request that fails
+ * outright is told apart from one the browser blocked for want of CORS headers (the latter is
+ * `cors`, the former `source-unreadable`). A caller's abort is passed on as it is.
  */
 export async function httpRequest(
   url: string,
   request: HttpRequest,
   options: HttpRequestOptions,
 ): Promise<Response> {
-  const doFetch = options.fetch ?? fetch;
   try {
-    return await doFetch(url, {
-      cache: CACHE_MODE,
-      ...options.requestInit,
-      method: request.method,
-      headers: { ...headersOf(options.requestInit), ...request.headers },
-    });
+    return await plainHttpRequest(url, request, options);
   } catch (error) {
-    throw await diagnoseFailure(url, doFetch, error);
+    if (isAbort(error)) throw error;
+    throw await diagnoseFailure(url, options.fetch ?? fetch, error);
   }
+}
+
+/**
+ * One request with the shared settings merged in and its failure left as the platform reported
+ * it, for callers to whom any failure means the same.
+ */
+export function plainHttpRequest(
+  url: string,
+  request: HttpRequest,
+  options: HttpRequestOptions,
+): Promise<Response> {
+  const doFetch = options.fetch ?? fetch;
+  return doFetch(url, {
+    cache: CACHE_MODE,
+    ...options.requestInit,
+    method: request.method,
+    headers: { ...headersOf(options.requestInit), ...request.headers },
+  });
+}
+
+function isAbort(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
 }
 
 /**

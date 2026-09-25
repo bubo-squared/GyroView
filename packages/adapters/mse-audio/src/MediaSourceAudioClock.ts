@@ -1,5 +1,6 @@
 import {
   GyroViewError,
+  messageOf,
   seconds,
   type AudioSegmentSource,
   type PlaybackClock,
@@ -16,7 +17,8 @@ import { SourceBufferFeeder } from './SourceBufferFeeder';
 
 export interface MediaSourceAudioClockOptions {
   /**
-   * How far past the playhead audio is kept buffered. Default 30 s.
+   * How far past the playhead audio is kept buffered. Default 30 s: a seek discards and refills
+   * it, and it rides out a slow network.
    */
   readonly bufferAhead?: Seconds;
 }
@@ -70,7 +72,7 @@ export class MediaSourceAudioClock implements PlaybackClock {
       return new MediaSourceAudioClock(element, feeder, attached);
     } catch (error) {
       attached.detach();
-      throw error;
+      throw asClockFailure(error);
     }
   }
 
@@ -136,4 +138,18 @@ export class MediaSourceAudioClock implements PlaybackClock {
 
 function isNamed(error: unknown, name: string): boolean {
   return error instanceof Error && error.name === name;
+}
+
+/**
+ * The media source's own exceptions cross the port as typed failures: a type it will not buffer
+ * is `codec-unsupported`, anything else `decode`.
+ */
+function asClockFailure(error: unknown): GyroViewError {
+  if (error instanceof GyroViewError) return error;
+  const isUnsupported = error instanceof DOMException && error.name === 'NotSupportedError';
+  return new GyroViewError(
+    isUnsupported ? 'codec-unsupported' : 'decode',
+    `the audio element refused the recording's sound: ${messageOf(error)}`,
+    { cause: error },
+  );
 }

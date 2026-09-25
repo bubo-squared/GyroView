@@ -1,3 +1,5 @@
+import { GyroViewError } from '@gyroview/core';
+
 /**
  * Safari 17+ ships ManagedMediaSource, the only media source on iPhone, and TypeScript's DOM
  * declarations do not know it yet. It has the MediaSource surface this adapter uses.
@@ -42,19 +44,25 @@ export interface AttachedMediaSource {
 }
 
 /**
- * Attaches a fresh media source to the element and resolves once it is open for source buffers.
+ * `sourceopen` follows the attachment within a task or two; a browser that never sends it, or
+ * sends the element's `error` instead, must not hold the load, which falls back to a silent clock.
+ */
+const SOURCE_OPEN_TIMEOUT_MS = 10_000;
+
+/**
+ * Attaches a fresh media source to the element and resolves once it is open for source buffers;
+ * rejects with `decode`, detached again, when the element fails or the source never opens.
  */
 export async function attachMediaSource(
   element: HTMLMediaElement,
   mediaSourceClass: MediaSourceConstructor,
 ): Promise<AttachedMediaSource> {
   const mediaSource = new mediaSourceClass();
-  const opened = nextEvent(mediaSource, 'sourceopen');
+  const outcome = sourceOpenOutcome(element, mediaSource);
   const url = URL.createObjectURL(mediaSource);
   element.disableRemotePlayback = true;
   element.src = url;
-  await opened;
-  return {
+  const attached = {
     mediaSource,
     detach: (): void => {
       element.removeAttribute('src');
@@ -62,6 +70,29 @@ export async function attachMediaSource(
       URL.revokeObjectURL(url);
     },
   };
+  const opened = await outcome;
+  if (opened !== 'sourceopen') {
+    attached.detach();
+    throw new GyroViewError(
+      'decode',
+      `the audio element could not open its media source (${opened})`,
+    );
+  }
+  return attached;
+}
+
+function sourceOpenOutcome(
+  element: HTMLMediaElement,
+  mediaSource: MediaSource,
+): Promise<'sourceopen' | 'error' | 'timeout'> {
+  const opened = nextOfEvents(mediaSource, ['sourceopen'] as const);
+  const failed = nextOfEvents(element, ['error'] as const);
+  const timedOut = new Promise<'timeout'>((resolve) => {
+    setTimeout(() => {
+      resolve('timeout');
+    }, SOURCE_OPEN_TIMEOUT_MS);
+  });
+  return Promise.race([opened, failed, timedOut]);
 }
 
 export function nextEvent(target: EventTarget, type: string): Promise<void> {

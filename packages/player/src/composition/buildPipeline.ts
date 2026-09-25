@@ -78,11 +78,6 @@ const PIPELINE_OPTIONS: DecodePipelineOptions = {
   maxPendingPackets: MAX_PENDING_PACKETS,
   pairTolerance: seconds(PAIR_TOLERANCE_SECONDS),
 };
-/**
- * Seconds of sound kept buffered past the playhead; a seek discards and refills it.
- */
-const AUDIO_BUFFER_AHEAD_SECONDS = 30;
-
 const NO_AUDIO_WARNING = 'the recording has no audio track; playback follows a silent clock';
 const AUDIO_UNSUPPORTED_WARNING =
   'this browser cannot play the audio track through Media Source Extensions; playback follows a silent clock';
@@ -157,9 +152,7 @@ async function clockFor(
   try {
     const segments = await new MediabunnyAudioSegmenter().open(audioTrack);
     if (!MediaSourceAudioClock.isSupported(segments)) return wallClock(AUDIO_UNSUPPORTED_WARNING);
-    const clock = await MediaSourceAudioClock.open(audio, segments, {
-      bufferAhead: seconds(AUDIO_BUFFER_AHEAD_SECONDS),
-    });
+    const clock = await MediaSourceAudioClock.open(audio, segments);
     return { clock, kind: 'audio', warnings: [] };
   } catch (error) {
     // Sound is a comfort, the picture is the point: a broken audio path must not stop playback.

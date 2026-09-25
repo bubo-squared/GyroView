@@ -4,6 +4,11 @@ import type { EncodedVideoPacket, VideoTrackReader } from '../ports/Demuxer';
 import type { DecodedFrame, VideoDecoderHandle, VideoDecoderPort } from '../ports/VideoDecoderPort';
 import { seconds } from '../shared/units/time';
 
+/**
+ * Whatever a decoder refuses, fake or real, crosses the port as a typed `decode` failure.
+ */
+const DECODE_FAILURE = expect.objectContaining({ code: 'decode' }) as Error;
+
 export interface VideoDecoderContractSubject<Handle> {
   readonly port: VideoDecoderPort<Handle>;
   /**
@@ -90,13 +95,13 @@ export function describeVideoDecoderPortContract<Handle>(
       const opened = await openDecoder(await setup());
       expect(() => {
         opened.decoder.decode(opened.delta);
-      }).toThrow();
+      }).toThrow(DECODE_FAILURE);
       opened.decoder.decode(opened.key);
       opened.decoder.reset();
       expect(opened.decoder.pendingCount).toBe(0);
       expect(() => {
         opened.decoder.decode(opened.delta);
-      }).toThrow();
+      }).toThrow(DECODE_FAILURE);
       opened.decoder.decode(opened.key);
       await opened.decoder.flush();
       closeAll(opened);
@@ -116,8 +121,8 @@ export function describeVideoDecoderPortContract<Handle>(
       opened.decoder.close();
       expect(() => {
         opened.decoder.decode(opened.key);
-      }).toThrow();
-      await expect(opened.decoder.flush()).rejects.toBeDefined();
+      }).toThrow(DECODE_FAILURE);
+      await expect(opened.decoder.flush()).rejects.toThrow(DECODE_FAILURE);
       await expect(opened.decoder.waitForPendingBelow(1)).resolves.toBeUndefined();
     });
   });

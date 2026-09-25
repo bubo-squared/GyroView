@@ -1,5 +1,6 @@
 import {
   GyroViewError,
+  messageOf,
   microseconds,
   microsecondsToSeconds,
   secondsToMicroseconds,
@@ -11,11 +12,16 @@ import {
   type VideoDecoderPort,
 } from '@gyroview/core';
 
-export type HardwarePreference = 'prefer-hardware' | 'prefer-software' | 'no-preference';
-
 export interface WebCodecsDecoderOptions {
-  readonly hardwareAcceleration?: HardwarePreference;
+  /**
+   * Default `no-preference`: a hard `prefer-hardware` refuses codecs the browser could decode in
+   * software (H.264 proxies on machines without a hardware decoder), and with no preference the
+   * browser still picks hardware when it has it (ADR 0010).
+   */
+  readonly hardwareAcceleration?: HardwareAcceleration;
 }
+
+const DEFAULT_HARDWARE_ACCELERATION: HardwareAcceleration = 'no-preference';
 
 /**
  * The error a decoder reported through its callback, shared between the callback and the
@@ -41,10 +47,17 @@ class ReportedFailure {
 export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
   public constructor(private readonly options: WebCodecsDecoderOptions = {}) {}
 
+  /**
+   * A configuration WebCodecs finds malformed is one it does not support.
+   */
   public async isSupported(configuration: VideoDecoderConfiguration): Promise<boolean> {
     if (typeof VideoDecoder === 'undefined') return false;
-    const support = await VideoDecoder.isConfigSupported(this.toWebCodecsConfig(configuration));
-    return support.supported === true;
+    try {
+      const support = await VideoDecoder.isConfigSupported(this.toWebCodecsConfig(configuration));
+      return support.supported === true;
+    } catch {
+      return false;
+    }
   }
 
   public create(
@@ -102,7 +115,7 @@ export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
       codedHeight: configuration.codedHeight,
       ...(description && { description }),
       ...(isFullRange !== undefined && { colorSpace: { fullRange: isFullRange } }),
-      hardwareAcceleration: this.options.hardwareAcceleration ?? 'prefer-hardware',
+      hardwareAcceleration: this.options.hardwareAcceleration ?? DEFAULT_HARDWARE_ACCELERATION,
       optimizeForLatency: false,
     };
   }
@@ -119,16 +132,19 @@ class WebCodecsDecoderHandle implements VideoDecoderHandle {
     return this.decoder.decodeQueueSize;
   }
 
+  /**
+   * WebCodecs throws platform exceptions for a packet it refuses (a delta frame first, a closed
+   * decoder); they cross the port as `decode` failures, as the fake's do.
+   */
   public decode(packet: EncodedVideoPacket): void {
     if (this.failure.current) throw this.failure.current;
-    this.decoder.decode(
-      new EncodedVideoChunk({
-        type: packet.isKeyFrame ? 'key' : 'delta',
-        timestamp: secondsToMicroseconds(packet.timestamp),
-        duration: secondsToMicroseconds(packet.duration),
-        data: packet.data,
-      }),
-    );
+    try {
+      this.decoder.decode(chunkOf(packet));
+    } catch (error) {
+      throw new GyroViewError('decode', `the decoder refused a packet: ${messageOf(error)}`, {
+        cause: error,
+      });
+    }
   }
 
   /**
@@ -177,6 +193,15 @@ class WebCodecsDecoderHandle implements VideoDecoderHandle {
   public close(): void {
     if (this.decoder.state !== 'closed') this.decoder.close();
   }
+}
+
+function chunkOf(packet: EncodedVideoPacket): EncodedVideoChunk {
+  return new EncodedVideoChunk({
+    type: packet.isKeyFrame ? 'key' : 'delta',
+    timestamp: secondsToMicroseconds(packet.timestamp),
+    duration: secondsToMicroseconds(packet.duration),
+    data: packet.data,
+  });
 }
 
 function wrapFrame(frame: VideoFrame): DecodedFrame<VideoFrame> {

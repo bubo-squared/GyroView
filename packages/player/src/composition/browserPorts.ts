@@ -29,10 +29,7 @@ export function browserPorts(options: BrowserPortsOptions = {}): RecordingPorts<
   return {
     sources: new BrowserSourceOpener(http),
     demuxer: new MediabunnyDemuxer(),
-    // A hard hardware preference refuses codecs the browser could decode in software (H.264
-    // proxies on machines without a hardware decoder); with no preference the browser still
-    // picks hardware when it has it.
-    decoderPort: new WebCodecsVideoDecoderPort({ hardwareAcceleration: 'no-preference' }),
+    decoderPort: new WebCodecsVideoDecoderPort(),
     locator: new HttpResourceLocator(http),
     probeDeadline: () => deadlineIn(probeTimeoutMs),
   };

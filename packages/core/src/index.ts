@@ -162,7 +162,9 @@ export { parseOffsetString } from './domain/optics/parseOffsetString';
 // Shared vocabulary
 export {
   ensureInvariant,
+  GYRO_VIEW_ERROR_CODES,
   GyroViewError,
+  isGyroViewErrorCode,
   messageOf,
   type GyroViewErrorCode,
 } from './shared/errors/GyroViewError';

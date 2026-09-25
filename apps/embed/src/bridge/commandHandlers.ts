@@ -13,7 +13,7 @@ type Handler = (element: GyroViewElement, parameters: readonly unknown[]) => unk
 const LOAD_ATTRIBUTES = Object.values(SourceAttribute);
 
 function invalid(what: string): GyroViewError {
-  return new GyroViewError('invariant-violation', `embed command argument ${what}`);
+  return new GyroViewError('invalid-argument', `embed command argument ${what}`);
 }
 
 function numberAt(parameters: readonly unknown[], index: number): number {
@@ -39,16 +39,27 @@ function choiceAt<Choice extends string>(
   return choice;
 }
 
+const OPTIONAL_LOAD_FIELDS = ['src2', 'proxy', 'quality'] as const;
+
+type OptionalLoadFields = Partial<Record<(typeof OPTIONAL_LOAD_FIELDS)[number], string>>;
+
 function loadRequestAt(parameters: readonly unknown[]): LoadRequest {
   const value = parameters[0];
-  if (
-    typeof value !== 'object' ||
-    value === null ||
-    typeof (value as LoadRequest).src !== 'string'
-  ) {
-    throw invalid('0 must be an object with a src string');
+  if (typeof value !== 'object' || value === null) throw invalid('0 must be an object');
+  const request = value as Readonly<Record<string, unknown>>;
+  if (typeof request['src'] !== 'string') throw invalid('0.src must be a string');
+  return { src: request['src'], ...optionalLoadFieldsOf(request) };
+}
+
+function optionalLoadFieldsOf(request: Readonly<Record<string, unknown>>): OptionalLoadFields {
+  const fields: OptionalLoadFields = {};
+  for (const name of OPTIONAL_LOAD_FIELDS) {
+    const field = request[name];
+    if (field === undefined) continue;
+    if (typeof field !== 'string') throw invalid(`0.${name} must be a string`);
+    fields[name] = field;
   }
-  return value as LoadRequest;
+  return fields;
 }
 
 function stateOf(element: GyroViewElement): EmbedState {

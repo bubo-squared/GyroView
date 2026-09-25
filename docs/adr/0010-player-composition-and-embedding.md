@@ -38,7 +38,9 @@ with no preference the browser still picks hardware when it has one.
 
 **Embedding uses a versioned `postMessage` protocol.** Messages carry `protocol: 'gyro-view/1'`
 and a `kind` (`hello`, `command`, `result`, `event`); everything received is validated before
-use, arguments included. The frame trusts one origin: the one the snippet names in the URL, or
+use: every command argument and field by type, event names against the forwarded list, error
+codes against the known ones. An event's payload from the pinned frame is trusted once its
+message has passed those checks. The frame trusts one origin: the one the snippet names in the URL, or
 the referrer's, never `*`; a frame with neither plays standalone without a bridge. The page
 trusts only the frame's origin and window. Commands sent before the frame's `hello` wait for it.
 Errors cross the boundary as `{ code, message }`, so the codes stay stable on both sides.

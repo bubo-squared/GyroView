@@ -82,6 +82,7 @@ Every failure is a `GyroViewError` with a stable `code`; the `error` event carri
 | `decode`              | A decoder or the audio buffer failed mid-stream.                             |
 | `render-unavailable`  | No WebGL2 context, or the stitching shader did not compile.                  |
 | `invalid-argument`    | A property, method or embed command got a value it does not accept.          |
+| `embed-destroyed`     | A command reached an embed handle after `destroy()`.                         |
 
 Other codes (`invalid-*`, `unsupported-*`, `no-frame-times`, `record-not-found`) come from a
 damaged or unusual file and name the record concerned.

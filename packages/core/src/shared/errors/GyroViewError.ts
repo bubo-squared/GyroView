@@ -1,33 +1,41 @@
 /**
  * Stable machine-readable failure categories. Embedders switch on these; messages are for humans.
  */
-export type GyroViewErrorCode =
-  | 'binary-out-of-bounds'
-  | 'binary-unsafe-integer'
-  | 'codec-unsupported'
-  | 'cors'
-  | 'decode'
-  | 'index-out-of-range'
-  | 'invalid-argument'
-  | 'invalid-byte-range'
-  | 'invalid-calibration'
-  | 'invalid-protobuf'
-  | 'invalid-trailer'
-  | 'invariant-violation'
-  | 'missing-second-file'
-  | 'no-calibration'
-  | 'no-frame-times'
-  | 'no-info-record'
-  | 'playback-blocked'
-  | 'range-unsupported'
-  | 'record-not-found'
-  | 'render-unavailable'
-  | 'source-truncated'
-  | 'source-unreadable'
-  | 'unsupported-calibration'
-  | 'unsupported-gyro-record'
-  | 'unsupported-info-format'
-  | 'unsupported-layout';
+export const GYRO_VIEW_ERROR_CODES = [
+  'binary-out-of-bounds',
+  'binary-unsafe-integer',
+  'codec-unsupported',
+  'cors',
+  'decode',
+  'embed-destroyed',
+  'index-out-of-range',
+  'invalid-argument',
+  'invalid-byte-range',
+  'invalid-calibration',
+  'invalid-protobuf',
+  'invalid-trailer',
+  'invariant-violation',
+  'missing-second-file',
+  'no-calibration',
+  'no-frame-times',
+  'no-info-record',
+  'playback-blocked',
+  'range-unsupported',
+  'record-not-found',
+  'render-unavailable',
+  'source-truncated',
+  'source-unreadable',
+  'unsupported-calibration',
+  'unsupported-gyro-record',
+  'unsupported-info-format',
+  'unsupported-layout',
+] as const;
+
+export type GyroViewErrorCode = (typeof GYRO_VIEW_ERROR_CODES)[number];
+
+export function isGyroViewErrorCode(value: unknown): value is GyroViewErrorCode {
+  return typeof value === 'string' && (GYRO_VIEW_ERROR_CODES as readonly string[]).includes(value);
+}
 
 export class GyroViewError extends Error {
   public constructor(

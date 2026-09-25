@@ -126,18 +126,23 @@ describe('the embed bridge over a message channel', () => {
   it('rejects a command with a bad argument without breaking the others', async () => {
     const { handle, element } = bridge();
     await expect(handle.seek(NaN)).rejects.toMatchObject({
-      code: 'invariant-violation',
+      code: 'invalid-argument',
       message: 'embed command argument 0 must be a finite number',
     });
     await expect(handle.setStabilization('wobble')).rejects.toMatchObject({
-      code: 'invariant-violation',
+      code: 'invalid-argument',
     });
     await expect(handle.setViewMode('stereographic')).rejects.toMatchObject({
-      code: 'invariant-violation',
+      code: 'invalid-argument',
       message: 'embed command argument 0 must be one of normal, equirectangular, raw-lenses',
     });
     await expect(handle.load({ src: 5 as unknown as string })).rejects.toMatchObject({
-      code: 'invariant-violation',
+      code: 'invalid-argument',
+    });
+    const badSecond = { src: 'a.insv', src2: 7 } as unknown as { src: string };
+    await expect(handle.load(badSecond)).rejects.toMatchObject({
+      code: 'invalid-argument',
+      message: 'embed command argument 0.src2 must be a string',
     });
     await handle.resetView();
     expect(element.view.yaw).toBe(0);
@@ -159,8 +164,8 @@ describe('the embed bridge over a message channel', () => {
 
     const dangling = handle.getState();
     handle.destroy();
-    await expect(dangling).rejects.toMatchObject({ message: 'the embed was destroyed' });
-    await expect(handle.play()).rejects.toMatchObject({ message: 'the embed was destroyed' });
+    await expect(dangling).rejects.toMatchObject({ code: 'embed-destroyed' });
+    await expect(handle.play()).rejects.toMatchObject({ code: 'embed-destroyed' });
   });
 
   it('queues commands until the frame says hello', async () => {

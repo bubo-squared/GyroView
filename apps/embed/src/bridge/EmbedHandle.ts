@@ -3,8 +3,8 @@ import {
   DEFAULT_VIEW,
   DEFAULT_VIEW_MODE,
   GyroViewError,
+  isGyroViewErrorCode,
   TypedEmitter,
-  type GyroViewErrorCode,
 } from '@gyroview/core';
 import type { SoundLevel } from '@gyroview/player';
 
@@ -139,7 +139,7 @@ export class EmbedHandle {
     this.isDestroyed = true;
     this.stopReceiving();
     for (const { reject } of this.pending.values()) {
-      reject(new GyroViewError('invariant-violation', 'the embed was destroyed'));
+      reject(new GyroViewError('embed-destroyed', 'the embed was destroyed'));
     }
     this.pending.clear();
     this.events.removeAll();
@@ -147,7 +147,7 @@ export class EmbedHandle {
 
   private command<Value = void>(name: CommandName, ...parameters: unknown[]): Promise<Value> {
     if (this.isDestroyed) {
-      return Promise.reject(new GyroViewError('invariant-violation', 'the embed was destroyed'));
+      return Promise.reject(new GyroViewError('embed-destroyed', 'the embed was destroyed'));
     }
     const id = this.nextId;
     this.nextId += 1;
@@ -207,7 +207,8 @@ export class EmbedHandle {
 }
 
 function errorFrom(error: SerializedError): GyroViewError {
-  return new GyroViewError(error.code as GyroViewErrorCode, error.message);
+  const code = isGyroViewErrorCode(error.code) ? error.code : 'invariant-violation';
+  return new GyroViewError(code, error.message);
 }
 
 type StateUpdater = (state: EmbedState, detail: unknown) => EmbedState;

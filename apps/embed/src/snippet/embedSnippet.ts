@@ -1,3 +1,5 @@
+import { GyroViewError } from '@gyroview/core';
+
 import { windowEndpoint } from '../bridge/Endpoint';
 import { EmbedHandle } from '../bridge/EmbedHandle';
 import { embedUrlFor, type EmbedOptions } from '../bridge/embedUrl';
@@ -48,8 +50,7 @@ export function embed(
   const embedPageUrl = settings.embedPageUrl ?? defaultEmbedPageUrl();
   const iframe = createFrame(embedUrlFor(embedPageUrl, options, location.origin), settings);
   container.append(iframe);
-  const frameWindow = iframe.contentWindow;
-  if (!frameWindow) throw new Error('the iframe has no window; is the container in the document?');
+  const frameWindow = windowOf(iframe);
   const frameOrigin = new URL(embedPageUrl).origin;
   const handle = new EmbedHandle(
     windowEndpoint({
@@ -70,6 +71,17 @@ export function embed(
   };
 }
 
+function windowOf(iframe: HTMLIFrameElement): Window {
+  const frameWindow = iframe.contentWindow;
+  if (!frameWindow) {
+    throw new GyroViewError(
+      'invalid-argument',
+      'the iframe has no window; is the container in the document?',
+    );
+  }
+  return frameWindow;
+}
+
 function createFrame(url: string, settings: EmbedSettings): HTMLIFrameElement {
   const iframe = document.createElement('iframe');
   iframe.src = url;
@@ -83,7 +95,10 @@ function createFrame(url: string, settings: EmbedSettings): HTMLIFrameElement {
 
 function defaultEmbedPageUrl(): string {
   if (SCRIPT_URL === undefined) {
-    throw new Error('GyroView.embed needs settings.embedPageUrl when the script is inlined');
+    throw new GyroViewError(
+      'invalid-argument',
+      'GyroView.embed needs settings.embedPageUrl when the script is inlined',
+    );
   }
   return new URL('embed.html', SCRIPT_URL).href;
 }

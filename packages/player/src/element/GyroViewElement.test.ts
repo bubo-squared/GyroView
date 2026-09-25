@@ -87,8 +87,8 @@ describe('<gyro-view>', () => {
     for (const element of elements.splice(0)) element.remove();
   });
 
-  it('loads what src names, reflects attributes as properties and exposes the metadata', async () => {
-    const element = create({ controls: '', yaw: '20', stabilization: 'horizon', muted: '' });
+  it('loads what src names and exposes the metadata', async () => {
+    const element = create({ controls: '' });
     const ready = nextEvent<{ model: string }>(element, 'ready');
     element.src = X5_RECORDING_URL;
 
@@ -98,14 +98,22 @@ describe('<gyro-view>', () => {
     expect(element.metadata?.layout).toBe('multi-track');
     expect(element.status).toBe('ready');
     expect(element.dataset['status']).toBe('ready');
-    expect(element.src).toBe(X5_RECORDING_URL);
+    expect(element.duration).toBeCloseTo(3, 1);
+    expect(element.paused).toBe(true);
+  });
+
+  it('applies the settings attributes it is created with', async () => {
+    const element = await createReady({ yaw: '20', stabilization: 'horizon', muted: '' });
     expect(element.yaw).toBe(20);
     expect(element.view.yaw).toBe(20);
     expect(element.stabilization).toBe('horizon');
     expect(element.muted).toBe(true);
+  });
+
+  it('mirrors its source and presentation attributes as properties and takes focus', async () => {
+    const element = await createReady();
+    expect(element.src).toBe(X5_RECORDING_URL);
     expect(element.controls).toBe(true);
-    expect(element.duration).toBeCloseTo(3, 1);
-    expect(element.paused).toBe(true);
     expect(element.tabIndex).toBe(0);
   });
 

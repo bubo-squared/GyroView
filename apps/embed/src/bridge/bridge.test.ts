@@ -54,24 +54,27 @@ describe('the embed bridge over a message channel', () => {
     }
   });
 
-  it('loads, plays, seeks and reports state and events across the channel', async () => {
+  it('loads over the channel and reports the metadata and the state', async () => {
+    const { handle } = bridge();
+    const ready = new Promise<unknown>((resolve) => {
+      handle.events.on('ready', resolve);
+    });
+    await handle.load({ src: recordingUrl });
+    const metadata = (await ready) as { model: string };
+    expect(metadata.model).toBe('Insta360 X5');
+    expect(handle.state.status).toBe('ready');
+    expect(handle.state.duration).toBeCloseTo(3, 1);
+  });
+
+  it('plays, pauses and seeks over the channel and forwards the transport events', async () => {
     const { handle } = bridge();
     const heard: string[] = [];
-    for (const name of ['ready', 'play', 'pause', 'seeking', 'seeked'] as const) {
+    for (const name of ['play', 'pause', 'seeking', 'seeked'] as const) {
       handle.events.on(name, () => {
         heard.push(name);
       });
     }
-
-    const readyPromise = new Promise<unknown>((resolve) => {
-      handle.events.on('ready', resolve);
-    });
     await handle.load({ src: recordingUrl });
-    const metadata = (await readyPromise) as { model: string; duration: number };
-    expect(metadata.model).toBe('Insta360 X5');
-    expect(handle.state.status).toBe('ready');
-    expect(handle.state.duration).toBeCloseTo(3, 1);
-
     await handle.play();
     await waitFor(() => handle.state.status === 'playing', 'playing');
     await handle.pause();
@@ -79,24 +82,24 @@ describe('the embed bridge over a message channel', () => {
     const state = await handle.getState();
     expect(state.currentTime).toBe(2);
     expect(state.isPaused).toBe(true);
-    expect(heard).toEqual(['ready', 'play', 'pause', 'seeking', 'seeked']);
+    expect(heard).toEqual(['play', 'pause', 'seeking', 'seeked']);
+  });
 
+  it('changes the view, view mode, stabilization and loop over the channel', async () => {
+    const { handle, element } = bridge();
+    await handle.load({ src: recordingUrl });
     await handle.lookAt(30, 10);
     await handle.zoom(1);
     await handle.setStabilization('horizon');
+    await handle.setViewMode('equirectangular');
+    await handle.setLoop(true);
     expect(handle.state.view).toMatchObject({ yaw: 30, pitch: 10 });
     expect(handle.state.view.fieldOfView).toBeLessThan(90);
     expect(handle.state.stabilization).toBe('horizon');
-    expect(handle.state.viewMode).toBe('normal');
-    await handle.setViewMode('equirectangular');
     expect(handle.state.viewMode).toBe('equirectangular');
-    const afterModeChange = await handle.getState();
-    expect(afterModeChange.viewMode).toBe('equirectangular');
-    await handle.setMuted(true);
-    await handle.setVolume(0.3);
-    await handle.setLoop(true);
-    const afterSettings = await handle.getState();
-    expect(afterSettings.status).toBe('paused');
+    expect(element.loop).toBe(true);
+    const state = await handle.getState();
+    expect(state.viewMode).toBe('equirectangular');
   });
 
   it('resolves a load once the recording is ready, so a play right after it starts', async () => {

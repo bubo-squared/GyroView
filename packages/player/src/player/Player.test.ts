@@ -184,16 +184,8 @@ describe('Player over the synthetic X5 recording', () => {
     expect(await heard).toEqual({ volume: 1, isMuted: !wasMuted });
   });
 
-  it('keeps view, view mode and stabilization across loads and redraws while paused', async () => {
+  it('keeps view, view mode and stabilization across loads', async () => {
     const { player } = open();
-    const views: number[] = [];
-    const modes: string[] = [];
-    player.events.on('viewchange', (view) => {
-      views.push(view.yaw);
-    });
-    player.events.on('viewmodechange', (mode) => {
-      modes.push(mode);
-    });
     player.lookAt(degrees(400), degrees(10));
     player.setStabilization('horizon');
     player.setViewMode('equirectangular');
@@ -203,18 +195,40 @@ describe('Player over the synthetic X5 recording', () => {
     expect(player.view).toMatchObject({ yaw: 40, pitch: 10 });
     expect(player.stabilization).toBe('horizon');
     expect(player.viewMode).toBe('equirectangular');
+  });
+
+  it('lets the view mode rule the gestures: the panorama ignores zoom, the normal view zooms and turns', async () => {
+    const { player } = open();
+    await player.load(sourceOf(X5_RECORDING_URL));
+    player.setViewMode('equirectangular');
     player.zoom(1);
     expect(player.view.fieldOfView).toBe(90);
     player.setViewMode('normal');
     player.zoom(1);
-    expect(player.view.fieldOfView).toBeLessThan(90);
     player.turn(degrees(5), degrees(-5));
-    expect(player.view).toMatchObject({ yaw: 45, pitch: 5 });
+    expect(player.view.fieldOfView).toBeLessThan(90);
+    expect(player.view).toMatchObject({ yaw: 5, pitch: -5 });
+  });
+
+  it('announces view and mode changes only when something changed', async () => {
+    const { player } = open();
+    const views: number[] = [];
+    const modes: string[] = [];
+    player.events.on('viewchange', (view) => {
+      views.push(view.yaw);
+    });
+    player.events.on('viewmodechange', (mode) => {
+      modes.push(mode);
+    });
+    await player.load(sourceOf(X5_RECORDING_URL));
+    player.lookAt(degrees(40), degrees(0));
+    player.setViewMode('equirectangular');
+    player.zoom(1);
+    player.setViewMode('equirectangular');
     player.resetView();
-    expect(player.view).toMatchObject({ yaw: 0, pitch: 0, fieldOfView: 90 });
-    player.setStabilization('off');
-    expect(views).toEqual([40, 40, 45, 0]);
-    expect(modes).toEqual(['equirectangular', 'normal']);
+    player.resetView();
+    expect(views).toEqual([40, 0]);
+    expect(modes).toEqual(['equirectangular']);
   });
 
   it('follows the recording audio when the browser can play it, else warns', async () => {

@@ -1,12 +1,8 @@
 import {
-  clampView,
-  DEFAULT_VIEW,
   GyroViewError,
-  lookAt,
   seconds,
   stabilizerFor,
   TypedEmitter,
-  zoomView,
   type Degrees,
   type PlayerState,
   type Presentation,
@@ -18,6 +14,7 @@ import {
 import { FrameLoop } from './FrameLoop';
 import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
 import type { LoadOptions, PlayerParts } from './PlayerOptions';
+import { PlayerView } from './PlayerView';
 import { transportEventsFor } from './transportEvents';
 import { Viewport } from './Viewport';
 import { buildPipeline, type Pipeline } from '../composition/buildPipeline';
@@ -51,7 +48,9 @@ export class Player {
   private loaded: Loaded | undefined;
   private loading: AbortController | undefined;
   private failure: GyroViewError | undefined;
-  private viewState: ViewState = DEFAULT_VIEW;
+  private readonly viewing = new PlayerView((view) => {
+    this.events.emit('viewchange', view);
+  });
   private stabilizationMode: StabilizationMode = DEFAULT_STABILIZATION;
   private isGainMatching = true;
   private isLoopingValue = false;
@@ -91,7 +90,7 @@ export class Player {
   }
 
   public get view(): ViewState {
-    return this.viewState;
+    return this.viewing.current;
   }
 
   public get stabilization(): StabilizationMode {
@@ -153,6 +152,7 @@ export class Player {
     this.lastSessionState = undefined;
     const { loaded } = this;
     this.loaded = undefined;
+    this.viewing.attach(undefined);
     loaded?.dispose();
     this.setStatus('idle');
   }
@@ -184,21 +184,19 @@ export class Player {
   }
 
   public setView(view: ViewState): void {
-    this.viewState = clampView(view);
-    this.loaded?.pipeline.renderer.setView(this.viewState);
-    this.events.emit('viewchange', this.viewState);
+    this.viewing.set(view);
   }
 
   public lookAt(yaw: Degrees, pitch: Degrees): void {
-    this.setView(lookAt(this.viewState, yaw, pitch));
+    this.viewing.lookAt(yaw, pitch);
   }
 
   public zoom(steps: number): void {
-    this.setView(zoomView(this.viewState, steps));
+    this.viewing.zoom(steps);
   }
 
   public resetView(): void {
-    this.setView({ ...DEFAULT_VIEW, projection: this.viewState.projection });
+    this.viewing.reset();
   }
 
   public setStabilization(mode: StabilizationMode): void {
@@ -234,7 +232,7 @@ export class Player {
   }
 
   private applyOptions(options: LoadOptions): void {
-    if (options.view) this.viewState = clampView(options.view);
+    if (options.view) this.viewing.restore(options.view);
     if (options.stabilization) this.stabilizationMode = options.stabilization;
     if (options.gainMatching !== undefined) this.isGainMatching = options.gainMatching;
   }
@@ -250,7 +248,7 @@ export class Player {
         opened,
         host: this.parts.host,
         decoderPort: this.parts.ports.decoderPort,
-        view: this.viewState,
+        view: this.viewing.current,
         onPresent: (presentation): void => {
           this.onPresent(presentation);
         },
@@ -272,6 +270,7 @@ export class Player {
 
   private attach(loaded: Loaded): void {
     this.loaded = loaded;
+    this.viewing.attach(loaded.pipeline.renderer);
     const { session } = loaded.pipeline;
     loaded.pipeline.stabilizing?.setStabilizer(stabilizerFor(this.stabilizationMode));
     loaded.pipeline.renderer.setGainMatching(this.isGainMatching);

@@ -10,6 +10,7 @@ import {
   type AudioTrackReader,
   type DecodePipelineOptions,
   type FrameSink,
+  type PictureRenderer,
   type PlaybackClock,
   type Presentation,
   type VideoDecoderPort,
@@ -49,13 +50,19 @@ export type ClockKind = 'audio' | 'wall';
  */
 export interface Pipeline {
   readonly session: PlaybackSession<VideoFrame>;
-  readonly renderer: ThreeFrameRenderer;
+  readonly renderer: PictureRenderer<VideoFrame>;
   readonly stabilizing: StabilizingFrameSink<VideoFrame> | undefined;
   readonly clock: PlaybackClock;
   readonly clockKind: ClockKind;
   readonly warnings: readonly string[];
   dispose(): void;
 }
+
+/**
+ * Builds what plays an opened recording; `buildPipeline` in a browser. Injected, so the player's
+ * own logic can be exercised with any pipeline.
+ */
+export type PipelineFactory = (parts: PipelineParts) => Promise<Pipeline>;
 
 /**
  * Half a millisecond: two lens tracks stamp the same instant within rounding of the timescale.

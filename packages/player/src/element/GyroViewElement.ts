@@ -24,6 +24,7 @@ import { defineBooleanProperties, defineStringProperties } from './reflectedProp
 import { relayPlayerEvents } from './relayPlayerEvents';
 import { ELEMENT_TEMPLATE } from './template';
 import { browserPorts } from '../composition/browserPorts';
+import { buildPipeline, type PipelineHost } from '../composition/buildPipeline';
 import { queryShadow } from '../controls/controlParts';
 import { ControlsBar } from '../controls/ControlsBar';
 import { KeyboardBinding } from '../controls/KeyboardBinding';
@@ -90,7 +91,7 @@ export class GyroViewElement extends HTMLElement {
     this.posterImage = queryShadow(shadow, '.poster', HTMLImageElement);
     this.errorMessage = queryShadow(shadow, '.error-message', HTMLElement);
     this.errorCode = queryShadow(shadow, '.error-code', HTMLElement);
-    this.player = new Player({ host: { canvas, audio }, ports: browserPorts() });
+    this.player = browserPlayer({ canvas, audio });
     defineLiveSettings(this, this.player);
     this.controlsBar = new ControlsBar(shadow, {
       player: this.player,
@@ -320,6 +321,13 @@ export class GyroViewElement extends HTMLElement {
   private warn(message: string): void {
     this.dispatchEvent(new CustomEvent('warning', { detail: message, composed: true }));
   }
+}
+
+/**
+ * The player composed for a browser: HTTP, blob and WebCodecs ports, the GPU pipeline.
+ */
+function browserPlayer(host: PipelineHost): Player {
+  return new Player({ host, ports: browserPorts(), pipelines: buildPipeline });
 }
 
 /**

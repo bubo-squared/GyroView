@@ -2,7 +2,7 @@ import type { Presentation, ViewMode, ViewState } from '@gyroview/core';
 
 import type { PlayerParts } from './PlayerOptions';
 import { Viewport } from './Viewport';
-import { buildPipeline, type Pipeline } from '../composition/buildPipeline';
+import type { Pipeline } from '../composition/buildPipeline';
 import { Disposables } from '../composition/Disposables';
 import type { OpenedRecording } from '../composition/OpenedRecording';
 import { openRecording } from '../composition/openRecording';
@@ -42,7 +42,7 @@ export async function loadRecording(request: LoadRequest): Promise<LoadedRecordi
     opened.dispose();
   });
   try {
-    const pipeline = await buildPipeline({
+    const pipeline = await parts.pipelines({
       opened,
       host: parts.host,
       decoderPort: parts.ports.decoderPort,

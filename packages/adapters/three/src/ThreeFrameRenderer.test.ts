@@ -321,7 +321,7 @@ describe('ThreeFrameRenderer', () => {
   it('matches the darker lens to the brighter one along the seam when gain matching is on', async () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');
-    renderer.setGainMatching(true);
+    renderer.enableGainMatching();
     present(renderer, [solidFrame('rgb(200, 200, 200)'), solidFrame('rgb(100, 100, 100)')]);
     expect(pixelTowards(renderer, [0, 0, -1]).g).toBeLessThan(110);
 

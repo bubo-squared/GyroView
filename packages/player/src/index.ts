@@ -4,6 +4,7 @@ export { Player } from './player/Player';
 export type { LoadOptions, PlayerParts } from './player/PlayerOptions';
 export type { PlayerEvents, PlayerStatus, SoundLevel } from './player/PlayerEvents';
 export { browserPorts, type BrowserPortsOptions } from './composition/browserPorts';
+export { buildPipeline, type Pipeline, type PipelineFactory } from './composition/buildPipeline';
 export type { RecordingPorts, SourceOpener } from './composition/ports';
 export { GyroViewElement } from './element/GyroViewElement';
 export type { FileSource } from './element/elementSource';

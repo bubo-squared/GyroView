@@ -1,4 +1,4 @@
-import type { ThreeFrameRenderer } from '@gyroview/adapter-three';
+import type { PictureRenderer } from '@gyroview/core';
 
 /**
  * Sharper than this on high-density screens costs GPU time the stitch does not repay.
@@ -32,7 +32,7 @@ export class Viewport {
 
   public constructor(
     private readonly canvas: HTMLCanvasElement,
-    private readonly renderer: ThreeFrameRenderer,
+    private readonly renderer: Pick<PictureRenderer, 'resize'>,
   ) {
     this.observer = new ResizeObserver(() => {
       this.fit();

@@ -106,15 +106,16 @@ Use cases that orchestrate the domain through ports.
 
 ### Ports: `core/src/ports`
 
-| Port                 | What the core needs                                          | Implementations                                                       |
-| -------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------- |
-| `RandomAccessSource` | `size()`, `read(ByteRange)`                                  | `FileRandomAccessSource`, `HttpRangeSource`, `BlobRandomAccessSource` |
-| `Demuxer`            | open a container, list `VideoTrackReader`/`AudioTrackReader` | `MediabunnyDemuxer`                                                   |
-| `VideoDecoderPort`   | create decoders that emit frames and apply backpressure      | `WebCodecsVideoDecoderPort`                                           |
-| `PlaybackClock`      | current time, start/pause/seek, end and failure              | `MediaSourceAudioClock`, core `WallClock`                             |
-| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time       | `MediabunnyAudioSegmenter`                                            |
-| `FrameSink`          | present a frame pair (`StabilizableFrameSink` adds rotation) | `ThreeFrameRenderer`                                                  |
-| `ResourceLocator`    | does this URL exist                                          | `HttpResourceLocator`                                                 |
+| Port                 | What the core needs                                                               | Implementations                                                       |
+| -------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `RandomAccessSource` | `size()`, `read(ByteRange)`                                                       | `FileRandomAccessSource`, `HttpRangeSource`, `BlobRandomAccessSource` |
+| `Demuxer`            | open a container, list `VideoTrackReader`/`AudioTrackReader`                      | `MediabunnyDemuxer`                                                   |
+| `VideoDecoderPort`   | create decoders that emit frames and apply backpressure                           | `WebCodecsVideoDecoderPort`                                           |
+| `PlaybackClock`      | current time, start/pause/seek, end and failure                                   | `MediaSourceAudioClock`, core `WallClock`                             |
+| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                            | `MediabunnyAudioSegmenter`                                            |
+| `FrameSink`          | present a frame pair (`StabilizableFrameSink` adds rotation)                      | `ThreeFrameRenderer`                                                  |
+| `PictureRenderer`    | a `StabilizableFrameSink` that also takes view, view mode, size and gain matching | `ThreeFrameRenderer`                                                  |
+| `ResourceLocator`    | does this URL exist                                                               | `HttpResourceLocator`                                                 |
 
 Every port has a fake in `core/src/testing` and a contract test that runs against the fake and
 the real adapter alike.
@@ -167,16 +168,19 @@ The composition root and the user-facing element, in three layers.
   It depends on `RecordingPorts` (`SourceOpener`, `Demuxer`, `VideoDecoderPort`,
   `ResourceLocator`, a deadline factory), so it is tested against fakes; `browserPorts` supplies
   the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
-  the renderer, the stabilizing sink, the session.
+  the renderer, the stabilizing sink, the session. The player receives it as a
+  `PipelineFactory` and knows the renderer only as a `PictureRenderer`.
 - **`player`**: `Player`, the headless facade over one loaded recording. It loads, unloads,
   relays the session's states as media-element events (`transportEventsFor`), ticks the session
-  from a `FrameLoop`, keeps the canvas sized (`Viewport`), and remembers view, stabilization and
-  gain-matching settings across loads. The element and the embed bridge both drive it.
+  from a `FrameLoop`, keeps the canvas sized (`Viewport`), and owns the settings (view and view
+  mode in `PlayerView`, stabilization, gain matching, sound, loop) across loads (ADR 0016). Its
+  life with a recording is one `PlayerPhase`. The element and the embed bridge both drive it.
 - **`element`** and **`controls`**: `GyroViewElement` is `<gyro-view>`: attributes parsed by
-  pure functions in `attributes.ts`, mirrored as properties, events re-dispatched as
-  `CustomEvent`s, a shadow tree with the canvas, the audio element, poster and overlays.
-  `ControlsBar` binds the control bar (transport, seek bar with key-frame scrubbing, sound,
-  settings menu, fullscreen); `ViewGestures` turns drags, pinches and wheel turns into view
+  pure functions in `attributes.ts` (names in `attributeNames.ts`, published as
+  `@gyroview/player/attributes`), settings properties live over the player (`liveSettings`),
+  events re-dispatched as `CustomEvent`s, a shadow tree with the canvas, the audio element,
+  poster and overlays. `ControlsBar` composes `TransportButtons`, `SeekBar` (key-frame
+  scrubbing), `SoundControls` and `SettingsMenu`; `ViewGestures` turns drags, pinches and wheel turns into view
   changes; `KeyboardBinding` maps keys to commands; `FullscreenToggle` and `IdleWatcher` handle
   filling the screen and fading the controls.
 

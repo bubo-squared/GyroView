@@ -242,6 +242,7 @@ export { Deferred } from './shared/async/Deferred';
 export { Signal } from './shared/async/Signal';
 export type { PlaybackClock } from './ports/PlaybackClock';
 export type { FrameSink, Presentation, StabilizableFrameSink } from './ports/FrameSink';
+export type { PictureRenderer } from './ports/PictureRenderer';
 export { WallClock } from './domain/playback/WallClock';
 export { PlayerStateMachine, type PlayerState } from './domain/playback/PlayerState';
 export { TypedEmitter } from './shared/events/TypedEmitter';

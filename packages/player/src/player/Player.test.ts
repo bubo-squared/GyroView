@@ -1,9 +1,10 @@
-import { degrees, seconds, type GyroViewError, type Seconds } from '@gyroview/core';
+import { degrees, GyroViewError, seconds, type Seconds } from '@gyroview/core';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { Player } from './Player';
 import type { PlayerStatus } from './PlayerEvents';
 import { browserPorts } from '../composition/browserPorts';
+import { buildPipeline, type PipelineFactory } from '../composition/buildPipeline';
 import type { PlayerSource } from '../PlayerSource';
 import { X5_RECORDING_URL, X5_RECORDING_WITH_AUDIO_URL } from '../test/recordings';
 
@@ -42,14 +43,14 @@ interface Harness {
   readonly errors: GyroViewError[];
 }
 
-function harness(): Harness {
+function harness(pipelines: PipelineFactory): Harness {
   const canvas = document.createElement('canvas');
   canvas.style.width = `${CANVAS_WIDTH}px`;
   canvas.style.height = `${CANVAS_HEIGHT}px`;
   const audio = document.createElement('audio');
   audio.muted = true;
   document.body.append(canvas, audio);
-  const player = new Player({ host: { canvas, audio }, ports: browserPorts() });
+  const player = new Player({ host: { canvas, audio }, ports: browserPorts(), pipelines });
   const statuses: PlayerStatus[] = [];
   const events: string[] = [];
   const frames: Seconds[] = [];
@@ -87,8 +88,8 @@ function harness(): Harness {
 describe('Player over the synthetic X5 recording', () => {
   const harnesses: Harness[] = [];
 
-  function open(): Harness {
-    const created = harness();
+  function open(pipelines: PipelineFactory = buildPipeline): Harness {
+    const created = harness(pipelines);
     harnesses.push(created);
     return created;
   }
@@ -256,6 +257,15 @@ describe('Player over the synthetic X5 recording', () => {
     await player.play();
     await loading;
     expect(player.status).toBe('playing');
+  });
+
+  it('fails a load whose pipeline cannot be built with that failure, and plays nothing', async () => {
+    const noGpu = new GyroViewError('render-unavailable', 'this test has no GPU');
+    const { player, errors } = open(() => Promise.reject(noGpu));
+    await expect(player.load(sourceOf(X5_RECORDING_URL))).rejects.toBe(noGpu);
+    expect(player.status).toBe('error');
+    expect(errors).toEqual([noGpu]);
+    expect(player.metadata).toBeUndefined();
   });
 
   it('refuses to play after a failed load with that failure', async () => {

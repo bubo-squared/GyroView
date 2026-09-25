@@ -1,10 +1,14 @@
 import type { FrameScheduler } from './FrameLoop';
-import type { PipelineHost } from '../composition/buildPipeline';
+import type { PipelineFactory, PipelineHost } from '../composition/buildPipeline';
 import type { RecordingPorts } from '../composition/ports';
 
 export interface PlayerParts {
   readonly host: PipelineHost;
   readonly ports: RecordingPorts<VideoFrame>;
+  /**
+   * Builds what plays each opened recording: `buildPipeline` in a browser.
+   */
+  readonly pipelines: PipelineFactory;
   readonly scheduler?: FrameScheduler;
 }
 

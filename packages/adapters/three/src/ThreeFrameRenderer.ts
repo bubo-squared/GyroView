@@ -6,9 +6,9 @@ import {
   GyroViewError,
   type Matrix3 as CoreMatrix3,
   seconds,
+  type PictureRenderer,
   type Presentation,
   type Seconds,
-  type StabilizableFrameSink,
   type StitchingSetup,
   type Vector3 as CoreVector3,
   viewModeRulesFor,
@@ -82,7 +82,7 @@ interface InitialDrawing {
  * frame, laid out on the viewport as the view mode says: the stitched view of `stitch.frag.glsl`,
  * turned by the view and stabilization rotations, or the raw lens images side by side.
  */
-export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
+export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   private viewState: ViewState;
   private viewModeValue: ViewMode;
   /**
@@ -167,21 +167,25 @@ export class ThreeFrameRenderer implements StabilizableFrameSink<VideoFrame> {
 
   /**
    * Matches the lenses' exposure along the seam automatically, measuring every half second of
-   * presented frames. Off by default; turning it off leaves the last gains in place.
+   * presented frames. Off until enabled.
    */
-  public setGainMatching(isEnabled: boolean): void {
+  public enableGainMatching(): void {
     this.ensureLive();
-    if (!isEnabled) {
-      this.gainMatching?.dispose();
-      this.gainMatching = undefined;
-      return;
-    }
     this.gainMatching ??= new GainMatching(
       new GainMatchPass(this.parts.renderer, this.parts.uniforms, this.parts.textures.length),
       (gains) => {
         this.applyGains(gains);
       },
     );
+  }
+
+  /**
+   * Stops measuring; the last gains stay in place.
+   */
+  public disableGainMatching(): void {
+    this.ensureLive();
+    this.gainMatching?.dispose();
+    this.gainMatching = undefined;
   }
 
   /**

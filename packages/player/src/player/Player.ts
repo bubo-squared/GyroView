@@ -8,6 +8,7 @@ import {
   TypedEmitter,
   type Degrees,
   type DragDelta,
+  type PictureRenderer,
   type PlayerState,
   type Presentation,
   type Seconds,
@@ -220,7 +221,7 @@ export class Player {
    */
   public setGainMatching(isEnabled: boolean): void {
     this.isGainMatching = isEnabled;
-    this.loaded?.pipeline.renderer.setGainMatching(isEnabled);
+    if (this.loaded) matchGainsOn(this.loaded.pipeline.renderer, isEnabled);
   }
 
   public setVolume(volume: number): void {
@@ -284,7 +285,7 @@ export class Player {
     this.viewing.attach(loaded.pipeline.renderer);
     const { session } = loaded.pipeline;
     loaded.pipeline.stabilizing?.setStabilizer(stabilizerFor(this.stabilizationMode));
-    loaded.pipeline.renderer.setGainMatching(this.isGainMatching);
+    matchGainsOn(loaded.pipeline.renderer, this.isGainMatching);
     session.events.on('statechange', (state) => {
       this.onSessionState(state);
     });
@@ -382,4 +383,9 @@ export class Player {
     this.lastStatus = status;
     this.events.emit('statuschange', status);
   }
+}
+
+function matchGainsOn(renderer: PictureRenderer, isMatching: boolean): void {
+  if (isMatching) renderer.enableGainMatching();
+  else renderer.disableGainMatching();
 }

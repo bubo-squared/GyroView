@@ -1,4 +1,3 @@
-import type { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   clampView,
   DEFAULT_VIEW,
@@ -8,6 +7,7 @@ import {
   viewModeRulesFor,
   type Degrees,
   type DragDelta,
+  type PictureRenderer,
   type TypedEmitter,
   type ViewMode,
   type ViewModeRules,
@@ -19,7 +19,7 @@ import type { PlayerEvents } from './PlayerEvents';
 /**
  * The part of the renderer the view drives.
  */
-export type ViewSurface = Pick<ThreeFrameRenderer, 'setView' | 'setViewMode'>;
+export type ViewSurface = Pick<PictureRenderer, 'setView' | 'setViewMode'>;
 
 /**
  * Where the viewer looks and how the picture shows it: kept across loads, drawn by whichever

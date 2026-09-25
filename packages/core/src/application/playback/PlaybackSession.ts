@@ -16,7 +16,7 @@ import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { TypedEmitter } from '../../shared/events/TypedEmitter';
 import { seconds, type Seconds } from '../../shared/units/time';
 
-export interface PlaybackSessionEvents extends Record<string, unknown> {
+export interface PlaybackSessionEvents {
   readonly statechange: PlayerState;
   readonly timeupdate: Seconds;
   readonly ended: undefined;

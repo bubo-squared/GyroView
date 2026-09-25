@@ -22,7 +22,7 @@ export interface SoundLevel {
   readonly isMuted: boolean;
 }
 
-export interface PlayerEvents extends Record<string, unknown> {
+export interface PlayerEvents {
   readonly statuschange: PlayerStatus;
   readonly ready: PlayerMetadata;
   readonly play: undefined;
@@ -56,3 +56,28 @@ export interface PlayerEvents extends Record<string, unknown> {
   readonly warning: string;
   readonly error: GyroViewError;
 }
+
+/**
+ * Every event name once; the record makes the compiler reject a missing or unknown name.
+ */
+const EVENT_NAMES: Readonly<Record<keyof PlayerEvents, true>> = {
+  statuschange: true,
+  ready: true,
+  play: true,
+  playing: true,
+  waiting: true,
+  pause: true,
+  ended: true,
+  timeupdate: true,
+  seeking: true,
+  seeked: true,
+  frame: true,
+  viewchange: true,
+  viewmodechange: true,
+  stabilizationchange: true,
+  volumechange: true,
+  warning: true,
+  error: true,
+};
+
+export const PLAYER_EVENT_NAMES = Object.keys(EVENT_NAMES) as readonly (keyof PlayerEvents)[];

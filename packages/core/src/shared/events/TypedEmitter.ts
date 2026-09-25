@@ -7,7 +7,7 @@ type Listener<Payload> = (payload: Payload) => void;
  * Listeners are stored with their payload type erased to `never`, which every listener type is
  * assignable to; `emit` restores the type its event name guarantees.
  */
-export class TypedEmitter<Events extends Record<string, unknown>> {
+export class TypedEmitter<Events extends object> {
   private readonly listeners = new Map<keyof Events, Set<Listener<never>>>();
 
   public on<Name extends keyof Events>(name: Name, listener: Listener<Events[Name]>): () => void {

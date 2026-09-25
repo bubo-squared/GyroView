@@ -5,16 +5,16 @@ import {
   GyroViewError,
   TypedEmitter,
   type GyroViewErrorCode,
-  type StabilizationMode,
-  type ViewMode,
-  type ViewState,
 } from '@gyroview/core';
-import type { PlayerMetadata, PlayerStatus, SoundLevel } from '@gyroview/player';
+import type { SoundLevel } from '@gyroview/player';
 
 import type { Endpoint } from './Endpoint';
 import type { EmbedState, LoadRequest } from './EmbedState';
 import {
   commandMessage,
+  type EmbedEvents,
+  type EventMessage,
+  type ForwardedEventName,
   type CommandName,
   type ProtocolMessage,
   type ResultMessage,
@@ -24,28 +24,6 @@ import {
 interface PendingCommand {
   readonly resolve: (value: unknown) => void;
   readonly reject: (error: Error) => void;
-}
-
-/**
- * Events as the embedding page hears them: the player's, with errors as plain data.
- */
-export interface EmbedEvents extends Record<string, unknown> {
-  readonly statuschange: PlayerStatus;
-  readonly ready: PlayerMetadata;
-  readonly play: undefined;
-  readonly playing: undefined;
-  readonly waiting: undefined;
-  readonly pause: undefined;
-  readonly ended: undefined;
-  readonly timeupdate: number;
-  readonly seeking: number;
-  readonly seeked: number;
-  readonly viewchange: ViewState;
-  readonly viewmodechange: ViewMode;
-  readonly stabilizationchange: StabilizationMode;
-  readonly volumechange: SoundLevel;
-  readonly warning: string;
-  readonly error: SerializedError;
 }
 
 const INITIAL_STATE: EmbedState = {
@@ -202,13 +180,21 @@ export class EmbedHandle {
       }
       case 'event': {
         this.stateValue = stateAfter(this.stateValue, message.name, message.detail);
-        this.events.emit(message.name, message.detail);
+        this.emitForwarded(message);
         break;
       }
       case 'command': {
         break;
       }
     }
+  }
+
+  /**
+   * The detail is the frame's: its origin is pinned and the message's shape and event name are
+   * checked, so the payload is trusted to be that event's (ADR 0010).
+   */
+  private emitForwarded(message: EventMessage): void {
+    this.events.emit(message.name, message.detail as EmbedEvents[ForwardedEventName]);
   }
 
   private settle(result: ResultMessage): void {

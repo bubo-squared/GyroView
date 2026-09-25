@@ -4,7 +4,8 @@ import { embedUrlFor, type EmbedOptions } from '../bridge/embedUrl';
 
 export type { EmbedOptions } from '../bridge/embedUrl';
 export type { EmbedState, LoadRequest } from '../bridge/EmbedState';
-export { EmbedHandle, type EmbedEvents } from '../bridge/EmbedHandle';
+export { EmbedHandle } from '../bridge/EmbedHandle';
+export type { EmbedEvents } from '../protocol/messages';
 
 export interface EmbedSettings {
   /**

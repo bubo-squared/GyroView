@@ -61,7 +61,7 @@ describe('embedding across origins', () => {
     );
     embedded.push(item);
     const events: string[] = [];
-    for (const name of ['ready', 'play', 'pause']) {
+    for (const name of ['ready', 'play', 'pause'] as const) {
       item.handle.events.on(name, () => {
         events.push(name);
       });

@@ -6,34 +6,14 @@ import type { Endpoint } from './Endpoint';
 import {
   eventMessage,
   failedResult,
+  FORWARDED_EVENT_NAMES,
   helloMessage,
   okResult,
   type CommandMessage,
+  type ForwardedEventName,
   type ProtocolMessage,
   type SerializedError,
 } from '../protocol/messages';
-
-/**
- * The element events forwarded to the embedding page, with their payloads made cloneable.
- */
-const FORWARDED_EVENTS = [
-  'statuschange',
-  'ready',
-  'play',
-  'playing',
-  'waiting',
-  'pause',
-  'ended',
-  'timeupdate',
-  'seeking',
-  'seeked',
-  'viewchange',
-  'viewmodechange',
-  'stabilizationchange',
-  'volumechange',
-  'warning',
-  'error',
-] as const;
 
 /**
  * The iframe side of the bridge: runs the commands the embedding page sends on the element
@@ -51,7 +31,7 @@ export class EmbedHost {
     this.stopReceiving = endpoint.receive((message) => {
       this.onMessage(message);
     });
-    for (const name of FORWARDED_EVENTS) this.forward(name);
+    for (const name of FORWARDED_EVENT_NAMES) this.forward(name);
     endpoint.send(helloMessage());
   }
 
@@ -60,7 +40,10 @@ export class EmbedHost {
     for (const [name, listener] of this.listeners) this.element.removeEventListener(name, listener);
   }
 
-  private forward(name: string): void {
+  /**
+   * Payloads are made cloneable on the way out.
+   */
+  private forward(name: ForwardedEventName): void {
     const listener: EventListener = (event): void => {
       const detail = event instanceof CustomEvent ? (event.detail as unknown) : undefined;
       this.endpoint.send(eventMessage(name, serializeDetail(detail)));

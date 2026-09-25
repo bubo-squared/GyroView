@@ -57,7 +57,7 @@ describe('the embed bridge over a message channel', () => {
   it('loads, plays, seeks and reports state and events across the channel', async () => {
     const { handle } = bridge();
     const heard: string[] = [];
-    for (const name of ['ready', 'play', 'pause', 'seeking', 'seeked']) {
+    for (const name of ['ready', 'play', 'pause', 'seeking', 'seeked'] as const) {
       handle.events.on(name, () => {
         heard.push(name);
       });

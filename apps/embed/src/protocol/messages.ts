@@ -1,3 +1,5 @@
+import type { PlayerEvents } from '@gyroview/player';
+
 /**
  * The wire format between an embedding page and the `embed.html` iframe. Versioned by name so
  * a page and a player built apart can tell each other apart from unrelated messages.
@@ -51,10 +53,52 @@ export type ResultMessage = {
   | { readonly isOk: false; readonly error: SerializedError }
 );
 
+/**
+ * `frame` fires for every drawn frame: too chatty to cross `postMessage`, and `timeupdate`
+ * already tells the page the time.
+ */
+type NotForwarded = 'frame';
+
+export type ForwardedEventName = Exclude<keyof PlayerEvents, NotForwarded>;
+
+/**
+ * Every forwarded event once, typed by the player's events alone so the snippet carries no player
+ * code; the record makes the compiler reject a missing or unknown name.
+ */
+const FORWARDED: Readonly<Record<ForwardedEventName, true>> = {
+  statuschange: true,
+  ready: true,
+  play: true,
+  playing: true,
+  waiting: true,
+  pause: true,
+  ended: true,
+  timeupdate: true,
+  seeking: true,
+  seeked: true,
+  viewchange: true,
+  viewmodechange: true,
+  stabilizationchange: true,
+  volumechange: true,
+  warning: true,
+  error: true,
+};
+
+export const FORWARDED_EVENT_NAMES = Object.keys(FORWARDED) as readonly ForwardedEventName[];
+
+/**
+ * Events as the embedding page hears them: the player's, with errors as plain data.
+ */
+export type EmbedEvents = {
+  readonly [Name in ForwardedEventName]: Name extends 'error'
+    ? SerializedError
+    : PlayerEvents[Name];
+};
+
 export interface EventMessage {
   readonly protocol: typeof PROTOCOL;
   readonly kind: 'event';
-  readonly name: string;
+  readonly name: ForwardedEventName;
   readonly detail: unknown;
 }
 
@@ -66,6 +110,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isCommandName(value: unknown): value is CommandName {
   return typeof value === 'string' && (COMMAND_NAMES as readonly string[]).includes(value);
+}
+
+function isForwardedEventName(value: unknown): value is ForwardedEventName {
+  return typeof value === 'string' && Object.hasOwn(FORWARDED, value);
 }
 
 function isSerializedError(value: unknown): value is SerializedError {
@@ -88,7 +136,7 @@ const BODY_CHECKS: Readonly<Record<string, (message: Record<string, unknown>) =>
     isCommandName(message['name']) &&
     Array.isArray(message['parameters']),
   result: isResultBody,
-  event: (message): boolean => typeof message['name'] === 'string' && 'detail' in message,
+  event: (message): boolean => isForwardedEventName(message['name']) && 'detail' in message,
 };
 
 /**
@@ -121,6 +169,6 @@ export function failedResult(id: number, error: SerializedError): ResultMessage 
   return { protocol: PROTOCOL, kind: 'result', id, isOk: false, error };
 }
 
-export function eventMessage(name: string, detail: unknown): EventMessage {
+export function eventMessage(name: ForwardedEventName, detail: unknown): EventMessage {
   return { protocol: PROTOCOL, kind: 'event', name, detail };
 }

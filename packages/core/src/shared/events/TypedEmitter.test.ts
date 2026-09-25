@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { TypedEmitter } from './TypedEmitter';
 
-interface Events extends Record<string, unknown> {
+interface Events {
   readonly greeted: string;
   readonly counted: number;
 }

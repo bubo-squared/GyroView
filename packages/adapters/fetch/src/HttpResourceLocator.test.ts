@@ -1,3 +1,4 @@
+import { describeResourceLocatorContract } from '@gyroview/core/testing';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { HttpResourceLocator } from './HttpResourceLocator';
@@ -22,6 +23,14 @@ const refusingHead: typeof fetch = (input, init) =>
 
 afterAll(async () => {
   await Promise.all(servers.map((server) => server.stop()));
+});
+
+const HTTP_NOT_FOUND = 404;
+
+describeResourceLocatorContract(async () => {
+  const existing = await serve();
+  const missing = await serve({ failsWith: HTTP_NOT_FOUND });
+  return { locator: new HttpResourceLocator(), existing: existing.url, missing: missing.url };
 });
 
 describe('HttpResourceLocator', () => {

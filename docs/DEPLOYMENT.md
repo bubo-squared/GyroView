@@ -66,23 +66,24 @@ for `embed.js` and, for the element form, `connect-src` for the media host and
 
 Every failure is a `GyroViewError` with a stable `code`; the `error` event carries it.
 
-| Code                  | Meaning and what to do                                                       |
-| --------------------- | ---------------------------------------------------------------------------- |
-| `cors`                | The media server answered but forbade this origin: add the CORS headers.     |
-| `source-unreadable`   | The URL could not be fetched (network, DNS, wrong URL).                      |
-| `range-unsupported`   | The server ignores `Range`: enable byte-range serving.                       |
-| `source-truncated`    | Fewer bytes came back than asked: the file changed or the server misbehaves. |
-| `codec-unsupported`   | This browser cannot decode the tracks (no HEVC hardware, or not a secure     |
-|                       | context); a proxy plays instead when one exists and `quality` is `auto`.     |
-| `missing-second-file` | A split-file recording without its `_10_` sibling: set `src2`.               |
-| `no-calibration`      | The file carries no lens calibration; it cannot be stitched.                 |
-| `no-info-record`      | Not an Insta360 recording (or a truncated one).                              |
-| `unsupported-layout`  | The tracks do not form two lens images the player understands.               |
-| `playback-blocked`    | The browser wants a user gesture before sound starts (autoplay policy).      |
-| `decode`              | A decoder or the audio buffer failed mid-stream.                             |
-| `render-unavailable`  | No WebGL2 context, or the stitching shader did not compile.                  |
-| `invalid-argument`    | A property, method or embed command got a value it does not accept.          |
-| `embed-destroyed`     | A command reached an embed handle after `destroy()`.                         |
+| Code                    | Meaning and what to do                                                       |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| `cors`                  | The media server answered but forbade this origin: add the CORS headers.     |
+| `source-unreadable`     | The URL could not be fetched (network, DNS, wrong URL).                      |
+| `range-unsupported`     | The server ignores `Range`: enable byte-range serving.                       |
+| `source-truncated`      | Fewer bytes came back than asked: the file changed or the server misbehaves. |
+| `codec-unsupported`     | This browser cannot decode the tracks (no HEVC hardware, or not a secure     |
+|                         | context); a proxy plays instead when one exists and `quality` is `auto`.     |
+| `missing-second-file`   | A split-file recording without its `_10_` sibling: set `src2`.               |
+| `no-calibration`        | The file carries no lens calibration; it cannot be stitched.                 |
+| `no-info-record`        | Not an Insta360 recording (or a truncated one).                              |
+| `unsupported-container` | Not a media file the demuxer can read (or not an MP4 at all).                |
+| `unsupported-layout`    | The tracks do not form two lens images the player understands.               |
+| `playback-blocked`      | The browser wants a user gesture before sound starts (autoplay policy).      |
+| `decode`                | A decoder or the audio buffer failed mid-stream.                             |
+| `render-unavailable`    | No WebGL2 context, or the stitching shader did not compile.                  |
+| `invalid-argument`      | A property, method or embed command got a value it does not accept.          |
+| `embed-destroyed`       | A command reached an embed handle after `destroy()`.                         |
 
 Other codes (`invalid-*`, `unsupported-*`, `no-frame-times`, `record-not-found`) come from a
 damaged or unusual file and name the record concerned.

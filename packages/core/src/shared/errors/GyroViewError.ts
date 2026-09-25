@@ -26,6 +26,7 @@ export const GYRO_VIEW_ERROR_CODES = [
   'source-truncated',
   'source-unreadable',
   'unsupported-calibration',
+  'unsupported-container',
   'unsupported-gyro-record',
   'unsupported-info-format',
   'unsupported-layout',

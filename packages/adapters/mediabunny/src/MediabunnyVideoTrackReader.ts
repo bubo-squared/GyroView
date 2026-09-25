@@ -37,7 +37,7 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
     ]);
     if (codec === null) {
       throw new GyroViewError(
-        'unsupported-layout',
+        'codec-unsupported',
         `video track ${trackIndex} has an unknown codec`,
       );
     }
@@ -48,7 +48,7 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
     const config = await this.track.getDecoderConfig();
     if (config === null) {
       throw new GyroViewError(
-        'unsupported-layout',
+        'codec-unsupported',
         `video track ${this.description.trackIndex} (${this.description.codec}) cannot be configured for decoding`,
       );
     }

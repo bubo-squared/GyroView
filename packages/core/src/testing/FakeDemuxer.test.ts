@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { describeDemuxerContract } from './Demuxer.contract';
 import { FakeDemuxer } from './FakeDemuxer';
 import { FakeVideoTrack } from './FakeVideoTrack';
 import { InMemoryRandomAccessSource } from './InMemoryRandomAccessSource';
@@ -28,13 +29,23 @@ describe('FakeDemuxer', () => {
     const input = await demuxer.open(new InMemoryRandomAccessSource(new Uint8Array()), 'by-name');
     expect(input.name).toBe('by-name');
   });
+});
 
-  it('rejects an unknown source like the real adapter rejects a non-media file', async () => {
-    const demuxer = new FakeDemuxer([]);
-    const unknown = new InMemoryRandomAccessSource(new Uint8Array());
-    await expect(demuxer.open(unknown, 'noise.bin')).rejects.toMatchObject({
-      code: 'unsupported-layout',
-      message: 'noise.bin is not a readable media file',
-    });
+describeDemuxerContract(() => {
+  const media = new InMemoryRandomAccessSource(new Uint8Array(4));
+  const secondTrack = new FakeVideoTrack({
+    trackIndex: 1,
+    frameRate: 10,
+    frameCount: 5,
+    framesPerGop: 5,
+  });
+  return Promise.resolve({
+    demuxer: new FakeDemuxer([
+      { source: media, duration: seconds(0.5), videoTracks: [TRACK, secondTrack] },
+    ]),
+    media,
+    videoTrackCount: 2,
+    audioTrackCount: 0,
+    notMedia: new InMemoryRandomAccessSource(new Uint8Array()),
   });
 });

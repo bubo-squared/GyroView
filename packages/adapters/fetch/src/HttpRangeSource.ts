@@ -31,8 +31,8 @@ export class HttpRangeSource implements RandomAccessSource {
   }
 
   public async read(range: ByteRange): Promise<Uint8Array> {
-    if (range.length === 0) return new Uint8Array();
     await this.ensureFits(range);
+    if (range.length === 0) return new Uint8Array();
     const response = await this.request('GET', { Range: `bytes=${range.offset}-${range.end - 1}` });
     if (response.status !== HTTP_PARTIAL_CONTENT) {
       discardBody(response);

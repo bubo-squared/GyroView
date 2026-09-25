@@ -80,9 +80,16 @@ describe('HttpRangeSource', () => {
     });
   });
 
-  it('reads an empty range without a request', async () => {
-    const source = new HttpRangeSource('http://127.0.0.1:1/unreachable.insv');
+  it('reads an empty range inside the file with no GET, only the size lookup', async () => {
+    const server = await serve(content);
+    const methods: string[] = [];
+    const recording: typeof fetch = (input, init) => {
+      methods.push(init?.method ?? 'GET');
+      return fetch(input, init);
+    };
+    const source = new HttpRangeSource(server.url, { fetch: recording });
     await expect(source.read(ByteRange.of(3, 0))).resolves.toEqual(new Uint8Array());
+    expect(methods).toEqual(['HEAD']);
   });
 
   it('passes caller headers through and sets Range itself', async () => {

@@ -32,11 +32,9 @@ export class MediabunnyDemuxer implements Demuxer {
       throw error instanceof GyroViewError
         ? error
         : new GyroViewError(
-            'unsupported-layout',
+            'unsupported-container',
             `${name ?? 'the input'} is not a readable media file`,
-            {
-              cause: error,
-            },
+            { cause: error },
           );
     }
   }

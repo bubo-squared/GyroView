@@ -34,7 +34,7 @@ export class FakeDemuxer implements Demuxer {
     if (!spec) {
       return Promise.reject(
         new GyroViewError(
-          'unsupported-layout',
+          'unsupported-container',
           `${name ?? 'the input'} is not a readable media file`,
         ),
       );

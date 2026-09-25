@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { seconds, type DemuxedInput } from '@gyroview/core';
-import { InMemoryRandomAccessSource } from '@gyroview/core/testing';
+import { describeDemuxerContract, InMemoryRandomAccessSource } from '@gyroview/core/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { MediabunnyDemuxer } from './MediabunnyDemuxer';
@@ -98,15 +98,17 @@ describe('MediabunnyDemuxer on the synthetic dual-track fixture', () => {
   });
 });
 
-describe('MediabunnyDemuxer on files it cannot read', () => {
-  it('reports a non-media file with a typed error', async () => {
-    const garbage = new InMemoryRandomAccessSource(new Uint8Array(4096).fill(0x42));
-    await expect(new MediabunnyDemuxer().open(garbage, 'garbage.bin')).rejects.toMatchObject({
-      code: 'unsupported-layout',
-      message: expect.stringContaining('garbage.bin') as string,
-    });
-  });
+describeDemuxerContract(() =>
+  Promise.resolve({
+    demuxer: new MediabunnyDemuxer(),
+    media: new InMemoryRandomAccessSource(readFileSync(SYNTHETIC_WITH_AUDIO)),
+    videoTrackCount: 2,
+    audioTrackCount: 1,
+    notMedia: new InMemoryRandomAccessSource(new Uint8Array(4096).fill(0x42)),
+  }),
+);
 
+describe('MediabunnyDemuxer on files it cannot read', () => {
   it.skipIf(!existsSync(ONE_R_TRAILER_ONLY))(
     'still lists the tracks of a trailer-only file whose media data was stripped',
     async () => {

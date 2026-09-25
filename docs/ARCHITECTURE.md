@@ -117,8 +117,10 @@ Use cases that orchestrate the domain through ports.
 | `PictureRenderer`    | a `StabilizableFrameSink` that also takes view, view mode, size and gain matching | `ThreeFrameRenderer`                                                  |
 | `ResourceLocator`    | does this URL exist                                                               | `HttpResourceLocator`                                                 |
 
-Every port has a fake in `core/src/testing` and a contract test that runs against the fake and
-the real adapter alike.
+Every port with a fake in `core/src/testing` has a contract suite that runs against the fake
+and the real adapters alike (`RandomAccessSource`, `Demuxer`, `VideoTrackReader`,
+`VideoDecoderPort`, `PlaybackClock`, `ResourceLocator`), asserting the error codes too. Audio
+reading and segmenting have no fake: only the real adapters exist and they are tested directly.
 
 ### Shared: `core/src/shared`
 

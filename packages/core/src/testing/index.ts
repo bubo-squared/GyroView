@@ -1,6 +1,8 @@
 export { InMemoryRandomAccessSource } from './InMemoryRandomAccessSource';
 export { SparseRandomAccessSource } from './SparseRandomAccessSource';
+export { describeDemuxerContract, type DemuxerUnderTest } from './Demuxer.contract';
 export { describeRandomAccessSourceContract } from './RandomAccessSource.contract';
+export { describeResourceLocatorContract, type LocatorUnderTest } from './ResourceLocator.contract';
 export {
   describeVideoTrackReaderContract,
   type VideoTrackReaderExpectations,

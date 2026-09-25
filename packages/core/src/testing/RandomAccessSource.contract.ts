@@ -35,6 +35,13 @@ export function describeRandomAccessSourceContract(
       await expect(source.read(ByteRange.of(4, 0))).resolves.toEqual(new Uint8Array());
     });
 
+    it('rejects an empty range that starts past the end, as a non-empty one', async () => {
+      const source = await createSource(SAMPLE_CONTENT);
+      await expect(
+        source.read(ByteRange.of(SAMPLE_CONTENT.byteLength + 1, 0)),
+      ).rejects.toMatchObject({ code: 'invalid-byte-range' });
+    });
+
     it('rejects a range that runs past the end with the invalid-byte-range code', async () => {
       const source = await createSource(SAMPLE_CONTENT);
       await expect(source.read(ByteRange.of(6, 4))).rejects.toMatchObject({

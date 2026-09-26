@@ -1,5 +1,6 @@
 import { degrees, seconds } from '@gyroview/core';
 
+import type { ControlsHost } from './ControlsHost';
 import type { Player } from '../player/Player';
 
 export type ShortcutCommand =
@@ -69,13 +70,11 @@ export function shortcutFor(press: KeyPress): ShortcutCommand | undefined {
 /**
  * What the keyboard drives, and how Escape leaves fullscreen when the element fills the screen.
  */
-export interface KeyboardHost {
+export interface KeyboardHost extends Pick<ControlsHost, 'togglePlay' | 'toggleFullscreen'> {
   readonly player: Pick<
     Player,
     'currentTime' | 'seek' | 'stop' | 'turn' | 'zoom' | 'resetView' | 'isMuted' | 'setMuted'
   >;
-  togglePlay(): void;
-  toggleFullscreen(): void;
   readonly isFullscreen: () => boolean;
   exitFullscreen(): void;
 }

@@ -2,6 +2,7 @@ import { TypedEmitter } from '@gyroview/core';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { TransportButtons } from './TransportButtons';
+import { bindViewButtons } from './viewButtons';
 import type { PlayerEvents } from '../player/PlayerEvents';
 import { expectIconOnly, removeRenderedControls, renderControls } from '../test/controls';
 
@@ -27,9 +28,11 @@ function world(): World {
         return isPaused;
       },
       stop: record('stop'),
-      resetView: record('reset view'),
     },
     togglePlay: record('toggle play'),
+  });
+  bindViewButtons(parts, {
+    player: { resetView: record('reset view') },
     toggleFullscreen: record('toggle fullscreen'),
   });
   return {
@@ -47,7 +50,7 @@ afterEach(() => {
   removeRenderedControls();
 });
 
-describe('TransportButtons', () => {
+describe('the transport and view buttons', () => {
   it('passes each press on to what it names', () => {
     const { parts, calls } = world();
     for (const button of [

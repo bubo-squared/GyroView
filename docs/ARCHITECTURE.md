@@ -221,7 +221,8 @@ The composition root and the user-facing element, in three layers.
   pure functions in `attributes.ts` (names in `attributeNames.ts`, published as
   `@gyroview/player/attributes`), settings properties live over the player (`liveSettings`),
   events re-dispatched as `CustomEvent`s, a shadow tree with the canvas, the audio element,
-  poster and overlays. `bindControlsBar` binds `TransportButtons`, `SeekBar` (key-frame
+  poster and overlays. `bindControlsBar` binds `TransportButtons`, the view buttons (Reset view,
+  Fullscreen), `SeekBar` (key-frame
   scrubbing), `SoundControls` and `PictureMenus` (the view mode and stabilization menus, each a
   `ChoiceMenu` behind an icon button; stabilization is offered only for a recording with a gyro
   in a stitched view mode). The bar's markup and styles come from `controlsMarkup` and

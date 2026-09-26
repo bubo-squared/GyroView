@@ -3,17 +3,18 @@ import type { ControlsHost } from './ControlsHost';
 import { ICONS } from './icons';
 import type { Player } from '../player/Player';
 
-type TransportParts = Pick<ControlParts, 'play' | 'bigPlay' | 'stop' | 'resetView' | 'fullscreen'>;
+type TransportParts = Pick<ControlParts, 'play' | 'bigPlay' | 'stop'>;
 
 /**
  * What the buttons command, and the paused state they show.
  */
-interface TransportHost extends Pick<ControlsHost, 'togglePlay' | 'toggleFullscreen'> {
-  readonly player: Pick<Player, 'events' | 'isPaused' | 'stop' | 'resetView'>;
+interface TransportHost extends Pick<ControlsHost, 'togglePlay'> {
+  readonly player: Pick<Player, 'events' | 'isPaused' | 'stop'>;
 }
 
 /**
- * Play and pause, stop, reset the view and fullscreen; the play buttons say what a press does.
+ * Play and pause, on the bar and over the picture, and stop; the play buttons say what a press
+ * does.
  */
 export class TransportButtons {
   public constructor(
@@ -28,12 +29,6 @@ export class TransportButtons {
     }
     parts.stop.addEventListener('click', () => {
       player.stop();
-    });
-    parts.resetView.addEventListener('click', () => {
-      player.resetView();
-    });
-    parts.fullscreen.addEventListener('click', () => {
-      host.toggleFullscreen();
     });
     player.events.on('statuschange', () => {
       this.reflect(player.isPaused);

@@ -48,7 +48,9 @@ export class ChoiceMenu {
         if (choice !== undefined) choose(choice);
       });
     }
-    this.bindOpening(root);
+    this.bindButton();
+    this.bindDismissal(root);
+    this.bindKeys(root);
   }
 
   private get isOpen(): boolean {
@@ -69,12 +71,18 @@ export class ChoiceMenu {
     if (!isAvailable) this.setOpen(false);
   }
 
-  private bindOpening(root: ParentNode): void {
-    const { button, popup } = this.parts;
-    button.addEventListener('click', () => {
+  private bindButton(): void {
+    this.parts.button.addEventListener('click', () => {
       this.setOpen(!this.isOpen);
       if (this.isOpen) this.focusItem(this.items.findIndex((item) => isChecked(item)));
     });
+  }
+
+  /**
+   * A press outside, or the focus moving elsewhere, closes the menu.
+   */
+  private bindDismissal(root: ParentNode): void {
+    const { button, popup } = this.parts;
     root.addEventListener(
       'pointerdown',
       (event) => {
@@ -91,6 +99,9 @@ export class ChoiceMenu {
       const isLeaving = next !== button && next instanceof Node && !popup.contains(next);
       if (isLeaving) this.setOpen(false);
     });
+  }
+
+  private bindKeys(root: ParentNode): void {
     root.addEventListener('keydown', (event) => {
       if (this.isOpen && event instanceof KeyboardEvent) this.onKey(event);
     });

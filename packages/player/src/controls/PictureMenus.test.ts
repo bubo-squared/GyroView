@@ -5,12 +5,13 @@ import {
   type StabilizationMode,
   type ViewMode,
 } from '@gyroview/core';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ChoiceMenuParts } from './ChoiceMenu';
 import { PictureMenus, type PictureMenuParts, type PicturePlayer } from './PictureMenus';
 import type { PlayerEvents } from '../player/PlayerEvents';
 import type { PlayerMetadata } from '../PlayerMetadata';
+import { choiceItem, removeRenderedControls, renderControls } from '../test/controls';
 
 /**
  * The picture settings as a player keeps them, announcing every change as the real one does.
@@ -59,38 +60,27 @@ function metadataWith(hasGyro: boolean): PlayerMetadata {
   };
 }
 
-function choiceMenuParts(choices: readonly string[]): ChoiceMenuParts {
-  const popup = document.createElement('div');
-  popup.hidden = true;
-  for (const choice of choices) {
-    const item = document.createElement('button');
-    item.setAttribute('role', 'menuitemradio');
-    item.dataset['choice'] = choice;
-    popup.append(item);
-  }
-  return { button: document.createElement('button'), popup };
-}
-
 function checkedChoice(parts: ChoiceMenuParts): string | undefined {
   return parts.popup.querySelector<HTMLElement>(':scope [aria-checked="true"]')?.dataset['choice'];
 }
 
 function item(parts: ChoiceMenuParts, choice: string): HTMLElement {
-  const items = parts.popup.querySelectorAll<HTMLElement>(':scope [role="menuitemradio"]');
-  const found = [...items].find((candidate) => candidate.dataset['choice'] === choice);
-  if (!found) throw new Error(`no ${choice} item`);
-  return found;
+  return choiceItem(parts.popup, choice);
 }
 
+/**
+ * The real controls' two picture menus, bound to a fake player.
+ */
 function pictureMenus(): { parts: PictureMenuParts; player: FakePicturePlayer } {
-  const parts = {
-    viewMode: choiceMenuParts(['normal', 'equirectangular', 'raw-lenses']),
-    stabilization: choiceMenuParts(['off', 'lock', 'horizon', 'follow']),
-  };
+  const { root, parts } = renderControls();
   const player = new FakePicturePlayer();
-  new PictureMenus(document.createElement('div'), parts, player);
+  new PictureMenus(root, parts, player);
   return { parts, player };
 }
+
+afterEach(() => {
+  removeRenderedControls();
+});
 
 describe('PictureMenus', () => {
   it('sets the mode chosen in each menu', () => {

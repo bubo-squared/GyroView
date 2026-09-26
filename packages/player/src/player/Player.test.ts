@@ -15,24 +15,12 @@ import { buildPipeline } from '../composition/buildPipeline';
 import type { PipelineFactory } from '../composition/ports';
 import type { PlayerSource } from '../PlayerSource';
 import { X5_RECORDING_URL, X5_RECORDING_WITH_AUDIO_URL } from '../test/recordings';
+import { waitFor } from '../test/waiting';
 
 const CANVAS_WIDTH = 128;
 const CANVAS_HEIGHT = 64;
-const WAIT_MS = 15_000;
-const POLL_MS = 20;
-
 function sourceOf(url: string): PlayerSource {
   return { main: { url }, second: undefined };
-}
-
-async function waitFor(isSatisfied: () => boolean, what: string): Promise<void> {
-  const deadline = performance.now() + WAIT_MS;
-  while (!isSatisfied()) {
-    if (performance.now() > deadline) throw new Error(`timed out waiting for ${what}`);
-    await new Promise((resolve) => {
-      setTimeout(resolve, POLL_MS);
-    });
-  }
 }
 
 interface Harness {

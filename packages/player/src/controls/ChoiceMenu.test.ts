@@ -1,11 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ChoiceMenu, type ChoiceMenuParts } from './ChoiceMenu';
-
-const CHOICES = ['near', 'middle', 'far'];
+import { choiceItem, removeRenderedControls, renderControls } from '../test/controls';
 
 interface World {
-  readonly root: HTMLElement;
   readonly parts: ChoiceMenuParts;
   readonly menu: ChoiceMenu;
   readonly chosen: string[];
@@ -13,48 +11,46 @@ interface World {
    * Keys that got past the menu to the page.
    */
   readonly escapedKeys: string[];
-  readonly item: (choice: string) => HTMLButtonElement;
+  /**
+   * A control of the bar outside the menu.
+   */
+  readonly outside: HTMLElement;
+  readonly item: (choice: string) => HTMLElement;
 }
 
-const pages: HTMLElement[] = [];
-
+/**
+ * The View menu of the real controls, bound to a menu that records the choices made.
+ */
 function world(): World {
-  const root = document.createElement('div');
-  const button = document.createElement('button');
-  const popup = document.createElement('div');
-  popup.hidden = true;
-  const items = CHOICES.map((choice) => {
-    const item = document.createElement('button');
-    item.setAttribute('role', 'menuitemradio');
-    item.dataset['choice'] = choice;
-    popup.append(item);
-    return item;
-  });
-  root.append(button, popup, document.createElement('output'));
-  const page = document.createElement('div');
-  page.append(root);
-  document.body.append(page);
-  pages.push(page);
+  const { root, parts } = renderControls();
+  const bar = root.querySelector(':scope .controls') ?? root;
   const escapedKeys: string[] = [];
-  page.addEventListener('keydown', (event) => {
+  root.addEventListener('keydown', (event) => {
     escapedKeys.push(event.key);
   });
   const chosen: string[] = [];
-  const parts = { button, popup };
-  const menu = new ChoiceMenu(root, parts, (choice) => {
+  const menu = new ChoiceMenu(bar, parts.viewMode, (choice) => {
     chosen.push(choice);
   });
-  menu.markChosen('middle');
-  const item = (choice: string): HTMLButtonElement => items[CHOICES.indexOf(choice)] ?? button;
-  return { root, parts, menu, chosen, escapedKeys, item };
+  menu.markChosen('equirectangular');
+  return {
+    parts: parts.viewMode,
+    menu,
+    chosen,
+    escapedKeys,
+    outside: parts.play,
+    item: (choice) => choiceItem(parts.viewMode.popup, choice),
+  };
 }
 
-function press(target: Element, key: string): void {
-  target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, composed: true }));
+function press(target: Element, key: string, isShiftPressed = false): void {
+  target.dispatchEvent(
+    new KeyboardEvent('keydown', { key, shiftKey: isShiftPressed, bubbles: true, composed: true }),
+  );
 }
 
 afterEach(() => {
-  for (const page of pages.splice(0)) page.remove();
+  removeRenderedControls();
 });
 
 describe('ChoiceMenu', () => {
@@ -63,7 +59,7 @@ describe('ChoiceMenu', () => {
     parts.button.click();
     expect(parts.popup.hidden).toBe(false);
     expect(parts.button.getAttribute('aria-expanded')).toBe('true');
-    expect(document.activeElement).toBe(item('middle'));
+    expect(document.activeElement).toBe(item('equirectangular'));
     parts.button.click();
     expect(parts.popup.hidden).toBe(true);
     expect(parts.button.getAttribute('aria-expanded')).toBe('false');
@@ -71,19 +67,18 @@ describe('ChoiceMenu', () => {
 
   it('checks exactly the choice it is told', () => {
     const { menu, item } = world();
-    menu.markChosen('far');
-    expect(CHOICES.map((choice) => item(choice).getAttribute('aria-checked'))).toEqual([
-      'false',
-      'false',
-      'true',
-    ]);
+    menu.markChosen('raw-lenses');
+    const checked = ['normal', 'equirectangular', 'raw-lenses'].map((choice) =>
+      item(choice).getAttribute('aria-checked'),
+    );
+    expect(checked).toEqual(['false', 'false', 'true']);
   });
 
   it('reports a choice, closes and hands the focus back to its button', () => {
     const { parts, chosen, item } = world();
     parts.button.click();
-    item('far').click();
-    expect(chosen).toEqual(['far']);
+    item('raw-lenses').click();
+    expect(chosen).toEqual(['raw-lenses']);
     expect(parts.popup.hidden).toBe(true);
     expect(document.activeElement).toBe(parts.button);
   });
@@ -91,7 +86,7 @@ describe('ChoiceMenu', () => {
   it('closes on Escape and keeps the key from the page', () => {
     const { parts, escapedKeys, item } = world();
     parts.button.click();
-    press(item('middle'), 'Escape');
+    press(item('equirectangular'), 'Escape');
     expect(parts.popup.hidden).toBe(true);
     expect(escapedKeys).toEqual([]);
     press(parts.button, 'Escape');
@@ -99,14 +94,13 @@ describe('ChoiceMenu', () => {
   });
 
   it('takes a press outside it only to close, and lets presses through once closed', () => {
-    const { root, parts } = world();
+    const { parts, outside } = world();
     const pressed: string[] = [];
-    const outside = root.querySelector('output');
-    outside?.addEventListener('pointerdown', () => {
+    outside.addEventListener('pointerdown', () => {
       pressed.push('outside');
     });
     const pressOutside = (): void => {
-      outside?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      outside.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     };
     parts.button.click();
     pressOutside();
@@ -117,40 +111,36 @@ describe('ChoiceMenu', () => {
   });
 
   it('closes when the focus moves elsewhere, not within it', () => {
-    const { parts, item } = world();
-    const elsewhere = document.createElement('button');
-    document.body.append(elsewhere);
+    const { parts, item, outside } = world();
     parts.button.click();
-    item('far').focus();
+    item('raw-lenses').focus();
     expect(parts.popup.hidden).toBe(false);
-    elsewhere.focus();
+    outside.focus();
     expect(parts.popup.hidden).toBe(true);
-    elsewhere.remove();
   });
 
   it('moves between the choices with the arrows, Home and End, keeping the keys', () => {
     const { parts, escapedKeys, item } = world();
     parts.button.click();
-    press(item('middle'), 'ArrowDown');
-    expect(document.activeElement).toBe(item('far'));
-    press(item('far'), 'ArrowDown');
-    expect(document.activeElement).toBe(item('near'));
-    press(item('near'), 'ArrowUp');
-    expect(document.activeElement).toBe(item('far'));
-    press(item('far'), 'Home');
-    expect(document.activeElement).toBe(item('near'));
-    press(item('near'), 'End');
-    expect(document.activeElement).toBe(item('far'));
-    press(item('far'), ' ');
+    press(item('equirectangular'), 'ArrowDown');
+    expect(document.activeElement).toBe(item('raw-lenses'));
+    press(item('raw-lenses'), 'ArrowDown');
+    expect(document.activeElement).toBe(item('normal'));
+    press(item('normal'), 'ArrowUp');
+    expect(document.activeElement).toBe(item('raw-lenses'));
+    press(item('raw-lenses'), 'Home');
+    expect(document.activeElement).toBe(item('normal'));
+    press(item('normal'), 'End');
+    expect(document.activeElement).toBe(item('raw-lenses'));
+    press(item('raw-lenses'), ' ');
     expect(escapedKeys).toEqual([]);
   });
 
-  it('closes on Tab either way, so the keys go back to the page with the menu shut', () => {
+  it('keeps its choices out of the tab order, and closes on Tab either way', () => {
     const { parts, item } = world();
+    expect(item('normal').tabIndex).toBe(-1);
     parts.button.click();
-    item('middle').dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, composed: true }),
-    );
+    press(item('equirectangular'), 'Tab', true);
     expect(parts.popup.hidden).toBe(true);
   });
 

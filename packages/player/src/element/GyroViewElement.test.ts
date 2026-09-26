@@ -3,40 +3,14 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { defineGyroView } from './defineGyroView';
 import type { GyroViewElement } from './GyroViewElement';
 import { queryShadow } from '../controls/controlParts';
+import { choiceMenuClasses, type ChoiceMenuName } from '../controls/controlsMarkup';
+import { expectIconOnly } from '../test/controls';
 import { fetchBytes, X5_RECORDING_URL } from '../test/recordings';
-
-const WAIT_MS = 15_000;
-const POLL_MS = 20;
+import { nextEvent, waitFor } from '../test/waiting';
 
 beforeAll(() => {
   defineGyroView();
 });
-
-function nextEvent<Detail>(target: EventTarget, name: string): Promise<Detail> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`no ${name} event within ${WAIT_MS} ms`));
-    }, WAIT_MS);
-    target.addEventListener(
-      name,
-      (event) => {
-        clearTimeout(timer);
-        resolve((event as CustomEvent<Detail>).detail);
-      },
-      { once: true },
-    );
-  });
-}
-
-async function waitFor(isSatisfied: () => boolean, what: string): Promise<void> {
-  const deadline = performance.now() + WAIT_MS;
-  while (!isSatisfied()) {
-    if (performance.now() > deadline) throw new Error(`timed out waiting for ${what}`);
-    await new Promise((resolve) => {
-      setTimeout(resolve, POLL_MS);
-    });
-  }
-}
 
 function shadowOf(element: GyroViewElement): ShadowRoot {
   const { shadowRoot } = element;
@@ -55,10 +29,12 @@ function control<Found extends Element>(
 /**
  * The choices a menu offers, and the one it checks.
  */
-function menuOf(element: GyroViewElement, name: string): { choices: string[]; checked: string[] } {
-  const items = control(element, `.${name}-menu`, HTMLElement).querySelectorAll<HTMLElement>(
-    ':scope [role="menuitemradio"]',
-  );
+function menuOf(
+  element: GyroViewElement,
+  name: ChoiceMenuName,
+): { choices: string[]; checked: string[] } {
+  const popup = control(element, `.${choiceMenuClasses(name).popup}`, HTMLElement);
+  const items = popup.querySelectorAll<HTMLElement>(':scope [role="menuitemradio"]');
   const choicesOf = (list: HTMLElement[]): string[] =>
     list.map((item) => item.dataset['choice'] ?? '');
   return {
@@ -109,6 +85,13 @@ function pressKey(target: Element, key: string): KeyboardEvent {
   });
   target.dispatchEvent(event);
   return event;
+}
+
+/**
+ * Whether the element fills the screen, through the Fullscreen API or pinned over the page.
+ */
+function isFillingTheScreen(element: GyroViewElement): boolean {
+  return document.fullscreenElement === element || element.dataset['fill'] !== undefined;
 }
 
 function pointer(type: string, at: { x: number; y: number }): PointerEvent {
@@ -188,8 +171,7 @@ describe('<gyro-view>', () => {
     );
     for (const button of buttons) {
       expect(button.getAttribute('aria-label')).not.toBeNull();
-      expect(button.querySelectorAll('svg.icon')).toHaveLength(1);
-      expect(button.textContent).toBe('');
+      expectIconOnly(button);
     }
 
     const playing = nextEvent(element, 'play');
@@ -518,15 +500,10 @@ describe('<gyro-view>', () => {
     const element = await createReady();
 
     await element.toggleFullscreen();
-    const isFilling =
-      document.fullscreenElement === element || element.dataset['fill'] !== undefined;
-    expect(isFilling).toBe(true);
+    expect(isFillingTheScreen(element)).toBe(true);
 
     element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    await waitFor(
-      () => document.fullscreenElement !== element && element.dataset['fill'] === undefined,
-      'leaving fullscreen',
-    );
+    await waitFor(() => !isFillingTheScreen(element), 'leaving fullscreen');
   });
 
   it('lets an open menu take the Escape and stays in fullscreen until the next one', async () => {
@@ -542,10 +519,10 @@ describe('<gyro-view>', () => {
     );
 
     expect(popup.hidden).toBe(true);
-    const isFilling =
-      document.fullscreenElement === element || element.dataset['fill'] !== undefined;
-    expect(isFilling).toBe(true);
-    await element.toggleFullscreen();
+    expect(isFillingTheScreen(element)).toBe(true);
+
+    element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await waitFor(() => !isFillingTheScreen(element), 'the next Escape leaving fullscreen');
   });
 
   it('unloads when removed from the document', async () => {

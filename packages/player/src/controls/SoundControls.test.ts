@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { SoundControls, type SoundParts, type SoundPlayer } from './SoundControls';
 import type { PlayerEvents } from '../player/PlayerEvents';
+import { expectIconOnly } from '../test/controls';
 
 /**
  * The sound as a player keeps it, announcing every change as the real one does.
@@ -38,14 +39,6 @@ function soundControls(): { parts: SoundParts; sound: FakeSound } {
   const sound = new FakeSound();
   new SoundControls(parts, sound);
   return { parts, sound };
-}
-
-/**
- * The button draws its state as one icon, never as a text glyph a font could colour.
- */
-function expectIconOnly(button: HTMLButtonElement): void {
-  expect(button.querySelectorAll('svg.icon')).toHaveLength(1);
-  expect(button.textContent).toBe('');
 }
 
 describe('SoundControls', () => {

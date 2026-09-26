@@ -12,7 +12,7 @@ import {
 } from '@gyroview/core/testing';
 
 import type { RecordingPorts, SourceOpener } from '../composition/ports';
-import type { MediaInput } from '../PlayerSource';
+import { isUrlInput, type MediaInput } from '../PlayerSource';
 
 export { default as X5_RECORDING_URL } from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
 export { default as X5_RECORDING_WITH_AUDIO_URL } from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-aac-64px-10fps-3s.mp4?url';
@@ -68,14 +68,14 @@ export class MapSourceOpener implements SourceOpener {
   }
 
   public open(input: MediaInput): InMemoryRandomAccessSource {
-    const key = 'url' in input ? input.url : input.name;
+    const key = isUrlInput(input) ? input.url : input.name;
     const source = this.sources.get(key);
     if (!source) throw new Error(`no bytes registered for ${key}`);
     return source;
   }
 }
 
-export interface FakePortsParts {
+interface FakePortsParts {
   readonly sources: SourceOpener;
   readonly demuxer: Demuxer;
   readonly decoderPort?: VideoDecoderPort;

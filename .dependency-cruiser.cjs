@@ -208,11 +208,11 @@ module.exports = {
     {
       name: 'the-embed-snippet-carries-no-player-code',
       comment:
-        'embed.js only talks to the frame: the snippet, the protocol and the page side of the bridge take types and attribute names from the player, never its code.',
+        'embed.js only talks to the frame: the snippet, the protocol and the bridge but for the frame side (EmbedHost, commandHandlers) take types and attribute names from the player, never its code.',
       severity: 'error',
       from: {
-        path: '^apps/embed/src/(snippet/|protocol/|bridge/(EmbedHandle|Endpoint|EmbedState|embedUrl)\\.ts$)',
-        pathNot: '\\.test\\.ts$',
+        path: '^apps/embed/src/(snippet|protocol|bridge)/',
+        pathNot: ['\\.test\\.ts$', '^apps/embed/src/bridge/(EmbedHost|commandHandlers)\\.ts$'],
       },
       to: {
         path: '^packages/player/',

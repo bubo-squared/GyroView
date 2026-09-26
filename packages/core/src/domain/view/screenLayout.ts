@@ -8,7 +8,17 @@ export interface ScreenRectangle {
   readonly height: number;
 }
 
+/**
+ * A point of the viewport or of a picture, as fractions of its width and height from the top-left
+ * corner.
+ */
+export interface ScreenPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
 export const WHOLE_SCREEN: ScreenRectangle = { x: 0, y: 0, width: 1, height: 1 };
+export const SCREEN_CENTRE: ScreenPoint = { x: 0.5, y: 0.5 };
 
 const CENTRE = 0.5;
 

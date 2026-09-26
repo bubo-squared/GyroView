@@ -1,3 +1,4 @@
+import type { ScreenPoint } from './screenLayout';
 import { clampView, type ViewState } from './ViewState';
 import { degrees, type Degrees } from '../../shared/units/angle';
 
@@ -10,9 +11,25 @@ export interface DragDelta {
 }
 
 /**
- * How far the field of view changes per wheel notch or pinch step, as a factor.
+ * A zoom by `steps` wheel notches or pinch steps (positive zooms in), keeping the point under
+ * `focus`, a point of the viewport, where it is.
+ */
+export interface ZoomRequest {
+  readonly steps: number;
+  readonly focus: ScreenPoint;
+}
+
+/**
+ * How much each wheel notch or pinch step magnifies, in every view mode.
  */
 const ZOOM_STEP = 1.1;
+
+/**
+ * The magnification `steps` zoom steps make: above 1 zooms in, below 1 out.
+ */
+export function zoomFactor(steps: number): number {
+  return ZOOM_STEP ** steps;
+}
 
 /**
  * Angle covered by one pixel across the viewport: the field of view spread over its width.
@@ -38,7 +55,7 @@ export function panView(view: ViewState, delta: DragDelta, viewportWidth: number
  * Narrows the field of view by `steps` zoom steps (negative widens), within its bounds.
  */
 export function zoomView(view: ViewState, steps: number): ViewState {
-  return clampView({ ...view, fieldOfView: degrees(view.fieldOfView / ZOOM_STEP ** steps) });
+  return clampView({ ...view, fieldOfView: degrees(view.fieldOfView / zoomFactor(steps)) });
 }
 
 /**

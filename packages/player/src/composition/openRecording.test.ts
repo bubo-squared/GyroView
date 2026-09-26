@@ -70,16 +70,13 @@ interface World {
 }
 
 /**
- * The X5 fixture at the main URL with two HEVC-labelled lens tracks, and at the packed URL with
- * one packed H.264 track, both served from memory.
+ * The X5 fixture at the main URL with two HEVC-labelled lens tracks, served from memory.
  */
 function x5World(): World {
   const opener = new MapSourceOpener();
   const main = opener.register(MAIN_URL, fixture.x5Bytes);
-  const packed = opener.register(PACKED_URL, fixture.x5Bytes);
   const demuxer = new FakeDemuxer([
     { source: main, duration: seconds(3), videoTracks: squareTracks({ codec: HEVC }) },
-    { source: packed, duration: seconds(3), videoTracks: [packedTrack()] },
   ]);
   return { opener, demuxer };
 }
@@ -118,7 +115,7 @@ describe('openRecording', () => {
 
   it('refuses a recording without calibration and releases what it opened', async () => {
     const opener = new MapSourceOpener();
-    const bytes = syntheticRecordingBytes({ info: minimalInfoRecord({ model: 'Insta360 X3' }) });
+    const bytes = syntheticRecordingBytes(minimalInfoRecord({ model: 'Insta360 X3' }));
     const source = opener.register(MAIN_URL, bytes);
     const demuxer = new FakeDemuxer([
       { source, duration: seconds(3), videoTracks: squareTracks() },
@@ -150,8 +147,12 @@ describe('openRecording', () => {
   });
 
   it('opens a recording whose one track packs both lenses', async () => {
-    const world = x5World();
-    const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer });
+    const opener = new MapSourceOpener();
+    const packed = opener.register(PACKED_URL, fixture.x5Bytes);
+    const demuxer = new FakeDemuxer([
+      { source: packed, duration: seconds(3), videoTracks: [packedTrack()] },
+    ]);
+    const ports = fakePorts({ sources: opener, demuxer });
 
     const opened = await openRecording(
       sourceOf({ main: { url: PACKED_URL } }),
@@ -161,7 +162,7 @@ describe('openRecording', () => {
 
     expect(opened.layout.kind).toBe('packed');
     expect(opened.frameSources.map((track) => track.description.codec)).toEqual([AVC]);
-    expect(world.demuxer.openCount).toBe(1);
+    expect(demuxer.openCount).toBe(1);
   });
 
   it('asks for nothing beside a recording that opens by itself', async () => {

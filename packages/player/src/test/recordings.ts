@@ -23,26 +23,19 @@ export async function fetchBytes(url: string): Promise<Uint8Array<ArrayBuffer>> 
   return new Uint8Array(await response.arrayBuffer());
 }
 
-export interface SyntheticTrailer {
-  readonly info: Uint8Array;
-  readonly gyro?: Uint8Array;
-  readonly exposure?: Uint8Array;
-}
-
 /**
- * The smallest file the box scanner accepts, followed by an indexed trailer of the records given.
+ * The smallest file the box scanner accepts, followed by an indexed trailer holding only the
+ * given info record: a recording without gyro, exposure or calibration.
  */
-export function syntheticRecordingBytes(trailer: SyntheticTrailer): Uint8Array {
+export function syntheticRecordingBytes(info: Uint8Array): Uint8Array {
   const prefix = Uint8Array.from([
     ...encodeBox('ftyp', new TextEncoder().encode('isom')),
     ...encodeBox('moov', new Uint8Array()),
   ]);
-  const builder = new TrailerFixtureBuilder()
+  return new TrailerFixtureBuilder()
     .withPrefix(prefix)
-    .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: trailer.info });
-  if (trailer.gyro) builder.addRecord({ id: RecordType.Gyro, payload: trailer.gyro });
-  if (trailer.exposure) builder.addRecord({ id: RecordType.Exposure, payload: trailer.exposure });
-  return builder.buildIndexed({ alignment: 64, wrapInInstBox: true }).bytes;
+    .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: info })
+    .buildIndexed({ alignment: 64, wrapInInstBox: true }).bytes;
 }
 
 /**
@@ -66,7 +59,7 @@ export function squareTracks(options: Partial<FakeVideoTrackOptions> = {}): Fake
  * A source opener that serves every input from the bytes registered for its name or URL.
  */
 export class MapSourceOpener implements SourceOpener {
-  public readonly sources = new Map<string, InMemoryRandomAccessSource>();
+  private readonly sources = new Map<string, InMemoryRandomAccessSource>();
 
   public register(key: string, bytes: Uint8Array): InMemoryRandomAccessSource {
     const source = new InMemoryRandomAccessSource(bytes);

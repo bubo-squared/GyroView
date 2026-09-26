@@ -14,7 +14,7 @@ describe('ProtobufMessage', () => {
   const message = ProtobufMessage.decode(SAMPLE);
 
   it('decodes multi-byte varints', () => {
-    expect(message.fields(1)[0]?.value).toEqual({ kind: 'varint', value: 150n });
+    expect(ProtobufMessage.decode(SAMPLE.subarray(0, 3)).varint(1)).toBe(150);
   });
 
   it('decodes strings and doubles', () => {
@@ -26,17 +26,12 @@ describe('ProtobufMessage', () => {
     expect(message.message(4)?.varint(1)).toBe(7);
   });
 
-  it('exposes repeated fields in order and lets the last occurrence win for scalar accessors', () => {
-    expect(message.fields(1).map((field) => field.value)).toEqual([
-      { kind: 'varint', value: 150n },
-      { kind: 'varint', value: 1n },
-    ]);
+  it('lets the last occurrence of a repeated field win', () => {
     expect(message.varint(1)).toBe(1);
   });
 
   it('reports absence as undefined and zero as false', () => {
     expect(message.varint(99)).toBeUndefined();
-    expect(message.has(99)).toBe(false);
     expect(message.boolean(5)).toBe(false);
     expect(message.boolean(99)).toBeUndefined();
   });
@@ -85,6 +80,6 @@ describe('ProtobufMessage', () => {
   });
 
   it('decodes an empty message', () => {
-    expect(ProtobufMessage.decode(new Uint8Array()).has(1)).toBe(false);
+    expect(ProtobufMessage.decode(new Uint8Array()).varint(1)).toBeUndefined();
   });
 });

@@ -63,14 +63,6 @@ export function transformVector(m: Matrix3, v: Vector3): Vector3 {
 }
 
 /**
- * For a rotation the transpose is the inverse.
- */
-export function transposeMatrix(m: Matrix3): Matrix3 {
-  const [m00, m01, m02, m10, m11, m12, m20, m21, m22] = m;
-  return [m00, m10, m20, m01, m11, m21, m02, m12, m22];
-}
-
-/**
  * Positive one for a proper rotation, minus one for a reflection, zero when singular.
  */
 export function determinantOf(m: Matrix3): number {

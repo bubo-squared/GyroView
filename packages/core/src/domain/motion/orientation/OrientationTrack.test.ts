@@ -159,8 +159,6 @@ describe('OrientationTrack', () => {
     const track = integrate(gyro);
     expect(track.orientationAt(seconds(-5))).toEqual(track.orientationAt(seconds(0)));
     expect(track.orientationAt(seconds(9))).toEqual(track.orientationAt(seconds(1)));
-    expect(track.startTime).toBe(0);
-    expect(track.endTime).toBe(1);
     expect(integrate(syntheticGyroTrack(0, RATE_HZ, atRest)).length).toBe(1);
     const empty = integrate(
       new GyroTrack(new Float64Array(0), new Float32Array(0), new Float32Array(0)),

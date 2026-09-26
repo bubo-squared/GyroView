@@ -131,14 +131,6 @@ export class OrientationTrack {
     return this.videoTimes.length;
   }
 
-  public get startTime(): Seconds {
-    return seconds(this.videoTimes[0] ?? 0);
-  }
-
-  public get endTime(): Seconds {
-    return seconds(this.videoTimes.at(-1) ?? 0);
-  }
-
   /**
    * The orientation at a video time, interpolated between samples and held at the ends.
    */

@@ -1,7 +1,4 @@
-import type {
-  ReadonlyFloat32Array,
-  ReadonlyFloat64Array,
-} from '../../../shared/binary/ReadonlyTypedArray';
+import type { ReadonlyFloat64Array } from '../../../shared/binary/ReadonlyTypedArray';
 import { ensureIndexInRange, ensureInvariant } from '../../../shared/errors/GyroViewError';
 import { VECTOR3_COMPONENTS, type Vector3 } from '../../../shared/math/Vector3';
 import { type Microseconds, microseconds } from '../../../shared/units/time';
@@ -48,20 +45,6 @@ export class GyroTrack {
 
   public get captureTimes(): ReadonlyFloat64Array {
     return this.captureTimeStore;
-  }
-
-  /**
-   * Interleaved x, y, z per sample, in g.
-   */
-  public get accelerations(): ReadonlyFloat32Array {
-    return this.accelerationStore;
-  }
-
-  /**
-   * Interleaved x, y, z per sample, in radians per second.
-   */
-  public get angularVelocities(): ReadonlyFloat32Array {
-    return this.angularVelocityStore;
   }
 
   /**

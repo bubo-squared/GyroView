@@ -8,7 +8,6 @@ import {
   rotationAboutY,
   rotationAboutZ,
   transformVector,
-  transposeMatrix,
   type Matrix3,
 } from './Matrix3';
 import type { Vector3 } from './Vector3';
@@ -48,15 +47,6 @@ describe('Matrix3', () => {
     const sequential = transformVector(DENSE_A, transformVector(DENSE_B, SKEW));
     expectVector(product, sequential);
     expect(multiplyMatrices(DENSE_A, DENSE_B)).toEqual([4, 13, 0, 7, 25, 6, 10, 42, 9]);
-  });
-
-  it('inverts a rotation by transposing it', () => {
-    const rotation = multiplyMatrices(rotationAboutZ(radians(0.3)), rotationAboutX(radians(-1.1)));
-    const roundTrip = multiplyMatrices(transposeMatrix(rotation), rotation);
-    for (const [index, value] of IDENTITY_MATRIX3.entries()) {
-      expect(roundTrip[index]).toBeCloseTo(value, 9);
-    }
-    expect(transposeMatrix(DENSE_A)).toEqual([1, 4, 7, 2, 5, 8, 3, 6, 10]);
   });
 
   it('tells rotations from reflections and singular matrices by their determinant', () => {

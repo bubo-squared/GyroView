@@ -137,12 +137,7 @@ describe('MediabunnyDemuxer on the synthetic fixture with an AAC track', () => {
 
   it('describes the audio track and its decoder configuration', async () => {
     const [audio] = input.audioTracks;
-    expect(audio?.description).toEqual({
-      trackIndex: 0,
-      codec: 'mp4a.40.2',
-      sampleRate: 48_000,
-      channelCount: 2,
-    });
+    expect(audio?.description).toEqual({ trackIndex: 0, codec: 'mp4a.40.2' });
     await expect(audio?.duration()).resolves.toBeCloseTo(3, 1);
     const configuration = await audio?.decoderConfiguration();
     expect(configuration).toMatchObject({

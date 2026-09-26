@@ -12,8 +12,6 @@ export interface AudioTrackDescription {
    * WebCodecs codec string, for example `mp4a.40.2`; `unknown` when the container does not say.
    */
   readonly codec: string;
-  readonly sampleRate: number;
-  readonly channelCount: number;
 }
 
 /**

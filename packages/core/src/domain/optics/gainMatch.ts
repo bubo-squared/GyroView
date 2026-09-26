@@ -64,10 +64,6 @@ export class GainMatcher {
 
   public constructor(private readonly options: GainMatchOptions = DEFAULT_GAIN_MATCH_OPTIONS) {}
 
-  public get gains(): readonly Vector3[] | undefined {
-    return this.current;
-  }
-
   /**
    * Feeds the overlap means measured at `time` (media time) and returns the gains to apply.
    */

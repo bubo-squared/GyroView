@@ -52,7 +52,6 @@ export interface StitchingSetup {
 export interface StitchingInputs {
   readonly calibration: CalibrationSet;
   readonly layout: LensLayout;
-  readonly feather?: FeatherBand;
 }
 
 export interface FrameSourceKey {
@@ -67,7 +66,7 @@ export interface FrameSourceKey {
 const FEATHER_START_DEGREES = 85;
 const FEATHER_END_DEGREES = 95;
 
-export const DEFAULT_FEATHER: FeatherBand = {
+const DEFAULT_FEATHER: FeatherBand = {
   start: degreesToRadians(degrees(FEATHER_START_DEGREES)),
   end: degreesToRadians(degrees(FEATHER_END_DEGREES)),
 };
@@ -112,7 +111,7 @@ export function buildStitchingSetup(inputs: StitchingInputs): StitchingSetup {
       halfFieldOfView: lens.model.halfFieldOfView,
     };
   });
-  return { lenses, frameCount: frames.length, feather: inputs.feather ?? DEFAULT_FEATHER };
+  return { lenses, frameCount: frames.length, feather: DEFAULT_FEATHER };
 }
 
 function isSameSource(key: FrameSourceKey, source: LensSource): boolean {

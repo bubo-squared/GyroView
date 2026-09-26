@@ -92,10 +92,6 @@ export class PlaybackSession<Handle = unknown> {
     return this.parts.clock.currentTime;
   }
 
-  public get duration(): Seconds {
-    return this.parts.duration;
-  }
-
   /**
    * Starts or resumes, resolving once the clock runs. A paused session keeps its pipeline and
    * the pairs it prefetched; a fresh or ended one starts decoding anew and waits in `buffering`

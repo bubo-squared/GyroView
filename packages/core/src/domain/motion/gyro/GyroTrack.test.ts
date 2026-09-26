@@ -18,10 +18,8 @@ describe('GyroTrack', () => {
     });
   });
 
-  it('exposes read-only views of its arrays', () => {
+  it('exposes a read-only view of its capture times', () => {
     expect([...track.captureTimes]).toEqual([1000, 2000, 3000]);
-    expect(track.accelerations.length).toBe(9);
-    expect(track.angularVelocities[8]).toBe(9);
   });
 
   it('reports length, emptiness and the mean sample interval', () => {

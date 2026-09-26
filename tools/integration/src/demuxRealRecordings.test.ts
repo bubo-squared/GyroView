@@ -18,9 +18,13 @@ describe.skipIf(!hasSamples())(
           { trackIndex: 1, codedWidth: 2880, codedHeight: 2880 },
         ]);
         expect(input.videoTracks[0]!.description.codec).toMatch(/^hev1|^hvc1/);
-        expect(input.audioTracks.map((track) => track.description)).toMatchObject([
-          { codec: expect.stringMatching(/^mp4a/) as string, sampleRate: 48_000, channelCount: 2 },
+        expect(input.audioTracks.map((track) => track.description.codec)).toEqual([
+          expect.stringMatching(/^mp4a/),
         ]);
+        await expect(input.audioTracks[0]?.decoderConfiguration()).resolves.toMatchObject({
+          sampleRate: 48_000,
+          channelCount: 2,
+        });
 
         const configuration = await input.videoTracks[0]!.decoderConfiguration();
         expect(configuration.isFullRange).toBe(true);

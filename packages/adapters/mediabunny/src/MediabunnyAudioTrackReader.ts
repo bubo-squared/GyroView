@@ -31,17 +31,8 @@ export class MediabunnyAudioTrackReader implements AudioTrackReader {
     track: InputAudioTrack,
     trackIndex: number,
   ): Promise<MediabunnyAudioTrackReader> {
-    const [codec, sampleRate, channelCount] = await Promise.all([
-      track.getCodecParameterString(),
-      track.getSampleRate(),
-      track.getNumberOfChannels(),
-    ]);
-    return new MediabunnyAudioTrackReader(track, {
-      trackIndex,
-      codec: codec ?? UNKNOWN_CODEC,
-      sampleRate,
-      channelCount,
-    });
+    const codec = await track.getCodecParameterString();
+    return new MediabunnyAudioTrackReader(track, { trackIndex, codec: codec ?? UNKNOWN_CODEC });
   }
 
   public async decoderConfiguration(): Promise<AudioDecoderConfiguration> {

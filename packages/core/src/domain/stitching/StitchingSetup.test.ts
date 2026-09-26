@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildStitchingSetup, DEFAULT_FEATHER, lensFrameOrder } from './StitchingSetup';
+import { buildStitchingSetup, lensFrameOrder } from './StitchingSetup';
 import { FULL_FRAME, LEFT_HALF, RIGHT_HALF, type LensLayout } from './LensLayout';
 import { parseOffsetString } from '../format/calibration/parseOffsetString';
 import { transformVector } from '../../shared/math/Matrix3';
@@ -53,7 +53,7 @@ describe('buildStitchingSetup', () => {
   it('maps each lens onto its frame and the whole canvas square holding its principal point', () => {
     const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
     expect(setup.frameCount).toBe(2);
-    expect(setup.feather).toBe(DEFAULT_FEATHER);
+    expect(setup.feather.start).toBeLessThan(setup.feather.end);
     expect(setup.lenses.map((lens) => [lens.lensIndex, lens.frameSlot])).toEqual([
       [0, 0],
       [1, 1],

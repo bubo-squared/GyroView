@@ -12,7 +12,6 @@ import { GyroViewError } from '../shared/errors/GyroViewError';
  * every frame is closed exactly once.
  */
 export interface FakeFrameHandle {
-  readonly lensCodec: string;
   readonly packetData: Uint8Array;
   readonly isClosed: () => boolean;
 }
@@ -206,7 +205,6 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
     return {
       timestamp: packet.timestamp,
       handle: {
-        lensCodec: this.parts.configuration.codec,
         packetData: packet.data,
         isClosed: (): boolean => isClosed,
       },

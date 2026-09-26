@@ -66,15 +66,12 @@ describe('GainMatcher', () => {
 
   it('takes the first measurement as it is and then eases towards new ones', () => {
     const matcher = new GainMatcher({ maxGain: 2, timeConstant: seconds(1) });
-    expect(matcher.gains).toBeUndefined();
-
     const first = matcher.update([bright, dim], seconds(0));
     expect(first[1]).toEqual([2, 2, 2]);
 
     const eased = matcher.update([bright, bright], seconds(1));
     const expected = 2 + (1 - 2) * (1 - Math.exp(-1));
     expect(eased[1]?.[0]).toBeCloseTo(expected, 6);
-    expect(matcher.gains).toBe(eased);
   });
 
   it('jumps after a long gap and holds when time does not advance', () => {

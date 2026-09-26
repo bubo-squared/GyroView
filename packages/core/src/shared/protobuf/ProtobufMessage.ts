@@ -48,14 +48,6 @@ export class ProtobufMessage {
     return new ProtobufMessage(fields);
   }
 
-  public fields(number: number): readonly ProtobufField[] {
-    return this.decoded.filter((field) => field.number === number);
-  }
-
-  public has(number: number): boolean {
-    return this.decoded.some((field) => field.number === number);
-  }
-
   public varint(number: number): number | undefined {
     const value = this.valueOf(number);
     if (value === undefined) return undefined;

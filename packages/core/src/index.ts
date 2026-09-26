@@ -112,14 +112,12 @@ export {
 export { lookAt, zoomStepsForPinch, type DragDelta } from './domain/view/viewGestures';
 export {
   EQUIRECTANGULAR_ASPECT,
-  equirectangularDirectionOf,
   equirectangularPixelOf,
   type EquirectangularPixel,
   type PixelSize,
 } from './domain/view/equirectangular';
 export {
   buildStitchingSetup,
-  DEFAULT_FEATHER,
   lensFrameOrder,
   type CanvasWindow,
   type FeatherBand,
@@ -168,7 +166,6 @@ export {
   rotationAboutY,
   rotationAboutZ,
   transformVector,
-  transposeMatrix,
   type Matrix3,
 } from './shared/math/Matrix3';
 export {
@@ -183,10 +180,7 @@ export {
   slerpQuaternions,
   type Quaternion,
 } from './shared/math/Quaternion';
-export type {
-  ReadonlyFloat32Array,
-  ReadonlyFloat64Array,
-} from './shared/binary/ReadonlyTypedArray';
+export type { ReadonlyFloat64Array } from './shared/binary/ReadonlyTypedArray';
 export * from './shared/units/time';
 export * from './shared/units/angle';
 

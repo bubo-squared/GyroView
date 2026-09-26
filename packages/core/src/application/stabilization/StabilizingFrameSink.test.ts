@@ -51,7 +51,12 @@ function frameTimesAt(times: readonly number[], readoutTime: number): FrameTimes
   const captureTimes = Float64Array.from(
     times.map((time) => SYNTHETIC_CLOCK.captureTimeOf(seconds(time))),
   );
-  return FrameTimes.withoutShutterTimes(SYNTHETIC_CLOCK, captureTimes, seconds(readoutTime));
+  return FrameTimes.withoutShutterTimes({
+    clock: SYNTHETIC_CLOCK,
+    captureTimes,
+    readoutTime: seconds(readoutTime),
+    frameDuration: undefined,
+  });
 }
 
 function forwardThrough(sink: RecordingSink): Vector3 {

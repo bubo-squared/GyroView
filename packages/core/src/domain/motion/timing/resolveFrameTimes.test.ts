@@ -37,6 +37,7 @@ function context(overrides: Partial<FrameTimingContext> = {}): FrameTimingContex
     readoutTime: OFFICE_READOUT,
     exposureRecord: exposureHead,
     trackTimestamps: undefined,
+    frameDuration: undefined,
     ...overrides,
   };
 }

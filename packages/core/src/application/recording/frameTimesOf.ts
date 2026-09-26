@@ -1,10 +1,20 @@
 import type { Recording } from './Recording';
 import type { VideoTrackReader } from '../../ports/Demuxer';
 import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
+import type { Seconds } from '../../shared/units/time';
 import {
   planFrameTimes,
   type ResolvedFrameTimes,
 } from '../../domain/motion/timing/resolveFrameTimes';
+
+/**
+ * Where a frame source's frames lie in time: the clock relating capture time to video time from
+ * the first frame's, and the spacing at which the track presents the frames.
+ */
+export interface FrameTimeline {
+  readonly clock: CaptureClock;
+  readonly frameDuration: Seconds | undefined;
+}
 
 /**
  * Frame times for a frame source. The exposure record costs one small read and is always at
@@ -15,7 +25,7 @@ import {
 export async function frameTimesOf(
   recording: Recording,
   frameSource: VideoTrackReader,
-  clock: CaptureClock,
+  timeline: FrameTimeline,
 ): Promise<ResolvedFrameTimes | undefined> {
   const { info } = recording;
   const [frameCount, exposureRecord] = await Promise.all([
@@ -23,7 +33,13 @@ export async function frameTimesOf(
     recording.readExposureRecord(),
   ]);
   const plan = planFrameTimes(
-    { clock, frameCount, frameRate: info.frameRate, readoutTime: info.readoutTime, exposureRecord },
+    {
+      ...timeline,
+      frameCount,
+      frameRate: info.frameRate,
+      readoutTime: info.readoutTime,
+      exposureRecord,
+    },
     info.preferredFrameTimeSource,
   );
   return plan.needsTrackTimestamps

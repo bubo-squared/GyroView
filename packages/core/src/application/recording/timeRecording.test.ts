@@ -92,7 +92,7 @@ describe('timeRecording', () => {
       expect(timing.frameTimeSource).toBe(expectedSource);
       expect(timing.frameTimes?.frameAt(0).videoTime).toBeCloseTo(0.7, 6);
       expect(timing.frameTimes?.frameIndexAt(seconds(0.7))).toBe(0);
-      expect(timing.frameTimes?.frameIndexAt(seconds(1.75))).toBe(frameCount === 30 ? 10 : 9);
+      expect(timing.frameTimes?.frameIndexAt(seconds(1.5))).toBe(8);
     },
   );
 

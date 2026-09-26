@@ -15,6 +15,11 @@ export class NominalFrameTimeSource implements FrameTimeSource {
     const captureTimes = Float64Array.from({ length: frameCount }, (_unused, index) =>
       clock.captureTimeOf(seconds(clock.firstFrameVideoTime + index / frameRate)),
     );
-    return FrameTimes.withoutShutterTimes(clock, captureTimes, context.readoutTime);
+    return FrameTimes.withoutShutterTimes({
+      clock,
+      captureTimes,
+      readoutTime: context.readoutTime,
+      frameDuration: context.frameDuration,
+    });
   }
 }

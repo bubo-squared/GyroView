@@ -23,6 +23,10 @@ export interface FrameTimingContext {
    * frame order. Supplied by the demuxer.
    */
   readonly trackTimestamps: readonly Seconds[] | undefined;
+  /**
+   * How far apart the track presents its frames; undefined when it does not say.
+   */
+  readonly frameDuration: Seconds | undefined;
 }
 
 export interface FrameTimeSource {

@@ -1,3 +1,4 @@
+import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
 import { FileRandomAccessSource } from '@gyroview/adapter-node';
 import {
   conjugateQuaternion,
@@ -6,6 +7,8 @@ import {
   OrientationTrack,
   readRecording,
   rotateVector,
+  seconds,
+  timeRecording,
   toBodyFrame,
   type CaptureClock,
   type GyroTrack,
@@ -31,6 +34,7 @@ const MAX_DOWN_ERROR_DEGREES = 12;
  */
 const SEARCH_STRIDE = 100;
 const DOWN: Vector3 = [0, -1, 0];
+const OFFICE_FRAME_RATE = 60_000 / 1001;
 
 function angleBetweenDegrees(a: Vector3, b: Vector3): number {
   const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -81,6 +85,35 @@ describe.skipIf(!hasSamples())('the motion of the real X5 recordings', () => {
           expect(angleBetweenDegrees(measuredUp, estimatedUp)).toBeLessThan(MAX_DOWN_ERROR_DEGREES);
         }
       } finally {
+        await source.close();
+      }
+    },
+    TIMEOUT_MS,
+  );
+});
+
+describe.skipIf(!hasSamples())('the frame times of the real X5 recordings', () => {
+  it(
+    'place every presented frame of the office recording, though its capture clock drifts a frame from the track',
+    async () => {
+      const source = await FileRandomAccessSource.open(OFFICE_RECORDING);
+      const input = await new MediabunnyDemuxer().open(source, 'office');
+      try {
+        const [track] = input.videoTracks;
+        if (!track) throw new Error('the office recording has no video track');
+        const timing = await timeRecording(await readRecording(source), track);
+        const timestamps = await track.sampleTimestamps();
+        const last = timestamps.length - 1;
+        const presentedLast = seconds(timestamps[last] ?? NaN);
+        const frameTimes = timing.frameTimes;
+        expect(timing.frameTimeSource).toBe('exposure-record');
+        // The last frame was captured more than a frame before the track presents it.
+        const drift = presentedLast - (frameTimes?.frameAt(last).videoTime ?? NaN);
+        expect(drift).toBeGreaterThan(1 / OFFICE_FRAME_RATE);
+        expect(frameTimes?.frameIndexAt(presentedLast)).toBe(last);
+        expect(frameTimes?.frameIndexAt(seconds(timestamps[last - 1] ?? NaN))).toBe(last - 1);
+      } finally {
+        input.dispose();
         await source.close();
       }
     },

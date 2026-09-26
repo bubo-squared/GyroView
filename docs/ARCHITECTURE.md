@@ -76,7 +76,9 @@ holds the exposure-matching model (ADR 0012).
 
 **`motion`: time and orientation.** `CaptureClock` relates the camera's microsecond clock to
 video time. `FrameTimes` and the `FrameTimeSource` strategies (exposure record, track
-timestamps, nominal rate) give every frame its mid-exposure instant. `GyroTrack` is the IMU
+timestamps, nominal rate) give every frame its mid-exposure instant, and find the frame shown at
+a time by its place on the track's frame grid, since the camera's clock drifts from the track's
+(over a frame in four minutes on the X5). `GyroTrack` is the IMU
 record as a structure of arrays; `ImuFrame` says how the IMU's axes sit in the camera body
 (measured per camera, ADR 0009); `OrientationTrack.integrate` turns gyro and accelerometer
 into a body-to-world quaternion per sample (bias from the stillest window, gravity pull). The

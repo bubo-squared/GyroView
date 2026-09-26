@@ -14,6 +14,11 @@ export class TrackTimestampFrameTimeSource implements FrameTimeSource {
     const captureTimes = Float64Array.from(trackTimestamps.slice(0, frameCount), (timestamp) =>
       clock.captureTimeOf(timestamp),
     );
-    return FrameTimes.withoutShutterTimes(clock, captureTimes, context.readoutTime);
+    return FrameTimes.withoutShutterTimes({
+      clock,
+      captureTimes,
+      readoutTime: context.readoutTime,
+      frameDuration: context.frameDuration,
+    });
   }
 }

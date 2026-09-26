@@ -19,6 +19,7 @@ export class ExposureFrameTimeSource implements FrameTimeSource {
       captureTimes: Float64Array.from(frames.captureTimes),
       shutterTimes: Float64Array.from(frames.shutterTimes),
       readoutTime: context.readoutTime,
+      frameDuration: context.frameDuration,
     });
   }
 }

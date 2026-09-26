@@ -25,7 +25,18 @@ export interface FrameTimesParts {
    * Undefined when unknown: the frame is then taken as read out at once.
    */
   readonly readoutTime: Seconds | undefined;
+  /**
+   * How far apart the track presents its frames, from the first frame's video time on;
+   * undefined when the track does not say, and a presented frame is then found by capture time.
+   */
+  readonly frameDuration: Seconds | undefined;
 }
+
+/**
+ * A presentation time this small a part of a frame before its frame's still finds that frame:
+ * decoders round timestamps to whole microseconds, a sixty-thousandth of a frame at 60 fps.
+ */
+const GRID_TOLERANCE_FRAMES = 0.01;
 
 /**
  * Capture timing of every encoded frame, in frame order.
@@ -35,6 +46,7 @@ export class FrameTimes {
   private readonly clock: CaptureClock;
   private readonly captureTimes: Float64Array;
   private readonly shutterTimes: Float64Array | undefined;
+  private readonly frameDuration: Seconds | undefined;
 
   public constructor(parts: FrameTimesParts) {
     ensureInvariant(
@@ -45,17 +57,14 @@ export class FrameTimes {
     this.captureTimes = parts.captureTimes;
     this.shutterTimes = parts.shutterTimes;
     this.readoutTime = parts.readoutTime ?? seconds(0);
+    this.frameDuration = parts.frameDuration;
   }
 
   /**
    * Frame times from a source that knows when frames were captured but not for how long.
    */
-  public static withoutShutterTimes(
-    clock: CaptureClock,
-    captureTimes: Float64Array,
-    readoutTime: Seconds | undefined,
-  ): FrameTimes {
-    return new FrameTimes({ clock, captureTimes, shutterTimes: undefined, readoutTime });
+  public static withoutShutterTimes(parts: Omit<FrameTimesParts, 'shutterTimes'>): FrameTimes {
+    return new FrameTimes({ ...parts, shutterTimes: undefined });
   }
 
   public get frameCount(): number {
@@ -87,11 +96,29 @@ export class FrameTimes {
   }
 
   /**
-   * Index of the frame shown at `videoTime`: the last frame captured at or before it, clamped
-   * to the first and last frame. Undefined when there are no frames.
+   * Index of the frame the track presents at `videoTime`, clamped to the first and last frame;
+   * undefined when there are no frames. Found by its place on the track's frame grid, which
+   * neither the camera clock's drift against the track nor timestamps rounded to microseconds
+   * move; by capture time only when the track gives no frame spacing.
    */
   public frameIndexAt(videoTime: Seconds): number | undefined {
     if (this.frameCount === 0) return undefined;
+    const index =
+      this.frameDuration === undefined
+        ? this.lastCapturedAt(videoTime)
+        : this.onFrameGrid(videoTime, this.frameDuration);
+    return Math.min(Math.max(index, 0), this.frameCount - 1);
+  }
+
+  private onFrameGrid(videoTime: Seconds, frameDuration: Seconds): number {
+    const framesIn = (videoTime - this.clock.firstFrameVideoTime) / frameDuration;
+    return Math.floor(framesIn + GRID_TOLERANCE_FRAMES);
+  }
+
+  /**
+   * The last frame captured at or before `videoTime`.
+   */
+  private lastCapturedAt(videoTime: Seconds): number {
     const target = this.clock.captureTimeOf(videoTime);
     let low = 0;
     let high = this.frameCount - 1;

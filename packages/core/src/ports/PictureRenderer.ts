@@ -1,14 +1,14 @@
 import type { FrameSink } from './FrameSink';
 import type { SeamMeter } from './SeamMeter';
+import type { Framing } from '../domain/view/Framing';
 import type { ViewMode } from '../domain/view/ViewMode';
-import type { ViewState } from '../domain/view/ViewState';
 import type { Matrix3 } from '../shared/math/Matrix3';
 import type { Vector3 } from '../shared/math/Vector3';
 
 /**
- * Port: what a player needs of a renderer. It draws each presented pair as the picture the view
- * and the view mode ask for, turned by the stabilization and scaled by the lens gains, on a
- * surface of a given size, and can measure the seam of what it draws.
+ * Port: what a player needs of a renderer. It draws each presented pair as the picture the
+ * framing and the view mode ask for, turned by the stabilization and scaled by the lens gains, on
+ * a surface of a given size, and can measure the seam of what it draws.
  */
 export interface PictureRenderer<Handle = unknown> extends FrameSink<Handle> {
   /**
@@ -17,7 +17,10 @@ export interface PictureRenderer<Handle = unknown> extends FrameSink<Handle> {
    * and before the lens poses. Takes effect with the next presentation.
    */
   setStabilization(rotation: Matrix3): void;
-  setView(view: ViewState): void;
+  /**
+   * How the picture is framed in every view mode; the mode in effect reads its part.
+   */
+  setFraming(framing: Framing): void;
   setViewMode(mode: ViewMode): void;
   /**
    * Matches the drawing buffer to a new surface size, in device pixels.

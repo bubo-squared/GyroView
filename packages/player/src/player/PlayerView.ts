@@ -1,16 +1,22 @@
 import {
   clampView,
-  DEFAULT_VIEW,
+  DEFAULT_FRAMING,
   DEFAULT_VIEW_MODE,
+  isSameFraming,
   isSameView,
   lookAt,
+  SCREEN_CENTRE,
   viewModeRulesFor,
   type Degrees,
   type DragDelta,
+  type Framing,
   type PictureRenderer,
+  type ScreenPoint,
   type TypedEmitter,
+  type ViewContext,
   type ViewMode,
   type ViewModeRules,
+  type ViewportSize,
   type ViewState,
 } from '@gyroview/core';
 
@@ -19,22 +25,32 @@ import type { PlayerEvents } from './PlayerEvents';
 /**
  * The part of the renderer the view drives.
  */
-export type ViewSurface = Pick<PictureRenderer, 'setView' | 'setViewMode'>;
+export type ViewSurface = Pick<PictureRenderer, 'setFraming' | 'setViewMode'>;
 
 /**
- * Where the viewer looks and how the picture shows it: kept across loads, drawn by whichever
- * renderer is attached, and announced when it changes. The viewer's gestures go through the
- * mode's rules; a host setting the view directly is obeyed as it is.
+ * Every layout the player accepts has two lenses; a loaded recording says so itself.
+ */
+const LENS_COUNT_BEFORE_A_LOAD = 2;
+
+/**
+ * How the picture is framed and which view mode shows it: kept across loads, drawn by whichever
+ * renderer is attached, and the normal view announced when it changes. The viewer's gestures go
+ * through the mode's rules on the viewport as it is now; a host setting the view directly is
+ * obeyed as it is.
  */
 export class PlayerView {
-  private state: ViewState = DEFAULT_VIEW;
+  private framing: Framing = DEFAULT_FRAMING;
   private mode: ViewMode = DEFAULT_VIEW_MODE;
   private surface: ViewSurface | undefined;
+  private lensCount = LENS_COUNT_BEFORE_A_LOAD;
 
-  public constructor(private readonly events: TypedEmitter<PlayerEvents>) {}
+  public constructor(
+    private readonly events: TypedEmitter<PlayerEvents>,
+    private readonly viewportSize: () => ViewportSize,
+  ) {}
 
   public get current(): ViewState {
-    return this.state;
+    return this.framing.view;
   }
 
   public get viewMode(): ViewMode {
@@ -42,21 +58,25 @@ export class PlayerView {
   }
 
   /**
-   * The renderer of the loaded recording, or nothing between loads. A new renderer draws the view
-   * as it is now, however it changed while the recording was loading.
+   * Whether a drag moves the picture as it is framed now.
    */
-  public attach(surface: ViewSurface | undefined): void {
+  public get canPan(): boolean {
+    return this.rules().canPan(this.framing);
+  }
+
+  /**
+   * The renderer of the loaded recording and its lens count, or nothing between loads. A new
+   * renderer draws the framing as it is now, however it changed while the recording was loading.
+   */
+  public attach(surface: ViewSurface | undefined, lensCount = this.lensCount): void {
     this.surface = surface;
+    this.lensCount = lensCount;
     surface?.setViewMode(this.mode);
-    surface?.setView(this.state);
+    surface?.setFraming(this.framing);
   }
 
   public set(view: ViewState): void {
-    const next = clampView(view);
-    if (isSameView(next, this.state)) return;
-    this.state = next;
-    this.surface?.setView(this.state);
-    this.events.emit('viewchange', this.state);
+    this.frame({ ...this.framing, view: clampView(view) });
   }
 
   public setMode(mode: ViewMode): void {
@@ -67,23 +87,41 @@ export class PlayerView {
   }
 
   public lookAt(yaw: Degrees, pitch: Degrees): void {
-    this.set(lookAt(this.state, yaw, pitch));
+    this.set(lookAt(this.framing.view, yaw, pitch));
   }
 
-  public pan(delta: DragDelta, viewportWidth: number): void {
-    this.set(this.rules().pan(this.state, delta, viewportWidth));
+  public pan(delta: DragDelta): void {
+    this.frame(this.rules().pan(this.framing, delta, this.context()));
   }
 
-  public turn(yawDelta: Degrees, pitchDelta: Degrees): void {
-    this.set(this.rules().turn(this.state, yawDelta, pitchDelta));
+  public turn(yaw: Degrees, pitch: Degrees): void {
+    this.frame(this.rules().turn(this.framing, { yaw, pitch }, this.context()));
   }
 
-  public zoom(steps: number): void {
-    this.set(this.rules().zoom(this.state, steps));
+  /**
+   * Zooms by `steps`, keeping the point of the viewport at `focus` on what it shows.
+   */
+  public zoom(steps: number, focus: ScreenPoint = SCREEN_CENTRE): void {
+    this.frame(this.rules().zoom(this.framing, { steps, focus }, this.context()));
   }
 
+  /**
+   * Back to how the current mode starts; the other modes keep their framing.
+   */
   public reset(): void {
-    this.set(DEFAULT_VIEW);
+    this.frame(this.rules().reset(this.framing));
+  }
+
+  private frame(next: Framing): void {
+    if (isSameFraming(next, this.framing)) return;
+    const hasViewChanged = !isSameView(next.view, this.framing.view);
+    this.framing = next;
+    this.surface?.setFraming(next);
+    if (hasViewChanged) this.events.emit('viewchange', next.view);
+  }
+
+  private context(): ViewContext {
+    return { viewport: this.viewportSize(), lensCount: this.lensCount };
   }
 
   private rules(): ViewModeRules {

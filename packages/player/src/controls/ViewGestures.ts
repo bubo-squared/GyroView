@@ -73,7 +73,7 @@ export class ViewGestures {
   private pan(previous: Point, current: Point): void {
     const delta = { x: current.x - previous.x, y: current.y - previous.y };
     this.dragDistance += Math.hypot(delta.x, delta.y);
-    this.player.pan(delta, this.surface.clientWidth);
+    this.player.pan(delta);
   }
 
   private pinch(pointerId: number, current: Point): void {

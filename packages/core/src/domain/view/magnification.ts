@@ -32,6 +32,10 @@ const HALF = 0.5;
  */
 export type ScreenShift = ScreenPoint;
 
+export function isSameMagnification(a: Magnification, b: Magnification): boolean {
+  return a.scale === b.scale && a.centre.x === b.centre.x && a.centre.y === b.centre.y;
+}
+
 /**
  * Where the magnified picture lies on the viewport, given where it lies fitted. The fitted
  * rectangle is centred, as every fitted picture is.

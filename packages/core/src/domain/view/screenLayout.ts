@@ -17,6 +17,21 @@ export interface ScreenPoint {
   readonly y: number;
 }
 
+/**
+ * The viewport's size, in whatever unit the drags on it are measured in (CSS pixels for gestures).
+ */
+export interface ViewportSize {
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Width over height; an empty viewport counts as one unit high.
+ */
+export function aspectOf(viewport: ViewportSize): number {
+  return viewport.width / Math.max(viewport.height, 1);
+}
+
 export const WHOLE_SCREEN: ScreenRectangle = { x: 0, y: 0, width: 1, height: 1 };
 export const SCREEN_CENTRE: ScreenPoint = { x: 0.5, y: 0.5 };
 

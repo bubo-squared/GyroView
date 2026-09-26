@@ -8,6 +8,7 @@ import {
   TypedEmitter,
   type Degrees,
   type DragDelta,
+  type ScreenPoint,
   type Seconds,
   type StabilizationMode,
   type ViewMode,
@@ -37,7 +38,7 @@ export class Player {
   public readonly events = new TypedEmitter<PlayerEvents>();
   private readonly loop: FrameLoop;
   private phase: PlayerPhase = IDLE;
-  private readonly viewing = new PlayerView(this.events);
+  private readonly viewing: PlayerView;
   private readonly picture = new PictureSettings(this.events);
   private readonly sound: PlayerSound;
   private readonly relay = new SessionRelay({
@@ -57,6 +58,11 @@ export class Player {
       this.loaded?.pipeline.session.tick();
     });
     this.sound = new PlayerSound(parts.host.audio, this.events);
+    const { canvas } = parts.host;
+    this.viewing = new PlayerView(this.events, () => ({
+      width: canvas.clientWidth,
+      height: canvas.clientHeight,
+    }));
   }
 
   public get status(): PlayerStatus {
@@ -88,6 +94,14 @@ export class Player {
 
   public get viewMode(): ViewMode {
     return this.viewing.viewMode;
+  }
+
+  /**
+   * Whether a drag moves the picture as it is framed now: always in the stitched views, in the
+   * raw lenses once zoomed in.
+   */
+  public get canPan(): boolean {
+    return this.viewing.canPan;
   }
 
   public get stabilization(): StabilizationMode {
@@ -181,10 +195,10 @@ export class Player {
   }
 
   /**
-   * The viewer dragged the picture by `delta` on a viewport `viewportWidth` pixels wide.
+   * The viewer dragged the picture by `delta` CSS pixels across the canvas.
    */
-  public pan(delta: DragDelta, viewportWidth: number): void {
-    this.viewing.pan(delta, viewportWidth);
+  public pan(delta: DragDelta): void {
+    this.viewing.pan(delta);
   }
 
   /**
@@ -194,8 +208,12 @@ export class Player {
     this.viewing.turn(yawDelta, pitchDelta);
   }
 
-  public zoom(steps: number): void {
-    this.viewing.zoom(steps);
+  /**
+   * Zooms by `steps` (positive zooms in) toward `focus`, a point of the canvas as fractions of its
+   * size; about the centre when none is given.
+   */
+  public zoom(steps: number, focus?: ScreenPoint): void {
+    this.viewing.zoom(steps, focus);
   }
 
   public resetView(): void {
@@ -263,7 +281,7 @@ export class Player {
 
   private attach(loaded: LoadedRecording): void {
     this.phase = { kind: 'loaded', loaded };
-    this.viewing.attach(loaded.pipeline.renderer);
+    this.viewing.attach(loaded.pipeline.renderer, loaded.opened.layout.sources.length);
     const { session } = loaded.pipeline;
     this.picture.attach(loaded.pipeline);
     this.relay.attach(session);

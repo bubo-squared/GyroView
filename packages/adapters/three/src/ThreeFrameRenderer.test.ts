@@ -1,5 +1,6 @@
 import {
   buildStitchingSetup,
+  DEFAULT_FRAMING,
   DEFAULT_VIEW,
   degrees,
   GainMatchingFrameSink,
@@ -10,16 +11,25 @@ import {
   stabilizerFor,
   transformVector,
   type DecodedFrame,
+  type Framing,
   type FrameSink,
   type Presentation,
   type StitchingSetup,
   type Vector3,
+  type ViewState,
 } from '@gyroview/core';
 import { equirectangularPixelOf, parseOffsetString } from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { MULTI_TRACK, PACKED, syntheticCalibration } from './test/syntheticStitching';
 import { ThreeFrameRenderer } from './ThreeFrameRenderer';
+
+/**
+ * The normal view looking as given, the flat pictures fitted.
+ */
+function framingOf(view: ViewState): Framing {
+  return { ...DEFAULT_FRAMING, view };
+}
 
 const WIDTH = 64;
 const HEIGHT = 32;
@@ -223,9 +233,9 @@ describe('ThreeFrameRenderer', () => {
     const renderer = open();
     presentRedAndBlue(renderer);
     expect(pixelAt(renderer, CENTRE).r).toBeGreaterThan(BRIGHT);
-    renderer.setView({ ...DEFAULT_VIEW, yaw: degrees(180) });
+    renderer.setFraming(framingOf({ ...DEFAULT_VIEW, yaw: degrees(180) }));
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
-    renderer.setView({ ...DEFAULT_VIEW, pitch: degrees(90) });
+    renderer.setFraming(framingOf({ ...DEFAULT_VIEW, pitch: degrees(90) }));
     const up = pixelAt(renderer, CENTRE);
     expect(up.r).toBeGreaterThan(MIXED);
     expect(up.b).toBeGreaterThan(MIXED);
@@ -234,10 +244,10 @@ describe('ThreeFrameRenderer', () => {
   it('gives the normal view a real horizontal field of view: turned 60 degrees with 60 across, its right edge meets the seam', () => {
     const renderer = open();
     presentRedAndBlue(renderer);
-    renderer.setView({ ...DEFAULT_VIEW, fieldOfView: degrees(120) });
+    renderer.setFraming(framingOf({ ...DEFAULT_VIEW, fieldOfView: degrees(120) }));
     expect(pixelAt(renderer, RIGHT_EDGE).r).toBeGreaterThan(BRIGHT);
     expect(pixelAt(renderer, RIGHT_EDGE).b).toBeLessThan(DIM);
-    renderer.setView({ ...DEFAULT_VIEW, yaw: degrees(60), fieldOfView: degrees(60) });
+    renderer.setFraming(framingOf({ ...DEFAULT_VIEW, yaw: degrees(60), fieldOfView: degrees(60) }));
     const edge = pixelAt(renderer, RIGHT_EDGE);
     expect(edge.r).toBeGreaterThan(FAINT);
     expect(edge.b).toBeGreaterThan(FAINT);
@@ -247,10 +257,10 @@ describe('ThreeFrameRenderer', () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');
     presentRedAndBlue(renderer);
-    renderer.setView({ ...DEFAULT_VIEW, pitch: degrees(90) });
+    renderer.setFraming(framingOf({ ...DEFAULT_VIEW, pitch: degrees(90) }));
     expect(pixelAt(renderer, CENTRE).r).toBeGreaterThan(BRIGHT);
     expect(pixelAt(renderer, CENTRE).b).toBeLessThan(DIM);
-    renderer.setView({ ...DEFAULT_VIEW, yaw: degrees(180) });
+    renderer.setFraming(framingOf({ ...DEFAULT_VIEW, yaw: degrees(180) }));
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
   });
 
@@ -469,7 +479,7 @@ describe('ThreeFrameRenderer', () => {
     const lost = eventOnce(canvas, 'webglcontextlost');
     loser.loseContext();
     await lost;
-    renderer.setView({ ...DEFAULT_VIEW, yaw: degrees(180) });
+    renderer.setFraming(framingOf({ ...DEFAULT_VIEW, yaw: degrees(180) }));
     // Browsers finish handling the loss in a later task; a restore requested from the loss
     // event's own continuation is ignored and `webglcontextrestored` never fires.
     await afterNextTask();
@@ -491,7 +501,7 @@ describe('ThreeFrameRenderer', () => {
     const renderer = open();
     renderer.dispose();
     expect(() => {
-      renderer.setView(DEFAULT_VIEW);
+      renderer.setFraming(framingOf(DEFAULT_VIEW));
     }).toThrow(/disposed/u);
   });
 

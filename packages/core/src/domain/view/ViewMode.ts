@@ -1,7 +1,22 @@
+import type { Framing } from './Framing';
+import { FITTED } from './magnification';
 import type { Picture } from './Picture';
-import { fittedRectangle, lensTiles, WHOLE_SCREEN } from './screenLayout';
-import { lookAt, panView, zoomView, type DragDelta } from './viewGestures';
-import { FULL_TURN, viewRotation, type ViewState } from './ViewState';
+import {
+  aspectOf,
+  fittedRectangle,
+  lensTiles,
+  WHOLE_SCREEN,
+  type ViewportSize,
+} from './screenLayout';
+import {
+  lookAt,
+  panView,
+  zoomViewAt,
+  type DragDelta,
+  type TurnRequest,
+  type ZoomRequest,
+} from './viewGestures';
+import { DEFAULT_VIEW, FULL_TURN, viewRotation, type ViewState } from './ViewState';
 import { rotationAboutY } from '../../shared/math/Matrix3';
 import { degrees, degreesToRadians, type Degrees } from '../../shared/units/angle';
 
@@ -21,8 +36,17 @@ export const VIEW_MODES: readonly ViewMode[] = ['normal', 'equirectangular', 'ra
 export const DEFAULT_VIEW_MODE: ViewMode = 'normal';
 
 /**
- * Strategy: how one view mode answers the viewer's gestures and what it draws. A mode leaves
- * alone what it does not show, so the normal view survives a detour through another.
+ * What a mode needs to know about where it draws: the viewport's size, in the unit of the drags
+ * on it, and how many lenses the lens tiles show.
+ */
+export interface ViewContext {
+  readonly viewport: ViewportSize;
+  readonly lensCount: number;
+}
+
+/**
+ * Strategy: how one view mode answers the viewer's gestures and what it draws. Each mode reads
+ * and changes its own part of the framing, so a detour through another mode loses nothing.
  */
 export interface ViewModeRules {
   /**
@@ -31,27 +55,47 @@ export interface ViewModeRules {
    */
   readonly isStabilized: boolean;
   /**
-   * The view once the picture is dragged by `delta` on a viewport `viewportWidth` pixels wide.
+   * Whether a drag moves the picture as it is framed now.
    */
-  pan(view: ViewState, delta: DragDelta, viewportWidth: number): ViewState;
+  canPan(framing: Framing): boolean;
   /**
-   * The view once turned by the given angles, as the arrow keys do.
+   * The framing once the picture is dragged by `delta`.
    */
-  turn(view: ViewState, yawDelta: Degrees, pitchDelta: Degrees): ViewState;
-  zoom(view: ViewState, steps: number): ViewState;
+  pan(framing: Framing, delta: DragDelta, context: ViewContext): Framing;
   /**
-   * The picture for this view on a viewport `viewportAspect` wide per unit of height.
+   * The framing once turned by the given angles, as the arrow keys do.
    */
-  picture(view: ViewState, viewportAspect: number, lensCount: number): Picture;
+  turn(framing: Framing, turn: TurnRequest, context: ViewContext): Framing;
+  zoom(framing: Framing, zoom: ZoomRequest, context: ViewContext): Framing;
+  /**
+   * The framing this mode starts with, the other modes' parts left as they are.
+   */
+  reset(framing: Framing): Framing;
+  picture(framing: Framing, context: ViewContext): Picture;
+}
+
+function withView(framing: Framing, view: ViewState): Framing {
+  return { ...framing, view };
 }
 
 const NORMAL: ViewModeRules = {
   isStabilized: true,
-  pan: panView,
-  turn: (view, yawDelta, pitchDelta) =>
-    lookAt(view, degrees(view.yaw + yawDelta), degrees(view.pitch + pitchDelta)),
-  zoom: zoomView,
-  picture: (view) => ({
+  canPan: () => true,
+  pan: (framing, delta, { viewport }) =>
+    withView(framing, panView(framing.view, delta, viewport.width)),
+  turn: (framing, turn) =>
+    withView(
+      framing,
+      lookAt(
+        framing.view,
+        degrees(framing.view.yaw + turn.yaw),
+        degrees(framing.view.pitch + turn.pitch),
+      ),
+    ),
+  zoom: (framing, zoom, { viewport }) =>
+    withView(framing, zoomViewAt(framing.view, zoom, aspectOf(viewport))),
+  reset: (framing) => withView(framing, DEFAULT_VIEW),
+  picture: ({ view }) => ({
     kind: 'rectilinear',
     rotation: viewRotation(view),
     fieldOfView: view.fieldOfView,
@@ -59,39 +103,46 @@ const NORMAL: ViewModeRules = {
   }),
 };
 
+function turnedPanorama(framing: Framing, yawDelta: Degrees): Framing {
+  const { view } = framing;
+  return withView(framing, lookAt(view, degrees(view.yaw + yawDelta), view.pitch));
+}
+
 /**
- * Level, whole and unzoomed, as an exported equirectangular video: only the yaw, which picks the
- * direction at the centre, follows the viewer.
+ * Level, as an exported equirectangular video: only the yaw, which picks the direction at the
+ * centre, follows the viewer, a whole turn per viewport width.
  */
 const EQUIRECTANGULAR: ViewModeRules = {
   isStabilized: true,
-  pan: (view, delta, viewportWidth) =>
-    lookAt(
-      view,
-      degrees(view.yaw - (delta.x * FULL_TURN) / Math.max(viewportWidth, 1)),
-      view.pitch,
-    ),
-  turn: (view, yawDelta) => lookAt(view, degrees(view.yaw + yawDelta), view.pitch),
-  zoom: (view) => view,
-  picture: (view, viewportAspect) => ({
+  canPan: () => true,
+  pan: (framing, delta, { viewport }) =>
+    turnedPanorama(framing, degrees(-(delta.x * FULL_TURN) / Math.max(viewport.width, 1))),
+  turn: (framing, turn) => turnedPanorama(framing, turn.yaw),
+  zoom: (framing) => framing,
+  reset: (framing) => ({
+    ...withView(framing, lookAt(framing.view, degrees(0), framing.view.pitch)),
+    panorama: FITTED,
+  }),
+  picture: ({ view }, { viewport }) => ({
     kind: 'equirectangular',
     rotation: rotationAboutY(degreesToRadians(view.yaw)),
-    area: fittedRectangle(EQUIRECTANGULAR_ASPECT, viewportAspect),
+    area: fittedRectangle(EQUIRECTANGULAR_ASPECT, aspectOf(viewport)),
   }),
 };
 
 /**
- * The decoded images as the camera recorded them: nothing turns or zooms them, so the view waits
- * unchanged for the stitched modes.
+ * The decoded images as the camera recorded them: nothing turns or zooms them.
  */
 const RAW_LENSES: ViewModeRules = {
   isStabilized: false,
-  pan: (view) => view,
-  turn: (view) => view,
-  zoom: (view) => view,
-  picture: (_view, viewportAspect, lensCount) => ({
+  canPan: () => false,
+  pan: (framing) => framing,
+  turn: (framing) => framing,
+  zoom: (framing) => framing,
+  reset: (framing) => ({ ...framing, lenses: FITTED }),
+  picture: (_framing, { viewport, lensCount }) => ({
     kind: 'lens-tiles',
-    tiles: lensTiles(lensCount, viewportAspect),
+    tiles: lensTiles(lensCount, aspectOf(viewport)),
   }),
 };
 

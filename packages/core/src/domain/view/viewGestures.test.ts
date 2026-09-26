@@ -62,9 +62,7 @@ describe('view gestures', () => {
   it('zooms about the centre like the centred zoom for a pointer at the centre', () => {
     const view = viewOf(40, -15, 90);
     const zoomed = zoomViewAt(view, { steps: 2, focus: { x: 0.5, y: 0.5 } }, ASPECT);
-    expect(zoomed.yaw).toBeCloseTo(40, 9);
-    expect(zoomed.pitch).toBeCloseTo(-15, 9);
-    expect(zoomed.fieldOfView).toBeCloseTo(zoomView(view, 2).fieldOfView, 9);
+    expect(zoomed).toEqual(zoomView(view, 2));
   });
 
   it('only changes the field of view once it is at its limit', () => {

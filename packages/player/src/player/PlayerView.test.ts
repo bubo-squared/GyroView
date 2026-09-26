@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 import type { PlayerEvents } from './PlayerEvents';
 import { PlayerView, type ViewSurface } from './PlayerView';
 
-const VIEWPORT_WIDTH = 900;
+/**
+ * The canvas the gestures happen on, in CSS pixels.
+ */
+const VIEWPORT = { width: 900, height: 450 };
 
 interface Recorded {
   readonly view: PlayerView;
@@ -25,10 +28,10 @@ function recordedView(): Recorded {
   events.on('viewmodechange', (mode) => {
     modes.push(mode);
   });
-  const view = new PlayerView(events);
+  const view = new PlayerView(events, () => VIEWPORT);
   const surface: ViewSurface = {
-    setView: (state) => {
-      drawn.push(state);
+    setFraming: (framing) => {
+      drawn.push(framing.view);
     },
     setViewMode: (mode) => {
       drawn.push(mode);
@@ -78,9 +81,33 @@ describe('PlayerView', () => {
     expect(view.viewMode).toBe('equirectangular');
     expect(drawn).toEqual(['equirectangular']);
     expect(modes).toEqual(['equirectangular']);
-    view.pan({ x: 90, y: 90 }, VIEWPORT_WIDTH);
+    view.pan({ x: 90, y: 90 });
     view.zoom(3);
     expect(view.current).toEqual({ ...DEFAULT_VIEW, yaw: -36 });
+  });
+
+  it('zooms toward a point of the canvas, and about the centre without one', () => {
+    const { view } = recordedView();
+    view.zoom(2, { x: 0.9, y: 0.5 });
+    expect(view.current.yaw).toBeGreaterThan(0);
+    view.reset();
+    view.zoom(2);
+    expect(view.current.yaw).toBe(0);
+  });
+
+  it('can be dragged in the stitched views, and not in the unzoomed raw lenses', () => {
+    const { view } = recordedView();
+    expect(view.canPan).toBe(true);
+    view.setMode('raw-lenses');
+    expect(view.canPan).toBe(false);
+  });
+
+  it('resets the current mode only', () => {
+    const { view } = recordedView();
+    view.lookAt(degrees(30), degrees(-10));
+    view.setMode('equirectangular');
+    view.reset();
+    expect(view.current).toEqual({ ...DEFAULT_VIEW, pitch: -10 });
   });
 
   it('announces nothing for a change that changes nothing', () => {

@@ -1,14 +1,9 @@
-import type { PictureRenderer } from '@gyroview/core';
+import type { PictureRenderer, ViewportSize } from '@gyroview/core';
 
 /**
  * Sharper than this on high-density screens costs GPU time the stitch does not repay.
  */
 const MAX_DEVICE_PIXEL_RATIO = 2;
-
-export interface ViewportSize {
-  readonly width: number;
-  readonly height: number;
-}
 
 /**
  * The drawing buffer size, in device pixels, for an element of the given CSS size.

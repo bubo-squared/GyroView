@@ -58,7 +58,7 @@ export interface PipelineParts {
  */
 export interface Pipeline {
   readonly session: PlaybackSession<VideoFrame>;
-  readonly renderer: Pick<PictureRenderer<VideoFrame>, 'setView' | 'setViewMode' | 'resize'>;
+  readonly renderer: Pick<PictureRenderer<VideoFrame>, 'setFraming' | 'setViewMode' | 'resize'>;
   /**
    * A recording without a gyro stays as recorded, whatever the mode.
    */

@@ -1,8 +1,9 @@
 import {
-  DEFAULT_VIEW,
+  DEFAULT_FRAMING,
   DEFAULT_VIEW_MODE,
   ensureInvariant,
   GyroViewError,
+  type Framing,
   type Matrix3 as CoreMatrix3,
   type PictureRenderer,
   type Presentation,
@@ -11,7 +12,6 @@ import {
   type Vector3 as CoreVector3,
   viewModeRulesFor,
   type ViewMode,
-  type ViewState,
 } from '@gyroview/core';
 import {
   Camera,
@@ -72,7 +72,7 @@ interface RendererParts {
  * turned by the view and stabilization rotations, or the raw lens images side by side.
  */
 export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
-  private view: ViewState = DEFAULT_VIEW;
+  private framing: Framing = DEFAULT_FRAMING;
   private viewMode: ViewMode = DEFAULT_VIEW_MODE;
   /**
    * False until the first pair arrives and again after a context loss: the textures then hold
@@ -110,9 +110,9 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     return new ThreeFrameRenderer(parts, canvas);
   }
 
-  public setView(view: ViewState): void {
+  public setFraming(framing: Framing): void {
     this.ensureLive();
-    this.view = view;
+    this.framing = framing;
     this.applyView();
     this.render();
   }
@@ -216,18 +216,17 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   }
 
   /**
-   * Asks the view mode what to draw for the view on this canvas, and switches to that picture's
-   * program.
+   * Asks the view mode what to draw for the framing on this canvas, and switches to that
+   * picture's program.
    */
   private applyView(): void {
-    const viewportAspect = this.canvas.width / Math.max(this.canvas.height, 1);
-    const picture = viewModeRulesFor(this.viewMode).picture(
-      this.view,
-      viewportAspect,
-      this.parts.lensCount,
-    );
+    const viewport = { width: this.canvas.width, height: this.canvas.height };
+    const picture = viewModeRulesFor(this.viewMode).picture(this.framing, {
+      viewport,
+      lensCount: this.parts.lensCount,
+    });
     this.parts.pass.material = this.parts.materials[picture.kind];
-    applyPicture(this.parts.uniforms, picture, viewportAspect);
+    applyPicture(this.parts.uniforms, picture, viewport.width / Math.max(viewport.height, 1));
   }
 
   private ensureLive(): void {

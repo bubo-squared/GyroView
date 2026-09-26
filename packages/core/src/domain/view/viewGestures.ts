@@ -1,4 +1,4 @@
-import type { ScreenPoint } from './screenLayout';
+import { SCREEN_CENTRE, type ScreenPoint } from './screenLayout';
 import { clampView, viewRotation, type ViewState } from './ViewState';
 import { rotationAboutX, transformVector } from '../../shared/math/Matrix3';
 import { magnitudeOf, scaleVector, type Vector3 } from '../../shared/math/Vector3';
@@ -17,6 +17,14 @@ import {
 export interface DragDelta {
   readonly x: number;
   readonly y: number;
+}
+
+/**
+ * A turn by angles, as the arrow keys make: positive yaw to the right, positive pitch up.
+ */
+export interface TurnRequest {
+  readonly yaw: Degrees;
+  readonly pitch: Degrees;
 }
 
 /**
@@ -74,7 +82,9 @@ export function zoomView(view: ViewState, steps: number): ViewState {
  */
 export function zoomViewAt(view: ViewState, zoom: ZoomRequest, viewportAspect: number): ViewState {
   const zoomed = zoomView(view, zoom.steps);
-  if (zoomed.fieldOfView === view.fieldOfView) return zoomed;
+  // The centre needs no turn; leaving the trigonometry out keeps the angles exactly as they were.
+  const isAtCentre = zoom.focus.x === SCREEN_CENTRE.x && zoom.focus.y === SCREEN_CENTRE.y;
+  if (isAtCentre || zoomed.fieldOfView === view.fieldOfView) return zoomed;
   const direction = directionAt(view, zoom.focus, viewportAspect);
   const ray = rayThrough(zoomed.fieldOfView, zoom.focus, viewportAspect);
   const pitch = pitchRaising(ray, direction[1], view.pitch);

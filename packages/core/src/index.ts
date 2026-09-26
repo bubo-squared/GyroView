@@ -78,9 +78,12 @@ export {
   DEFAULT_VIEW_MODE,
   VIEW_MODES,
   viewModeRulesFor,
+  type ViewContext,
   type ViewMode,
   type ViewModeRules,
 } from './domain/view/ViewMode';
+export { DEFAULT_FRAMING, isSameFraming, type Framing } from './domain/view/Framing';
+export { FITTED, MAX_MAGNIFICATION, type Magnification } from './domain/view/magnification';
 export type {
   EquirectangularPicture,
   LensTilesPicture,
@@ -88,8 +91,19 @@ export type {
   PictureKind,
   RectilinearPicture,
 } from './domain/view/Picture';
-export type { ScreenRectangle } from './domain/view/screenLayout';
-export { lookAt, zoomStepsForPinch, type DragDelta } from './domain/view/viewGestures';
+export {
+  SCREEN_CENTRE,
+  type ScreenPoint,
+  type ScreenRectangle,
+  type ViewportSize,
+} from './domain/view/screenLayout';
+export {
+  lookAt,
+  zoomStepsForPinch,
+  type DragDelta,
+  type TurnRequest,
+  type ZoomRequest,
+} from './domain/view/viewGestures';
 export {
   buildStitchingSetup,
   lensFrameOrder,

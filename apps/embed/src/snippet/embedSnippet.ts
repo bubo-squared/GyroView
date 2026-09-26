@@ -2,7 +2,7 @@ import { GyroViewError } from '@gyroview/core';
 
 import { windowEndpoint } from '../bridge/Endpoint';
 import { EmbedHandle } from '../bridge/EmbedHandle';
-import { embedUrlFor, type EmbedOptions } from '../bridge/embedUrl';
+import { embedUrlFor, FRAME_PERMISSIONS, type EmbedOptions } from '../bridge/embedUrl';
 
 export type { EmbedOptions } from '../bridge/embedUrl';
 export type { EmbedState, LoadRequest } from '../bridge/EmbedState';
@@ -30,7 +30,6 @@ export interface Embedded {
 }
 
 const DEFAULT_TITLE = '360 video player';
-export const FRAME_PERMISSIONS = 'fullscreen; autoplay';
 
 /**
  * The URL this script was loaded from, remembered at load time because `currentScript` is gone

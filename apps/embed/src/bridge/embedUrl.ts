@@ -1,6 +1,11 @@
 import { PlaybackAttribute, SourceAttribute, ViewAttribute } from '@gyroview/player/attributes';
 
 /**
+ * What an iframe of `embed.html` must be allowed: to fill the screen and to start playback.
+ */
+export const FRAME_PERMISSIONS = 'fullscreen; autoplay';
+
+/**
  * What an embedding page may ask of the player, one option per `<gyro-view>` attribute, carried
  * to `embed.html` as query parameters named after the attributes.
  */

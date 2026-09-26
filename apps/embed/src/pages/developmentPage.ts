@@ -9,7 +9,7 @@ import { FpsCounter } from './FpsCounter';
 import { sampleRecordingsOf, type SampleRecording } from './sampleRecordings';
 import { SAMPLES_ENDPOINT, type SampleFolderListing } from './samplesListing';
 import { embedUrlFor } from '../bridge/embedUrl';
-import { FRAME_PERMISSIONS } from '../snippet/embedSnippet';
+import { FRAME_PERMISSIONS } from '../bridge/embedUrl';
 
 interface DevelopmentPageParts {
   readonly player: GyroViewElement;

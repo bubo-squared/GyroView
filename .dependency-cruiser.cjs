@@ -206,6 +206,21 @@ module.exports = {
       to: { path: '^packages/adapters/' },
     },
     {
+      name: 'the-embed-snippet-carries-no-player-code',
+      comment:
+        'embed.js only talks to the frame: the snippet, the protocol and the page side of the bridge take types and attribute names from the player, never its code.',
+      severity: 'error',
+      from: {
+        path: '^apps/embed/src/(snippet/|protocol/|bridge/(EmbedHandle|Endpoint|EmbedState|embedUrl)\\.ts$)',
+        pathNot: '\\.test\\.ts$',
+      },
+      to: {
+        path: '^packages/player/',
+        pathNot: '^packages/player/src/element/attributeNames\\.ts$',
+        dependencyTypesNot: ['type-only'],
+      },
+    },
+    {
       name: 'player-is-not-imported-by-libraries',
       comment: 'The real-recording tests open samples through the player composition they test.',
       severity: 'error',

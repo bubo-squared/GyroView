@@ -29,7 +29,8 @@ describe('GyroView.embed', () => {
     expect(frame?.title).toBe('Sailing');
     const url = new URL(frame?.src ?? '');
     expect(`${url.origin}${url.pathname}`).toBe(EMBED_PAGE);
-    expect(url.searchParams.get('src')).toBe(recordingUrl);
+    // The page's own URL, resolved against the page: the frame lives elsewhere.
+    expect(url.searchParams.get('src')).toBe(new URL(recordingUrl, document.baseURI).href);
     expect(url.searchParams.get('muted')).toBe('1');
     expect(url.searchParams.get('stabilization')).toBe('horizon');
     expect(url.searchParams.get('origin')).toBe(location.origin);

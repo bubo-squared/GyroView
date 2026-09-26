@@ -74,6 +74,29 @@ const FLAG_OFF = '0';
 const TRUTHY = new Set(['1', 'true', 'yes', '']);
 
 /**
+ * A URL the embedding page wrote, made absolute against the page (`pageUrl`, its base URL): the
+ * frame, on another host, would read a relative one against its own. Anything but a string passes
+ * on unchanged, for the frame to refuse.
+ */
+export function absoluteUrl<Value>(value: Value, pageUrl: string): Value | string {
+  return typeof value === 'string' ? new URL(value, pageUrl).href : value;
+}
+
+/**
+ * The options with their URLs (the recording, its second file, the poster) made absolute
+ * against the embedding page.
+ */
+export function withAbsoluteUrls(options: EmbedOptions, pageUrl: string): EmbedOptions {
+  const { src2, poster } = options;
+  return {
+    ...options,
+    src: absoluteUrl(options.src, pageUrl),
+    ...(src2 !== undefined && { src2: absoluteUrl(src2, pageUrl) }),
+    ...(poster !== undefined && { poster: absoluteUrl(poster, pageUrl) }),
+  };
+}
+
+/**
  * The frame URL for a page at `embedderOrigin` wanting `options`.
  */
 export function embedUrlFor(

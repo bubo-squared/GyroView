@@ -31,7 +31,7 @@ describe('the embed bridge over a message channel', () => {
     for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
     document.body.append(element);
     const channel = new MessageChannel();
-    const handle = new EmbedHandle(portEndpoint(channel.port2));
+    const handle = new EmbedHandle(portEndpoint(channel.port2), location.href);
     const host = new EmbedHost(element, portEndpoint(channel.port1));
     const created = { element, host, handle };
     bridges.push(created);
@@ -54,11 +54,12 @@ describe('the embed bridge over a message channel', () => {
   });
 
   it('loads over the channel, reports the metadata and the state, and forgets them on a failed load', async () => {
-    const { handle } = bridge();
+    const { handle, element } = bridge();
     const ready = new Promise<unknown>((resolve) => {
       handle.events.on('ready', resolve);
     });
     await handle.load({ src: recordingUrl });
+    expect(element.src).toBe(new URL(recordingUrl, location.href).href);
     const metadata = (await ready) as { model: string };
     expect(metadata.model).toBe('Insta360 X5');
     expect(handle.state.status).toBe('ready');
@@ -168,7 +169,7 @@ describe('the embed bridge over a message channel', () => {
 
   it('queues commands until the frame says hello, even an older frame that sends no state', async () => {
     const channel = new MessageChannel();
-    const handle = new EmbedHandle(portEndpoint(channel.port2));
+    const handle = new EmbedHandle(portEndpoint(channel.port2), location.href);
     const received: ProtocolMessage[] = [];
     const hostSide = portEndpoint(channel.port1);
     hostSide.receive((message) => {

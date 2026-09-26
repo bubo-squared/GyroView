@@ -9,6 +9,7 @@ import {
 } from '@gyroview/core';
 import type { PlayerStatus } from '@gyroview/player';
 
+import { absoluteUrl } from './embedUrl';
 import type { Endpoint } from './Endpoint';
 import type { EmbedState, LoadRequest } from './EmbedState';
 import {
@@ -55,7 +56,13 @@ export class EmbedHandle {
   private isConnected = false;
   private isDestroyed = false;
 
-  public constructor(private readonly endpoint: Endpoint) {
+  /**
+   * `pageUrl` is the embedding page's base URL, against which the URLs it loads are resolved.
+   */
+  public constructor(
+    private readonly endpoint: Endpoint,
+    private readonly pageUrl: string,
+  ) {
     this.stopReceiving = endpoint.receive((message) => {
       this.onMessage(message);
     });
@@ -124,7 +131,12 @@ export class EmbedHandle {
    * Resolves once the recording is ready; rejects with the failure.
    */
   public load(request: LoadRequest): Promise<void> {
-    return this.command('load', request);
+    const { src2 } = request;
+    return this.command('load', {
+      ...request,
+      src: absoluteUrl(request.src, this.pageUrl),
+      ...(src2 !== undefined && { src2: absoluteUrl(src2, this.pageUrl) }),
+    });
   }
 
   public async getState(): Promise<EmbedState> {

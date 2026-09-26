@@ -2,7 +2,13 @@ import { GyroViewError } from '@gyroview/core';
 
 import { windowEndpoint } from '../bridge/Endpoint';
 import { EmbedHandle } from '../bridge/EmbedHandle';
-import { embedUrlFor, FRAME_PERMISSIONS, type EmbedOptions } from '../bridge/embedUrl';
+import {
+  absoluteUrl,
+  embedUrlFor,
+  FRAME_PERMISSIONS,
+  withAbsoluteUrls,
+  type EmbedOptions,
+} from '../bridge/embedUrl';
 
 export type { EmbedOptions } from '../bridge/embedUrl';
 export type { EmbedState, LoadRequest } from '../bridge/EmbedState';
@@ -46,8 +52,10 @@ export function embed(
   options: EmbedOptions,
   settings: EmbedSettings = {},
 ): Embedded {
-  const embedPageUrl = settings.embedPageUrl ?? defaultEmbedPageUrl();
-  const iframe = createFrame(embedUrlFor(embedPageUrl, options, location.origin), settings);
+  const pageUrl = document.baseURI;
+  const embedPageUrl = absoluteUrl(settings.embedPageUrl ?? defaultEmbedPageUrl(), pageUrl);
+  const frameUrl = embedUrlFor(embedPageUrl, withAbsoluteUrls(options, pageUrl), location.origin);
+  const iframe = createFrame(frameUrl, settings);
   container.append(iframe);
   const frameWindow = windowOf(iframe);
   const frameOrigin = new URL(embedPageUrl).origin;
@@ -57,6 +65,7 @@ export function embed(
       peerOrigin: frameOrigin,
       listenOn: globalThis as Window & typeof globalThis,
     }),
+    pageUrl,
   );
   return {
     iframe,

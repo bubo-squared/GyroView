@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { embedAttributesOf, embedUrlFor } from './embedUrl';
+import { embedAttributesOf, embedUrlFor, withAbsoluteUrls } from './embedUrl';
 
 const PAGE = 'https://player.example/embed.html';
 
@@ -57,5 +57,20 @@ describe('embedUrlFor and embedAttributesOf', () => {
       controls: '',
     });
     expect(embedAttributesOf(new URLSearchParams('controls=0'))).toEqual({});
+  });
+});
+
+describe('withAbsoluteUrls', () => {
+  it('resolves the URLs the embedding page wrote against the page, not the frame', () => {
+    const options = withAbsoluteUrls(
+      { src: '/videos/clip.insv', src2: 'clip2.insv', poster: 'https://cdn.example/p.jpg', yaw: 5 },
+      'https://blog.example/posts/trip.html',
+    );
+    expect(options).toEqual({
+      src: 'https://blog.example/videos/clip.insv',
+      src2: 'https://blog.example/posts/clip2.insv',
+      poster: 'https://cdn.example/p.jpg',
+      yaw: 5,
+    });
   });
 });

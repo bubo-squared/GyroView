@@ -6,7 +6,7 @@ import { queryShadow } from '../controls/controlParts';
 import { choiceMenuClasses, type ChoiceMenuName } from '../controls/controlsMarkup';
 import { expectIconOnly } from '../test/controls';
 import { fetchBytes, X5_RECORDING_URL } from '../test/recordings';
-import { nextEvent, waitFor } from '../test/waiting';
+import { nextEvent, settle, waitFor } from '../test/waiting';
 
 beforeAll(() => {
   defineGyroView();
@@ -152,8 +152,16 @@ describe('<gyro-view>', () => {
     expect(element.muted).toBe(true);
   });
 
-  it('mirrors its source and presentation attributes as properties and takes focus', async () => {
-    const element = await createReady();
+  it('starts playing on its own once loaded when told to autoplay', async () => {
+    const element = create({ controls: '', autoplay: '' });
+    const playing = nextEvent(element, 'play');
+    element.src = X5_RECORDING_URL;
+    await playing;
+    expect(element.paused).toBe(false);
+  });
+
+  it('mirrors its source and presentation attributes as properties and takes focus', () => {
+    const element = create({ controls: '', src: X5_RECORDING_URL });
     expect(element.src).toBe(X5_RECORDING_URL);
     expect(element.controls).toBe(true);
     expect(element.tabIndex).toBe(0);
@@ -272,15 +280,13 @@ describe('<gyro-view>', () => {
     canvas.dispatchEvent(secondaryButton('pointerup', 160));
     canvas.dispatchEvent(pointer('pointerdown', { x: 10, y: 10 }));
     canvas.dispatchEvent(pointer('pointercancel', { x: 10, y: 10 }));
-    await new Promise((resolve) => {
-      setTimeout(resolve, 100);
-    });
+    await settle();
     expect(element.view.yaw).toBe(0);
     expect(element.status).toBe('ready');
   });
 
-  it('zooms a pinch toward the point between the fingers', async () => {
-    const element = await createReady();
+  it('zooms a pinch toward the point between the fingers', () => {
+    const element = create({ controls: '' });
     const canvas = control(element, 'canvas', HTMLCanvasElement);
     // Synthetic touches are no active pointers, so the browser would refuse to capture them.
     canvas.setPointerCapture = (): void => undefined;
@@ -301,15 +307,15 @@ describe('<gyro-view>', () => {
     expect(element.view.yaw).toBeGreaterThan(0);
   });
 
-  it('zooms toward the pointer: a wheel over the right edge turns the view right as it narrows', async () => {
-    const element = await createReady();
+  it('zooms toward the pointer: a wheel over the right edge turns the view right as it narrows', () => {
+    const element = create({ controls: '' });
     wheelOver(control(element, 'canvas', HTMLCanvasElement), { x: 0.95, y: 0.5 });
     expect(element.view.fieldOfView).toBeCloseTo(90 / 1.1, 6);
     expect(element.view.yaw).toBeGreaterThan(0);
   });
 
-  it('shows a hand over the picture only where a drag moves it', async () => {
-    const element = await createReady();
+  it('shows a hand over the picture only where a drag moves it', () => {
+    const element = create({ controls: '' });
     const canvas = control(element, 'canvas', HTMLCanvasElement);
     const hover = (): void => {
       canvas.dispatchEvent(pointer('pointermove', { x: 50, y: 50 }));
@@ -327,9 +333,9 @@ describe('<gyro-view>', () => {
 
   it('applies view, playback and poster attributes without reloading', async () => {
     const element = await createReady();
-    const readies: number[] = [];
-    element.addEventListener('ready', () => {
-      readies.push(1);
+    const statuses: string[] = [];
+    element.addEventListener('statuschange', (event) => {
+      statuses.push((event as CustomEvent<string>).detail);
     });
 
     element.setAttribute('pitch', '15');
@@ -340,14 +346,13 @@ describe('<gyro-view>', () => {
     expect(element.view).toMatchObject({ pitch: 15, fieldOfView: 60 });
     expect(element.loop).toBe(true);
     expect(control(element, '.poster', HTMLImageElement).src).toContain('data:image/gif');
-    await new Promise((resolve) => {
-      setTimeout(resolve, 50);
-    });
-    expect(readies).toEqual([]);
+    await settle();
+    expect(statuses).toEqual([]);
+    expect(element.status).toBe('ready');
   });
 
   it('shows a view mode set by its method in the View menu, and keeps it past an unknown value', async () => {
-    const element = await createReady();
+    const element = create({ controls: '' });
     const modeChanged = nextEvent<string>(element, 'viewmodechange');
     element.setViewMode('equirectangular');
     expect(await modeChanged).toBe('equirectangular');
@@ -360,7 +365,7 @@ describe('<gyro-view>', () => {
   });
 
   it('shows a stabilization set by its method in the Stabilization menu', async () => {
-    const element = await createReady();
+    const element = create({ controls: '' });
     const changed = nextEvent<string>(element, 'stabilizationchange');
     element.setStabilization('off');
     expect(await changed).toBe('off');
@@ -391,8 +396,8 @@ describe('<gyro-view>', () => {
     expect(stabilization.hidden).toBe(false);
   });
 
-  it('reports the settings in effect whether or not an attribute names them', async () => {
-    const element = await createReady();
+  it('reports the settings in effect whether or not an attribute names them', () => {
+    const element = create({ controls: '' });
     expect(element.stabilization).toBe('lock');
     expect(element.viewMode).toBe('normal');
     expect(element.fov).toBe(90);
@@ -400,7 +405,7 @@ describe('<gyro-view>', () => {
   });
 
   it('warns about a setting attribute naming a choice it does not know, and keeps the setting', async () => {
-    const element = await createReady();
+    const element = create({ controls: '' });
     const warned = nextEvent<string>(element, 'warning');
     element.setAttribute('view-mode', 'little-planet');
     expect(await warned).toBe(
@@ -409,8 +414,8 @@ describe('<gyro-view>', () => {
     expect(element.viewMode).toBe('normal');
   });
 
-  it('refuses a setting value it cannot take', async () => {
-    const element = await createReady();
+  it('refuses a setting value it cannot take', () => {
+    const element = create({ controls: '' });
     const setStabilization = (value: string): void => {
       (element as unknown as { stabilization: string }).stabilization = value;
     };
@@ -444,23 +449,13 @@ describe('<gyro-view>', () => {
     await waitFor(() => element.status === 'idle', 'unloading');
   });
 
-  it('plays local files handed to it', async () => {
-    const element = create({ controls: '' });
-    const bytes = await fetchBytes(X5_RECORDING_URL);
-    const ready = nextEvent(element, 'ready');
-
-    element.loadFiles({ main: new File([bytes], 'VID_20260814_132640_00_013.insv') });
-
-    await ready;
-    expect(element.metadata?.model).toBe('Insta360 X5');
-  });
-
-  it('reloads the same local files, and plays src again once it changes', async () => {
+  it('plays local files handed to it, reloads them, and plays src again once it changes', async () => {
     const element = create({ controls: '', src: `${X5_RECORDING_URL}.missing` });
     const bytes = await fetchBytes(X5_RECORDING_URL);
     const firstReady = nextEvent(element, 'ready');
     element.loadFiles({ main: new File([bytes], 'VID_20260814_132640_00_013.insv') });
     await firstReady;
+    expect(element.metadata?.model).toBe('Insta360 X5');
 
     await element.load();
     expect(element.status).toBe('ready');
@@ -478,9 +473,7 @@ describe('<gyro-view>', () => {
 
     canvas.dispatchEvent(pointer('pointerdown', { x: 10, y: 10 }));
     canvas.dispatchEvent(pointer('pointerup', { x: 10, y: 10 }));
-    await new Promise((resolve) => {
-      setTimeout(resolve, 100);
-    });
+    await settle();
 
     expect(control(element, '.view-mode-menu', HTMLElement).hidden).toBe(true);
     expect(element.status).toBe('ready');
@@ -503,7 +496,7 @@ describe('<gyro-view>', () => {
   });
 
   it('fills the screen one way or another and leaves on Escape', async () => {
-    const element = await createReady();
+    const element = create({ controls: '' });
 
     await element.toggleFullscreen();
     expect(isFillingTheScreen(element)).toBe(true);
@@ -513,7 +506,7 @@ describe('<gyro-view>', () => {
   });
 
   it('lets an open menu take the Escape and stays in fullscreen until the next one', async () => {
-    const element = await createReady();
+    const element = create({ controls: '' });
     await element.toggleFullscreen();
     control(element, '.view-mode-button', HTMLButtonElement).click();
     const popup = control(element, '.view-mode-menu', HTMLElement);

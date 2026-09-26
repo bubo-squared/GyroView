@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { SeekBar, type SeekParts, type SeekPlayer } from './SeekBar';
 import type { PlayerEvents } from '../player/PlayerEvents';
+import { settle } from '../test/waiting';
 
 /**
  * The transport as a player keeps it; each scrub waits until the test lets it land.
@@ -70,15 +71,6 @@ function seekBar(): World {
       seek.dispatchEvent(new Event('change'));
     },
   };
-}
-
-/**
- * Lets the promise reactions queued so far run.
- */
-async function settle(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
 }
 
 describe('SeekBar', () => {

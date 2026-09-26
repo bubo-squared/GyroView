@@ -220,9 +220,21 @@ describe('Player over the synthetic X5 recording', () => {
     expect(redraws[0]).toHaveBeenCalledTimes(2);
   });
 
-  it('measures a drag on its own canvas and passes the zoom focus on', async () => {
-    const { player } = open();
+  it('leaves the decoders idle until play when told not to preload', async () => {
+    const preloads: MockInstance<PlaybackSession<VideoFrame>['preload']>[] = [];
+    const { player } = open(async (parts) => {
+      const pipeline = await buildPipeline(parts);
+      preloads.push(vi.spyOn(pipeline.session, 'preload'));
+      return pipeline;
+    });
+    await player.load(sourceOf(X5_RECORDING_URL), { preload: false });
+    expect(preloads[0]).not.toHaveBeenCalled();
     await player.load(sourceOf(X5_RECORDING_URL));
+    expect(preloads[1]).toHaveBeenCalledOnce();
+  });
+
+  it('measures a drag on its own canvas and passes the zoom focus on, loaded or not', () => {
+    const { player } = open();
     // A quarter of a 128-pixel canvas at 90 degrees across: a quarter of the field.
     player.pan({ x: CANVAS_WIDTH / 4, y: 0 });
     expect(player.view.yaw).toBeCloseTo(-22.5, 9);

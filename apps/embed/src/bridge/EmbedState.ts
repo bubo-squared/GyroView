@@ -24,6 +24,4 @@ export interface EmbedState {
 export interface LoadRequest {
   readonly src: string;
   readonly src2?: string;
-  readonly proxy?: string;
-  readonly quality?: string;
 }

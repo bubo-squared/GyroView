@@ -1,6 +1,6 @@
 # ADR 0002: Decode with WebCodecs, not with video elements
 
-Status: accepted (2026-09-18)
+Status: accepted (2026-09-18); the proxy fallback superseded by ADR 0017
 
 ## Context
 

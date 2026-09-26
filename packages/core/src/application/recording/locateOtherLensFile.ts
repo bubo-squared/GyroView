@@ -1,37 +1,16 @@
 import { RecordingFileName } from '../../domain/format/naming/RecordingFileName';
 import type { ResourceLocator } from '../../ports/ResourceLocator';
 
-type CompanionNaming = (name: RecordingFileName) => string;
-
-/**
- * Use case: the URL of the low-resolution proxy next to a recording, if the server has one.
- * Nothing depends on it; callers treat undefined as "play the recording itself".
- */
-export function locateProxy(
-  recordingUrl: string,
-  locator: ResourceLocator,
-): Promise<string | undefined> {
-  return locateCompanion(recordingUrl, locator, (name) => name.proxyName());
-}
-
 /**
  * Use case: the URL of the other lens's file of a split-file recording, if the server has one.
  */
-export function locateOtherLensFile(
+export async function locateOtherLensFile(
   recordingUrl: string,
   locator: ResourceLocator,
-): Promise<string | undefined> {
-  return locateCompanion(recordingUrl, locator, (name) => name.otherLensName());
-}
-
-async function locateCompanion(
-  recordingUrl: string,
-  locator: ResourceLocator,
-  companionNameOf: CompanionNaming,
 ): Promise<string | undefined> {
   const name = RecordingFileName.parse(fileNameOf(recordingUrl));
   if (!name) return undefined;
-  const candidate = siblingUrl(recordingUrl, companionNameOf(name));
+  const candidate = siblingUrl(recordingUrl, name.otherLensName());
   return (await locator.exists(candidate)) ? candidate : undefined;
 }
 

@@ -23,14 +23,11 @@ import type { PlayerMetadata } from '../PlayerMetadata';
 import { inputName, type MediaInput } from '../PlayerSource';
 
 /**
- * One attempt at opening a set of inputs, with what the attempt should say about itself.
+ * What opening a recording works with: the ports it reads through and the signal that aborts it.
  */
 export interface OpenAttempt {
   readonly ports: RecordingPorts;
   readonly signal: AbortSignal;
-  readonly isProxy: boolean;
-  readonly proxyName: string | undefined;
-  readonly notes: readonly string[];
 }
 
 interface DemuxedRecording {
@@ -55,7 +52,7 @@ export async function openInputs(
     await ensureDecodable(frameSources, attempt);
     const timing = await timeRecording(demuxed.recording, frameSources[0]);
     attempt.signal.throwIfAborted();
-    return assemble({ demuxed, layout, frameSources, calibration, timing, attempt }, disposables);
+    return assemble({ demuxed, layout, frameSources, calibration, timing }, disposables);
   } catch (error) {
     disposables.disposeAll();
     throw error;
@@ -144,11 +141,10 @@ interface AssemblyParts {
   readonly frameSources: readonly VideoTrackReader[];
   readonly calibration: OpenedRecording['calibration'];
   readonly timing: RecordingTiming;
-  readonly attempt: OpenAttempt;
 }
 
 function assemble(parts: AssemblyParts, disposables: Disposables): OpenedRecording {
-  const { demuxed, layout, frameSources, calibration, timing, attempt } = parts;
+  const { demuxed, layout, frameSources, calibration, timing } = parts;
   const [primary] = demuxed.inputs;
   const duration = seconds(Math.min(...demuxed.inputs.map((input) => input.duration)));
   const audioTrack = primary?.audioTracks[0];
@@ -162,7 +158,7 @@ function assemble(parts: AssemblyParts, disposables: Disposables): OpenedRecordi
     motion: timing.motion,
     audioTrack,
     metadata: metadataOf(parts, duration, audioTrack !== undefined),
-    warnings: [...attempt.notes, ...timing.warnings],
+    warnings: timing.warnings,
     dispose: disposables.toDisposer(),
   };
 }
@@ -182,8 +178,6 @@ function metadataOf(parts: AssemblyParts, duration: Seconds, hasAudio: boolean):
     hasGyro: motion !== undefined,
     imuFrame: motion && { name: motion.imuFrame.name, isVerified: motion.imuFrame.isVerified },
     hasAudio,
-    isProxy: parts.attempt.isProxy,
-    proxyName: parts.attempt.proxyName,
     duration,
   };
 }

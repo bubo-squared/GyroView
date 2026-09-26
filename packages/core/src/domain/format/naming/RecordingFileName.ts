@@ -13,8 +13,6 @@ const BACK_LENS_DIGIT = 0;
 const SCREEN_LENS_DIGIT = 1;
 const RECORDING_DIGIT = 0;
 const PROXY_DIGIT = 1;
-const PROXY_PREFIX = 'LRV';
-const PROXY_EXTENSION = 'lrv';
 
 interface RecordingFileNameParts {
   readonly prefix: string;
@@ -26,8 +24,8 @@ interface RecordingFileNameParts {
 }
 
 /**
- * Value object over a camera file name; derives the names of the files the camera writes beside
- * it (see {@link otherLensName} and {@link proxyName}).
+ * Value object over a camera file name; derives the name of the other lens's file the camera
+ * writes beside it (see {@link otherLensName}).
  */
 export class RecordingFileName {
   private constructor(private readonly parts: RecordingFileNameParts) {}
@@ -58,18 +56,6 @@ export class RecordingFileName {
   public otherLensName(): string {
     const lensDigit = this.isBackLens ? SCREEN_LENS_DIGIT : BACK_LENS_DIGIT;
     return this.withParts({ lensDigit, proxyDigit: RECORDING_DIGIT }).toString();
-  }
-
-  /**
-   * The low-resolution proxy the camera writes beside this file, keeping the lens digit: the
-   * packed `LRV_..._01_` of one-file recordings, or the per-lens proxy of a split-file pair.
-   */
-  public proxyName(): string {
-    return this.withParts({
-      prefix: PROXY_PREFIX,
-      proxyDigit: PROXY_DIGIT,
-      extension: PROXY_EXTENSION,
-    }).toString();
   }
 
   public toString(): string {

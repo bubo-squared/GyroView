@@ -4,7 +4,7 @@ export { inspectLayout, type RecordingLayout } from './application/recording/ins
 export { Recording } from './application/recording/Recording';
 export { timeRecording, type RecordingTiming } from './application/recording/timeRecording';
 export type { MotionSetup } from './application/recording/motionOf';
-export { locateOtherLensFile, locateProxy } from './application/recording/locateCompanions';
+export { locateOtherLensFile } from './application/recording/locateOtherLensFile';
 
 // Ports and the values they exchange
 export type { RandomAccessSource } from './ports/RandomAccessSource';

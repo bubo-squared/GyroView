@@ -25,7 +25,7 @@ The `Player` is the single owner of the settings, which carry over from load to 
 - **Settings properties report the setting in effect**, the way `HTMLMediaElement.muted` does:
   `stabilization`, `viewMode`, `fov`, `yaw`, `pitch`, `muted`, `loop` and `volume` read the
   player and write to it, and refuse a value the setting cannot take with `invalid-argument`.
-  Properties of the other attributes (`src`, `quality`, `poster`, `preload`, `gain-match`,
+  Properties of the other attributes (`src`, `src2`, `poster`, `preload`, `gain-match`,
   `autoplay`, `controls`) still mirror their attributes, as `img.src` does.
 - **Hosts read the player's state.** The bridge's `getState` and the developer page read the
   live properties; no attribute is cast into a setting.

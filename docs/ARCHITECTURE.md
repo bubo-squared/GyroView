@@ -105,8 +105,9 @@ Use cases that orchestrate the domain through ports.
   IMU frame), each optional with a warning for what is missing.
 - `recording/readRecording` opens a `RandomAccessSource` and reads everything cheap: the
   trailer's table of contents, the info record, the calibration choice. `inspectLayout` maps the
-  boxes and the records' places for the inspector, which playing never needs. The result, `Recording`, hands out the large gyro
-  and exposure records on demand, read by the format's `TrailerRecords`. `locateCompanions` looks for the proxy and the other lens file.
+  boxes and the records' places for the inspector, which playing never needs. The result,
+  `Recording`, hands out the large gyro and exposure records on demand, read by the format's
+  `TrailerRecords`. `locateOtherLensFile` looks for the other lens's file of a split-file pair.
 - `playback/DecodePipeline` runs one lockstep decode of all frame sources from a time: one
   decoder per source, packets fed under backpressure, frames paired by timestamp
   (`FramePairer`), pairs before the start dropped by the `StartGate`, output into a
@@ -188,7 +189,8 @@ The composition root and the user-facing element, in three layers.
 - **`composition`**: `openRecording` is the use case that opens what a `PlayerSource` names,
   following the data: `readRecording`, demux every input, `detectLensLayout` (fetching the
   sibling of a lone split file when the server has it), calibration required, the decode probe
-  with fallback to the proxy when `quality` allows, then the core's `timeRecording`.
+  (an undecodable recording is an error; nothing plays in its place, ADR 0017), then the core's
+  `timeRecording`.
   It depends on `RecordingPorts` (`SourceOpener`, `Demuxer`, `VideoDecoderPort`,
   `ResourceLocator`, a deadline factory), so it is tested against fakes; `browserPorts` supplies
   the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
@@ -209,9 +211,9 @@ The composition root and the user-facing element, in three layers.
   pure functions in `attributes.ts` (names in `attributeNames.ts`, published as
   `@gyroview/player/attributes`), settings properties live over the player (`liveSettings`),
   events re-dispatched as `CustomEvent`s, a shadow tree with the canvas, the audio element,
-  poster and overlays. `ControlsBar` composes `TransportButtons`, `SeekBar` (key-frame
-  scrubbing), `SoundControls` and `SettingsMenu`; `ViewGestures` turns drags, pinches and wheel turns into view
-  changes; `keyboard` maps keys to commands; `FullscreenToggle` and `IdleWatcher` handle
+  poster and overlays. `bindControlsBar` binds `TransportButtons`, `SeekBar` (key-frame
+  scrubbing), `SoundControls` and `SettingsMenu`; `ViewGestures` turns drags, pinches and
+  wheel turns into view changes; `keyboard` maps keys to commands; `FullscreenToggle` and `IdleWatcher` handle
   filling the screen and fading the controls.
 
 ## The site: `apps/embed`

@@ -5,8 +5,6 @@ import {
   type ViewMode,
 } from '@gyroview/core';
 
-import { QUALITIES, type Quality } from './PlayerSource';
-
 /**
  * The choice `value` names, matched without regard to case or surrounding space; undefined when
  * absent or unknown. Attributes, menus and property setters read their choices through it.
@@ -26,8 +24,4 @@ export function stabilizationModeOf(value: string | null): StabilizationMode | u
 
 export function viewModeOf(value: string | null): ViewMode | undefined {
   return choiceOf(value, VIEW_MODES);
-}
-
-export function qualityOf(value: string | null): Quality | undefined {
-  return choiceOf(value, QUALITIES);
 }

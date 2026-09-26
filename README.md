@@ -6,8 +6,8 @@ on any website as a `<gyro-view>` web component or an iframe. No Insta360 Studio
 
 ## Features
 
-- Plays the raw file over HTTP byte ranges or from a local file; the camera's proxy and the
-  second lens file are found beside it when they exist.
+- Plays the raw file at full resolution over HTTP byte ranges or from a local file; the second
+  lens file of a split-file recording is found beside it when it exists.
 - Decodes both lens tracks in hardware with WebCodecs, in lockstep, with the recording's own
   audio as the clock; sound waits for the picture rather than running ahead.
 - Stitches through the factory calibration in one GPU pass, with a feathered seam and
@@ -40,11 +40,10 @@ recordings").
 ```
 
 Attributes: `src` (the recording), `src2` (the other lens's file of a split-file recording,
-found by itself when it sits beside `src` under the camera's name), `proxy` (`auto`, `none` or
-the URL of the camera's low-resolution `LRV` file), `quality` (`auto`, `full`, `proxy`),
-`autoplay`, `muted`, `loop`, `controls`, `poster`, `preload` (`none` keeps the decoders idle
-until play; otherwise the first frame shows at once), `gain-match` (`off` leaves the lenses'
-exposure as recorded), `fov` (30 to 120 degrees), `yaw`, `pitch`, `view-mode` (`normal`;
+found by itself when it sits beside `src` under the camera's name), `autoplay`, `muted`,
+`loop`, `controls`, `poster`, `preload` (`none` keeps the decoders idle until play; otherwise
+the first frame shows at once), `gain-match` (`off` leaves the lenses' exposure as recorded),
+`fov` (30 to 120 degrees), `yaw`, `pitch`, `view-mode` (`normal`;
 `equirectangular` for the whole sphere as a level 2:1 panorama; `raw-lenses` for the decoded
 lens images side by side, unstitched and as recorded) and `stabilization` (`off`, `lock`,
 `horizon`, `follow`). The settings (`stabilization`, `view-mode`, `fov`, `yaw`, `pitch`,
@@ -57,15 +56,15 @@ API: `load()` (resolves once the recording is ready), `play()` (waits for a load
 `pause()`, `stop()`, `seek(seconds)`, `scrub(seconds)` (to the key frame at or
 before the time, for a dragged seek bar), `currentTime`, `duration`, `paused`, `status`,
 `metadata`, `view`, `lookAt(yaw, pitch)`, `resetView()`, `zoom(steps)`, `setViewMode(mode)`,
-`setStabilization(mode)`, `volume`, `toggleFullscreen()`, `loadFiles({ main, second, proxy })`.
+`setStabilization(mode)`, `volume`, `toggleFullscreen()`, `loadFiles({ main, second })`.
 
 Events (`CustomEvent`s, payload in `detail`): `ready` (metadata: camera, layout, calibration
-version, frame time source, gyro and IMU frame, audio, proxy), `statuschange` (`idle`,
+version, frame time source, gyro and IMU frame, audio), `statuschange` (`idle`,
 `loading`, `ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`), `play`,
 `waiting`, `playing`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `frame`,
 `viewchange`, `viewmodechange`, `stabilizationchange`, `volumechange` (`{ volume, isMuted }`),
 `warning` (a feature degraded: no gyro,
-unverified IMU frame, silent clock, proxy in use) and `error` (`code` and `message`; the codes
+unverified IMU frame, silent clock) and `error` (`code` and `message`; the codes
 are listed in `docs/DEPLOYMENT.md`).
 
 Keyboard: space or K play/pause, J and L seek, arrows look around (Shift + arrows seek), plus
@@ -114,8 +113,9 @@ exists only in secure contexts. `docs/DEPLOYMENT.md` has the exact headers, the 
 and the error codes.
 
 Browsers decode HEVC only in hardware: 5.7K plays on recent laptops and phones, 8K needs a
-Level 6 decoder (Apple Silicon, recent NVIDIA and Intel). When the recording cannot be decoded
-and a proxy exists, the proxy plays instead (`quality="auto"`).
+Level 6 decoder (Apple Silicon, recent NVIDIA and Intel). A recording this browser cannot decode
+is reported as `codec-unsupported`; the camera's low-resolution `LRV` proxy is never played in
+its place (ADR 0017).
 
 ## Development
 
@@ -164,4 +164,5 @@ calibration string interpretation, 0006 Node 24 toolchain, 0007 the audio elemen
 clock, 0008 stitching frames and poses, 0009 IMU frame and stabilization, 0010 player
 composition and embedding, 0011 sound follows the picture, 0012 gain matching along the seam,
 0013 byte-range reads bypass the browser cache, 0014 the frame shows the whole calibration
-square, 0015 view modes replace projections, 0016 the player owns its settings.
+square, 0015 view modes replace projections, 0016 the player owns its settings, 0017 the
+recording itself or an error.

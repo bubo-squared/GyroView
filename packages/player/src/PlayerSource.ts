@@ -16,27 +16,12 @@ export interface BlobInput {
 export type MediaInput = UrlInput | BlobInput;
 
 /**
- * Which rendition to play: `auto` plays the recording and falls back to its proxy when this
- * browser cannot decode it, `full` never falls back, `proxy` prefers the proxy when there is one.
- */
-export type Quality = 'auto' | 'full' | 'proxy';
-
-export const QUALITIES: readonly Quality[] = ['auto', 'full', 'proxy'];
-export const DEFAULT_QUALITY: Quality = 'auto';
-
-/**
  * Everything that names what to play. The second input is the other lens's file of a
- * split-file recording; the proxy is the camera's low-resolution rendition.
+ * split-file recording.
  */
 export interface PlayerSource {
   readonly main: MediaInput;
   readonly second: MediaInput | undefined;
-  readonly proxy: MediaInput | undefined;
-  /**
-   * Look for the camera's proxy beside a URL when none is given. Never applies to blobs.
-   */
-  readonly shouldDiscoverProxy: boolean;
-  readonly quality: Quality;
 }
 
 export function isUrlInput(input: MediaInput): input is UrlInput {

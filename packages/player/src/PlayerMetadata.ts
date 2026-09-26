@@ -30,13 +30,5 @@ export interface PlayerMetadata {
   readonly hasGyro: boolean;
   readonly imuFrame: ImuFrameSummary | undefined;
   readonly hasAudio: boolean;
-  /**
-   * True when the proxy plays instead of the recording itself.
-   */
-  readonly isProxy: boolean;
-  /**
-   * Name of the proxy that was given or found beside the recording, whether or not it plays.
-   */
-  readonly proxyName: string | undefined;
   readonly duration: Seconds;
 }

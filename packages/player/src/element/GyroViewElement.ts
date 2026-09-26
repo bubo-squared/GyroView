@@ -24,7 +24,7 @@ import { defineBooleanProperties, defineStringProperties } from './reflectedProp
 import { ELEMENT_TEMPLATE } from './template';
 import { createBrowserPlayer } from '../browserPlayer';
 import { queryShadow } from '../controls/controlParts';
-import { ControlsBar } from '../controls/ControlsBar';
+import { bindControlsBar } from '../controls/controlsBar';
 import type { ControlsHost } from '../controls/ControlsHost';
 import { bindKeyboard, type KeyboardHost } from '../controls/keyboard';
 import { ViewGestures } from '../controls/ViewGestures';
@@ -44,15 +44,6 @@ const STRING_ATTRIBUTES = [
 ];
 const BOOLEAN_ATTRIBUTES = [PlaybackAttribute.Autoplay, PlaybackAttribute.Controls];
 const SOURCE_ATTRIBUTES: readonly string[] = Object.values(SourceAttribute);
-/**
- * The source attributes that name what to play; `quality` only picks a rendition of it, so
- * changing it reloads files handed in as well.
- */
-const NAMING_ATTRIBUTES: ReadonlySet<string> = new Set([
-  SourceAttribute.Src,
-  SourceAttribute.Src2,
-  SourceAttribute.Proxy,
-]);
 const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);
 
 /**
@@ -65,8 +56,6 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   public static readonly observedAttributes = OBSERVED_ATTRIBUTES;
   declare public src: string | null;
   declare public src2: string | null;
-  declare public proxy: string | null;
-  declare public quality: string | null;
   declare public poster: string | null;
   declare public preload: string | null;
   declare public gainMatch: string | null;
@@ -81,7 +70,6 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   declare public loop: boolean;
   declare public volume: number;
   private readonly player: Player;
-  private readonly controlsBar: ControlsBar;
   private readonly fullscreen = new FullscreenToggle(this);
   private readonly idle: IdleWatcher;
   private readonly posterImage: HTMLImageElement;
@@ -104,7 +92,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     this.player = createBrowserPlayer({ canvas, audio });
     defineLiveSettings(this, this.player);
     const host = this.controlsHost();
-    this.controlsBar = new ControlsBar(shadow, host);
+    bindControlsBar(shadow, host);
     new ViewGestures(canvas, this.player, this.togglePlayLater);
     bindKeyboard(this, host);
     this.idle = new IdleWatcher(this, () => this.player.status === 'playing');
@@ -157,7 +145,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     value: string | null,
   ): void {
     if (SOURCE_ATTRIBUTES.includes(name)) {
-      if (NAMING_ATTRIBUTES.has(name)) this.files = undefined;
+      this.files = undefined;
       this.scheduleLoad();
     } else if (VIEW_ATTRIBUTES.includes(name)) {
       this.player.setView(viewAfterAttribute(this.player.view, name, value));
@@ -224,8 +212,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   }
 
   /**
-   * Plays local files instead of the `src` attributes, until `src`, `src2` or `proxy` change;
-   * a change of `quality` reloads the files.
+   * Plays local files instead of the `src` attributes, until `src` or `src2` change.
    */
   public loadFiles(files: FileSource): void {
     this.files = files;
@@ -241,9 +228,6 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
       player: this.player,
       togglePlay: this.togglePlayLater,
       toggleFullscreen: this.toggleFullscreenLater,
-      changeQuality: (quality): void => {
-        this.quality = quality;
-      },
       warn: this.warnLater,
       isFullscreen: (): boolean => this.fullscreen.isActive,
       exitFullscreen: (): void => {
@@ -289,14 +273,12 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
 
   private reload(): Promise<void> {
     const read = (attribute: string): string | null => this.getAttribute(attribute);
-    const { source, problems } = elementSourceOf(read, document.baseURI, this.files);
-    for (const problem of problems) this.warn(problem);
+    const source = elementSourceOf(read, document.baseURI, this.files);
     delete this.dataset['hasFrame'];
     if (!source) {
       this.player.unload();
       return Promise.resolve();
     }
-    this.controlsBar.setQuality(source.quality);
     return this.player.load(source, {
       autoplay: this.autoplay,
       preload: shouldPreload(read(PlaybackAttribute.Preload)),

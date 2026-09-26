@@ -21,13 +21,7 @@ const WAIT_MS = 15_000;
 const POLL_MS = 20;
 
 function sourceOf(url: string): PlayerSource {
-  return {
-    main: { url },
-    second: undefined,
-    proxy: undefined,
-    shouldDiscoverProxy: false,
-    quality: 'auto',
-  };
+  return { main: { url }, second: undefined };
 }
 
 async function waitFor(isSatisfied: () => boolean, what: string): Promise<void> {
@@ -120,7 +114,6 @@ describe('Player over the synthetic X5 recording', () => {
       frameTimeSource: 'track-timestamps',
       hasGyro: true,
       hasAudio: false,
-      isProxy: false,
     });
     expect(player.duration).toBeCloseTo(3, 1);
     expect(warnings).toEqual([

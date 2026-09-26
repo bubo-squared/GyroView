@@ -1,90 +1,28 @@
 import { clampView, degrees, type ViewState } from '@gyroview/core';
 
 import { SourceAttribute, ViewAttribute } from './attributeNames';
-import { qualityOf } from '../choices';
-import {
-  DEFAULT_QUALITY,
-  QUALITIES,
-  type MediaInput,
-  type PlayerSource,
-  type Quality,
-} from '../PlayerSource';
+import type { MediaInput, PlayerSource } from '../PlayerSource';
 
 /**
  * Reads one attribute of the element, `null` when absent, like `Element.getAttribute`.
  */
 export type AttributeReader = (name: string) => string | null;
 
-const PROXY_AUTO = 'auto';
-const PROXY_NONE = 'none';
-
-export interface ParsedSource {
-  readonly source: PlayerSource | undefined;
-  /**
-   * Attribute values that were ignored, worded for a `warning` event.
-   */
-  readonly problems: readonly string[];
-}
-
 /**
  * The source the attributes describe, or nothing when `src` is absent. URLs resolve against
  * the document, as an image's would.
  */
-export function sourceFromAttributes(read: AttributeReader, baseUrl: string): ParsedSource {
-  const main = read(SourceAttribute.Src);
-  if (main === null || main.trim() === '') return { source: undefined, problems: [] };
-  const { quality, problems } = qualityFromAttribute(read);
-  const second = read(SourceAttribute.Src2);
-  const proxy = proxyFromAttribute(read(SourceAttribute.Proxy), baseUrl);
-  const source: PlayerSource = {
-    main: urlInput(main, baseUrl),
-    second: second === null || second.trim() === '' ? undefined : urlInput(second, baseUrl),
-    proxy: proxy.input,
-    shouldDiscoverProxy: proxy.shouldDiscover,
-    quality,
-  };
-  return { source, problems };
+export function sourceFromAttributes(
+  read: AttributeReader,
+  baseUrl: string,
+): PlayerSource | undefined {
+  const main = urlInputOf(read(SourceAttribute.Src), baseUrl);
+  return main && { main, second: urlInputOf(read(SourceAttribute.Src2), baseUrl) };
 }
 
-export interface ParsedQuality {
-  readonly quality: Quality;
-  readonly problems: readonly string[];
-}
-
-/**
- * The quality the `quality` attribute names; the default when it is absent or unknown, an
- * unknown one being a problem to warn about.
- */
-export function qualityFromAttribute(read: AttributeReader): ParsedQuality {
-  const value = read(SourceAttribute.Quality);
-  const quality = qualityOf(value);
-  return quality === undefined
-    ? { quality: DEFAULT_QUALITY, problems: problemsWith('quality', value, QUALITIES) }
-    : { quality, problems: [] };
-}
-
-interface ProxyChoice {
-  readonly input: MediaInput | undefined;
-  readonly shouldDiscover: boolean;
-}
-
-const DISCOVER_PROXY: ProxyChoice = { input: undefined, shouldDiscover: true };
-const NO_PROXY: ProxyChoice = { input: undefined, shouldDiscover: false };
-
-/**
- * `auto` (the default) looks beside the recording, `none` never does, anything else is the
- * proxy's URL.
- */
-function proxyFromAttribute(value: string | null, baseUrl: string): ProxyChoice {
-  const trimmed = value?.trim() ?? PROXY_AUTO;
-  if (trimmed === PROXY_AUTO || trimmed === '') return DISCOVER_PROXY;
-  return trimmed === PROXY_NONE
-    ? NO_PROXY
-    : { input: urlInput(trimmed, baseUrl), shouldDiscover: false };
-}
-
-function urlInput(value: string, baseUrl: string): MediaInput {
-  return { url: new URL(value.trim(), baseUrl).href };
+function urlInputOf(value: string | null, baseUrl: string): MediaInput | undefined {
+  const trimmed = value?.trim() ?? '';
+  return trimmed === '' ? undefined : { url: new URL(trimmed, baseUrl).href };
 }
 
 const VIEW_ANGLES: Readonly<Record<string, keyof ViewState>> = {
@@ -117,14 +55,6 @@ export function parseNumber(value: string | null): number | undefined {
   if (value === null || value.trim() === '') return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function problemsWith(
-  attribute: string,
-  value: string | null,
-  choices: readonly string[],
-): readonly string[] {
-  return value === null ? [] : [ignoredChoiceWarning(attribute, value, choices)];
 }
 
 /**

@@ -234,14 +234,12 @@ describe('<gyro-view>', () => {
     expect(readies).toEqual([]);
   });
 
-  it('keeps a setting chosen in the menu when a change of quality reloads', async () => {
+  it('keeps a setting chosen in the menu when it reloads', async () => {
     const element = await createReady({ stabilization: 'horizon' });
     const menuChoice = control(element, '.stabilization', HTMLSelectElement);
     menuChoice.value = 'off';
     menuChoice.dispatchEvent(new Event('change'));
-    const reloaded = nextEvent(element, 'ready');
-    element.quality = 'full';
-    await reloaded;
+    await element.load();
     expect(element.stabilization).toBe('off');
     expect(menuChoice.value).toBe('off');
   });
@@ -310,18 +308,20 @@ describe('<gyro-view>', () => {
     expect(element.metadata?.model).toBe('Insta360 X5');
   });
 
-  it('reloads the same local files when the quality changes', async () => {
-    const element = create({ controls: '' });
+  it('reloads the same local files, and plays src again once it changes', async () => {
+    const element = create({ controls: '', src: `${X5_RECORDING_URL}.missing` });
     const bytes = await fetchBytes(X5_RECORDING_URL);
     const firstReady = nextEvent(element, 'ready');
     element.loadFiles({ main: new File([bytes], 'VID_20260814_132640_00_013.insv') });
     await firstReady;
 
-    const reloaded = nextEvent(element, 'ready');
-    element.quality = 'full';
-
-    await reloaded;
+    await element.load();
     expect(element.status).toBe('ready');
+
+    const failed = nextEvent<{ code: string }>(element, 'error');
+    element.src = `${X5_RECORDING_URL}.missing`;
+    const error = await failed;
+    expect(error.code).toBe('source-unreadable');
   });
 
   it('fills the screen one way or another and leaves on Escape', async () => {

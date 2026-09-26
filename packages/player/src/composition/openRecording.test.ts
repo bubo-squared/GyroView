@@ -22,7 +22,10 @@ import {
 
 const MAIN_URL = 'https://cdn.example/clips/VID_20260814_132640_00_013.insv';
 const SECOND_URL = 'https://cdn.example/clips/VID_20260814_132640_10_013.insv';
-const PROXY_URL = 'https://cdn.example/clips/LRV_20260814_132640_01_013.lrv';
+/**
+ * One track holding both lenses side by side, as the camera's low-resolution LRV file does.
+ */
+const PACKED_URL = 'https://cdn.example/clips/LRV_20260814_132640_01_013.lrv';
 const HEVC = 'hvc1.fake';
 const AVC = 'avc1.fake';
 
@@ -45,14 +48,11 @@ function sourceOf(overrides: Partial<PlayerSource> = {}): PlayerSource {
   return {
     main: { url: MAIN_URL },
     second: undefined,
-    proxy: undefined,
-    shouldDiscoverProxy: false,
-    quality: 'auto',
     ...overrides,
   };
 }
 
-function packedProxyTrack(): FakeVideoTrack {
+function packedTrack(): FakeVideoTrack {
   return new FakeVideoTrack({
     trackIndex: 0,
     frameRate: 30,
@@ -70,16 +70,16 @@ interface World {
 }
 
 /**
- * The X5 fixture at the main URL with two HEVC-labelled lens tracks, and its proxy as a packed
- * H.264 track, both served from memory.
+ * The X5 fixture at the main URL with two HEVC-labelled lens tracks, and at the packed URL with
+ * one packed H.264 track, both served from memory.
  */
 function x5World(): World {
   const opener = new MapSourceOpener();
   const main = opener.register(MAIN_URL, fixture.x5Bytes);
-  const proxy = opener.register(PROXY_URL, fixture.x5Bytes);
+  const packed = opener.register(PACKED_URL, fixture.x5Bytes);
   const demuxer = new FakeDemuxer([
     { source: main, duration: seconds(3), videoTracks: squareTracks({ codec: HEVC }) },
-    { source: proxy, duration: seconds(3), videoTracks: [packedProxyTrack()] },
+    { source: packed, duration: seconds(3), videoTracks: [packedTrack()] },
   ]);
   return { opener, demuxer };
 }
@@ -107,8 +107,6 @@ describe('openRecording', () => {
       hasGyro: true,
       imuFrame: { name: 'X5', isVerified: true },
       hasAudio: false,
-      isProxy: false,
-      proxyName: undefined,
       duration: 3,
     });
     expect(opened.metadata.tracks.map((track) => track.codec)).toEqual([HEVC, HEVC]);
@@ -133,7 +131,7 @@ describe('openRecording', () => {
     expect(demuxer.openCount).toBe(0);
   });
 
-  it('reports an undecodable recording with the probe verdicts when there is no proxy', async () => {
+  it('reports an undecodable recording with the probe verdicts', async () => {
     const world = x5World();
     const ports = fakePorts({
       sources: world.opener,
@@ -151,80 +149,29 @@ describe('openRecording', () => {
     expect(world.demuxer.openCount).toBe(0);
   });
 
-  it('falls back to the given proxy when the recording cannot be decoded and quality is auto', async () => {
+  it('opens a recording whose one track packs both lenses', async () => {
     const world = x5World();
-    const ports = fakePorts({
-      sources: world.opener,
-      demuxer: world.demuxer,
-      decoderPort: new FakeVideoDecoderPort({ unsupportedCodecs: [HEVC] }),
-    });
+    const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer });
 
     const opened = await openRecording(
-      sourceOf({ proxy: { url: PROXY_URL } }),
+      sourceOf({ main: { url: PACKED_URL } }),
       ports,
       new AbortController().signal,
     );
 
     expect(opened.layout.kind).toBe('packed');
-    expect(opened.metadata.isProxy).toBe(true);
-    expect(opened.metadata.proxyName).toBe('LRV_20260814_132640_01_013.lrv');
-    expect(opened.warnings[0]).toMatch(/^playing the proxy: this browser cannot decode/u);
+    expect(opened.frameSources.map((track) => track.description.codec)).toEqual([AVC]);
     expect(world.demuxer.openCount).toBe(1);
   });
 
-  it('does not fall back when quality is full', async () => {
+  it('asks for nothing beside a recording that opens by itself', async () => {
     const world = x5World();
-    const ports = fakePorts({
-      sources: world.opener,
-      demuxer: world.demuxer,
-      decoderPort: new FakeVideoDecoderPort({ unsupportedCodecs: [HEVC] }),
-    });
-    await expect(
-      openRecording(
-        sourceOf({ proxy: { url: PROXY_URL }, quality: 'full' }),
-        ports,
-        new AbortController().signal,
-      ),
-    ).rejects.toMatchObject({ code: 'codec-unsupported' });
-  });
+    const locator = new FakeResourceLocator([]);
+    const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer, locator });
 
-  it('prefers the proxy when quality is proxy, and says so when there is none', async () => {
-    const world = x5World();
-    const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer });
+    await openRecording(sourceOf(), ports, new AbortController().signal);
 
-    const proxied = await openRecording(
-      sourceOf({ proxy: { url: PROXY_URL }, quality: 'proxy' }),
-      ports,
-      new AbortController().signal,
-    );
-    expect(proxied.metadata.isProxy).toBe(true);
-    expect(proxied.warnings).toEqual(['exposure-record unavailable']);
-
-    const unproxied = await openRecording(
-      sourceOf({ quality: 'proxy' }),
-      ports,
-      new AbortController().signal,
-    );
-    expect(unproxied.metadata.isProxy).toBe(false);
-    expect(unproxied.warnings[0]).toMatch(/^no proxy was given or found/u);
-  });
-
-  it('finds the proxy beside a URL when asked and names it without playing it', async () => {
-    const world = x5World();
-    const ports = fakePorts({
-      sources: world.opener,
-      demuxer: world.demuxer,
-      locator: new FakeResourceLocator([PROXY_URL]),
-    });
-
-    const opened = await openRecording(
-      sourceOf({ shouldDiscoverProxy: true }),
-      ports,
-      new AbortController().signal,
-    );
-
-    expect(opened.metadata.isProxy).toBe(false);
-    expect(opened.metadata.proxyName).toBe('LRV_20260814_132640_01_013.lrv');
+    expect(locator.asked).toEqual([]);
   });
 
   it('fetches the other lens file of a split-file recording when the server has it', async () => {

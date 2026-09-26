@@ -6,7 +6,6 @@ import {
 } from '@gyroview/core';
 
 import styles from './styles.css?raw';
-import { QUALITIES, type Quality } from '../PlayerSource';
 
 /**
  * The menu's words for each choice; a record, so a new mode cannot be left without a label.
@@ -21,11 +20,6 @@ const VIEW_MODE_LABELS: Readonly<Record<ViewMode, string>> = {
   normal: 'Normal',
   equirectangular: 'Equirectangular',
   'raw-lenses': 'Raw lenses',
-};
-const QUALITY_LABELS: Readonly<Record<Quality, string>> = {
-  auto: 'Auto',
-  full: 'Full',
-  proxy: 'Proxy',
 };
 
 function optionsOf<Choice extends string>(
@@ -75,11 +69,7 @@ export const ELEMENT_TEMPLATE = `
           ${optionsOf(VIEW_MODES, VIEW_MODE_LABELS)}
         </select>
       </label>
-      <label class="quality-row" hidden>Quality
-        <select class="quality" aria-label="Quality">
-          ${optionsOf(QUALITIES, QUALITY_LABELS)}
-        </select>
-      </label>
+
     </div>
   </div>
 </div>

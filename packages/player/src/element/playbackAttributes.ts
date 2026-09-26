@@ -28,8 +28,8 @@ type AppliedAttribute = Exclude<
 >;
 
 /**
- * An attribute naming one of `choices`: applied when known, warned about otherwise, as an unknown
- * `quality` is. Removing the attribute leaves the setting as it is.
+ * An attribute naming one of `choices`: applied when known, warned about otherwise. Removing the
+ * attribute leaves the setting as it is.
  */
 function choiceApplier<Choice extends string>(
   attribute: string,

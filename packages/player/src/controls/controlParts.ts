@@ -17,8 +17,6 @@ export interface ControlParts {
   readonly menu: HTMLElement;
   readonly stabilization: HTMLSelectElement;
   readonly viewMode: HTMLSelectElement;
-  readonly qualityRow: HTMLElement;
-  readonly quality: HTMLSelectElement;
 }
 
 /**
@@ -49,7 +47,5 @@ export function queryControlParts(root: ParentNode): ControlParts {
     menu: queryShadow(root, '.menu', HTMLElement),
     stabilization: queryShadow(root, '.stabilization', HTMLSelectElement),
     viewMode: queryShadow(root, '.view-mode', HTMLSelectElement),
-    qualityRow: queryShadow(root, '.quality-row', HTMLElement),
-    quality: queryShadow(root, '.quality', HTMLSelectElement),
   };
 }

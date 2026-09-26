@@ -10,8 +10,6 @@
 export const SourceAttribute = {
   Src: 'src',
   Src2: 'src2',
-  Proxy: 'proxy',
-  Quality: 'quality',
 } as const;
 
 export const ViewAttribute = {

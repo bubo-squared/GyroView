@@ -16,8 +16,7 @@ export interface SampleRecording {
 const RECORDING_EXTENSION = '.insv';
 
 /**
- * The recordings among the listed files. Proxies are not offered: the player finds them beside
- * their recording by itself.
+ * The recordings among the listed files; the camera's low-resolution proxies are not offered.
  */
 export function sampleRecordingsOf(listings: readonly SampleFolderListing[]): SampleRecording[] {
   return listings.flatMap((listing) =>

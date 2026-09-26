@@ -10,8 +10,7 @@ describe('embedUrlFor and embedAttributesOf', () => {
       PAGE,
       {
         src: 'https://cdn.example/clip.insv',
-        proxy: 'none',
-        quality: 'full',
+        src2: 'https://cdn.example/clip2.insv',
         fov: 75,
         yaw: -30,
         stabilization: 'horizon',
@@ -31,8 +30,7 @@ describe('embedUrlFor and embedAttributesOf', () => {
     expect(parsed.searchParams.get('origin')).toBe('https://site.example');
     expect(embedAttributesOf(parsed.searchParams)).toEqual({
       src: 'https://cdn.example/clip.insv',
-      proxy: 'none',
-      quality: 'full',
+      src2: 'https://cdn.example/clip2.insv',
       fov: '75',
       yaw: '-30',
       stabilization: 'horizon',

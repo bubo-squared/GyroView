@@ -13,9 +13,9 @@ import {
 } from '@gyroview/core';
 
 /**
- * A hard `prefer-hardware` refuses codecs the browser could decode in software (H.264 proxies on
- * machines without a hardware decoder); with no preference the browser still picks hardware when
- * it has it (ADR 0010).
+ * A hard `prefer-hardware` refuses codecs the browser could decode in software (H.264 recordings
+ * on machines without a hardware decoder); with no preference the browser still picks hardware
+ * when it has it (ADR 0010).
  */
 const HARDWARE_ACCELERATION: HardwareAcceleration = 'no-preference';
 

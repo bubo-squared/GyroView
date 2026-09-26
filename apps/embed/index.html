@@ -42,7 +42,6 @@
         font-size: 0.85rem;
       }
       input,
-      select,
       button {
         font: inherit;
       }
@@ -96,15 +95,6 @@
             <input name="url" type="text" placeholder="https://host/VID_..._00_001.insv"
           /></label>
           <label>Second lens URL (split-file recordings) <input name="url2" type="text" /></label>
-          <label>Proxy (auto, none or a URL) <input name="proxy" type="text" value="auto" /></label>
-          <label
-            >Quality
-            <select name="quality">
-              <option value="auto">auto</option>
-              <option value="full">full</option>
-              <option value="proxy">proxy</option>
-            </select>
-          </label>
           <button type="submit">Load URL</button>
           <ul class="samples"></ul>
         </form>
@@ -113,9 +103,6 @@
           <label>Recording <input name="main" type="file" accept=".insv,.mp4,video/mp4" /></label>
           <label
             >Second lens file <input name="second" type="file" accept=".insv,.mp4,video/mp4"
-          /></label>
-          <label
-            >Proxy <input name="proxyFile" type="file" accept=".lrv,.insv,.mp4,video/mp4"
           /></label>
           <button type="submit">Load files</button>
         </form>

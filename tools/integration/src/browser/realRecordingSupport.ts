@@ -35,13 +35,7 @@ export async function openSample(
   context: TestContext,
   sample: SampleRecording,
 ): Promise<OpenedRecording> {
-  const source = {
-    main: { url: sample.url },
-    second: undefined,
-    proxy: undefined,
-    shouldDiscoverProxy: false,
-    quality: 'full',
-  } as const;
+  const source = { main: { url: sample.url }, second: undefined };
   try {
     return await openRecording(source, ports, new AbortController().signal);
   } catch (error) {

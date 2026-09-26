@@ -1,6 +1,7 @@
 # ADR 0010: A headless player composed at the element, embedded over a versioned message protocol
 
-Status: accepted (2026-09-20)
+Status: accepted (2026-09-20); the proxy fallback and the `quality` setting superseded by ADR
+0017
 
 ## Context
 

@@ -24,7 +24,7 @@ WebCodecs, which decodes the video, exists only in secure contexts: `https://`, 
 ## The media host
 
 Recordings are read in byte ranges straight from the camera's file layout. The server (or
-bucket) hosting `.insv` and `.lrv` files must:
+bucket) hosting the `.insv` files must:
 
 - answer `Range` requests with `206 Partial Content` and `Accept-Ranges: bytes`; a server that
   answers `200` with the whole file shows as `range-unsupported`;
@@ -45,9 +45,10 @@ The player asks for every range with `cache: no-store`, so `Cache-Control` and `
 recordings matter to CDNs but never to the browser: it must not answer a range from its own
 cache (ADR 0013).
 
-The camera's companion files are looked for beside the recording under their camera names
-(`LRV_..._01_...lrv` for the proxy, `..._10_...insv` for the other lens of a split-file
-recording), with `HEAD` requests. Both are optional.
+The other lens's file of a split-file recording is looked for beside the recording under its
+camera name (`..._10_...insv` beside `..._00_...insv`) with a `HEAD` request, only when the
+recording turns out to be one half of a pair. The camera's `LRV` proxies need not be hosted:
+the player never plays them.
 
 Object stores: enable byte-range serving (on by default for S3, GCS, R2 and Azure Blob) and
 add a CORS rule with the headers above. Recordings are large; a CDN in front caches ranges.
@@ -73,7 +74,7 @@ Every failure is a `GyroViewError` with a stable `code`; the `error` event carri
 | `range-unsupported`     | The server ignores `Range`: enable byte-range serving.                       |
 | `source-truncated`      | Fewer bytes came back than asked: the file changed or the server misbehaves. |
 | `codec-unsupported`     | This browser cannot decode the tracks (no HEVC hardware, or not a secure     |
-|                         | context); a proxy plays instead when one exists and `quality` is `auto`.     |
+|                         | context).                                                                    |
 | `missing-second-file`   | A split-file recording without its `_10_` sibling: set `src2`.               |
 | `no-calibration`        | The file carries no lens calibration; it cannot be stitched.                 |
 | `no-info-record`        | Not an Insta360 recording (or a truncated one).                              |

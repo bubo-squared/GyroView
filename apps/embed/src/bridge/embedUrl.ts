@@ -7,8 +7,6 @@ import { PlaybackAttribute, SourceAttribute, ViewAttribute } from '@gyroview/pla
 export interface EmbedOptions {
   readonly src: string;
   readonly src2?: string;
-  readonly proxy?: string;
-  readonly quality?: string;
   readonly fov?: number;
   readonly yaw?: number;
   readonly pitch?: number;
@@ -38,15 +36,7 @@ export interface EmbedOptions {
 export const ORIGIN_PARAMETER = 'origin';
 
 type StringOption =
-  | 'src'
-  | 'src2'
-  | 'proxy'
-  | 'quality'
-  | 'stabilization'
-  | 'viewMode'
-  | 'preload'
-  | 'gainMatch'
-  | 'poster';
+  'src' | 'src2' | 'stabilization' | 'viewMode' | 'preload' | 'gainMatch' | 'poster';
 type NumberOption = 'fov' | 'yaw' | 'pitch';
 type FlagOption = 'autoplay' | 'muted' | 'loop';
 
@@ -57,8 +47,6 @@ type FlagOption = 'autoplay' | 'muted' | 'loop';
 const STRING_PARAMETERS: Readonly<Record<StringOption, string>> = {
   src: SourceAttribute.Src,
   src2: SourceAttribute.Src2,
-  proxy: SourceAttribute.Proxy,
-  quality: SourceAttribute.Quality,
   stabilization: PlaybackAttribute.Stabilization,
   viewMode: PlaybackAttribute.ViewMode,
   preload: PlaybackAttribute.Preload,

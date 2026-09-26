@@ -1,18 +1,14 @@
 import type { ControlParts } from './controlParts';
-import type { ControlsHost } from './ControlsHost';
-import { qualityOf, stabilizationModeOf, viewModeOf } from '../choices';
-import type { Player } from '../player/Player';
-import type { Quality } from '../PlayerSource';
 
-type MenuParts = Pick<
-  ControlParts,
-  'settings' | 'menu' | 'stabilization' | 'viewMode' | 'qualityRow' | 'quality'
->;
+import { stabilizationModeOf, viewModeOf } from '../choices';
+import type { Player } from '../player/Player';
+
+type MenuParts = Pick<ControlParts, 'settings' | 'menu' | 'stabilization' | 'viewMode'>;
 
 /**
  * What the menu shows and changes.
  */
-interface MenuHost extends Pick<ControlsHost, 'changeQuality'> {
+interface MenuHost {
   readonly player: Pick<
     Player,
     'events' | 'stabilization' | 'viewMode' | 'setStabilization' | 'setViewMode'
@@ -20,9 +16,8 @@ interface MenuHost extends Pick<ControlsHost, 'changeQuality'> {
 }
 
 /**
- * The settings button and its menu: stabilization, view mode and, when the recording has a
- * proxy, quality. Opens on the button, closes on Escape or a press outside, and shows each
- * setting as it is now.
+ * The settings button and its menu: stabilization and view mode. Opens on the button, closes on
+ * Escape or a press outside, and shows each setting as it is now.
  */
 export class SettingsMenu {
   public constructor(
@@ -39,15 +34,8 @@ export class SettingsMenu {
     events.on('viewmodechange', (mode) => {
       parts.viewMode.value = mode;
     });
-    events.on('ready', (metadata) => {
-      parts.qualityRow.hidden = metadata.proxyName === undefined;
-    });
     parts.stabilization.value = this.host.player.stabilization;
     parts.viewMode.value = this.host.player.viewMode;
-  }
-
-  public setQuality(quality: Quality): void {
-    this.parts.quality.value = quality;
   }
 
   private bindOpening(root: ParentNode): void {
@@ -69,7 +57,7 @@ export class SettingsMenu {
   }
 
   private bindChoices(): void {
-    const { stabilization, viewMode, quality } = this.parts;
+    const { stabilization, viewMode } = this.parts;
     stabilization.addEventListener('change', () => {
       const mode = stabilizationModeOf(stabilization.value);
       if (mode) this.host.player.setStabilization(mode);
@@ -77,10 +65,6 @@ export class SettingsMenu {
     viewMode.addEventListener('change', () => {
       const mode = viewModeOf(viewMode.value);
       if (mode) this.host.player.setViewMode(mode);
-    });
-    quality.addEventListener('change', () => {
-      const chosen = qualityOf(quality.value);
-      if (chosen) this.host.changeQuality(chosen);
     });
   }
 

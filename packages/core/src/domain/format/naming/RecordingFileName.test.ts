@@ -14,15 +14,6 @@ describe('RecordingFileName', () => {
     expect(name).toMatchObject({ isBackLens: true, isProxy: true });
   });
 
-  it('derives the proxy name from the recording, keeping the lens digit', () => {
-    expect(RecordingFileName.parse('VID_20260814_132640_00_013.insv')?.proxyName()).toBe(
-      'LRV_20260814_132640_01_013.lrv',
-    );
-    expect(RecordingFileName.parse('VID_20230101_090000_10_001.insv')?.proxyName()).toBe(
-      'LRV_20230101_090000_11_001.lrv',
-    );
-  });
-
   it('derives the other lens file of a split-file pair in both directions', () => {
     expect(RecordingFileName.parse('VID_20230101_090000_00_001.insv')?.otherLensName()).toBe(
       'VID_20230101_090000_10_001.insv',

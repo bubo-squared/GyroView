@@ -82,10 +82,7 @@ function bindUrlForm(parts: DevelopmentPageParts): void {
 function loadUrl(parts: DevelopmentPageParts, url: string): void {
   const { player, urlForm } = parts;
   const second = fieldOf(urlForm, 'url2');
-  const proxy = fieldOf(urlForm, 'proxy');
   player.src2 = second === '' ? null : second;
-  player.proxy = proxy === '' ? null : proxy;
-  player.quality = fieldOf(urlForm, 'quality') || null;
   player.src = url === '' ? null : url;
   showEmbedding(parts, url);
 }
@@ -96,8 +93,7 @@ function bindFileForm(parts: DevelopmentPageParts): void {
     const main = fileOf(parts.fileForm, 'main');
     if (!main) return;
     const second = fileOf(parts.fileForm, 'second');
-    const proxy = fileOf(parts.fileForm, 'proxyFile');
-    parts.player.loadFiles({ main, ...(second && { second }), ...(proxy && { proxy }) });
+    parts.player.loadFiles({ main, ...(second && { second }) });
   });
 }
 

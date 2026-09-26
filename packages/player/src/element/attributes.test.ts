@@ -17,43 +17,23 @@ function readerOf(attributes: Record<string, string>): (name: string) => string 
 }
 
 describe('sourceFromAttributes', () => {
-  it('resolves src, src2 and a proxy URL against the document and reads the quality', () => {
-    const { source, problems } = sourceFromAttributes(
-      readerOf({
-        src: '../clips/VID_00.insv',
-        src2: 'https://cdn.example/VID_10.insv',
-        proxy: '../clips/LRV_01.lrv',
-        quality: 'Full',
-      }),
+  it('resolves src and src2 against the document', () => {
+    const source = sourceFromAttributes(
+      readerOf({ src: '../clips/VID_00.insv', src2: 'https://cdn.example/VID_10.insv' }),
       BASE,
     );
     expect(source).toEqual({
       main: { url: 'https://site.example/clips/VID_00.insv' },
       second: { url: 'https://cdn.example/VID_10.insv' },
-      proxy: { url: 'https://site.example/clips/LRV_01.lrv' },
-      shouldDiscoverProxy: false,
-      quality: 'full',
     });
-    expect(problems).toEqual([]);
   });
 
-  it('looks for the proxy by default, never with proxy="none"', () => {
-    expect(sourceFromAttributes(readerOf({ src: 'a.insv' }), BASE).source).toMatchObject({
-      proxy: undefined,
-      shouldDiscoverProxy: true,
-      quality: 'auto',
-    });
+  it('has no source without src, and no second input without src2', () => {
+    expect(sourceFromAttributes(readerOf({}), BASE)).toBeUndefined();
+    expect(sourceFromAttributes(readerOf({ src: '  ' }), BASE)).toBeUndefined();
     expect(
-      sourceFromAttributes(readerOf({ src: 'a.insv', proxy: 'none' }), BASE).source,
-    ).toMatchObject({ proxy: undefined, shouldDiscoverProxy: false });
-  });
-
-  it('has no source without src and reports an unknown quality while playing on', () => {
-    expect(sourceFromAttributes(readerOf({}), BASE)).toEqual({ source: undefined, problems: [] });
-    expect(sourceFromAttributes(readerOf({ src: '  ' }), BASE).source).toBeUndefined();
-    const parsed = sourceFromAttributes(readerOf({ src: 'a.insv', quality: 'best' }), BASE);
-    expect(parsed.source?.quality).toBe('auto');
-    expect(parsed.problems).toEqual(['ignoring quality="best"; expected one of auto, full, proxy']);
+      sourceFromAttributes(readerOf({ src: 'a.insv', src2: ' ' }), BASE)?.second,
+    ).toBeUndefined();
   });
 });
 

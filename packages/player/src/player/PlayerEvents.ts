@@ -51,7 +51,7 @@ export interface PlayerEvents {
    */
   readonly volumechange: SoundLevel;
   /**
-   * A feature degraded gracefully (no gyro, unverified IMU frame, silent clock, proxy).
+   * A feature degraded gracefully (no gyro, unverified IMU frame, silent clock).
    */
   readonly warning: string;
   readonly error: GyroViewError;

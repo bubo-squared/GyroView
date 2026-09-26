@@ -43,27 +43,14 @@ function choiceAt<Choice extends string>(
   return choice;
 }
 
-const OPTIONAL_LOAD_FIELDS = ['src2', 'proxy', 'quality'] as const;
-
-type OptionalLoadFields = Partial<Record<(typeof OPTIONAL_LOAD_FIELDS)[number], string>>;
-
 function loadRequestAt(parameters: readonly unknown[]): LoadRequest {
   const value = parameters[0];
   if (typeof value !== 'object' || value === null) throw invalid('0 must be an object');
-  const request = value as Readonly<Record<string, unknown>>;
-  if (typeof request['src'] !== 'string') throw invalid('0.src must be a string');
-  return { src: request['src'], ...optionalLoadFieldsOf(request) };
-}
-
-function optionalLoadFieldsOf(request: Readonly<Record<string, unknown>>): OptionalLoadFields {
-  const fields: OptionalLoadFields = {};
-  for (const name of OPTIONAL_LOAD_FIELDS) {
-    const field = request[name];
-    if (field === undefined) continue;
-    if (typeof field !== 'string') throw invalid(`0.${name} must be a string`);
-    fields[name] = field;
-  }
-  return fields;
+  const { src, src2 } = value as Partial<Record<keyof LoadRequest, unknown>>;
+  if (typeof src !== 'string') throw invalid('0.src must be a string');
+  if (src2 === undefined) return { src };
+  if (typeof src2 !== 'string') throw invalid('0.src2 must be a string');
+  return { src, src2 };
 }
 
 function stateOf(element: GyroViewElement): EmbedState {

@@ -120,12 +120,17 @@ button[hidden] {
   display: flex;
 }
 
+/* A menu opens upward from the bar and never past the player's top, which would hide its first
+   items out of reach: what does not fit scrolls. The bar's row and gaps take the 3.75rem. */
 .popup {
   position: absolute;
   right: 0;
   bottom: calc(100% + 0.5rem);
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  max-height: calc(100cqh - 3.75rem);
+  overflow-y: auto;
   min-width: 9rem;
   padding: 0.35rem;
   border-radius: var(--gyro-view-radius);

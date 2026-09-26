@@ -529,6 +529,25 @@ describe('<gyro-view>', () => {
     }
   });
 
+  it('keeps an open menu within a short player, scrolling what does not fit', async () => {
+    const element = await createReady();
+    const root = document.documentElement;
+    try {
+      for (const remInPixels of [16, 20]) {
+        root.style.fontSize = `${remInPixels}px`;
+        control(element, '.stabilization-button', HTMLButtonElement).click();
+        const popup = control(element, '.stabilization-menu', HTMLElement);
+        expect(popup.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+          element.getBoundingClientRect().top,
+        );
+        expect(popup.scrollHeight).toBeGreaterThan(popup.clientHeight);
+        control(element, '.stabilization-button', HTMLButtonElement).click();
+      }
+    } finally {
+      root.style.fontSize = '';
+    }
+  });
+
   it('shows the stop button, the volume and the time where there is room', async () => {
     const element = await createReady();
     element.style.width = '640px';

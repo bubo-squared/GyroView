@@ -53,11 +53,12 @@
   aspect-ratio: auto;
 }
 
-/* The size container the controls fit themselves to: the player's width, not the page's. */
+/* The size container the controls fit themselves to: the player's size, not the page's. Its
+   size never depends on its content, which size containment requires. */
 .stage {
   position: absolute;
   inset: 0;
-  container-type: inline-size;
+  container-type: size;
 }
 
 canvas {

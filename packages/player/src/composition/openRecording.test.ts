@@ -4,6 +4,7 @@ import {
   FakeResourceLocator,
   FakeVideoDecoderPort,
   FakeVideoTrack,
+  minimalInfoRecord,
 } from '@gyroview/core/testing';
 import { seconds } from '@gyroview/core';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -14,7 +15,6 @@ import {
   fakePorts,
   fetchBytes,
   MapSourceOpener,
-  minimalInfoRecord,
   squareTracks,
   syntheticRecordingBytes,
   X5_RECORDING_URL,

@@ -1,0 +1,40 @@
+import type { Recording } from './Recording';
+import { seconds } from '../../shared/units/time';
+import type { VideoTrackReader } from '../../ports/Demuxer';
+import type { FrameTimingContext } from '../../domain/motion/timing/FrameTimeSource';
+import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
+import {
+  resolveFrameTimes,
+  type ResolvedFrameTimes,
+} from '../../domain/motion/timing/resolveFrameTimes';
+
+/**
+ * Frame times for a frame source. The exposure record is tried first because it costs one small
+ * read; the track's own timestamps are fetched only when the cheap sources leave nominal spacing
+ * as the answer, since walking the sample table is the costly part. Undefined when even nominal
+ * spacing is impossible (no frame rate).
+ */
+export async function frameTimesOf(
+  recording: Recording,
+  frameSource: VideoTrackReader,
+  clock: CaptureClock,
+): Promise<ResolvedFrameTimes | undefined> {
+  const { info } = recording;
+  const [frameCount, exposureRecord] = await Promise.all([
+    frameSource.frameCount(),
+    recording.readExposureRecord(),
+  ]);
+  const context: FrameTimingContext = {
+    clock,
+    frameCount,
+    frameRate: info.frameRate,
+    readoutTime: info.readoutTime ?? seconds(0),
+    exposureRecord,
+    trackTimestamps: undefined,
+  };
+  const preferred = info.preferredFrameTimeSource;
+  const cheap = resolveFrameTimes(context, preferred);
+  if (cheap && cheap.source !== 'nominal') return cheap;
+  const trackTimestamps = await frameSource.sampleTimestamps();
+  return resolveFrameTimes({ ...context, trackTimestamps }, preferred) ?? cheap;
+}

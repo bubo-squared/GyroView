@@ -86,6 +86,10 @@ tests.
 
 Use cases that orchestrate the domain through ports.
 
+- `recording/timeRecording` relates a recording to video time: the capture clock, frame times
+  for its first frame source (`frameTimesOf`: exposure record first, the sample table only if
+  needed) and the orientation for stabilization (`motionOf`: gyro integration with the camera's
+  IMU frame), each optional with a warning for what is missing.
 - `recording/readRecording` opens a `RandomAccessSource` and reads everything cheap: boxes,
   trailer, info record, calibration choice. The result, `Recording`, reads the large gyro and
   exposure records on demand. `locateCompanions` looks for the proxy and the other lens file.
@@ -167,8 +171,7 @@ The composition root and the user-facing element, in three layers.
 - **`composition`**: `openRecording` is the use case that opens what a `PlayerSource` names,
   following the data: `readRecording`, demux every input, `detectLensLayout` (fetching the
   sibling of a lone split file when the server has it), calibration required, the decode probe
-  with fallback to the proxy when `quality` allows, `frameTimesFor` (exposure record first, the
-  sample table only if needed), `motionSetupFor` (gyro integration with the camera's IMU frame).
+  with fallback to the proxy when `quality` allows, then the core's `timeRecording`.
   It depends on `RecordingPorts` (`SourceOpener`, `Demuxer`, `VideoDecoderPort`,
   `ResourceLocator`, a deadline factory), so it is tested against fakes; `browserPorts` supplies
   the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),

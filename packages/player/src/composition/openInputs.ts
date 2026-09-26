@@ -6,17 +6,17 @@ import {
   probeDecoding,
   readRecording,
   seconds,
+  timeRecording,
   type DecodeProbeReport,
   type DemuxedInput,
   type FrameSourceKey,
   type Recording,
+  type RecordingTiming,
   type Seconds,
   type VideoTrackReader,
 } from '@gyroview/core';
 
 import { Disposables } from './Disposables';
-import { frameTimesFor } from './frameTimesFor';
-import { motionSetupFor, type MotionSetup } from './motionSetupFor';
 import type { OpenedRecording } from './OpenedRecording';
 import type { RecordingPorts } from './ports';
 import type { PlayerMetadata } from '../PlayerMetadata';
@@ -38,17 +38,6 @@ interface DemuxedRecording {
   readonly inputs: readonly DemuxedInput[];
 }
 
-interface Timing {
-  readonly frameTimes: OpenedRecording['frameTimes'];
-  readonly frameTimeSource: PlayerMetadata['frameTimeSource'];
-  readonly motion: MotionSetup | undefined;
-  readonly warnings: readonly string[];
-}
-
-const NO_CLOCK_WARNING =
-  'the recording has no capture clock; frame timing and stabilization are unavailable';
-const NO_FRAME_TIMES_WARNING = 'no frame timing source is usable; stabilization is unavailable';
-
 /**
  * Opens the given inputs as one recording. The first input carries the trailer. Everything
  * opened is released again when any step fails or the attempt is aborted.
@@ -64,7 +53,7 @@ export async function openInputs(
     const frameSources = lensFrameOrder(layout).map((key) => trackAt(demuxed.inputs, key));
     const calibration = calibrationOf(demuxed.recording);
     await ensureDecodable(frameSources, attempt);
-    const timing = await timingOf(demuxed.recording, frameSources);
+    const timing = await timeRecording(demuxed.recording, frameSources[0]);
     attempt.signal.throwIfAborted();
     return assemble({ demuxed, layout, frameSources, calibration, timing, attempt }, disposables);
   } catch (error) {
@@ -151,35 +140,12 @@ function describeProbe(report: DecodeProbeReport): string {
     .join('; ');
 }
 
-async function timingOf(
-  recording: Recording,
-  frameSources: readonly VideoTrackReader[],
-): Promise<Timing> {
-  const clock = await recording.captureClock();
-  const [track] = frameSources;
-  if (!clock || !track) return withoutTiming([NO_CLOCK_WARNING]);
-  const [frames, motion] = await Promise.all([
-    frameTimesFor(recording, track, clock),
-    motionSetupFor(recording, clock),
-  ]);
-  return {
-    frameTimes: frames?.frameTimes,
-    frameTimeSource: frames?.source,
-    motion: motion.setup,
-    warnings: [...(frames?.warnings ?? [NO_FRAME_TIMES_WARNING]), ...motion.warnings],
-  };
-}
-
-function withoutTiming(warnings: readonly string[]): Timing {
-  return { frameTimes: undefined, frameTimeSource: undefined, motion: undefined, warnings };
-}
-
 interface AssemblyParts {
   readonly demuxed: DemuxedRecording;
   readonly layout: OpenedRecording['layout'];
   readonly frameSources: readonly VideoTrackReader[];
   readonly calibration: OpenedRecording['calibration'];
-  readonly timing: Timing;
+  readonly timing: RecordingTiming;
   readonly attempt: OpenAttempt;
 }
 

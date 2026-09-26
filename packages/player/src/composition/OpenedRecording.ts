@@ -3,12 +3,12 @@ import type {
   CalibrationSet,
   FrameTimes,
   LensLayout,
+  MotionSetup,
   Recording,
   Seconds,
   VideoTrackReader,
 } from '@gyroview/core';
 
-import type { MotionSetup } from './motionSetupFor';
 import type { PlayerMetadata } from '../PlayerMetadata';
 
 /**

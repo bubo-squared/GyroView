@@ -2,7 +2,6 @@ import {
   readRecording,
   RecordType,
   Signal,
-  type CaptureClock,
   type Demuxer,
   type Recording,
   type ResourceLocator,
@@ -28,14 +27,6 @@ export { default as X5_RECORDING_URL } from '../../../../test/fixtures/synthetic
 export { default as X5_RECORDING_WITH_AUDIO_URL } from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-aac-64px-10fps-3s.mp4?url';
 
 const PROTOBUF_FORMAT = 1;
-const INFO_MODEL_FIELD = 2;
-const INFO_FRAME_RATE_FIELD = 20;
-const INFO_FIRST_FRAME_TIMESTAMP_FIELD = 24;
-const WIRE_VARINT = 0;
-const WIRE_LENGTH_DELIMITED = 2;
-const WIRE_TYPE_BITS = 3;
-const VARINT_CONTINUE = 0x80;
-const VARINT_MASK = 0x7f;
 
 export async function fetchBytes(url: string): Promise<Uint8Array<ArrayBuffer>> {
   const response = await fetch(url);
@@ -56,49 +47,6 @@ export async function officeRecords(): Promise<OfficeRecords> {
     fetchBytes(exposureUrl),
   ]);
   return { info, gyro, exposure };
-}
-
-function encodeVarint(value: number): number[] {
-  const bytes: number[] = [];
-  let remaining = value;
-  while (remaining >= VARINT_CONTINUE) {
-    bytes.push((remaining & VARINT_MASK) | VARINT_CONTINUE);
-    remaining = Math.floor(remaining / VARINT_CONTINUE);
-  }
-  bytes.push(remaining);
-  return bytes;
-}
-
-function tagOf(field: number, wireType: number): number[] {
-  return encodeVarint((field << WIRE_TYPE_BITS) | wireType);
-}
-
-function varintField(field: number, value: number | undefined): number[] {
-  return value === undefined ? [] : [...tagOf(field, WIRE_VARINT), ...encodeVarint(value)];
-}
-
-export interface MinimalInfo {
-  readonly model: string;
-  readonly frameRate?: number;
-  readonly firstFrameTimestamp?: number;
-}
-
-/**
- * A hand-encoded info record with just the fields named: enough to read a recording of a
- * camera without calibration or timing, which no committed fixture represents.
- */
-export function minimalInfoRecord(info: MinimalInfo): Uint8Array {
-  const model = new TextEncoder().encode(info.model);
-  const modelField = [
-    ...tagOf(INFO_MODEL_FIELD, WIRE_LENGTH_DELIMITED),
-    ...encodeVarint(model.byteLength),
-    ...model,
-  ];
-  return Uint8Array.from([
-    ...modelField,
-    ...varintField(INFO_FRAME_RATE_FIELD, info.frameRate),
-    ...varintField(INFO_FIRST_FRAME_TIMESTAMP_FIELD, info.firstFrameTimestamp),
-  ]);
 }
 
 export interface SyntheticTrailer {
@@ -125,15 +73,6 @@ export function syntheticRecordingBytes(trailer: SyntheticTrailer): Uint8Array {
 
 export function recordingOf(bytes: Uint8Array): Promise<Recording> {
   return readRecording(new InMemoryRandomAccessSource(bytes));
-}
-
-/**
- * The recording's capture clock, which the fixture always has.
- */
-export async function clockOf(recording: Recording): Promise<CaptureClock> {
-  const clock = await recording.captureClock();
-  if (!clock) throw new Error('the fixture has no first-frame timestamp');
-  return clock;
 }
 
 /**

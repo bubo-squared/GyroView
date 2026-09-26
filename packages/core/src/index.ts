@@ -125,7 +125,7 @@ export {
   WHOLE_SCREEN,
   type ScreenRectangle,
 } from './domain/view/screenLayout';
-export { lookAt, type DragDelta } from './domain/view/viewGestures';
+export { lookAt, zoomStepsForPinch, type DragDelta } from './domain/view/viewGestures';
 export {
   EQUIRECTANGULAR_ASPECT,
   equirectangularDirectionOf,

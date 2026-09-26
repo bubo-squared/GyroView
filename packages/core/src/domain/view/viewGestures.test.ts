@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { lookAt, panView, zoomView } from './viewGestures';
+import { lookAt, panView, zoomStepsForPinch, zoomView } from './viewGestures';
 import { DEFAULT_VIEW } from './ViewState';
 import { degrees } from '../../shared/units/angle';
 
@@ -36,5 +36,18 @@ describe('view gestures', () => {
       yaw: -90,
       pitch: -90,
     });
+  });
+});
+
+describe('pinch zoom', () => {
+  it('turns a spreading pinch into positive zoom steps and a closing one into negative', () => {
+    expect(zoomStepsForPinch(100, 110)).toBeCloseTo(1, 6);
+    expect(zoomStepsForPinch(110, 100)).toBeCloseTo(-1, 6);
+    expect(zoomStepsForPinch(100, 100)).toBe(0);
+  });
+
+  it('ignores degenerate distances', () => {
+    expect(zoomStepsForPinch(0, 50)).toBe(0);
+    expect(zoomStepsForPinch(50, 0)).toBe(0);
   });
 });

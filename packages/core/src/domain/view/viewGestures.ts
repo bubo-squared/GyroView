@@ -42,6 +42,17 @@ export function zoomView(view: ViewState, steps: number): ViewState {
 }
 
 /**
+ * How many zoom steps a pinch from `previousDistance` to `distance` is worth, in the same steps
+ * as a wheel notch: positive when the fingers spread (zoom in), zero when either distance is
+ * degenerate.
+ */
+export function zoomStepsForPinch(previousDistance: number, distance: number): number {
+  return previousDistance <= 0 || distance <= 0
+    ? 0
+    : Math.log(distance / previousDistance) / Math.log(ZOOM_STEP);
+}
+
+/**
  * Points the view at a direction, clamped like every other change.
  */
 export function lookAt(view: ViewState, yaw: Degrees, pitch: Degrees): ViewState {

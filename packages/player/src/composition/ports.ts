@@ -46,6 +46,10 @@ export interface PipelineParts {
   readonly opened: OpenedRecording;
   readonly host: PipelineHost;
   readonly decoderPort: VideoDecoderPort<VideoFrame>;
+  /**
+   * Aborts a load a newer one superseded, before it draws on the host's canvas.
+   */
+  readonly signal: AbortSignal;
 }
 
 /**

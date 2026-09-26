@@ -37,6 +37,7 @@ export async function loadRecording(request: LoadRequest): Promise<LoadedRecordi
       opened,
       host: parts.host,
       decoderPort: parts.ports.decoderPort,
+      signal,
     });
     disposables.add(() => {
       pipeline.dispose();

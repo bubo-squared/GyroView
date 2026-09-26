@@ -51,6 +51,8 @@ export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
     disposables.add(() => {
       clock.clock.dispose();
     });
+    // Two renderers on one canvas would share its GL context; a superseded load stops here.
+    parts.signal.throwIfAborted();
     const drawing = drawingFor(parts, disposables);
     const session = sessionFor(parts, clock.clock, drawing.gainMatching);
     disposables.add(() => {

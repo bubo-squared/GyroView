@@ -1,3 +1,4 @@
+import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   degrees,
   GyroViewError,
@@ -326,6 +327,24 @@ describe('Player over the synthetic X5 recording', () => {
     });
     expect(player.status).toBe('error');
     expect(errors).toHaveLength(1);
+  });
+
+  it('stops a load superseded while its pipeline is built before it draws on the canvas', async () => {
+    const renderers = vi.spyOn(ThreeFrameRenderer, 'create');
+    let isFirstBuild = true;
+    const { player } = open((parts) => {
+      if (isFirstBuild) {
+        isFirstBuild = false;
+        void player.load(sourceOf(X5_RECORDING_URL));
+      }
+      return buildPipeline(parts);
+    });
+
+    await player.load(sourceOf(X5_RECORDING_URL));
+    await waitFor(() => player.status === 'ready', 'the newer load');
+
+    expect(renderers).toHaveBeenCalledTimes(1);
+    renderers.mockRestore();
   });
 
   it('refuses to play after a failed load with that failure', async () => {

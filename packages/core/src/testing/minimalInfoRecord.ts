@@ -15,6 +15,8 @@ export interface MinimalInfo {
   readonly frameRate?: number;
   readonly firstFrameTimestamp?: number;
   readonly ptsType?: number;
+  readonly fileLayout?: number;
+  readonly trackOrder?: number;
 }
 
 /**
@@ -30,6 +32,8 @@ export function minimalInfoRecord(info: MinimalInfo): Uint8Array {
     ...varintField(InfoField.FrameRate, info.frameRate),
     ...varintField(InfoField.FirstFrameTimestamp, info.firstFrameTimestamp),
     ...varintField(InfoField.PtsType, info.ptsType),
+    ...varintField(InfoField.FileLayout, info.fileLayout),
+    ...varintField(InfoField.TrackOrder, info.trackOrder),
   ]);
 }
 

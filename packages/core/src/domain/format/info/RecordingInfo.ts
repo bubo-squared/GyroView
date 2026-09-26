@@ -2,6 +2,17 @@ import type { Milliseconds, Seconds } from '../../../shared/units/time';
 import type { FrameTimeSourceName } from '../../motion/timing/FrameTimeSource';
 
 /**
+ * How the camera says it stored the lens images: a hint, verified against the tracks found.
+ */
+export type FileLayoutHint = 'split-files' | 'multi-track';
+
+/**
+ * Which stream the camera says a multi-track file's first track is: stream `00` is the back lens
+ * (calibration lens 0), stream `10` the screen-side lens.
+ */
+export type TrackOrderHint = 'stream-10-first' | 'stream-00-first';
+
+/**
  * Everything the player learns from the info record. Absent fields are `undefined`; nothing here
  * is assumed present except on cameras where a field has been observed.
  */
@@ -72,6 +83,6 @@ export interface RecordingInfo {
    */
   readonly preferredFrameTimeSource: FrameTimeSourceName | undefined;
   readonly sensorRanges: SensorRanges | undefined;
-  readonly fileLayout: number | undefined;
-  readonly trackOrder: number | undefined;
+  readonly fileLayout: FileLayoutHint | undefined;
+  readonly trackOrder: TrackOrderHint | undefined;
 }

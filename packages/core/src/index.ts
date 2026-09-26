@@ -16,9 +16,11 @@ export { RecordingFileName } from './domain/format/naming/RecordingFileName';
 export type {
   CalibrationStrings,
   FileGroup,
+  FileLayoutHint,
   LensDimension,
   RecordingInfo,
   SensorRanges,
+  TrackOrderHint,
   WindowCrop,
 } from './domain/format/info/RecordingInfo';
 export { detectLensLayout, type LayoutHints } from './domain/format/layout/detectLensLayout';

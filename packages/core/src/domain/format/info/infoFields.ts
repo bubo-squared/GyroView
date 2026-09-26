@@ -82,3 +82,16 @@ export const WindowCropField = {
  * Values of the `pts_type` field: where the camera says frame times come from.
  */
 export const PtsType = { TrackTimestamps: 1, ExposureRecord: 2 } as const;
+
+/**
+ * Values of the file-layout field, per insta360-rs. Provisional: observed as 2 on X5 multi-track
+ * files, 1 is documented for `_00_`/`_10_` pairs.
+ */
+export const FileLayoutValue = { SplitFiles: 1, MultiTrack: 2 } as const;
+
+/**
+ * Values of the track-order field, per insta360-rs. Provisional: stream `00` is the back lens
+ * (calibration lens 0), stream `10` the screen-side lens. The X5 files seen so far write 1, so
+ * their first track is the screen-side lens.
+ */
+export const TrackOrderValue = { Stream10First: 1, Stream00First: 2 } as const;

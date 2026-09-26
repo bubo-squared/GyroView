@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseInfoRecord } from './parseInfoRecord';
+import { FileLayoutValue, TrackOrderValue } from './infoFields';
 import { InfoRecordFormat } from '../constants';
+import { minimalInfoRecord } from '../../../testing/minimalInfoRecord';
 import { captureError } from '../../../../test/support/errors';
 import { loadFixture } from '../../../../test/support/fixtures';
 import { OFFICE_CALIBRATION } from '../../../../test/support/officeCalibration';
@@ -45,8 +47,8 @@ describe('parseInfoRecord on the office X5 recording (5.7K60)', () => {
   });
 
   it('reads layout hints and crop information', () => {
-    expect(info.fileLayout).toBe(2);
-    expect(info.trackOrder).toBe(1);
+    expect(info.fileLayout).toBe('multi-track');
+    expect(info.trackOrder).toBe('stream-10-first');
     expect(info.windowCrop).toEqual({
       sensorWidth: 5376,
       sensorHeight: 5376,
@@ -105,5 +107,26 @@ describe('parseInfoRecord edge cases', () => {
       code: 'unsupported-info-format',
       message: expect.stringContaining('format 2') as string,
     });
+  });
+});
+
+function hintsOf(fileLayout: number, trackOrder: number): unknown {
+  const info = parseInfoRecord(
+    minimalInfoRecord({ model: 'Insta360 X4', fileLayout, trackOrder }),
+    InfoRecordFormat.Protobuf,
+  );
+  return [info.fileLayout, info.trackOrder];
+}
+
+describe('parseInfoRecord layout hints', () => {
+  it('names the values insta360-rs documents', () => {
+    expect(hintsOf(FileLayoutValue.SplitFiles, TrackOrderValue.Stream00First)).toEqual([
+      'split-files',
+      'stream-00-first',
+    ]);
+  });
+
+  it('ignores values never observed', () => {
+    expect(hintsOf(7, 9)).toEqual([undefined, undefined]);
   });
 });

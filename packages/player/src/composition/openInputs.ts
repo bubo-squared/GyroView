@@ -49,7 +49,7 @@ export async function openInputs(
   const disposables = new Disposables();
   try {
     const demuxed = await demuxInputs(inputs, attempt, disposables);
-    const layout = detectLensLayout(descriptionsOf(demuxed.inputs), demuxed.recording.layoutHints);
+    const layout = detectLensLayout(descriptionsOf(demuxed.inputs), demuxed.recording.info);
     const frameSources = lensFrameOrder(layout).map((key) => trackAt(demuxed.inputs, key));
     const calibration = calibrationOf(demuxed.recording);
     await ensureDecodable(frameSources, attempt);

@@ -1,17 +1,21 @@
 import {
   DimensionField,
   FileGroupField,
+  FileLayoutValue,
   GyroConfigField,
   InfoField,
   PtsType,
+  TrackOrderValue,
   WindowCropField,
 } from './infoFields';
 import type {
   CalibrationStrings,
   FileGroup,
+  FileLayoutHint,
   LensDimension,
   RecordingInfo,
   SensorRanges,
+  TrackOrderHint,
   WindowCrop,
 } from './RecordingInfo';
 import { InfoRecordFormat } from '../constants';
@@ -56,8 +60,8 @@ export function parseInfoRecord(payload: Uint8Array, format: number): RecordingI
     isRawGyro: message.boolean(InfoField.IsRawGyro),
     preferredFrameTimeSource: frameTimeSourceOf(message.varint(InfoField.PtsType)),
     sensorRanges: sensorRangesOf(message.message(InfoField.GyroConfig)),
-    fileLayout: message.varint(InfoField.FileLayout),
-    trackOrder: message.varint(InfoField.TrackOrder),
+    fileLayout: fileLayoutOf(message.varint(InfoField.FileLayout)),
+    trackOrder: trackOrderOf(message.varint(InfoField.TrackOrder)),
   };
 }
 
@@ -75,6 +79,19 @@ function optionalMilliseconds(value: number | undefined): Milliseconds | undefin
 function frameTimeSourceOf(ptsType: number | undefined): FrameTimeSourceName | undefined {
   if (ptsType === PtsType.TrackTimestamps) return 'track-timestamps';
   return ptsType === PtsType.ExposureRecord ? 'exposure-record' : undefined;
+}
+
+/**
+ * Other layout and track-order values have never been observed and say nothing to rely on.
+ */
+function fileLayoutOf(value: number | undefined): FileLayoutHint | undefined {
+  if (value === FileLayoutValue.SplitFiles) return 'split-files';
+  return value === FileLayoutValue.MultiTrack ? 'multi-track' : undefined;
+}
+
+function trackOrderOf(value: number | undefined): TrackOrderHint | undefined {
+  if (value === TrackOrderValue.Stream10First) return 'stream-10-first';
+  return value === TrackOrderValue.Stream00First ? 'stream-00-first' : undefined;
 }
 
 function calibrationStringsOf(message: ProtobufMessage): CalibrationStrings {

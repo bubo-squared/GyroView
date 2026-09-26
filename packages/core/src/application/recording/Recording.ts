@@ -1,7 +1,6 @@
 import type { BoxDescriptor, TrailerWrapper } from '../../domain/format/boxes/BoxLayout';
 import type { CalibrationChoice } from '../../domain/format/calibration/selectCalibration';
 import type { RecordingInfo } from '../../domain/format/info/RecordingInfo';
-import type { LayoutHints } from '../../domain/format/layout/detectLensLayout';
 import type { ParsedGyroRecord } from '../../domain/format/records/gyro/parseGyroRecord';
 import type { TrailerRecords } from '../../domain/format/records/TrailerRecords';
 import type { RecordLocation } from '../../domain/format/trailer/RecordLocation';
@@ -52,10 +51,6 @@ export class Recording {
 
   public get calibration(): CalibrationChoice {
     return this.parts.calibration;
-  }
-
-  public get layoutHints(): LayoutHints {
-    return { fileLayout: this.parts.info.fileLayout, trackOrder: this.parts.info.trackOrder };
   }
 
   /**

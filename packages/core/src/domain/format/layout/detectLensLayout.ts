@@ -6,21 +6,9 @@ import {
   type LensSource,
 } from '../../stitching/LensLayout';
 import type { InputDescription, VideoTrackDescription } from '../../../ports/VideoTrack';
+import type { RecordingInfo } from '../info/RecordingInfo';
 import { RecordingFileName } from '../naming/RecordingFileName';
 import { GyroViewError } from '../../../shared/errors/GyroViewError';
-
-/**
- * Values of the info record's file-layout field (protobuf 79), per insta360-rs. Provisional:
- * observed as 2 on X5 multi-track files, 1 is documented for `_00_`/`_10_` pairs.
- */
-export const FileLayoutHint = { SplitFiles: 1, MultiTrack: 2 } as const;
-
-/**
- * Values of the info record's track-order field (protobuf 80), per insta360-rs. Provisional:
- * stream `00` is the back lens (calibration lens 0), stream `10` the screen-side lens. The X5
- * files seen so far write 1, so their first track is the screen-side lens.
- */
-export const TrackOrderHint = { Track0IsStream10: 1, Track0IsStream00: 2 } as const;
 
 const LENS_COUNT = 2;
 const PACKED_ASPECT_RATIO = 2;
@@ -29,10 +17,10 @@ const BACK_LENS_RANK = 0;
 const UNNAMED_RANK = 1;
 const SCREEN_LENS_RANK = 2;
 
-export interface LayoutHints {
-  readonly fileLayout: number | undefined;
-  readonly trackOrder: number | undefined;
-}
+/**
+ * What the info record says about the layout; only ever a hint.
+ */
+export type LayoutHints = Pick<RecordingInfo, 'fileLayout' | 'trackOrder'>;
 
 interface Candidate {
   readonly input: InputDescription;
@@ -67,7 +55,7 @@ export function detectLensLayout(
  * for the `_00_` file of a pair; when the hint says track 0 is stream 10 the tracks are swapped.
  */
 function multiTrack(candidates: readonly Candidate[], hints: LayoutHints): LensLayout {
-  const isSwapped = hints.trackOrder === TrackOrderHint.Track0IsStream10;
+  const isSwapped = hints.trackOrder === 'stream-10-first';
   const ordered = isSwapped ? candidates.toReversed() : candidates;
   const fileLayoutEvidence =
     hints.fileLayout === undefined ? [] : [`info record file layout ${hints.fileLayout}`];
@@ -173,7 +161,7 @@ function undecidable(
   const isLoneHalfOfPair =
     inputs.length === 1 &&
     candidates.length === 1 &&
-    (hints.fileLayout === FileLayoutHint.SplitFiles ||
+    (hints.fileLayout === 'split-files' ||
       RecordingFileName.parse(inputs[0]?.name ?? '')?.isBackLens === true);
   if (isLoneHalfOfPair) {
     return new GyroViewError(

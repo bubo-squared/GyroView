@@ -42,10 +42,10 @@ describe.skipIf(!hasSamples())(
         const recording = await readRecording(source);
         const layout = detectLensLayout(
           [{ name: input.name, videoTracks: input.videoTracks.map((track) => track.description) }],
-          recording.layoutHints,
+          recording.info,
         );
         expect(layout.kind).toBe('multi-track');
-        const isSwapped = recording.info.trackOrder === 1;
+        const isSwapped = recording.info.trackOrder === 'stream-10-first';
         const expectedMapping = isSwapped
           ? [
               [0, 1],

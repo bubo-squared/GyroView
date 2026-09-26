@@ -33,8 +33,8 @@ const inspection: Inspection = {
     isRawGyro: true,
     preferredFrameTimeSource: 'exposure-record',
     sensorRanges: { accelerometerG: 32, gyroscopeDps: 2000 },
-    fileLayout: 2,
-    trackOrder: 1,
+    fileLayout: 'multi-track',
+    trackOrder: 'stream-10-first',
   },
   calibration: {
     version: 3,

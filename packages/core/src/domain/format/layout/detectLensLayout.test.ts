@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { detectLensLayout, FileLayoutHint, TrackOrderHint } from './detectLensLayout';
+import { detectLensLayout, type LayoutHints } from './detectLensLayout';
 import { FULL_FRAME, LEFT_HALF, RIGHT_HALF } from '../../stitching/LensLayout';
 import type { InputDescription, VideoTrackDescription } from '../../../ports/VideoTrack';
 import { captureError } from '../../../../test/support/errors';
@@ -24,8 +24,8 @@ describe('detectLensLayout', () => {
     const layout = detectLensLayout(
       [input('VID_20260814_132640_00_013.insv', track(0, 2880), track(1, 2880))],
       {
-        fileLayout: FileLayoutHint.MultiTrack,
-        trackOrder: TrackOrderHint.Track0IsStream00,
+        fileLayout: 'multi-track',
+        trackOrder: 'stream-00-first',
       },
     );
     expect(layout.kind).toBe('multi-track');
@@ -35,21 +35,21 @@ describe('detectLensLayout', () => {
     ]);
     expect(layout.evidence).toEqual([
       'one input with two video tracks',
-      'info record file layout 2',
-      'info record track order 2: lens 0 is track 0',
+      'info record file layout multi-track',
+      'info record track order stream-00-first: lens 0 is track 0',
     ]);
   });
 
   it('swaps the tracks when the info record says track 0 is the screen-side stream (X5)', () => {
     const layout = detectLensLayout([input('clip.insv', track(0, 2880), track(1, 2880))], {
-      fileLayout: FileLayoutHint.MultiTrack,
-      trackOrder: TrackOrderHint.Track0IsStream10,
+      fileLayout: 'multi-track',
+      trackOrder: 'stream-10-first',
     });
     expect(layout.sources.map((source) => [source.lensIndex, source.trackIndex])).toEqual([
       [0, 1],
       [1, 0],
     ]);
-    expect(layout.evidence).toContain('info record track order 1: lens 0 is track 1');
+    expect(layout.evidence).toContain('info record track order stream-10-first: lens 0 is track 1');
   });
 
   it('records only the track evidence when the info record has no layout fields', () => {
@@ -66,7 +66,7 @@ describe('detectLensLayout', () => {
         input('VID_20240101_120000_10_001.insv', track(0, 2880)),
         input('VID_20240101_120000_00_001.insv', track(0, 2880)),
       ],
-      { fileLayout: FileLayoutHint.SplitFiles, trackOrder: undefined },
+      { fileLayout: 'split-files', trackOrder: undefined },
     );
     expect(layout.kind).toBe('split-files');
     expect(layout.sources.map((source) => [source.lensIndex, source.inputIndex])).toEqual([
@@ -98,7 +98,7 @@ describe('detectLensLayout', () => {
     expect(layout.evidence).toEqual(['single 1664x832 track with a 2:1 aspect ratio']);
   });
 
-  it.each([
+  it.each<[string, InputDescription[], LayoutHints]>([
     [
       'only the _00_ half of a pair is given',
       [input('VID_20240101_120000_00_001.insv', track(0, 2880))],
@@ -107,7 +107,7 @@ describe('detectLensLayout', () => {
     [
       'the info record says the recording is split',
       [input('clip.insv', track(0, 2880))],
-      { fileLayout: FileLayoutHint.SplitFiles, trackOrder: undefined },
+      { fileLayout: 'split-files', trackOrder: undefined },
     ],
   ])('asks for the second file when %s', (_case, inputs, hints) => {
     expect(captureError(() => detectLensLayout(inputs, hints))).toMatchObject({

@@ -49,7 +49,10 @@ describe('readRecording on synthetic X5 files', () => {
     expect(recording.info.model).toBe('Insta360 X5');
     expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
     expect(recording.calibration.warnings).toEqual([]);
-    expect(recording.layoutHints).toEqual({ fileLayout: 2, trackOrder: 1 });
+    expect(recording.info).toMatchObject({
+      fileLayout: 'multi-track',
+      trackOrder: 'stream-10-first',
+    });
     expect(recording.fileSize).toBe(file.bytes.byteLength);
   });
 

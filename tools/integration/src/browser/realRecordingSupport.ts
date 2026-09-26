@@ -133,21 +133,36 @@ export function closeAll(pairs: readonly FramePair<VideoFrame>[]): void {
   for (const pair of pairs) for (const frame of pair.frames) frame.close();
 }
 
-export function expectLockstep(
-  pairs: readonly FramePair<VideoFrame>[],
-  sample: SampleRecording,
-): void {
+/**
+ * What the lockstep checks read of a decoded pair, kept after its frames are closed.
+ */
+export interface PairTiming {
+  readonly timestamp: number;
+  readonly frameTimestamps: readonly number[];
+  readonly codedWidths: readonly number[];
+}
+
+export function timingOf(pair: FramePair<VideoFrame>): PairTiming {
+  return {
+    timestamp: pair.timestamp,
+    frameTimestamps: pair.frames.map((frame) => frame.timestamp),
+    codedWidths: pair.frames.map((frame) => frame.handle.codedWidth),
+  };
+}
+
+/**
+ * Consecutive pairs of whole frames of the sample's size, each pair's frames at one time.
+ */
+export function expectLockstep(timings: readonly PairTiming[], sample: SampleRecording): void {
   const frameDuration = 1 / sample.frameRate;
-  for (const [index, pair] of pairs.entries()) {
-    expect(pair.frames.length).toBeGreaterThan(0);
-    expect(pair.frames.every((frame) => frame.handle.codedWidth === sample.codedSize)).toBe(true);
-    const [first, second] = pair.frames;
-    expect(Math.abs((first?.timestamp ?? 0) - (second?.timestamp ?? 0))).toBeLessThan(
-      DECODE_PIPELINE_OPTIONS.pairTolerance,
-    );
-    const previous = pairs[index - 1];
+  for (const [index, timing] of timings.entries()) {
+    expect(timing.codedWidths.length).toBeGreaterThan(0);
+    expect(timing.codedWidths.every((width) => width === sample.codedSize)).toBe(true);
+    const [first = 0, second = 0] = timing.frameTimestamps;
+    expect(Math.abs(first - second)).toBeLessThan(DECODE_PIPELINE_OPTIONS.pairTolerance);
+    const previous = timings[index - 1];
     if (previous) {
-      expect(pair.timestamp - previous.timestamp).toBeCloseTo(frameDuration, TIMESTAMP_DIGITS);
+      expect(timing.timestamp - previous.timestamp).toBeCloseTo(frameDuration, TIMESTAMP_DIGITS);
     }
   }
 }

@@ -8,7 +8,9 @@ import {
   openedOrSkip,
   port,
   takePairs,
+  timingOf,
   type Availability,
+  type PairTiming,
 } from './realRecordingSupport';
 import type { SampleRecording } from './sampleUrls';
 
@@ -19,12 +21,13 @@ import type { SampleRecording } from './sampleUrls';
 const PAIRS_PER_MOMENT = 16;
 
 /**
- * Two pairs of one moment of a sample: the first and the last of `PAIRS_PER_MOMENT` consecutive
- * pairs. Their owner closes them.
+ * Two pairs of one moment of a sample, the first and the last of `PAIRS_PER_MOMENT` consecutive
+ * pairs, which their owner closes, and the timing of all of them.
  */
 export interface Moment {
   readonly first: FramePair<VideoFrame>;
   readonly later: FramePair<VideoFrame>;
+  readonly timings: readonly PairTiming[];
 }
 
 /**
@@ -37,11 +40,12 @@ export async function decodeMoment(opened: OpenedRecording, time: number): Promi
     DECODE_PIPELINE_OPTIONS,
   );
   const pairs = await takePairs(pipeline, time, PAIRS_PER_MOMENT);
+  const timings = pairs.map((pair) => timingOf(pair));
   const [first] = pairs;
   const later = pairs.at(-1);
   closeAll(pairs.slice(1, -1));
   if (!first || !later) throw new Error(`no pairs decoded at ${time} s`);
-  return { first, later };
+  return { first, later, timings };
 }
 
 export function closeMoment(moment: Moment): void {

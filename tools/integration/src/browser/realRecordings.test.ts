@@ -26,6 +26,7 @@ import {
   expectLockstep,
   port,
   takePairs,
+  timingOf,
   waitFor,
 } from './realRecordingSupport';
 import {
@@ -40,8 +41,6 @@ import { worldMovement } from './worldMovement';
 
 const PRESENTATIONS_BEFORE_SEEK = 30;
 const SEEK_TARGET = seconds(120);
-const MID_FILE_START = seconds(100);
-const PAIRS_TO_TAKE = 20;
 const TIMESTAMP_TOLERANCE = 1e-3;
 
 const PANORAMA_SIZE = { width: 1536, height: 768 };
@@ -114,20 +113,11 @@ describe('playing the real X5 recordings in the browser', () => {
     expect(opened.recording.info.model).toBe('Insta360 X5');
     expect(opened.frameSources).toHaveLength(2);
 
-    const pipeline = new DecodePipeline<VideoFrame>(
-      opened.frameSources,
-      port,
-      DECODE_PIPELINE_OPTIONS,
-    );
-    const pairs = await takePairs(pipeline, MID_FILE_START, PAIRS_TO_TAKE);
-    try {
-      const first = pairs[0]?.timestamp ?? NaN;
-      expect(first).toBeLessThanOrEqual(MID_FILE_START + TIMESTAMP_TOLERANCE);
-      expect(first).toBeGreaterThan(MID_FILE_START - 1 / OFFICE_5K7_60.frameRate);
-      expectLockstep(pairs, OFFICE_5K7_60);
-    } finally {
-      closeAll(pairs);
-    }
+    const { timings } = await office.momentAt(context, MOMENT);
+    const first = timings[0]?.timestamp ?? NaN;
+    expect(first).toBeLessThanOrEqual(MOMENT + TIMESTAMP_TOLERANCE);
+    expect(first).toBeGreaterThan(MOMENT - 1 / OFFICE_5K7_60.frameRate);
+    expectLockstep(timings, OFFICE_5K7_60);
   });
 
   it('plays the office recording through the session in step with its own audio and follows a seek', async (context) => {
@@ -176,12 +166,10 @@ describe('playing the real X5 recordings in the browser', () => {
       DECODE_PIPELINE_OPTIONS,
     );
     const pairs = await takePairs(pipeline, 0, 5);
-    try {
-      expect(pairs[0]?.timestamp).toBeCloseTo(0, 3);
-      expectLockstep(pairs, SAILING_8K_30);
-    } finally {
-      closeAll(pairs);
-    }
+    const timings = pairs.map((pair) => timingOf(pair));
+    closeAll(pairs);
+    expect(timings[0]?.timestamp).toBeCloseTo(0, 3);
+    expectLockstep(timings, SAILING_8K_30);
   });
 });
 

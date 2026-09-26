@@ -4,6 +4,8 @@ import type { Player } from '../player/Player';
 
 export type SoundParts = Pick<ControlParts, 'mute' | 'volume'>;
 
+const PERCENT = 100;
+
 /**
  * The sound the controls show and change.
  */
@@ -31,10 +33,15 @@ export class SoundControls {
     this.reflect();
   }
 
+  /**
+   * The slider says its volume as a percentage, not the fraction a screen reader would read.
+   */
   private reflect(): void {
     const { isMuted, volume } = this.player;
+    const shown = isMuted ? 0 : volume;
     this.parts.mute.innerHTML = isMuted ? ICONS.muted : ICONS.sound;
     this.parts.mute.setAttribute('aria-pressed', String(isMuted));
-    this.parts.volume.value = String(isMuted ? 0 : volume);
+    this.parts.volume.value = String(shown);
+    this.parts.volume.setAttribute('aria-valuetext', `${Math.round(shown * PERCENT)}%`);
   }
 }

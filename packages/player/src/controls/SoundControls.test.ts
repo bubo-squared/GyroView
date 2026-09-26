@@ -54,6 +54,7 @@ describe('SoundControls', () => {
     expectIconOnly(parts.mute);
     expect(parts.mute.getHTML()).not.toBe(soundIcon);
     expect(parts.volume.value).toBe('0');
+    expect(parts.volume.getAttribute('aria-valuetext')).toBe('0%');
   });
 
   it('sets the volume from the slider and unmutes, as a media player does', () => {
@@ -69,5 +70,6 @@ describe('SoundControls', () => {
     const { parts, sound } = soundControls();
     sound.setVolume(0.5);
     expect(parts.volume.value).toBe('0.5');
+    expect(parts.volume.getAttribute('aria-valuetext')).toBe('50%');
   });
 });

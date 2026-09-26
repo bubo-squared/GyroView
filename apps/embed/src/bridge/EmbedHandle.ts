@@ -7,6 +7,7 @@ import {
   isGyroViewErrorCode,
   TypedEmitter,
 } from '@gyroview/core';
+import type { PlayerStatus } from '@gyroview/player';
 
 import type { Endpoint } from './Endpoint';
 import type { EmbedState, LoadRequest } from './EmbedState';
@@ -219,6 +220,13 @@ type StateUpdaters = {
   ) => EmbedState;
 };
 
+/**
+ * A player is under way, as a media element that is not `paused`, once loaded and flowing.
+ */
+function isFlowingStatus(status: PlayerStatus): boolean {
+  return status !== 'idle' && status !== 'loading' && isFlowing(status);
+}
+
 function withTime(state: EmbedState, currentTime: number): EmbedState {
   return { ...state, currentTime };
 }
@@ -228,7 +236,7 @@ function withTime(state: EmbedState, currentTime: number): EmbedState {
  * their events, the metadata arrives with `ready`.
  */
 const STATE_UPDATERS: StateUpdaters = {
-  statuschange: (state, status) => ({ ...state, status, isPaused: !isFlowing(status) }),
+  statuschange: (state, status) => ({ ...state, status, isPaused: !isFlowingStatus(status) }),
   timeupdate: withTime,
   seeking: withTime,
   seeked: withTime,

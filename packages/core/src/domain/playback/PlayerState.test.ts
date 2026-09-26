@@ -92,7 +92,6 @@ describe('PlayerStateMachine', () => {
 describe('isFlowing', () => {
   it('holds while playing or buffering, and for nothing else', () => {
     expect(ALL_STATES.filter((state) => isFlowing(state))).toEqual(['playing', 'buffering']);
-    expect(isFlowing('loading')).toBe(false);
     expect(isFlowing(undefined)).toBe(false);
   });
 });

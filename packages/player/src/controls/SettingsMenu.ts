@@ -60,7 +60,11 @@ export class SettingsMenu {
       if (!isInside) this.setOpen(false);
     });
     root.addEventListener('keydown', (event) => {
-      if (event instanceof KeyboardEvent && event.key === 'Escape') this.setOpen(false);
+      const isEscape = event instanceof KeyboardEvent && event.key === 'Escape';
+      if (!isEscape || menu.hidden) return;
+      // An open menu takes the Escape; leaving fullscreen waits for the next one.
+      this.setOpen(false);
+      event.stopPropagation();
     });
   }
 

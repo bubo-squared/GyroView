@@ -339,6 +339,21 @@ describe('<gyro-view>', () => {
     );
   });
 
+  it('lets an open menu take the Escape and stays in fullscreen until the next one', async () => {
+    const element = await createReady();
+    await element.toggleFullscreen();
+    control(element, '.settings', HTMLButtonElement).click();
+
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true });
+    control(element, '.stabilization', HTMLSelectElement).dispatchEvent(escape);
+
+    expect(control(element, '.menu', HTMLElement).hidden).toBe(true);
+    const isFilling =
+      document.fullscreenElement === element || element.dataset['fill'] !== undefined;
+    expect(isFilling).toBe(true);
+    await element.toggleFullscreen();
+  });
+
   it('unloads when removed from the document', async () => {
     const element = await createReady();
     element.remove();

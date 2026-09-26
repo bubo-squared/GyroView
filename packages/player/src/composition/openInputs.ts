@@ -119,9 +119,7 @@ async function ensureDecodable(
   attempt: OpenAttempt,
 ): Promise<void> {
   const { ports, signal } = attempt;
-  const report = await probeDecoding(frameSources, ports.decoderPort, {
-    deadline: ports.probeDeadline(),
-  });
+  const report = await probeDecoding(frameSources, ports.decoderPort, ports.probeDeadline());
   signal.throwIfAborted();
   if (report.canDecode) return;
   throw new GyroViewError(

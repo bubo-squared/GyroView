@@ -111,7 +111,7 @@ class ErroringPort implements VideoDecoderPort<never> {
 describe('probeDecoding', () => {
   it('reports that every lens decodes, leaving no frame open and every decoder closed', async () => {
     const port = new FakeVideoDecoderPort({ latencyTicks: 2 });
-    const report = await probeDecoding(tracks([30, 30]), port, { deadline: new Signal() });
+    const report = await probeDecoding(tracks([30, 30]), port, new Signal());
     expect(report.canDecode).toBe(true);
     expect(report.sources.map((lens) => lens.verdict)).toEqual(['decodes', 'decodes']);
     expect(report.sources[0]?.track.trackIndex).toBe(0);
@@ -121,7 +121,7 @@ describe('probeDecoding', () => {
 
   it('reports an unsupported configuration without opening a decoder', async () => {
     const port = new FakeVideoDecoderPort({ unsupportedCodecs: ['fake.1'] });
-    const report = await probeDecoding(tracks([30]), port, { deadline: new Signal() });
+    const report = await probeDecoding(tracks([30]), port, new Signal());
     expect(report.canDecode).toBe(false);
     expect(report.sources[0]).toMatchObject({
       verdict: 'unsupported-configuration',
@@ -132,7 +132,7 @@ describe('probeDecoding', () => {
 
   it('marks a lens whose track has no key frame and still probes the other lens', async () => {
     const port = new FakeVideoDecoderPort();
-    const report = await probeDecoding(tracks([30, 0]), port, { deadline: new Signal() });
+    const report = await probeDecoding(tracks([30, 0]), port, new Signal());
     expect(report.canDecode).toBe(false);
     expect(report.sources.map((lens) => lens.verdict)).toEqual(['decodes', 'no-key-frame']);
   });
@@ -142,8 +142,8 @@ describe('probeDecoding', () => {
     const broken = new RefusingPort(new Error('out of decoder instances'));
     const deadline = new Signal();
     const [first, second] = await Promise.all([
-      probeDecoding(tracks([30]), unsupported, { deadline }),
-      probeDecoding(tracks([30]), broken, { deadline }),
+      probeDecoding(tracks([30]), unsupported, deadline),
+      probeDecoding(tracks([30]), broken, deadline),
     ]);
     expect(first.sources[0]).toMatchObject({
       verdict: 'unsupported-configuration',
@@ -156,9 +156,7 @@ describe('probeDecoding', () => {
   });
 
   it('reports a decoder error on the first packet as a failed decode', async () => {
-    const report = await probeDecoding(tracks([30]), new ErroringPort(), {
-      deadline: new Signal(),
-    });
+    const report = await probeDecoding(tracks([30]), new ErroringPort(), new Signal());
     expect(report.sources[0]).toMatchObject({
       verdict: 'decode-failed',
       detail: 'bitstream error',
@@ -168,7 +166,7 @@ describe('probeDecoding', () => {
   it('gives up on a stalled decoder when the deadline passes and closes it', async () => {
     const port = new StalledPort();
     const deadline = new Signal();
-    const pending = probeDecoding(tracks([30, 30]), port, { deadline });
+    const pending = probeDecoding(tracks([30, 30]), port, deadline);
     await Promise.resolve();
     deadline.trigger();
     const report = await pending;
@@ -180,7 +178,7 @@ describe('probeDecoding', () => {
   it('closes a decoder that appears only after the deadline and reports it timed out', async () => {
     const port = new LatePort();
     const deadline = new Signal();
-    const pending = probeDecoding(tracks([30]), port, { deadline });
+    const pending = probeDecoding(tracks([30]), port, deadline);
     await Promise.resolve();
     deadline.trigger();
     const report = await pending;
@@ -191,7 +189,7 @@ describe('probeDecoding', () => {
   });
 
   it('reports a decoder that accepts the key frame but never produces a picture as a failed decode', async () => {
-    const report = await probeDecoding(tracks([30]), new SilentPort(), { deadline: new Signal() });
+    const report = await probeDecoding(tracks([30]), new SilentPort(), new Signal());
     expect(report.sources[0]).toMatchObject({
       verdict: 'decode-failed',
       detail: expect.stringContaining('no picture') as string,

@@ -27,14 +27,6 @@ export interface DecodeProbeReport {
   readonly sources: readonly SourceProbeResult[];
 }
 
-export interface DecodeProbeOptions {
-  /**
-   * Triggered by the host once the probe has taken too long (the core has no timers). Sources
-   * still undecided then report `timed-out` and their decoders are closed.
-   */
-  readonly deadline: Signal;
-}
-
 type Outcome = Pick<SourceProbeResult, 'verdict' | 'detail'>;
 
 const DECODES: Outcome = { verdict: 'decodes', detail: undefined };
@@ -52,15 +44,17 @@ const TIMED_OUT: Outcome = {
  * Use case: find out before playback whether this platform decodes the recording, by decoding
  * the first key frame of every frame source. The decoder port's `isSupported` alone is not
  * trusted: platforms answer yes and then fail, and hardware decoders can stall, hence the real
- * decode under a deadline.
+ * decode under a deadline. The host triggers `deadline` once the probe has taken too long (the
+ * core has no timers); sources still undecided then report `timed-out` and their decoders are
+ * closed.
  */
 export async function probeDecoding<Handle>(
   frameSources: readonly VideoTrackReader[],
   decoderPort: VideoDecoderPort<Handle>,
-  options: DecodeProbeOptions,
+  deadline: Signal,
 ): Promise<DecodeProbeReport> {
   const sources = await Promise.all(
-    frameSources.map((track) => probeFrameSource(track, decoderPort, options.deadline)),
+    frameSources.map((track) => probeFrameSource(track, decoderPort, deadline)),
   );
   return { canDecode: sources.every((source) => source.verdict === 'decodes'), sources };
 }

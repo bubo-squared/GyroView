@@ -113,8 +113,8 @@ describe('probeDecoding', () => {
     const port = new FakeVideoDecoderPort({ latencyTicks: 2 });
     const report = await probeDecoding(tracks([30, 30]), port, { deadline: new Signal() });
     expect(report.canDecode).toBe(true);
-    expect(report.lenses.map((lens) => lens.verdict)).toEqual(['decodes', 'decodes']);
-    expect(report.lenses[0]?.track.trackIndex).toBe(0);
+    expect(report.sources.map((lens) => lens.verdict)).toEqual(['decodes', 'decodes']);
+    expect(report.sources[0]?.track.trackIndex).toBe(0);
     expect(port.openFrames).toBe(0);
     expect(port.decodersCreated.every((decoder) => decoder.isClosed)).toBe(true);
   });
@@ -123,7 +123,7 @@ describe('probeDecoding', () => {
     const port = new FakeVideoDecoderPort({ unsupportedCodecs: ['fake.1'] });
     const report = await probeDecoding(tracks([30]), port, { deadline: new Signal() });
     expect(report.canDecode).toBe(false);
-    expect(report.lenses[0]).toMatchObject({
+    expect(report.sources[0]).toMatchObject({
       verdict: 'unsupported-configuration',
       detail: expect.stringContaining('fake.1') as string,
     });
@@ -134,7 +134,7 @@ describe('probeDecoding', () => {
     const port = new FakeVideoDecoderPort();
     const report = await probeDecoding(tracks([30, 0]), port, { deadline: new Signal() });
     expect(report.canDecode).toBe(false);
-    expect(report.lenses.map((lens) => lens.verdict)).toEqual(['decodes', 'no-key-frame']);
+    expect(report.sources.map((lens) => lens.verdict)).toEqual(['decodes', 'no-key-frame']);
   });
 
   it('maps a refused decoder creation onto the codec verdicts', async () => {
@@ -145,11 +145,11 @@ describe('probeDecoding', () => {
       probeDecoding(tracks([30]), unsupported, { deadline }),
       probeDecoding(tracks([30]), broken, { deadline }),
     ]);
-    expect(first.lenses[0]).toMatchObject({
+    expect(first.sources[0]).toMatchObject({
       verdict: 'unsupported-configuration',
       detail: 'no hevc here',
     });
-    expect(second.lenses[0]).toMatchObject({
+    expect(second.sources[0]).toMatchObject({
       verdict: 'decode-failed',
       detail: 'out of decoder instances',
     });
@@ -159,7 +159,10 @@ describe('probeDecoding', () => {
     const report = await probeDecoding(tracks([30]), new ErroringPort(), {
       deadline: new Signal(),
     });
-    expect(report.lenses[0]).toMatchObject({ verdict: 'decode-failed', detail: 'bitstream error' });
+    expect(report.sources[0]).toMatchObject({
+      verdict: 'decode-failed',
+      detail: 'bitstream error',
+    });
   });
 
   it('gives up on a stalled decoder when the deadline passes and closes it', async () => {
@@ -170,7 +173,7 @@ describe('probeDecoding', () => {
     deadline.trigger();
     const report = await pending;
     expect(report.canDecode).toBe(false);
-    expect(report.lenses.map((lens) => lens.verdict)).toEqual(['timed-out', 'timed-out']);
+    expect(report.sources.map((lens) => lens.verdict)).toEqual(['timed-out', 'timed-out']);
     expect(port.decoders.map((decoder) => decoder.isClosed)).toEqual([true, true]);
   });
 
@@ -181,7 +184,7 @@ describe('probeDecoding', () => {
     await Promise.resolve();
     deadline.trigger();
     const report = await pending;
-    expect(report.lenses[0]?.verdict).toBe('timed-out');
+    expect(report.sources[0]?.verdict).toBe('timed-out');
     port.gate.resolve();
     await new Promise((resolve) => setTimeout(resolve, 1));
     expect(port.decoders.map((decoder) => decoder.isClosed)).toEqual([true]);
@@ -189,7 +192,7 @@ describe('probeDecoding', () => {
 
   it('reports a decoder that accepts the key frame but never produces a picture as a failed decode', async () => {
     const report = await probeDecoding(tracks([30]), new SilentPort(), { deadline: new Signal() });
-    expect(report.lenses[0]).toMatchObject({
+    expect(report.sources[0]).toMatchObject({
       verdict: 'decode-failed',
       detail: expect.stringContaining('no picture') as string,
     });

@@ -4,7 +4,7 @@ import {
   conjugateQuaternion,
   equirectangularPixelOf,
   imuFrameFor,
-  LensDecodePipeline,
+  DecodePipeline,
   microseconds,
   OrientationTrack,
   rotateVector,
@@ -122,7 +122,7 @@ describe('stabilizing the real recordings', () => {
       await skipUnlessServed(context, sample);
       const opened = await openSample(sample);
       cleanups.push(opened.dispose);
-      await skipUnlessDecodable(context, opened.lensTracks);
+      await skipUnlessDecodable(context, opened.frameSources);
       const { recording } = opened;
       const calibration = recording.calibration.calibration;
       const gyro = await recording.readGyroRecord();
@@ -157,8 +157,8 @@ describe('stabilizing the real recordings', () => {
       });
 
       for (const time of RENDER_TIMES) {
-        const pipeline = new LensDecodePipeline<VideoFrame>(
-          opened.lensTracks,
+        const pipeline = new DecodePipeline<VideoFrame>(
+          opened.frameSources,
           port,
           PIPELINE_OPTIONS,
         );

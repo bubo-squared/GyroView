@@ -2,7 +2,8 @@ import type { DecodedFrame } from '../../ports/VideoDecoderPort';
 import type { Seconds } from '../../shared/units/time';
 
 /**
- * The decoded pictures of every lens for one instant, in lens order.
+ * The decoded pictures of every frame source for one instant, in frame source order (for a packed
+ * layout, one picture holds both lenses).
  */
 export interface FramePair<Handle = unknown> {
   readonly timestamp: Seconds;

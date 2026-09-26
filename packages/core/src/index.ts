@@ -231,16 +231,16 @@ export type {
 export { closeFramePair, type FramePair } from './application/playback/FramePair';
 export { FramePairQueue } from './application/playback/FramePairQueue';
 export {
-  LensDecodePipeline,
+  DecodePipeline,
   type DecodePipelineOptions,
   type DecodeRunReport,
-} from './application/playback/LensDecodePipeline';
+} from './application/playback/DecodePipeline';
 export {
   probeDecoding,
   type DecodeProbeOptions,
   type DecodeProbeReport,
-  type LensProbeResult,
-  type LensProbeVerdict,
+  type SourceProbeResult,
+  type ProbeVerdict,
 } from './application/playback/probeDecoding';
 export { Deferred } from './shared/async/Deferred';
 export { Signal } from './shared/async/Signal';

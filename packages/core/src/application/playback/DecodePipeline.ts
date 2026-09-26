@@ -14,7 +14,7 @@ export interface DecodePipelineOptions {
    */
   readonly maxPendingPackets: number;
   /**
-   * How far apart two lenses' timestamps may be and still count as one instant.
+   * How far apart two frame sources' timestamps may be and still count as one instant.
    */
   readonly pairTolerance: Seconds;
 }
@@ -58,24 +58,24 @@ interface Run<Handle> {
 const ABORTED = Symbol('aborted');
 
 /**
- * Decodes the lens tracks of a recording in lockstep from a chosen time: starts every decoder at
+ * Decodes the frame sources of a recording in lockstep from a chosen time: starts every decoder at
  * the key packet before that time, feeds packets round-robin with bounded decoder queues, pairs
  * the resulting frames and hands pairs to the output queue through a {@link StartGate}. One
  * instance runs once; the session creates a new one per run.
  */
-export class LensDecodePipeline<Handle = unknown> {
+export class DecodePipeline<Handle = unknown> {
   private readonly abortSignal = new Signal();
   private hasRun = false;
 
   public constructor(
-    private readonly lensTracks: readonly VideoTrackReader[],
+    private readonly frameSources: readonly VideoTrackReader[],
     private readonly decoderPort: VideoDecoderPort<Handle>,
     private readonly options: DecodePipelineOptions,
   ) {
-    if (lensTracks.length === 0) {
+    if (frameSources.length === 0) {
       throw new GyroViewError(
         'invariant-violation',
-        'a decode pipeline needs at least one lens track',
+        'a decode pipeline needs at least one frame source',
       );
     }
   }
@@ -114,7 +114,7 @@ export class LensDecodePipeline<Handle = unknown> {
       output.push(pair);
     });
     const pairer = new FramePairer<Handle>(
-      this.lensTracks.length,
+      this.frameSources.length,
       this.options.pairTolerance,
       (pair) => {
         gate.push(pair);
@@ -135,17 +135,17 @@ export class LensDecodePipeline<Handle = unknown> {
   }
 
   /**
-   * Opens one decoder per lens; if any refuses, the ones already open are closed again.
+   * Opens one decoder per frame source; if any refuses, the ones already open are closed again.
    */
   private async createDecoders(
     pairer: FramePairer<Handle>,
     onError: (error: Error) => void,
   ): Promise<VideoDecoderHandle[]> {
     const results = await Promise.allSettled(
-      this.lensTracks.map(async (track, lensIndex) =>
+      this.frameSources.map(async (track, sourceIndex) =>
         this.decoderPort.create(await track.decoderConfiguration(), {
           onFrame: (frame) => {
-            pairer.push(lensIndex, frame);
+            pairer.push(sourceIndex, frame);
           },
           onError,
         }),
@@ -181,8 +181,8 @@ export class LensDecodePipeline<Handle = unknown> {
     run: Run<Handle>,
     packets: readonly EncodedVideoPacket[],
   ): Promise<void> {
-    for (const [lensIndex, decoder] of run.decoders.entries()) {
-      const packet = packets[lensIndex];
+    for (const [sourceIndex, decoder] of run.decoders.entries()) {
+      const packet = packets[sourceIndex];
       if (!packet) continue;
       await Promise.race([
         decoder.waitForPendingBelow(this.options.maxPendingPackets),
@@ -196,7 +196,7 @@ export class LensDecodePipeline<Handle = unknown> {
 
   private packetIteratorsFrom(from: Seconds): Promise<PacketIterator[]> {
     return Promise.all(
-      this.lensTracks.map(async (track) => {
+      this.frameSources.map(async (track) => {
         const start = (await track.keyPacketAt(from)) ?? (await track.keyPacketAt(seconds(0)));
         if (!start) {
           throw new GyroViewError(
@@ -266,7 +266,7 @@ function toError(reason: unknown): Error {
 }
 
 /**
- * One packet per lens, or undefined as soon as any lens track is exhausted.
+ * One packet per frame source, or undefined as soon as any of them is exhausted.
  */
 async function nextRound(
   iterators: readonly PacketIterator[],

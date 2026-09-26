@@ -1,6 +1,6 @@
 import { MediabunnyAudioSegmenter } from '@gyroview/adapter-mediabunny';
 import { MediaSourceAudioClock } from '@gyroview/adapter-mse-audio';
-import { LensDecodePipeline, PlaybackSession, seconds } from '@gyroview/core';
+import { DecodePipeline, PlaybackSession, seconds } from '@gyroview/core';
 import { FakeFrameSink } from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -79,10 +79,10 @@ describe('the browser pipeline on the real X5 recordings', () => {
     const opened = await openSample(OFFICE_5K7_60);
     cleanups.push(opened.dispose);
     expect(opened.recording.info.model).toBe('Insta360 X5');
-    expect(opened.lensTracks).toHaveLength(2);
-    await skipUnlessDecodable(context, opened.lensTracks);
+    expect(opened.frameSources).toHaveLength(2);
+    await skipUnlessDecodable(context, opened.frameSources);
 
-    const pipeline = new LensDecodePipeline<VideoFrame>(opened.lensTracks, port, PIPELINE_OPTIONS);
+    const pipeline = new DecodePipeline<VideoFrame>(opened.frameSources, port, PIPELINE_OPTIONS);
     const pairs = await takePairs(pipeline, MID_FILE_START, PAIRS_TO_TAKE);
     try {
       const first = pairs[0]?.timestamp ?? NaN;
@@ -98,11 +98,11 @@ describe('the browser pipeline on the real X5 recordings', () => {
     await skipUnlessServed(context, OFFICE_5K7_60);
     const opened = await openSample(OFFICE_5K7_60);
     cleanups.push(opened.dispose);
-    await skipUnlessDecodable(context, opened.lensTracks);
+    await skipUnlessDecodable(context, opened.frameSources);
     const clock = await openAudioClock(opened, cleanups);
     const sink = new FakeFrameSink<VideoFrame>();
     const session = new PlaybackSession<VideoFrame>({
-      lensTracks: opened.lensTracks,
+      frameSources: opened.frameSources,
       decoderPort: port,
       clock,
       sink,
@@ -140,9 +140,9 @@ describe('the browser pipeline on the real X5 recordings', () => {
     await skipUnlessServed(context, SAILING_8K_30);
     const opened = await openSample(SAILING_8K_30);
     cleanups.push(opened.dispose);
-    await skipUnlessDecodable(context, opened.lensTracks);
+    await skipUnlessDecodable(context, opened.frameSources);
 
-    const pipeline = new LensDecodePipeline<VideoFrame>(opened.lensTracks, port, PIPELINE_OPTIONS);
+    const pipeline = new DecodePipeline<VideoFrame>(opened.frameSources, port, PIPELINE_OPTIONS);
     const pairs = await takePairs(pipeline, 0, 5);
     try {
       expect(pairs[0]?.timestamp).toBeCloseTo(0, 3);

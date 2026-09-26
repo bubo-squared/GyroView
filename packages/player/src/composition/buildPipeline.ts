@@ -204,7 +204,7 @@ function sessionFor(
   sink: FrameSink<VideoFrame>,
 ): PlaybackSession<VideoFrame> {
   return new PlaybackSession<VideoFrame>({
-    lensTracks: parts.opened.lensTracks,
+    frameSources: parts.opened.frameSources,
     decoderPort: parts.decoderPort,
     clock,
     sink,

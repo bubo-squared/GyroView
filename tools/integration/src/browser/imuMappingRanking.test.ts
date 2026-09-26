@@ -5,7 +5,7 @@ import {
   IDENTITY_MATRIX3,
   assumedImuFrame,
   imuFrameFor,
-  LensDecodePipeline,
+  DecodePipeline,
   LockStabilization,
   OrientationTrack,
   type FramePair,
@@ -122,8 +122,8 @@ async function measureStillness(parts: MeasurementParts): Promise<Measured> {
   const lock = new LockStabilization();
   let unstabilized = 0;
   for (const time of parts.times) {
-    const pipeline = new LensDecodePipeline<VideoFrame>(
-      parts.opened.lensTracks,
+    const pipeline = new DecodePipeline<VideoFrame>(
+      parts.opened.frameSources,
       port,
       PIPELINE_OPTIONS,
     );
@@ -166,7 +166,7 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
       await skipUnlessServed(context, sample);
       const opened = await openSample(sample);
       cleanups.push(opened.dispose);
-      await skipUnlessDecodable(context, opened.lensTracks);
+      await skipUnlessDecodable(context, opened.frameSources);
       const { recording } = opened;
       const calibration = recording.calibration.calibration;
       const gyro = await recording.readGyroRecord();

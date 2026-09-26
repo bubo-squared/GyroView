@@ -63,12 +63,12 @@ export async function openInputs(
   try {
     const demuxed = await demuxInputs(inputs, attempt, disposables);
     const layout = detectLensLayout(descriptionsOf(demuxed.inputs), demuxed.recording.layoutHints);
-    const lensTracks = lensFrameOrder(layout).map((key) => trackAt(demuxed.inputs, key));
+    const frameSources = lensFrameOrder(layout).map((key) => trackAt(demuxed.inputs, key));
     const calibration = calibrationOf(demuxed.recording);
-    await ensureDecodable(lensTracks, attempt);
-    const timing = await timingOf(demuxed.recording, lensTracks);
+    await ensureDecodable(frameSources, attempt);
+    const timing = await timingOf(demuxed.recording, frameSources);
     attempt.signal.throwIfAborted();
-    return assemble({ demuxed, layout, lensTracks, calibration, timing, attempt }, disposables);
+    return assemble({ demuxed, layout, frameSources, calibration, timing, attempt }, disposables);
   } catch (error) {
     disposables.disposeAll();
     throw error;
@@ -128,11 +128,11 @@ function calibrationOf(recording: Recording): OpenedRecording['calibration'] {
 }
 
 async function ensureDecodable(
-  lensTracks: readonly VideoTrackReader[],
+  frameSources: readonly VideoTrackReader[],
   attempt: OpenAttempt,
 ): Promise<void> {
   const { ports, signal } = attempt;
-  const report = await probeDecoding(lensTracks, ports.decoderPort, {
+  const report = await probeDecoding(frameSources, ports.decoderPort, {
     deadline: ports.probeDeadline(),
   });
   signal.throwIfAborted();
@@ -144,7 +144,7 @@ async function ensureDecodable(
 }
 
 function describeProbe(report: DecodeProbeReport): string {
-  return report.lenses
+  return report.sources
     .filter((lens) => lens.verdict !== 'decodes')
     .map(
       (lens) =>
@@ -155,10 +155,10 @@ function describeProbe(report: DecodeProbeReport): string {
 
 async function timingOf(
   recording: Recording,
-  lensTracks: readonly VideoTrackReader[],
+  frameSources: readonly VideoTrackReader[],
 ): Promise<Timing> {
   const clock = await captureClockOf(recording);
-  const [track] = lensTracks;
+  const [track] = frameSources;
   if (!clock || !track) return withoutTiming([NO_CLOCK_WARNING]);
   const [frames, motion] = await Promise.all([
     frameTimesFor(recording, track, clock),
@@ -192,21 +192,21 @@ async function captureClockOf(recording: Recording): Promise<CaptureClock | unde
 interface AssemblyParts {
   readonly demuxed: DemuxedRecording;
   readonly layout: OpenedRecording['layout'];
-  readonly lensTracks: readonly VideoTrackReader[];
+  readonly frameSources: readonly VideoTrackReader[];
   readonly calibration: OpenedRecording['calibration'];
   readonly timing: Timing;
   readonly attempt: OpenAttempt;
 }
 
 function assemble(parts: AssemblyParts, disposables: Disposables): OpenedRecording {
-  const { demuxed, layout, lensTracks, calibration, timing, attempt } = parts;
+  const { demuxed, layout, frameSources, calibration, timing, attempt } = parts;
   const [primary] = demuxed.inputs;
   const duration = seconds(Math.min(...demuxed.inputs.map((input) => input.duration)));
   const audioTrack = primary?.audioTracks[0];
   return {
     recording: demuxed.recording,
     layout,
-    lensTracks,
+    frameSources,
     calibration,
     duration,
     frameTimes: timing.frameTimes,
@@ -227,7 +227,7 @@ function metadataOf(parts: AssemblyParts, duration: Seconds, hasAudio: boolean):
     captureMode: info.captureMode,
     layout: parts.layout.kind,
     layoutEvidence: parts.layout.evidence,
-    tracks: parts.lensTracks.map((track) => track.description),
+    tracks: parts.frameSources.map((track) => track.description),
     calibrationVersion: parts.calibration.version,
     frameTimeSource: parts.timing.frameTimeSource,
     hasGyro: motion !== undefined,

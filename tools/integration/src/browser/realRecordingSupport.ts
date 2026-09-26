@@ -11,7 +11,7 @@ import {
   Signal,
   type DemuxedInput,
   type FramePair,
-  type LensDecodePipeline,
+  type DecodePipeline,
   type LensLayout,
   type Recording,
   type VideoTrackReader,
@@ -40,7 +40,7 @@ export interface OpenedRecording {
   /**
    * One reader per distinct track the layout draws from, in the order pairs are presented.
    */
-  readonly lensTracks: readonly VideoTrackReader[];
+  readonly frameSources: readonly VideoTrackReader[];
   readonly dispose: () => void;
 }
 
@@ -52,7 +52,7 @@ export async function openSample(sample: SampleRecording): Promise<OpenedRecordi
     [{ name: input.name, videoTracks: input.videoTracks.map((track) => track.description) }],
     recording.layoutHints,
   );
-  const lensTracks = lensFrameOrder(layout).map((source) => {
+  const frameSources = lensFrameOrder(layout).map((source) => {
     const track = input.videoTracks[source.trackIndex];
     if (!track) throw new Error(`layout points at missing track ${source.trackIndex}`);
     return track;
@@ -61,7 +61,7 @@ export async function openSample(sample: SampleRecording): Promise<OpenedRecordi
     recording,
     input,
     layout,
-    lensTracks,
+    frameSources,
     dispose: (): void => {
       input.dispose();
     },
@@ -81,15 +81,17 @@ export async function skipUnlessServed(
  */
 export async function skipUnlessDecodable(
   context: TestContext,
-  lensTracks: readonly VideoTrackReader[],
+  frameSources: readonly VideoTrackReader[],
 ): Promise<void> {
-  const probe = await probeDecoding(lensTracks, port, { deadline: deadlineIn(PROBE_DEADLINE_MS) });
+  const probe = await probeDecoding(frameSources, port, {
+    deadline: deadlineIn(PROBE_DEADLINE_MS),
+  });
   if (probe.canDecode) return;
-  const verdicts = probe.lenses.map((lens) => lens.verdict);
+  const verdicts = probe.sources.map((source) => source.verdict);
   if (verdicts.every((verdict) => verdict === 'unsupported-configuration')) {
     context.skip('this browser build cannot decode the recording (no HEVC decoder)');
   }
-  throw new Error(`the recording does not decode here: ${JSON.stringify(probe.lenses)}`);
+  throw new Error(`the recording does not decode here: ${JSON.stringify(probe.sources)}`);
 }
 
 function deadlineIn(ms: number): Signal {
@@ -122,7 +124,7 @@ export async function waitFor(
  * Takes the first `count` pairs the pipeline delivers from `from`, then aborts it.
  */
 export async function takePairs(
-  pipeline: LensDecodePipeline<VideoFrame>,
+  pipeline: DecodePipeline<VideoFrame>,
   from: number,
   count: number,
 ): Promise<FramePair<VideoFrame>[]> {

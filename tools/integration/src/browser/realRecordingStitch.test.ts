@@ -1,7 +1,7 @@
 import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
-  LensDecodePipeline,
+  DecodePipeline,
   type CalibrationSet,
   type FramePair,
   type LensStitch,
@@ -75,10 +75,10 @@ async function stitchOneFrame(
   await skipUnlessServed(context, sample);
   const opened = await openSample(sample);
   cleanups.push(opened.dispose);
-  await skipUnlessDecodable(context, opened.lensTracks);
+  await skipUnlessDecodable(context, opened.frameSources);
   const calibration = opened.recording.calibration.calibration;
   if (!calibration) throw new Error(`${sample.name} carries no calibration`);
-  const pipeline = new LensDecodePipeline<VideoFrame>(opened.lensTracks, port, PIPELINE_OPTIONS);
+  const pipeline = new DecodePipeline<VideoFrame>(opened.frameSources, port, PIPELINE_OPTIONS);
   const pairs = await takePairs(pipeline, RENDER_TIME, 1);
   cleanups.push(() => {
     closeAll(pairs);

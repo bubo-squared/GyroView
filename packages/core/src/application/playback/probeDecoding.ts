@@ -10,12 +10,12 @@ import type { Signal } from '../../shared/async/Signal';
 import { GyroViewError, messageOf } from '../../shared/errors/GyroViewError';
 import { seconds } from '../../shared/units/time';
 
-export type LensProbeVerdict =
+export type ProbeVerdict =
   'decodes' | 'unsupported-configuration' | 'no-key-frame' | 'decode-failed' | 'timed-out';
 
-export interface LensProbeResult {
+export interface SourceProbeResult {
   readonly track: VideoTrackDescription;
-  readonly verdict: LensProbeVerdict;
+  readonly verdict: ProbeVerdict;
   /**
    * What went wrong, worded for the message shown to the embedder.
    */
@@ -24,21 +24,21 @@ export interface LensProbeResult {
 
 export interface DecodeProbeReport {
   /**
-   * True when every lens track decoded its first key frame.
+   * True when every frame source decoded its first key frame.
    */
   readonly canDecode: boolean;
-  readonly lenses: readonly LensProbeResult[];
+  readonly sources: readonly SourceProbeResult[];
 }
 
 export interface DecodeProbeOptions {
   /**
-   * Triggered by the host once the probe has taken too long (the core has no timers). Lenses
+   * Triggered by the host once the probe has taken too long (the core has no timers). Sources
    * still undecided then report `timed-out` and their decoders are closed.
    */
   readonly deadline: Signal;
 }
 
-type Outcome = Pick<LensProbeResult, 'verdict' | 'detail'>;
+type Outcome = Pick<SourceProbeResult, 'verdict' | 'detail'>;
 
 const DECODES: Outcome = { verdict: 'decodes', detail: undefined };
 const NO_KEY_FRAME: Outcome = { verdict: 'no-key-frame', detail: 'the track has no key frame' };
@@ -53,27 +53,27 @@ const TIMED_OUT: Outcome = {
 
 /**
  * Use case: find out before playback whether this platform decodes the recording, by decoding
- * the first key frame of every lens track. The decoder port's `isSupported` alone is not
+ * the first key frame of every frame source. The decoder port's `isSupported` alone is not
  * trusted: platforms answer yes and then fail, and hardware decoders can stall, hence the real
  * decode under a deadline.
  */
 export async function probeDecoding<Handle>(
-  lensTracks: readonly VideoTrackReader[],
+  frameSources: readonly VideoTrackReader[],
   decoderPort: VideoDecoderPort<Handle>,
   options: DecodeProbeOptions,
 ): Promise<DecodeProbeReport> {
-  const lenses = await Promise.all(
-    lensTracks.map((track) => probeLens(track, decoderPort, options.deadline)),
+  const sources = await Promise.all(
+    frameSources.map((track) => probeFrameSource(track, decoderPort, options.deadline)),
   );
-  return { canDecode: lenses.every((lens) => lens.verdict === 'decodes'), lenses };
+  return { canDecode: sources.every((source) => source.verdict === 'decodes'), sources };
 }
 
-async function probeLens<Handle>(
+async function probeFrameSource<Handle>(
   track: VideoTrackReader,
   decoderPort: VideoDecoderPort<Handle>,
   deadline: Signal,
-): Promise<LensProbeResult> {
-  const probe = new LensProbe(track, decoderPort);
+): Promise<SourceProbeResult> {
+  const probe = new SourceProbe(track, decoderPort);
   try {
     const outcome = await Promise.race([probe.run(), afterDeadline(deadline)]);
     return { track: track.description, ...outcome };
@@ -88,9 +88,9 @@ async function afterDeadline(deadline: Signal): Promise<Outcome> {
 }
 
 /**
- * One lens track's probe: owns the decoder it opens so a deadline can close it from outside.
+ * One frame source's probe: owns the decoder it opens so a deadline can close it from outside.
  */
-class LensProbe<Handle> {
+class SourceProbe<Handle> {
   private decoder: VideoDecoderHandle | undefined;
   private isClosed = false;
 

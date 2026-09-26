@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { FramePair } from './FramePair';
 import { FramePairQueue } from './FramePairQueue';
-import { LensDecodePipeline } from './LensDecodePipeline';
+import { DecodePipeline } from './DecodePipeline';
 import { seconds } from '../../shared/units/time';
 import { fakeFrameNumberOf, FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import type { VideoDecoderConfiguration } from '../../ports/Demuxer';
@@ -69,10 +69,10 @@ function closeLast(taken: readonly FramePair<FakeFrameHandle>[]): void {
   for (const frame of frames) frame.close();
 }
 
-describe('LensDecodePipeline', () => {
+describe('DecodePipeline', () => {
   it('decodes both lenses in lockstep and delivers every pair in order from the start', async () => {
     const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     const run = pipeline.run(seconds(0), queue);
@@ -96,7 +96,7 @@ describe('LensDecodePipeline', () => {
 
   it('starts at the preceding key frame and keeps only the last pair before the requested time', async () => {
     const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     const run = pipeline.run(seconds(1.25), queue);
@@ -111,7 +111,7 @@ describe('LensDecodePipeline', () => {
 
   it('never lets a decoder hold more than the configured pending packets', async () => {
     const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 4 });
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(8);
 
     const run = pipeline.run(seconds(0), queue);
@@ -125,7 +125,7 @@ describe('LensDecodePipeline', () => {
 
   it('pauses when the pair queue is full and resumes as pairs are consumed', async () => {
     const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(2);
 
     const run = pipeline.run(seconds(0), queue);
@@ -139,7 +139,7 @@ describe('LensDecodePipeline', () => {
 
   it('stops cleanly mid-stream without leaking frames', async () => {
     const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     const run = pipeline.run(seconds(0), queue);
@@ -156,7 +156,7 @@ describe('LensDecodePipeline', () => {
     const [front] = twoLensTracks(FRAMES);
     const [back] = twoLensTracks(FRAMES - 5);
     const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
-    const pipeline = new LensDecodePipeline([front!, back!], decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline([front!, back!], decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     const run = pipeline.run(seconds(0), queue);
@@ -170,7 +170,7 @@ describe('LensDecodePipeline', () => {
 
   it('stops feeding once the output queue is closed', async () => {
     const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
     queue.close();
 
@@ -181,14 +181,14 @@ describe('LensDecodePipeline', () => {
   });
 
   it('rejects construction without any lens track', () => {
-    expect(() => new LensDecodePipeline([], new FakeVideoDecoderPort(), OPTIONS)).toThrow(
+    expect(() => new DecodePipeline([], new FakeVideoDecoderPort(), OPTIONS)).toThrow(
       expect.objectContaining({ code: 'invariant-violation' }) as Error,
     );
   });
 
   it('rejects when a decoder fails mid-stream, closing every decoder and frame', async () => {
     const decoderPort = new FakeVideoDecoderPort({ ...DECODER_LATENCY, failAtPacket: 15 });
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     const run = pipeline.run(seconds(0), queue);
@@ -202,7 +202,7 @@ describe('LensDecodePipeline', () => {
 
   it('rejects when a decoder fails on its very last packet instead of reporting success', async () => {
     const decoderPort = new FakeVideoDecoderPort({ ...DECODER_LATENCY, failAtPacket: FRAMES });
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     const run = pipeline.run(seconds(0), queue);
@@ -214,7 +214,7 @@ describe('LensDecodePipeline', () => {
 
   it('closes the decoders it opened when another lens refuses to open', async () => {
     const decoderPort = new RefusingSecondLensPort();
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     await expect(pipeline.run(seconds(0), queue)).rejects.toMatchObject({
@@ -225,7 +225,7 @@ describe('LensDecodePipeline', () => {
   });
 
   it('rejects with no-key-frame when a track has no key frame', async () => {
-    const pipeline = new LensDecodePipeline(
+    const pipeline = new DecodePipeline(
       twoLensTracks(0),
       new FakeVideoDecoderPort(DECODER_LATENCY),
       OPTIONS,
@@ -237,7 +237,7 @@ describe('LensDecodePipeline', () => {
 
   it('delivers the last pair of the track when started past its last frame', async () => {
     const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     const run = pipeline.run(seconds(3.5), queue);
@@ -255,7 +255,7 @@ describe('LensDecodePipeline', () => {
 
   it('aborted before running, it ends at once without decoding and closes its decoders', async () => {
     const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     pipeline.abort();
 
     const report = await pipeline.run(seconds(0), new FramePairQueue<FakeFrameHandle>(4));
@@ -266,7 +266,7 @@ describe('LensDecodePipeline', () => {
 
   it('an abort resets the decoders instead of draining them', async () => {
     const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 6 });
-    const pipeline = new LensDecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     const run = pipeline.run(seconds(0), queue);
@@ -282,7 +282,7 @@ describe('LensDecodePipeline', () => {
   });
 
   it('runs only once', async () => {
-    const pipeline = new LensDecodePipeline(
+    const pipeline = new DecodePipeline(
       twoLensTracks(),
       new FakeVideoDecoderPort(DECODER_LATENCY),
       OPTIONS,

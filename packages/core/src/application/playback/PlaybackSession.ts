@@ -1,10 +1,6 @@
 import { closeFramePair, type FramePair } from './FramePair';
 import { FramePairQueue } from './FramePairQueue';
-import {
-  LensDecodePipeline,
-  type DecodePipelineOptions,
-  type DecodeRunReport,
-} from './LensDecodePipeline';
+import { DecodePipeline, type DecodePipelineOptions, type DecodeRunReport } from './DecodePipeline';
 import type { FrameTimes } from '../../domain/motion/timing/FrameTimes';
 import { PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
 import type { VideoTrackReader } from '../../ports/Demuxer';
@@ -29,9 +25,9 @@ export interface PlaybackSessionEvents {
  */
 export interface PlaybackSessionParts<Handle> {
   /**
-   * One reader per lens, in lens order.
+   * One reader per frame source, in the order of `lensFrameOrder`.
    */
-  readonly lensTracks: readonly VideoTrackReader[];
+  readonly frameSources: readonly VideoTrackReader[];
   readonly decoderPort: VideoDecoderPort<Handle>;
   readonly clock: PlaybackClock;
   readonly sink: FrameSink<Handle>;
@@ -73,7 +69,7 @@ export class PlaybackSession<Handle = unknown> {
    * are dropped, never presented as if they belonged to the run that replaced it.
    */
   private queue: FramePairQueue<Handle>;
-  private pipeline: LensDecodePipeline<Handle> | undefined;
+  private pipeline: DecodePipeline<Handle> | undefined;
   private presented: FramePair<Handle> | undefined;
   private hasDecodedToEnd = false;
   /**
@@ -161,7 +157,7 @@ export class PlaybackSession<Handle = unknown> {
    * without decoding a whole group of pictures first.
    */
   public async scrub(time: Seconds): Promise<void> {
-    const [track] = this.parts.lensTracks;
+    const [track] = this.parts.frameSources;
     if (!track || this.machine.isOneOf('disposed', 'error')) return;
     const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
     const keyPacket = await track.keyPacketAt(target);
@@ -300,8 +296,8 @@ export class PlaybackSession<Handle = unknown> {
       if (queue === this.queue) this.resumeIfPrimed();
     });
     this.queue = queue;
-    const pipeline = new LensDecodePipeline<Handle>(
-      this.parts.lensTracks,
+    const pipeline = new DecodePipeline<Handle>(
+      this.parts.frameSources,
       this.parts.decoderPort,
       this.parts.pipeline,
     );
@@ -314,7 +310,7 @@ export class PlaybackSession<Handle = unknown> {
    * the session.
    */
   private async followRun(
-    pipeline: LensDecodePipeline<Handle>,
+    pipeline: DecodePipeline<Handle>,
     run: Promise<DecodeRunReport>,
   ): Promise<void> {
     try {

@@ -93,7 +93,7 @@ describe('openRecording', () => {
 
     expect(opened.layout.kind).toBe('multi-track');
     // The X5 info record says track 0 is the screen-side lens, so lens 0 is track 1.
-    expect(opened.lensTracks.map((track) => track.description.trackIndex)).toEqual([1, 0]);
+    expect(opened.frameSources.map((track) => track.description.trackIndex)).toEqual([1, 0]);
     expect(opened.calibration.version).toBe(CalibrationVersion.Mei);
     expect(opened.duration).toBe(3);
     expect(opened.frameTimes?.frameCount).toBe(30);

@@ -1,7 +1,7 @@
 import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
 import {
   FramePairQueue,
-  LensDecodePipeline,
+  DecodePipeline,
   seconds,
   type DemuxedInput,
   type EncodedVideoPacket,
@@ -89,7 +89,7 @@ describe('WebCodecsVideoDecoderPort', () => {
   });
 
   it('decodes both lens tracks through the pipeline into paired VideoFrames', async () => {
-    const pipeline = new LensDecodePipeline(input.videoTracks, port, PIPELINE_OPTIONS);
+    const pipeline = new DecodePipeline(input.videoTracks, port, PIPELINE_OPTIONS);
     const queue = new FramePairQueue<VideoFrame>(4);
     const run = pipeline.run(seconds(0), queue);
     const pairs = await drain(queue, run);
@@ -109,7 +109,7 @@ describe('WebCodecsVideoDecoderPort', () => {
   });
 
   it('decodes from the preceding key frame, so a run from mid-GOP shows the frame due then', async () => {
-    const pipeline = new LensDecodePipeline(input.videoTracks, port, PIPELINE_OPTIONS);
+    const pipeline = new DecodePipeline(input.videoTracks, port, PIPELINE_OPTIONS);
     const queue = new FramePairQueue<VideoFrame>(4);
     const run = pipeline.run(seconds(1.25), queue);
     const pairs = await drain(queue, run);
@@ -121,7 +121,7 @@ describe('WebCodecsVideoDecoderPort', () => {
 
   it('never holds more packets in a decoder than the pipeline allows', async () => {
     const observed = new PendingObservingPort(port);
-    const pipeline = new LensDecodePipeline(input.videoTracks, observed, {
+    const pipeline = new DecodePipeline(input.videoTracks, observed, {
       ...PIPELINE_OPTIONS,
       maxPendingPackets: 2,
     });

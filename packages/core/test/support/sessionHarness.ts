@@ -43,7 +43,7 @@ export interface SessionHarnessOptions {
   readonly parts?: Partial<PlaybackSessionParts<FakeFrameHandle>>;
 }
 
-function lensTracks(frameCount = FRAMES): FakeVideoTrack[] {
+function frameSources(frameCount = FRAMES): FakeVideoTrack[] {
   return [0, 1].map(
     (trackIndex) =>
       new FakeVideoTrack({
@@ -67,7 +67,7 @@ export function sessionHarness(options: SessionHarnessOptions = {}): SessionHarn
   const sink = new FakeFrameSink<FakeFrameHandle>();
   const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 1, ...options.decoder });
   const session = new PlaybackSession<FakeFrameHandle>({
-    lensTracks: lensTracks(),
+    frameSources: frameSources(),
     decoderPort,
     clock,
     sink,

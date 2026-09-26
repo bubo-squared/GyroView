@@ -4,8 +4,8 @@ import { ensureIndexInRange } from '../../shared/errors/GyroViewError';
 import { seconds, type Seconds } from '../../shared/units/time';
 
 /**
- * Buffers decoded frames per lens and emits a {@link FramePair} as soon as every lens has a frame
- * for the same instant. Lens tracks of one recording share the camera clock, so their timestamps
+ * Buffers decoded frames per frame source and emits a {@link FramePair} as soon as every source has a frame
+ * for the same instant. The tracks of one recording share the camera clock, so their timestamps
  * agree exactly; the tolerance only absorbs floating-point conversion noise.
  */
 export class FramePairer<Handle = unknown> {
@@ -13,23 +13,23 @@ export class FramePairer<Handle = unknown> {
   private unpairedCount = 0;
 
   public constructor(
-    lensCount: number,
+    sourceCount: number,
     private readonly tolerance: Seconds,
     private readonly onPair: (pair: FramePair<Handle>) => void,
   ) {
-    this.queues = Array.from({ length: lensCount }, () => []);
+    this.queues = Array.from({ length: sourceCount }, () => []);
   }
 
   /**
-   * Frames dropped because no other lens ever produced a matching instant.
+   * Frames dropped because no other source ever produced a matching instant.
    */
   public get unpaired(): number {
     return this.unpairedCount;
   }
 
-  public push(lensIndex: number, frame: DecodedFrame<Handle>): void {
-    ensureIndexInRange(lensIndex, this.queues.length, 'lens');
-    this.queues[lensIndex]?.push(frame);
+  public push(sourceIndex: number, frame: DecodedFrame<Handle>): void {
+    ensureIndexInRange(sourceIndex, this.queues.length, 'frame source');
+    this.queues[sourceIndex]?.push(frame);
     this.drain();
   }
 

@@ -21,7 +21,7 @@ export interface OpenedRecording {
   /**
    * One reader per decoded frame of a pair, in the order the stitching setup expects.
    */
-  readonly lensTracks: readonly VideoTrackReader[];
+  readonly frameSources: readonly VideoTrackReader[];
   readonly calibration: CalibrationSet;
   readonly duration: Seconds;
   readonly frameTimes: FrameTimes | undefined;

@@ -89,8 +89,8 @@ Use cases that orchestrate the domain through ports.
 - `recording/readRecording` opens a `RandomAccessSource` and reads everything cheap: boxes,
   trailer, info record, calibration choice. The result, `Recording`, reads the large gyro and
   exposure records on demand. `locateCompanions` looks for the proxy and the other lens file.
-- `playback/LensDecodePipeline` runs one lockstep decode of all lens tracks from a time: one
-  decoder per track, packets fed under backpressure, frames paired by timestamp
+- `playback/DecodePipeline` runs one lockstep decode of all frame sources from a time: one
+  decoder per source, packets fed under backpressure, frames paired by timestamp
   (`FramePairer`), pairs before the start dropped by the `StartGate`, output into a
   `FramePairQueue`.
 - `playback/PlaybackSession` is the transport: it drives a pipeline in step with a
@@ -221,7 +221,7 @@ recordings; the integration suite adds the real files and writes renders to `.ar
 (bytes through `SourceOpener`, `readRecording`, demux, layout, calibration, probe, timing,
 motion) → `buildPipeline` (clock, `ThreeFrameRenderer`, `StabilizingFrameSink`,
 `PlaybackSession`) → `ready` event → `preload` shows the first frame → `play` → the session
-starts a `LensDecodePipeline`, waits in `buffering` for two pairs, starts the clock → on each
+starts a `DecodePipeline`, waits in `buffering` for two pairs, starts the clock → on each
 animation frame `tick` takes the pair due, the stabilizing sink sets the rotation for its
 mid-exposure orientation, the renderer uploads the frames and draws one stitched pass; every
 half second the gain-match pass measures the seam and adjusts the lens gains.

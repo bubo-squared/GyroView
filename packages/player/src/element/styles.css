@@ -51,10 +51,14 @@ canvas {
   width: 100%;
   height: 100%;
   touch-action: none;
+}
+
+/* The hand only where a drag moves the picture: the raw lenses stay put until zoomed in. */
+canvas[data-draggable] {
   cursor: grab;
 }
 
-canvas:active {
+canvas[data-draggable]:active {
   cursor: grabbing;
 }
 

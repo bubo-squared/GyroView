@@ -1,9 +1,9 @@
-import { zoomStepsForPinch } from '@gyroview/core';
+import { zoomStepsForPinch, type ScreenPoint } from '@gyroview/core';
 
 import type { Player } from '../player/Player';
 
 /**
- * A pointer's position on the viewport, in CSS pixels.
+ * A pointer's position on the page, in CSS pixels.
  */
 interface Point {
   readonly x: number;
@@ -11,9 +11,9 @@ interface Point {
 }
 
 /**
- * What the gestures move.
+ * What the gestures move, and whether a drag would move it.
  */
-type GestureTarget = Pick<Player, 'pan' | 'zoom'>;
+type GestureTarget = Pick<Player, 'pan' | 'zoom' | 'canPan'>;
 
 /**
  * A wheel notch on most mice reports about 100 pixels; one notch is one zoom step.
@@ -25,8 +25,10 @@ const WHEEL_PIXELS_PER_STEP = 100;
 const TAP_TOLERANCE_PIXELS = 4;
 
 /**
- * Turns pointer drags, two-finger pinches and wheel turns on the surface into view changes,
- * and reports a tap (a press without a drag) for the host to treat as a play toggle.
+ * Turns pointer drags, two-finger pinches and wheel turns on the surface into view changes, the
+ * zooms toward the pointer or the fingers, and reports a tap (a press without a drag) for the
+ * host to treat as a play toggle. Whether a drag would move the picture is checked whenever the
+ * pointer moves over the surface, so the cursor shows a hand only then.
  */
 export class ViewGestures {
   private readonly pointers = new Map<number, Point>();
@@ -37,6 +39,7 @@ export class ViewGestures {
     private readonly player: GestureTarget,
     private readonly onTap: () => void,
   ) {
+    surface.addEventListener('pointerenter', this.showDraggable);
     surface.addEventListener('pointerdown', this.onPointerDown);
     surface.addEventListener('pointermove', this.onPointerMove);
     surface.addEventListener('pointerup', this.onPointerUp);
@@ -51,6 +54,7 @@ export class ViewGestures {
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
+    this.showDraggable();
     const previous = this.pointers.get(event.pointerId);
     if (!previous) return;
     const current = { x: event.clientX, y: event.clientY };
@@ -67,7 +71,18 @@ export class ViewGestures {
 
   private readonly onWheel = (event: WheelEvent): void => {
     event.preventDefault();
-    this.player.zoom(-event.deltaY / WHEEL_PIXELS_PER_STEP);
+    const pointer = { x: event.clientX, y: event.clientY };
+    this.player.zoom(-event.deltaY / WHEEL_PIXELS_PER_STEP, this.focusAt(pointer));
+    this.showDraggable();
+  };
+
+  /**
+   * `data-draggable` on the surface while a drag would move the picture: the stylesheet shows the
+   * grab hand for it.
+   */
+  private readonly showDraggable = (): void => {
+    if (this.player.canPan) this.surface.dataset['draggable'] = '';
+    else delete this.surface.dataset['draggable'];
   };
 
   private pan(previous: Point, current: Point): void {
@@ -85,7 +100,19 @@ export class ViewGestures {
       distanceBetween(previous, other),
       distanceBetween(current, other),
     );
-    this.player.zoom(steps);
+    const between = { x: (current.x + other.x) / 2, y: (current.y + other.y) / 2 };
+    this.player.zoom(steps, this.focusAt(between));
+  }
+
+  /**
+   * A point of the page as fractions of the surface, from its top-left corner.
+   */
+  private focusAt(point: Point): ScreenPoint {
+    const bounds = this.surface.getBoundingClientRect();
+    return {
+      x: (point.x - bounds.left) / Math.max(bounds.width, 1),
+      y: (point.y - bounds.top) / Math.max(bounds.height, 1),
+    };
   }
 }
 

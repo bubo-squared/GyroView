@@ -68,6 +68,22 @@ function menuOf(element: GyroViewElement, name: string): { choices: string[]; ch
 }
 
 /**
+ * A wheel notch toward the screen (zoom in) over a point of the canvas, given as fractions of it.
+ */
+function wheelOver(canvas: HTMLCanvasElement, at: { x: number; y: number }): void {
+  const bounds = canvas.getBoundingClientRect();
+  canvas.dispatchEvent(
+    new WheelEvent('wheel', {
+      deltaY: -100,
+      clientX: bounds.left + at.x * bounds.width,
+      clientY: bounds.top + at.y * bounds.height,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+}
+
+/**
  * A key pressed on a control inside the shadow tree, as the browser dispatches it.
  */
 function pressKey(target: Element, key: string): KeyboardEvent {
@@ -243,15 +259,37 @@ describe('<gyro-view>', () => {
     // 64 px of a 256 px wide 90-degree view: a quarter of the field, dragged right turns left.
     expect(views).toEqual([-22.5]);
 
-    canvas.dispatchEvent(
-      new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true }),
-    );
+    wheelOver(canvas, { x: 0.5, y: 0.5 });
     expect(element.view.fieldOfView).toBeCloseTo(90 / 1.1, 6);
 
     const playing = nextEvent(element, 'play');
     canvas.dispatchEvent(pointer('pointerdown', { x: 10, y: 10 }));
     canvas.dispatchEvent(pointer('pointerup', { x: 11, y: 10 }));
     await playing;
+  });
+
+  it('zooms toward the pointer: a wheel over the right edge turns the view right as it narrows', async () => {
+    const element = await createReady();
+    wheelOver(control(element, 'canvas', HTMLCanvasElement), { x: 0.95, y: 0.5 });
+    expect(element.view.fieldOfView).toBeCloseTo(90 / 1.1, 6);
+    expect(element.view.yaw).toBeGreaterThan(0);
+  });
+
+  it('shows a hand over the picture only where a drag moves it', async () => {
+    const element = await createReady();
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    const hover = (): void => {
+      canvas.dispatchEvent(pointer('pointermove', { x: 50, y: 50 }));
+    };
+    hover();
+    expect(getComputedStyle(canvas).cursor).toBe('grab');
+
+    element.setViewMode('raw-lenses');
+    hover();
+    expect(getComputedStyle(canvas).cursor).not.toBe('grab');
+
+    wheelOver(canvas, { x: 0.25, y: 0.5 });
+    expect(getComputedStyle(canvas).cursor).toBe('grab');
   });
 
   it('applies view and playback attributes without reloading', async () => {

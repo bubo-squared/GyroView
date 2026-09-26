@@ -75,11 +75,18 @@ const TRUTHY = new Set(['1', 'true', 'yes', '']);
 
 /**
  * A URL the embedding page wrote, made absolute against the page (`pageUrl`, its base URL): the
- * frame, on another host, would read a relative one against its own. Anything but a string passes
- * on unchanged, for the frame to refuse.
+ * frame, on another host, would read a relative one against its own. What the element would not
+ * resolve passes on as written, as the element passes it on: a blank value, which means none,
+ * one that does not parse, for the load to fail on and report, and anything but a string, for
+ * the frame to refuse.
  */
 export function absoluteUrl<Value>(value: Value, pageUrl: string): Value | string {
-  return typeof value === 'string' ? new URL(value, pageUrl).href : value;
+  if (typeof value !== 'string' || value.trim() === '') return value;
+  try {
+    return new URL(value, pageUrl).href;
+  } catch {
+    return value;
+  }
 }
 
 /**

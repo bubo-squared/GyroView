@@ -57,11 +57,12 @@ export class EmbedHandle {
   private isDestroyed = false;
 
   /**
-   * `pageUrl` is the embedding page's base URL, against which the URLs it loads are resolved.
+   * `pageUrl` gives the embedding page's base URL when a load is asked for, against which its
+   * URLs are resolved: a single-page app may have moved on since the embed.
    */
   public constructor(
     private readonly endpoint: Endpoint,
-    private readonly pageUrl: string,
+    private readonly pageUrl: () => string,
   ) {
     this.stopReceiving = endpoint.receive((message) => {
       this.onMessage(message);
@@ -134,8 +135,8 @@ export class EmbedHandle {
     const { src2 } = request;
     return this.command('load', {
       ...request,
-      src: absoluteUrl(request.src, this.pageUrl),
-      ...(src2 !== undefined && { src2: absoluteUrl(src2, this.pageUrl) }),
+      src: absoluteUrl(request.src, this.pageUrl()),
+      ...(src2 !== undefined && { src2: absoluteUrl(src2, this.pageUrl()) }),
     });
   }
 

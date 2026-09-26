@@ -31,7 +31,7 @@ describe('the embed bridge over a message channel', () => {
     for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
     document.body.append(element);
     const channel = new MessageChannel();
-    const handle = new EmbedHandle(portEndpoint(channel.port2), location.href);
+    const handle = new EmbedHandle(portEndpoint(channel.port2), () => location.href);
     const host = new EmbedHost(element, portEndpoint(channel.port1));
     const created = { element, host, handle };
     bridges.push(created);
@@ -88,6 +88,14 @@ describe('the embed bridge over a message channel', () => {
     expect(state.currentTime).toBe(2);
     expect(state.isPaused).toBe(true);
     expect(heard).toEqual(['play', 'pause', 'seeking', 'seeked']);
+  });
+
+  it('unloads the frame on a load of a blank source', async () => {
+    const { handle, element } = bridge();
+    await handle.load({ src: recordingUrl });
+    await handle.load({ src: '' });
+    expect(element.hasAttribute('src') && element.getAttribute('src') !== '').toBe(false);
+    await waitFor(() => handle.state.status === 'idle', 'the unload');
   });
 
   it('changes the view, view mode, stabilization and loop over the channel, reading choices as the element does', async () => {
@@ -169,7 +177,7 @@ describe('the embed bridge over a message channel', () => {
 
   it('queues commands until the frame says hello, even an older frame that sends no state', async () => {
     const channel = new MessageChannel();
-    const handle = new EmbedHandle(portEndpoint(channel.port2), location.href);
+    const handle = new EmbedHandle(portEndpoint(channel.port2), () => location.href);
     const received: ProtocolMessage[] = [];
     const hostSide = portEndpoint(channel.port1);
     hostSide.receive((message) => {

@@ -65,7 +65,7 @@ export function embed(
       peerOrigin: frameOrigin,
       listenOn: globalThis as Window & typeof globalThis,
     }),
-    pageUrl,
+    () => document.baseURI,
   );
   return {
     iframe,

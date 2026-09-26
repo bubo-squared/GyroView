@@ -73,4 +73,12 @@ describe('withAbsoluteUrls', () => {
       yaw: 5,
     });
   });
+
+  it('passes on as written what the element would not resolve: a blank value, a URL that does not parse', () => {
+    const options = withAbsoluteUrls(
+      { src: 'http://[::1/x.insv', src2: '', poster: '  ' },
+      'https://blog.example/posts/trip.html',
+    );
+    expect(options).toEqual({ src: 'http://[::1/x.insv', src2: '', poster: '  ' });
+  });
 });

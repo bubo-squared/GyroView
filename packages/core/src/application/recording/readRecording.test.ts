@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { microseconds } from '../../shared/units/time';
 import { readRecording } from './readRecording';
 import { InfoRecordFormat, RecordType } from '../../domain/format/constants';
-import { CalibrationVersion } from '../../domain/optics/LensCalibration';
+import { CalibrationVersion } from '../../domain/format/calibration/CalibrationVersion';
 import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSource';
 import { TrailerFixtureBuilder } from '../../testing/TrailerFixtureBuilder';
 import { loadFixture } from '../../../test/support/fixtures';

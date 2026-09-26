@@ -4,11 +4,8 @@ import {
   type LensBlock,
 } from './CalibrationStringLayout';
 import { EquidistantModel } from '../../../optics/EquidistantModel';
-import {
-  CalibrationVersion,
-  type CanvasSize,
-  type LensCalibration,
-} from '../../../optics/LensCalibration';
+import type { CanvasSize, LensCalibration } from '../../../optics/LensCalibration';
+import { CalibrationVersion } from '../CalibrationVersion';
 import {
   FIRST_LENS_TOKEN,
   LENS_COUNT_TOKEN,

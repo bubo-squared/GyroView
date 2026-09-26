@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CalibrationVersion } from '../../optics/LensCalibration';
+import { CalibrationVersion } from './CalibrationVersion';
 import { selectCalibration } from './selectCalibration';
 import { v6CalibrationString } from '../../../../test/support/calibrationStrings';
 import { OFFICE_CALIBRATION } from '../../../../test/support/officeCalibration';

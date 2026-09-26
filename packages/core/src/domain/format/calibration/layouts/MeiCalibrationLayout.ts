@@ -5,18 +5,10 @@ import {
   type CalibrationStringLayout,
   type LensBlock,
 } from './CalibrationStringLayout';
-import {
-  CalibrationVersion,
-  type CanvasSize,
-  type LensCalibration,
-} from '../../../optics/LensCalibration';
+import type { CanvasSize, LensCalibration } from '../../../optics/LensCalibration';
+import { CalibrationVersion } from '../CalibrationVersion';
 import { MeiModel } from '../../../optics/MeiModel';
-import {
-  DeclaredVersion,
-  V3_LENS_TOKENS,
-  V3Token,
-  VERSIONED_TRAILING_TOKENS,
-} from '../offsetTokens';
+import { V3_LENS_TOKENS, V3Token, VERSIONED_TRAILING_TOKENS } from '../offsetTokens';
 
 /**
  * `offset_v3`: `xi fx fy cx cy yaw pitch roll tx ty tz k1 k2 k3 p1 p2 width height type` per
@@ -28,7 +20,7 @@ export class MeiCalibrationLayout implements CalibrationStringLayout {
   public readonly trailingTokens = VERSIONED_TRAILING_TOKENS;
 
   public versionWordProblem(versionWord: number): string | undefined {
-    return versionWordMismatch(versionWord, DeclaredVersion.Mei);
+    return versionWordMismatch(versionWord, this.version);
   }
 
   public parseLens(block: LensBlock, lensIndex: number): LensCalibration {

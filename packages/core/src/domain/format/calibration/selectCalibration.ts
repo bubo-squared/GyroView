@@ -1,4 +1,4 @@
-import type { CalibrationSet } from '../../optics/LensCalibration';
+import type { VersionedCalibration } from './CalibrationVersion';
 import { parseOffsetString } from './parseOffsetString';
 import { GyroViewError, type GyroViewErrorCode } from '../../../shared/errors/GyroViewError';
 import type { CalibrationStrings } from '../info/RecordingInfo';
@@ -8,14 +8,14 @@ export interface CalibrationChoice {
    * Undefined when the recording carries no usable calibration string. Playback that stitches
    * needs one; inspection and non-stitching uses do not.
    */
-  readonly calibration: CalibrationSet | undefined;
+  readonly calibration: VersionedCalibration | undefined;
   /**
    * Human-readable notes about strings that were present but skipped.
    */
   readonly warnings: readonly string[];
 }
 
-type Attempt = { readonly calibration: CalibrationSet } | { readonly warning: string };
+type Attempt = { readonly calibration: VersionedCalibration } | { readonly warning: string };
 
 /**
  * Only these failures mean "this string is unusable, try the next one"; anything else is a bug

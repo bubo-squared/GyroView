@@ -75,11 +75,3 @@ export const VERSIONED_TRAILING_TOKENS = 1;
  * vary between cameras and carry no version.
  */
 export const VERSION_WORD_SHIFT = 16;
-
-/**
- * The versions `offset_v2` and `offset_v3` declare in their version word's high bits (the X5
- * recordings; insta360-rs docs).
- */
-export const DeclaredVersion = { Polynomial: 2, Mei: 3 } as const;
-
-export type DeclaredVersion = (typeof DeclaredVersion)[keyof typeof DeclaredVersion];

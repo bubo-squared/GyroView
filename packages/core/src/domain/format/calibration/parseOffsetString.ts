@@ -1,4 +1,4 @@
-import type { CalibrationSet } from '../../optics/LensCalibration';
+import type { VersionedCalibration } from './CalibrationVersion';
 import { type CalibrationStringLayout, type LensBlock } from './layouts/CalibrationStringLayout';
 import { LegacyCalibrationLayout } from './layouts/LegacyCalibrationLayout';
 import { MeiCalibrationLayout } from './layouts/MeiCalibrationLayout';
@@ -20,11 +20,11 @@ const LAYOUTS: readonly CalibrationStringLayout[] = [
 ];
 
 /**
- * Parses `offset`, `offset_v2` and `offset_v3` strings into a {@link CalibrationSet}. The layout
+ * Parses `offset`, `offset_v2` and `offset_v3` strings into a calibration set with its version. The layout
  * is detected from the token count; the v6 layout (13 distortion coefficients per lens) is
  * recognised and rejected explicitly.
  */
-export function parseOffsetString(text: string): CalibrationSet {
+export function parseOffsetString(text: string): VersionedCalibration {
   const numbers = text.split(TOKEN_SEPARATOR).map((token) => parseNumber(token, text));
   const lensCount = numbers[LENS_COUNT_TOKEN] ?? 0;
   const layout = detectLayout(numbers.length, lensCount, text);

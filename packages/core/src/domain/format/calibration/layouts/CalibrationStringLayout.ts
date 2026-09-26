@@ -1,11 +1,7 @@
-import type {
-  CalibrationVersion,
-  CanvasSize,
-  EulerDegrees,
-  LensCalibration,
-} from '../../../optics/LensCalibration';
+import type { CanvasSize, EulerDegrees, LensCalibration } from '../../../optics/LensCalibration';
 import { degrees } from '../../../../shared/units/angle';
-import { VERSION_WORD_SHIFT, type DeclaredVersion } from '../offsetTokens';
+import type { CalibrationVersion } from '../CalibrationVersion';
+import { VERSION_WORD_SHIFT } from '../offsetTokens';
 
 /**
  * Reads one lens block by named token position.
@@ -38,7 +34,7 @@ export function eulerDegrees(yaw: number, pitch: number, roll: number): EulerDeg
  */
 export function versionWordMismatch(
   versionWord: number,
-  expected: DeclaredVersion,
+  expected: CalibrationVersion,
 ): string | undefined {
   const declared = versionWord >>> VERSION_WORD_SHIFT;
   return declared === expected ? undefined : `declares version ${declared}`;

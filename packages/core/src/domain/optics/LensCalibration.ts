@@ -28,18 +28,10 @@ export interface LensCalibration {
 }
 
 /**
- * Which calibration string a set came from, in increasing order of fidelity.
- */
-export const CalibrationVersion = { Legacy: 1, Polynomial: 2, Mei: 3 } as const;
-
-export type CalibrationVersion = (typeof CalibrationVersion)[keyof typeof CalibrationVersion];
-
-/**
  * The full factory calibration of a recording: every lens on a shared canvas whose width holds
  * the lens images side by side.
  */
 export interface CalibrationSet {
-  readonly version: CalibrationVersion;
   readonly canvas: CanvasSize;
   readonly lenses: readonly LensCalibration[];
 }

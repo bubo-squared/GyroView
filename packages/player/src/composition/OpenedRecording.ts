@@ -1,11 +1,11 @@
 import type {
   AudioTrackReader,
-  CalibrationSet,
   FrameTimes,
   LensLayout,
   MotionSetup,
   Recording,
   Seconds,
+  VersionedCalibration,
   VideoTrackReader,
 } from '@gyroview/core';
 
@@ -22,7 +22,7 @@ export interface OpenedRecording {
    * One reader per decoded frame of a pair, in the order the stitching setup expects.
    */
   readonly frameSources: readonly VideoTrackReader[];
-  readonly calibration: CalibrationSet;
+  readonly calibration: VersionedCalibration;
   readonly duration: Seconds;
   readonly frameTimes: FrameTimes | undefined;
   readonly motion: MotionSetup | undefined;

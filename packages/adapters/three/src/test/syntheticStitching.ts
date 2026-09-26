@@ -1,5 +1,4 @@
 import {
-  CalibrationVersion,
   degrees,
   EquidistantModel,
   FULL_FRAME,
@@ -26,7 +25,6 @@ export function syntheticCalibration(): CalibrationSet {
     translation: [0, 0, 0],
   });
   return {
-    version: CalibrationVersion.Legacy,
     canvas: { width: 2 * SQUARE, height: SQUARE },
     lenses: [lens(0), lens(1)],
   };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CalibrationVersion } from '../../optics/LensCalibration';
+import { CalibrationVersion } from './CalibrationVersion';
 import { parseOffsetString } from './parseOffsetString';
 import {
   ONE_R_LEGACY_CALIBRATION,

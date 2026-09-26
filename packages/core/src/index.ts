@@ -68,10 +68,13 @@ export { FrameTimes } from './domain/motion/timing/FrameTimes';
 export type { FrameTimeSourceName } from './domain/motion/timing/FrameTimeSource';
 export {
   CalibrationVersion,
-  type CalibrationSet,
-  type CanvasSize,
-  type EulerDegrees,
-  type LensCalibration,
+  type VersionedCalibration,
+} from './domain/format/calibration/CalibrationVersion';
+export type {
+  CalibrationSet,
+  CanvasSize,
+  EulerDegrees,
+  LensCalibration,
 } from './domain/optics/LensCalibration';
 export type { LensModel, LensModelKind, LensProjectionParameters } from './domain/optics/LensModel';
 export { lensRotation } from './domain/optics/lensPose';

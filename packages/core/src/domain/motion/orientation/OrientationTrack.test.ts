@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { OrientationTrack } from './OrientationTrack';
+import { OrientationTrack, type IntegrationOptions } from './OrientationTrack';
 import { IDENTITY_QUATERNION, rotateVector } from '../../../shared/math/Quaternion';
 import type { Vector3 } from '../../../shared/math/Vector3';
 import { seconds } from '../../../shared/units/time';
@@ -17,12 +17,12 @@ const FORWARD: Vector3 = [0, 0, 1];
 const RATE_HZ = 200;
 const QUARTER_TURN_PER_SECOND = Math.PI / 2;
 
-function integrate(gyro: GyroTrack, options = {}): OrientationTrack {
+function integrate(gyro: GyroTrack, options?: IntegrationOptions): OrientationTrack {
   return OrientationTrack.integrate({
     gyro,
     clock: SYNTHETIC_CLOCK,
     frame: ALIGNED_IMU_FRAME,
-    options,
+    ...(options && { options }),
   });
 }
 

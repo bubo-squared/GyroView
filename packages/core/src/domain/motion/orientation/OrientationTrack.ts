@@ -29,35 +29,25 @@ export interface IntegrationOptions {
    * frame and gravity only removes drift.
    */
   readonly gravityGain: number;
-  /**
-   * Length of the stillest window used to estimate the gyro bias.
-   */
-  readonly biasWindow: Seconds;
-  /**
-   * Length of the opening window whose mean gravity levels the initial pose.
-   */
-  readonly levellingWindow: Seconds;
 }
 
 export interface OrientationTrackParts {
   readonly gyro: GyroTrack;
   readonly clock: CaptureClock;
   readonly frame: ImuFrame;
-  readonly options?: Partial<IntegrationOptions>;
+  readonly options?: IntegrationOptions;
 }
 
 const DEFAULT_GRAVITY_GAIN = 0.2;
-const DEFAULT_BIAS_WINDOW_SECONDS = 0.5;
 /**
- * Half a second of accelerometer readings averages out hand shake at the start.
+ * Length of the stillest window the gyro bias is estimated from.
  */
-const DEFAULT_LEVELLING_WINDOW_SECONDS = 0.5;
-
-export const DEFAULT_INTEGRATION_OPTIONS: IntegrationOptions = {
-  gravityGain: DEFAULT_GRAVITY_GAIN,
-  biasWindow: seconds(DEFAULT_BIAS_WINDOW_SECONDS),
-  levellingWindow: seconds(DEFAULT_LEVELLING_WINDOW_SECONDS),
-};
+const BIAS_WINDOW_SECONDS = 0.5;
+/**
+ * Length of the opening window whose mean gravity levels the initial pose: half a second of
+ * accelerometer readings averages out hand shake at the start.
+ */
+const LEVELLING_WINDOW_SECONDS = 0.5;
 
 /**
  * Where the integration stands after a sample: the pose, and the bias-corrected rate measured
@@ -107,15 +97,19 @@ export class OrientationTrack {
    * levels the opening window's gravity.
    */
   public static integrate(parts: OrientationTrackParts): OrientationTrack {
-    const options = { ...DEFAULT_INTEGRATION_OPTIONS, ...parts.options };
     const { gyro, clock, frame } = parts;
     const videoTimes = new Float64Array(gyro.length);
     const quaternions = new Float32Array(gyro.length * QUATERNION_COMPONENTS);
     if (gyro.isEmpty) return new OrientationTrack(videoTimes, quaternions);
-    const bias = estimateGyroBias(gyro, frame, stillestWindow(gyro, frame, options.biasWindow));
-    const context = { clock, frame, bias, gravityGain: options.gravityGain };
+    const bias = estimateGyroBias(
+      gyro,
+      frame,
+      stillestWindow(gyro, frame, seconds(BIAS_WINDOW_SECONDS)),
+    );
+    const gravityGain = parts.options?.gravityGain ?? DEFAULT_GRAVITY_GAIN;
+    const context = { clock, frame, bias, gravityGain };
     let state: IntegrationState = {
-      orientation: initialOrientation(gyro, frame, options.levellingWindow),
+      orientation: initialOrientation(gyro, frame, seconds(LEVELLING_WINDOW_SECONDS)),
       time: clock.gyroVideoTimeOf(gyro.sampleAt(0).captureTime),
       rate: ZERO_VECTOR3,
     };

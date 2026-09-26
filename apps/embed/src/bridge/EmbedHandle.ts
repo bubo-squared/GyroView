@@ -171,6 +171,8 @@ export class EmbedHandle {
   private onMessage(message: ProtocolMessage): void {
     switch (message.kind) {
       case 'hello': {
+        // Trusted as the state it claims to be, as event details are (ADR 0010).
+        this.stateValue = message.state as EmbedState;
         this.isConnected = true;
         for (const queued of this.queued.splice(0)) this.endpoint.send(queued);
         break;
@@ -221,10 +223,32 @@ type StateUpdaters = {
 };
 
 /**
+ * No recording is loaded, or the one loading is not ready yet.
+ */
+function hasNoRecording(status: PlayerStatus): status is 'idle' | 'loading' {
+  return status === 'idle' || status === 'loading';
+}
+
+/**
  * A player is under way, as a media element that is not `paused`, once loaded and flowing.
  */
 function isFlowingStatus(status: PlayerStatus): boolean {
-  return status !== 'idle' && status !== 'loading' && isFlowing(status);
+  return !hasNoRecording(status) && isFlowing(status);
+}
+
+/**
+ * What the mirror says of a recording while there is none: a failed or later load must not
+ * leave the previous one's metadata and times behind.
+ */
+const NO_RECORDING: Pick<EmbedState, 'metadata' | 'duration' | 'currentTime'> = {
+  metadata: undefined,
+  duration: 0,
+  currentTime: 0,
+};
+
+function withStatus(state: EmbedState, status: PlayerStatus): EmbedState {
+  const recording = hasNoRecording(status) ? NO_RECORDING : {};
+  return { ...state, ...recording, status, isPaused: !isFlowingStatus(status) };
 }
 
 function withTime(state: EmbedState, currentTime: number): EmbedState {
@@ -233,10 +257,10 @@ function withTime(state: EmbedState, currentTime: number): EmbedState {
 
 /**
  * How each event moves the mirror: status, time, view, view mode, stabilization and sound follow
- * their events, the metadata arrives with `ready`.
+ * their events, the metadata arrives with `ready` and leaves with the next load.
  */
 const STATE_UPDATERS: StateUpdaters = {
-  statuschange: (state, status) => ({ ...state, status, isPaused: !isFlowingStatus(status) }),
+  statuschange: withStatus,
   timeupdate: withTime,
   seeking: withTime,
   seeked: withTime,

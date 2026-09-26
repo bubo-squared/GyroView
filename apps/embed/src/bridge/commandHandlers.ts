@@ -53,7 +53,7 @@ function loadRequestAt(parameters: readonly unknown[]): LoadRequest {
   return { src, src2 };
 }
 
-function stateOf(element: GyroViewElement): EmbedState {
+export function stateOf(element: GyroViewElement): EmbedState {
   return {
     status: element.status,
     currentTime: element.currentTime,

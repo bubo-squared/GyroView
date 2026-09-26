@@ -21,10 +21,14 @@ interface Bridge {
 describe('the embed bridge over a message channel', () => {
   const bridges: Bridge[] = [];
 
-  function bridge(): Bridge {
+  /**
+   * An element configured by `attributes` before the host starts, as the embed page does it.
+   */
+  function bridge(attributes: Record<string, string> = {}): Bridge {
     const element = document.createElement('gyro-view') as GyroViewElement;
     element.style.width = '256px';
     element.style.height = '128px';
+    for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
     document.body.append(element);
     const channel = new MessageChannel();
     const handle = new EmbedHandle(portEndpoint(channel.port2));
@@ -42,7 +46,14 @@ describe('the embed bridge over a message channel', () => {
     }
   });
 
-  it('loads over the channel and reports the metadata and the state', async () => {
+  it('starts its mirror from the settings the frame was configured with', async () => {
+    const { handle } = bridge({ yaw: '45', 'view-mode': 'equirectangular', stabilization: 'off' });
+    await waitFor(() => handle.state.viewMode === 'equirectangular', 'the hello');
+    expect(handle.state.view.yaw).toBe(45);
+    expect(handle.state.stabilization).toBe('off');
+  });
+
+  it('loads over the channel, reports the metadata and the state, and forgets them on a failed load', async () => {
     const { handle } = bridge();
     const ready = new Promise<unknown>((resolve) => {
       handle.events.on('ready', resolve);
@@ -52,6 +63,11 @@ describe('the embed bridge over a message channel', () => {
     expect(metadata.model).toBe('Insta360 X5');
     expect(handle.state.status).toBe('ready');
     expect(handle.state.duration).toBeCloseTo(3, 1);
+
+    await expect(handle.load({ src: `${recordingUrl}.missing` })).rejects.toMatchObject({
+      code: 'source-unreadable',
+    });
+    expect(handle.state).toMatchObject({ status: 'error', metadata: undefined, duration: 0 });
   });
 
   it('plays, pauses and seeks over the channel and forwards the transport events', async () => {
@@ -166,7 +182,7 @@ describe('the embed bridge over a message channel', () => {
     await waitFor(() => received.length === 1, 'the marker');
     expect(received).toEqual([marker]);
 
-    hostSide.send(helloMessage());
+    hostSide.send(helloMessage({}));
     await waitFor(() => received.length === 2, 'the queued command');
     expect(received[1]).toMatchObject({ kind: 'command', name: 'pause', id: 1 });
     hostSide.send({ protocol: PROTOCOL, kind: 'result', id: 1, isOk: true, value: undefined });
@@ -197,10 +213,10 @@ describe('windowEndpoint', () => {
     // Messages arrive in order: once the hello is heard, the unrelated data before it was too,
     // and the distrustful endpoint heard the hello in the same dispatch.
     page.postMessage({ unrelated: true }, location.origin);
-    trusted.send(helloMessage());
+    trusted.send(helloMessage({}));
     await waitFor(() => heardByTrusted.length === 1, 'the hello');
 
-    expect(heardByTrusted).toEqual([helloMessage()]);
+    expect(heardByTrusted).toEqual([helloMessage({})]);
     expect(heardByDistrustful).toEqual([]);
     stopTrusted();
     stopDistrustful();

@@ -1,7 +1,7 @@
 import { GyroViewError, messageOf } from '@gyroview/core';
 import type { GyroViewElement } from '@gyroview/player';
 
-import { COMMAND_HANDLERS } from './commandHandlers';
+import { COMMAND_HANDLERS, stateOf } from './commandHandlers';
 import type { Endpoint } from './Endpoint';
 import {
   eventMessage,
@@ -17,8 +17,9 @@ import {
 
 /**
  * The iframe side of the bridge: runs the commands the embedding page sends on the element
- * and forwards the element's events. Says hello once listening, so a page that embedded the
- * frame before it loaded knows when to start talking.
+ * and forwards the element's events. Says hello once listening, with the element's state, so a
+ * page that embedded the frame before it loaded knows when to start talking and what the
+ * element was configured with.
  */
 export class EmbedHost {
   private readonly stopReceiving: () => void;
@@ -32,7 +33,7 @@ export class EmbedHost {
       this.onMessage(message);
     });
     for (const name of FORWARDED_EVENT_NAMES) this.forward(name);
-    endpoint.send(helloMessage());
+    endpoint.send(helloMessage(stateOf(element)));
   }
 
   public dispose(): void {

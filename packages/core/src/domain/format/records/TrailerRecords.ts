@@ -51,7 +51,7 @@ export class TrailerRecords {
     const location = this.parts.trailer.locationOf(RecordType.Exposure);
     return location === undefined
       ? undefined
-      : parseExposureRecord(await this.parts.source.read(location.payload)).record;
+      : parseExposureRecord(await this.parts.source.read(location.payload));
   }
 
   /**

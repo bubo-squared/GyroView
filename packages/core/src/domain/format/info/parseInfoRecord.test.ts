@@ -57,11 +57,6 @@ describe('parseInfoRecord on the office X5 recording (5.7K60)', () => {
       cropOffsetX: 0,
       cropOffsetY: 0,
     });
-    expect(info.fileGroup?.identify).toBe('/DCIM/Camera01/VID_20260814_132640_00_013.insv');
-  });
-
-  it('leaves fields the camera did not write undefined', () => {
-    expect(info.totalFrames).toBeUndefined();
   });
 });
 

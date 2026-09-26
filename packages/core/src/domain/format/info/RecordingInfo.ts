@@ -21,13 +21,6 @@ export interface LensDimension {
   readonly height: number;
 }
 
-export interface FileGroup {
-  readonly type: number | undefined;
-  readonly index: number | undefined;
-  readonly identify: string | undefined;
-  readonly total: number | undefined;
-}
-
 /**
  * Full-scale ranges of the IMU, which the raw gyro sample layout needs to scale its integers.
  */
@@ -69,13 +62,11 @@ export interface RecordingInfo {
    * Rolling-shutter readout duration of one frame.
    */
   readonly readoutTime: Seconds | undefined;
-  readonly fileGroup: FileGroup | undefined;
   readonly windowCrop: WindowCrop | undefined;
   /**
    * How much later than the frames the gyro samples are stamped.
    */
   readonly gyroOffset: Milliseconds | undefined;
-  readonly totalFrames: number | undefined;
   readonly gyroType: number | undefined;
   readonly isRawGyro: boolean | undefined;
   /**

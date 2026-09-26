@@ -17,7 +17,6 @@ export const GYRO_VIEW_ERROR_CODES = [
   'invariant-violation',
   'missing-second-file',
   'no-calibration',
-  'no-frame-times',
   'no-info-record',
   'no-key-frame',
   'playback-blocked',

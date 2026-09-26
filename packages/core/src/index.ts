@@ -15,7 +15,6 @@ export type { BoxDescriptor, TrailerWrapper } from './domain/format/boxes/BoxLay
 export { RecordingFileName } from './domain/format/naming/RecordingFileName';
 export type {
   CalibrationStrings,
-  FileGroup,
   FileLayoutHint,
   LensDimension,
   RecordingInfo,

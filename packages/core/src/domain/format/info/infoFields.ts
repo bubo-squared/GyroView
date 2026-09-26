@@ -67,7 +67,6 @@ export const InfoField = {
 } as const;
 
 export const DimensionField = { Width: 1, Height: 2 } as const;
-export const FileGroupField = { Type: 1, Index: 2, Identify: 3, Total: 4 } as const;
 export const GyroConfigField = { AccelerometerRangeG: 1, GyroscopeRangeDps: 2 } as const;
 export const WindowCropField = {
   SensorWidth: 1,

@@ -1,6 +1,5 @@
 import {
   DimensionField,
-  FileGroupField,
   FileLayoutValue,
   GyroConfigField,
   InfoField,
@@ -10,7 +9,6 @@ import {
 } from './infoFields';
 import type {
   CalibrationStrings,
-  FileGroup,
   FileLayoutHint,
   LensDimension,
   RecordingInfo,
@@ -52,10 +50,8 @@ export function parseInfoRecord(payload: Uint8Array, format: number): RecordingI
     captureMode: message.string(InfoField.CaptureMode),
     firstFrameTimestamp: message.varint(InfoField.FirstFrameTimestamp),
     readoutTime: secondsFromMilliseconds(message.double(InfoField.RollingShutterTimeMs)),
-    fileGroup: fileGroupOf(message.message(InfoField.FileGroupInfo)),
     windowCrop: windowCropOf(message.message(InfoField.WindowCropInfo)),
     gyroOffset: optionalMilliseconds(message.double(InfoField.GyroTimestampMs)),
-    totalFrames: message.varint(InfoField.TotalFrames),
     gyroType: message.varint(InfoField.GyroType),
     isRawGyro: message.boolean(InfoField.IsRawGyro),
     preferredFrameTimeSource: frameTimeSourceOf(message.varint(InfoField.PtsType)),
@@ -106,17 +102,6 @@ function dimensionOf(message: ProtobufMessage | undefined): LensDimension | unde
   const width = message?.varint(DimensionField.Width);
   const height = message?.varint(DimensionField.Height);
   return width === undefined || height === undefined ? undefined : { width, height };
-}
-
-function fileGroupOf(message: ProtobufMessage | undefined): FileGroup | undefined {
-  return message === undefined
-    ? undefined
-    : {
-        type: message.varint(FileGroupField.Type),
-        index: message.varint(FileGroupField.Index),
-        identify: message.string(FileGroupField.Identify),
-        total: message.varint(FileGroupField.Total),
-      };
 }
 
 function windowCropOf(message: ProtobufMessage | undefined): WindowCrop | undefined {

@@ -10,7 +10,8 @@ export type SoundParts = Pick<ControlParts, 'mute' | 'volume'>;
 export type SoundPlayer = Pick<Player, 'events' | 'volume' | 'isMuted' | 'setVolume' | 'setMuted'>;
 
 /**
- * The mute button and the volume slider, showing the sound however it was last changed.
+ * The mute button and the volume slider, showing the sound however it was last changed. The
+ * button is a toggle named "Mute": pressed means muted, as assistive technology expects.
  */
 export class SoundControls {
   public constructor(
@@ -34,7 +35,6 @@ export class SoundControls {
     const { isMuted, volume } = this.player;
     this.parts.mute.innerHTML = isMuted ? ICONS.muted : ICONS.sound;
     this.parts.mute.setAttribute('aria-pressed', String(isMuted));
-    this.parts.mute.setAttribute('aria-label', isMuted ? 'Unmute' : 'Mute');
     this.parts.volume.value = String(isMuted ? 0 : volume);
   }
 }

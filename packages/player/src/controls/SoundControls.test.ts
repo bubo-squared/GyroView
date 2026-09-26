@@ -32,7 +32,9 @@ function soundControls(): { parts: SoundParts; sound: FakeSound } {
   volume.type = 'range';
   volume.max = '1';
   volume.step = 'any';
-  const parts = { mute: document.createElement('button'), volume };
+  const mute = document.createElement('button');
+  mute.setAttribute('aria-label', 'Mute');
+  const parts = { mute, volume };
   const sound = new FakeSound();
   new SoundControls(parts, sound);
   return { parts, sound };
@@ -47,7 +49,7 @@ function expectIconOnly(button: HTMLButtonElement): void {
 }
 
 describe('SoundControls', () => {
-  it('mutes and unmutes on the button, and says which a press does', () => {
+  it('mutes and unmutes on the button, a toggle that keeps its name', () => {
     const { parts, sound } = soundControls();
     expect(parts.mute.getAttribute('aria-label')).toBe('Mute');
     expectIconOnly(parts.mute);
@@ -55,7 +57,7 @@ describe('SoundControls', () => {
     parts.mute.click();
     expect(sound.isMuted).toBe(true);
     expect(parts.mute.getAttribute('aria-pressed')).toBe('true');
-    expect(parts.mute.getAttribute('aria-label')).toBe('Unmute');
+    expect(parts.mute.getAttribute('aria-label')).toBe('Mute');
     expectIconOnly(parts.mute);
     expect(parts.mute.getHTML()).not.toBe(soundIcon);
     expect(parts.volume.value).toBe('0');

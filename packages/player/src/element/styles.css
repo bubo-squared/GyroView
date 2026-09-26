@@ -156,7 +156,8 @@ canvas:active {
   display: none;
 }
 
-:host([data-idle]) .controls {
+/* Controls with an open menu stay up: the viewer is reading it. */
+:host([data-idle]) .controls:not(:has(.popup:not([hidden]))) {
   opacity: 0;
   pointer-events: none;
 }

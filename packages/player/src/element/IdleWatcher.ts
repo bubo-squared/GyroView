@@ -1,6 +1,10 @@
 const IDLE_ATTRIBUTE = 'data-idle';
 const IDLE_DELAY_MS = 2500;
 const ACTIVITY_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'focusin'] as const;
+/**
+ * Activity is heard on its way in, before any control inside can keep it to itself.
+ */
+const ON_THE_WAY_IN = { capture: true } as const;
 
 /**
  * Marks the element idle when the viewer has left it alone for a while and `shouldHide` agrees
@@ -15,12 +19,16 @@ export class IdleWatcher {
   ) {}
 
   public start(): void {
-    for (const name of ACTIVITY_EVENTS) this.element.addEventListener(name, this.onActivity);
+    for (const name of ACTIVITY_EVENTS) {
+      this.element.addEventListener(name, this.onActivity, ON_THE_WAY_IN);
+    }
     this.onActivity();
   }
 
   public stop(): void {
-    for (const name of ACTIVITY_EVENTS) this.element.removeEventListener(name, this.onActivity);
+    for (const name of ACTIVITY_EVENTS) {
+      this.element.removeEventListener(name, this.onActivity, ON_THE_WAY_IN);
+    }
     this.clearTimer();
     this.element.removeAttribute(IDLE_ATTRIBUTE);
   }

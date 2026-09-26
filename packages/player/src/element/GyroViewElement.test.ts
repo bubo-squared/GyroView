@@ -394,6 +394,22 @@ describe('<gyro-view>', () => {
     expect(error.code).toBe('source-unreadable');
   });
 
+  it('keeps the controls up while a menu is open, and wakes them for keys the menu keeps', async () => {
+    const element = await createReady();
+    const controls = control(element, '.controls', HTMLElement);
+    control(element, '.view-mode-button', HTMLButtonElement).click();
+    element.dataset['idle'] = '';
+    // Pointer events switch at once; the opacity fades.
+    expect(getComputedStyle(controls).pointerEvents).not.toBe('none');
+
+    pressKey(control(element, '.view-mode-menu [data-choice="normal"]', HTMLButtonElement), 'q');
+    expect(element.dataset['idle']).toBeUndefined();
+
+    control(element, '.view-mode-button', HTMLButtonElement).click();
+    element.dataset['idle'] = '';
+    expect(getComputedStyle(controls).pointerEvents).toBe('none');
+  });
+
   it('fills the screen one way or another and leaves on Escape', async () => {
     const element = await createReady();
 

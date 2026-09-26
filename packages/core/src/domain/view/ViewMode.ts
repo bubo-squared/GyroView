@@ -26,6 +26,11 @@ export const DEFAULT_VIEW_MODE: ViewMode = 'normal';
  */
 export interface ViewModeRules {
   /**
+   * Whether the stabilization mode changes what this mode draws: the stitched pictures turn into
+   * the stabilized frame, the raw lenses show the lenses as recorded.
+   */
+  readonly isStabilized: boolean;
+  /**
    * The view once the picture is dragged by `delta` on a viewport `viewportWidth` pixels wide.
    */
   pan(view: ViewState, delta: DragDelta, viewportWidth: number): ViewState;
@@ -41,6 +46,7 @@ export interface ViewModeRules {
 }
 
 const NORMAL: ViewModeRules = {
+  isStabilized: true,
   pan: panView,
   turn: (view, yawDelta, pitchDelta) =>
     lookAt(view, degrees(view.yaw + yawDelta), degrees(view.pitch + pitchDelta)),
@@ -58,6 +64,7 @@ const NORMAL: ViewModeRules = {
  * direction at the centre, follows the viewer.
  */
 const EQUIRECTANGULAR: ViewModeRules = {
+  isStabilized: true,
   pan: (view, delta, viewportWidth) =>
     lookAt(
       view,
@@ -78,6 +85,7 @@ const EQUIRECTANGULAR: ViewModeRules = {
  * unchanged for the stitched modes.
  */
 const RAW_LENSES: ViewModeRules = {
+  isStabilized: false,
   pan: (view) => view,
   turn: (view) => view,
   zoom: (view) => view,

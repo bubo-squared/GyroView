@@ -21,6 +21,11 @@ describe('view modes', () => {
     expect(DEFAULT_VIEW_MODE).toBe('normal');
   });
 
+  it('stabilizes the stitched modes and leaves the raw lenses as recorded', () => {
+    const stabilized = VIEW_MODES.filter((mode) => viewModeRulesFor(mode).isStabilized);
+    expect(stabilized).toEqual(['normal', 'equirectangular']);
+  });
+
   describe('normal', () => {
     const normal = viewModeRulesFor('normal');
 

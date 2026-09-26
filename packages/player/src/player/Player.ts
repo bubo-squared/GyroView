@@ -24,7 +24,7 @@ import { PictureSettings } from './PictureSettings';
 import { PlayerSound } from './PlayerSound';
 import { PlayerView } from './PlayerView';
 import { transportEventsFor, type TransportEventName } from './transportEvents';
-import { isAbortError } from '../composition/errorCodes';
+import { isAbortError } from '../composition/abortError';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
 

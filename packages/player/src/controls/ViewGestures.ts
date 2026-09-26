@@ -1,6 +1,6 @@
 import { zoomStepsForPinch } from '@gyroview/core';
 
-import { distanceBetween, type Point } from './pinch';
+import { distanceBetween, type Point } from './pointerGeometry';
 import type { Player } from '../player/Player';
 
 /**

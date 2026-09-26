@@ -135,7 +135,7 @@ async function measureStillness(parts: MeasurementParts): Promise<Measured> {
     unstabilized += movement(renderable, () => IDENTITY_MATRIX3);
     for (const candidate of parts.candidates) {
       candidate.total += movement(renderable, (pair) =>
-        lock.rotationFor(candidate.orientations.orientationAt(pair.timestamp)),
+        lock.nextRotation(candidate.orientations.orientationAt(pair.timestamp)),
       );
     }
     closeAll(pairs);

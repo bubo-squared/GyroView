@@ -34,7 +34,7 @@ export class StabilizingFrameSink<Handle = unknown> implements FrameSink<Handle>
   public present(presentation: Presentation<Handle>): void {
     const time = this.exposureTimeOf(presentation);
     const orientation = this.parts.orientations.orientationAt(time);
-    this.parts.sink.setStabilization(this.stabilizerValue.rotationFor(orientation, time));
+    this.parts.sink.setStabilization(this.stabilizerValue.nextRotation(orientation, time));
     this.parts.sink.present(presentation);
   }
 

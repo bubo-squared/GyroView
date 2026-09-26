@@ -50,16 +50,16 @@ function expectVector(actual: Vector3, expected: Vector3, digits = 9): void {
 
 describe('stabilizers', () => {
   it('off leaves the view attached to the camera', () => {
-    expect(new OffStabilization().rotationFor()).toBe(IDENTITY_MATRIX3);
+    expect(new OffStabilization().nextRotation()).toBe(IDENTITY_MATRIX3);
   });
 
   it('lock keeps the view fixed to the world: a camera yawed right shows world-forward on its left', () => {
-    expectVector(forwardThrough(new LockStabilization().rotationFor(YAW_90)), [-1, 0, 0]);
+    expectVector(forwardThrough(new LockStabilization().nextRotation(YAW_90)), [-1, 0, 0]);
   });
 
   it('horizon levels the roll but follows the heading', () => {
     const rolledAndYawed: Quaternion = multiplyQuaternions(YAW_90, ROLL_30);
-    const rotation = new HorizonStabilization().rotationFor(rolledAndYawed);
+    const rotation = new HorizonStabilization().nextRotation(rolledAndYawed);
     expectVector(forwardThrough(rotation), FORWARD);
     expectVector(transformVector(rotation, VIEW_UP), [
       -Math.sin(Math.PI / 6),
@@ -70,12 +70,12 @@ describe('stabilizers', () => {
 
   it('horizon keeps the heading when the camera points straight up or down', () => {
     const horizon = new HorizonStabilization();
-    const nearlyUp = transformVector(horizon.rotationFor(yawThenPitch(30, 89)), VIEW_UP);
-    const straightUp = transformVector(horizon.rotationFor(yawThenPitch(30, 90)), VIEW_UP);
-    const pastUp = transformVector(horizon.rotationFor(yawThenPitch(30, 91)), VIEW_UP);
+    const nearlyUp = transformVector(horizon.nextRotation(yawThenPitch(30, 89)), VIEW_UP);
+    const straightUp = transformVector(horizon.nextRotation(yawThenPitch(30, 90)), VIEW_UP);
+    const pastUp = transformVector(horizon.nextRotation(yawThenPitch(30, 91)), VIEW_UP);
     expectVector(straightUp, nearlyUp, 1);
     expectVector(pastUp, nearlyUp, 1);
-    const straightDown = horizon.rotationFor(yawThenPitch(30, -90));
+    const straightDown = horizon.nextRotation(yawThenPitch(30, -90));
     expectVector(forwardThrough(straightDown), [0, -1, 0], 6);
   });
 
@@ -84,12 +84,12 @@ describe('stabilizers', () => {
       timeConstant: seconds(1),
       maxContinuousGap: seconds(1),
     });
-    expectVector(forwardThrough(follow.rotationFor(YAW_90, START)), FORWARD);
-    const lagging = forwardThrough(follow.rotationFor(YAW_180, SHORTLY_AFTER));
+    expectVector(forwardThrough(follow.nextRotation(YAW_90, START)), FORWARD);
+    const lagging = forwardThrough(follow.nextRotation(YAW_180, SHORTLY_AFTER));
     expect(lagging[0]).toBeLessThan(-0.9);
     expect(lagging[2]).toBeGreaterThan(0);
     expect(lagging[2]).toBeLessThan(0.3);
-    expectVector(forwardThrough(follow.rotationFor(YAW_90, MUCH_LATER)), FORWARD);
+    expectVector(forwardThrough(follow.nextRotation(YAW_90, MUCH_LATER)), FORWARD);
   });
 
   it('follow catches up by 1 - 1/e per time constant, holds on a small step back and snaps on a seek back', () => {
@@ -97,16 +97,16 @@ describe('stabilizers', () => {
       timeConstant: seconds(1),
       maxContinuousGap: seconds(1),
     });
-    follow.rotationFor(YAW_90, START);
-    const afterOneConstant = forwardThrough(follow.rotationFor(YAW_180, ONE_TIME_CONSTANT));
+    follow.nextRotation(YAW_90, START);
+    const afterOneConstant = forwardThrough(follow.nextRotation(YAW_180, ONE_TIME_CONSTANT));
     const caughtUp = Math.atan2(afterOneConstant[0], afterOneConstant[2]);
     expect(caughtUp).toBeCloseTo(-(Math.PI / 2) * Math.exp(-1), 3);
     const stepBack = seconds(0.98);
-    const held = forwardThrough(follow.rotationFor(YAW_180, stepBack));
+    const held = forwardThrough(follow.nextRotation(YAW_180, stepBack));
     expectVector(held, afterOneConstant);
-    const sameTime = forwardThrough(follow.rotationFor(YAW_180, stepBack));
+    const sameTime = forwardThrough(follow.nextRotation(YAW_180, stepBack));
     expectVector(sameTime, afterOneConstant);
-    const seekBack = follow.rotationFor(YAW_90, seconds(-5));
+    const seekBack = follow.nextRotation(YAW_90, seconds(-5));
     expectVector(forwardThrough(seekBack), FORWARD);
   });
 

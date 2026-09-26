@@ -15,7 +15,7 @@ import { WORLD_DOWN } from '../orientation/gravity';
  * The picture moves with the camera, as recorded.
  */
 export class OffStabilization implements Stabilizer {
-  public rotationFor(): Matrix3 {
+  public nextRotation(): Matrix3 {
     return IDENTITY_MATRIX3;
   }
 }
@@ -24,7 +24,7 @@ export class OffStabilization implements Stabilizer {
  * The view is fixed to the world: camera motion disappears entirely.
  */
 export class LockStabilization implements Stabilizer {
-  public rotationFor(orientation: Quaternion): Matrix3 {
+  public nextRotation(orientation: Quaternion): Matrix3 {
     return quaternionToMatrix(conjugateQuaternion(orientation));
   }
 }
@@ -33,7 +33,7 @@ export class LockStabilization implements Stabilizer {
  * The horizon stays level but the view turns with the camera's heading.
  */
 export class HorizonStabilization implements Stabilizer {
-  public rotationFor(orientation: Quaternion): Matrix3 {
+  public nextRotation(orientation: Quaternion): Matrix3 {
     const heading = quaternionFromAxisAngle(WORLD_DOWN, headingOf(orientation));
     return multiplyMatrices(
       quaternionToMatrix(conjugateQuaternion(orientation)),
@@ -70,7 +70,7 @@ export class FollowStabilization implements Stabilizer {
 
   public constructor(private readonly options: FollowOptions = DEFAULT_FOLLOW_OPTIONS) {}
 
-  public rotationFor(orientation: Quaternion, videoTime: Seconds): Matrix3 {
+  public nextRotation(orientation: Quaternion, videoTime: Seconds): Matrix3 {
     this.smoothed = this.follow(orientation, videoTime);
     this.previousTime = videoTime;
     return multiplyMatrices(

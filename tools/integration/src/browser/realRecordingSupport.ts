@@ -86,7 +86,8 @@ export async function waitFor(
 }
 
 /**
- * Takes the first `count` pairs the pipeline delivers from `from`, then aborts it.
+ * Takes the first `count` pairs the pipeline delivers from `from`, then aborts it and closes the
+ * pairs decoded beyond them.
  */
 export async function takePairs(
   pipeline: DecodePipeline<VideoFrame>,
@@ -98,9 +99,7 @@ export async function takePairs(
   const taken: FramePair<VideoFrame>[] = [];
   await waitFor(
     () => {
-      const head = queue.peekTimestamp();
-      const pair = head === undefined ? undefined : queue.takePairAt(head);
-      if (pair) taken.push(pair);
+      takeQueued(queue, taken, count);
       return taken.length >= count;
     },
     DECODE_TIMEOUT_MS,
@@ -108,7 +107,26 @@ export async function takePairs(
   );
   pipeline.abort();
   await run;
+  queue.close();
   return taken;
+}
+
+/**
+ * Moves every pair waiting in the queue to `taken`, in order, until it holds `count`: the
+ * decoders wait for room in the queue, so it is emptied at each look.
+ */
+function takeQueued(
+  queue: FramePairQueue<VideoFrame>,
+  taken: FramePair<VideoFrame>[],
+  count: number,
+): void {
+  let head = queue.peekTimestamp();
+  while (head !== undefined && taken.length < count) {
+    const pair = queue.takePairAt(head);
+    if (!pair) return;
+    taken.push(pair);
+    head = queue.peekTimestamp();
+  }
 }
 
 export function closeAll(pairs: readonly FramePair<VideoFrame>[]): void {

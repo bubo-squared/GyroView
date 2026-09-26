@@ -214,7 +214,8 @@ The composition root and the user-facing element, in three layers.
   poster and overlays. `bindControlsBar` binds `TransportButtons`, `SeekBar` (key-frame
   scrubbing), `SoundControls` and `PictureMenus` (the view mode and stabilization menus, each a
   `ChoiceMenu` behind an icon button; stabilization is offered only for a recording with a gyro
-  in a stitched view mode); every button draws an SVG from `icons`. `ViewGestures` turns drags,
+  in a stitched view mode). The bar's markup comes from `controlsMarkup`, which the element's
+  template interpolates, and every button draws an SVG from `icons`. `ViewGestures` turns drags,
   pinches and wheel turns into view changes; `keyboard` maps keys to commands;
   `FullscreenToggle` and `IdleWatcher` handle filling the screen and fading the controls.
 

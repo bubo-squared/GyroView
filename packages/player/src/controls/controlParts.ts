@@ -1,6 +1,7 @@
 import { ensureInvariant } from '@gyroview/core';
 
 import type { ChoiceMenuParts } from './ChoiceMenu';
+import { ChoiceMenuName, choiceMenuClasses } from './controlsMarkup';
 
 /**
  * The elements the controls bar drives, found once in the shadow tree.
@@ -32,13 +33,11 @@ export function queryShadow<Found extends Element>(
   return element;
 }
 
-/**
- * The button `.<name>-button` and its popup `.<name>-menu`.
- */
-function queryChoiceMenu(root: ParentNode, name: string): ChoiceMenuParts {
+function queryChoiceMenu(root: ParentNode, name: ChoiceMenuName): ChoiceMenuParts {
+  const classes = choiceMenuClasses(name);
   return {
-    button: queryShadow(root, `.${name}-button`, HTMLButtonElement),
-    popup: queryShadow(root, `.${name}-menu`, HTMLElement),
+    button: queryShadow(root, `.${classes.button}`, HTMLButtonElement),
+    popup: queryShadow(root, `.${classes.popup}`, HTMLElement),
   };
 }
 
@@ -52,8 +51,8 @@ export function queryControlParts(root: ParentNode): ControlParts {
     mute: queryShadow(root, '.mute', HTMLButtonElement),
     volume: queryShadow(root, '.volume', HTMLInputElement),
     resetView: queryShadow(root, '.reset-view', HTMLButtonElement),
-    stabilization: queryChoiceMenu(root, 'stabilization'),
-    viewMode: queryChoiceMenu(root, 'view-mode'),
+    stabilization: queryChoiceMenu(root, ChoiceMenuName.Stabilization),
+    viewMode: queryChoiceMenu(root, ChoiceMenuName.ViewMode),
     fullscreen: queryShadow(root, '.fullscreen', HTMLButtonElement),
   };
 }

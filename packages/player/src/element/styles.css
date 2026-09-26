@@ -190,7 +190,6 @@ button {
   background: transparent;
   color: var(--gyro-view-text);
   font: inherit;
-  font-size: 1.1rem;
   cursor: pointer;
 }
 

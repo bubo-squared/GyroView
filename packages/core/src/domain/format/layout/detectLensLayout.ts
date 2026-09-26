@@ -1,5 +1,5 @@
 import { FULL_FRAME, LEFT_HALF, RIGHT_HALF, type LensLayout, type LensSource } from './LensLayout';
-import type { InputDescription, VideoTrackDescription } from './VideoTrackDescription';
+import type { InputDescription, VideoTrackDescription } from '../../../ports/VideoTrack';
 import { RecordingFileName } from '../naming/RecordingFileName';
 import { GyroViewError } from '../../../shared/errors/GyroViewError';
 

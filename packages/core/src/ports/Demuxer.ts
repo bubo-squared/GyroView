@@ -1,29 +1,10 @@
 import type { RandomAccessSource } from './RandomAccessSource';
-import type { VideoTrackDescription } from '../domain/format/layout/VideoTrackDescription';
+import type {
+  EncodedVideoPacket,
+  VideoDecoderConfiguration,
+  VideoTrackDescription,
+} from './VideoTrack';
 import type { Seconds } from '../shared/units/time';
-
-/**
- * One compressed video sample as the container stores it. Timestamps are track time in seconds;
- * `data` holds length-prefixed NAL units when `configuration.description` is present.
- */
-export interface EncodedVideoPacket {
-  readonly timestamp: Seconds;
-  readonly duration: Seconds;
-  readonly isKeyFrame: boolean;
-  readonly data: Uint8Array;
-}
-
-/**
- * Codec parameters a decoder needs, expressed without platform types so the core stays free of
- * DOM declarations.
- */
-export interface VideoDecoderConfiguration {
-  readonly codec: string;
-  readonly codedWidth: number;
-  readonly codedHeight: number;
-  readonly description: Uint8Array | undefined;
-  readonly isFullRange: boolean | undefined;
-}
 
 export interface AudioTrackDescription {
   readonly trackIndex: number;

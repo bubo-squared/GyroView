@@ -5,7 +5,7 @@ import { FramePairQueue } from './FramePairQueue';
 import { DecodePipeline } from './DecodePipeline';
 import { seconds } from '../../shared/units/time';
 import { fakeFrameNumberOf, FakeVideoTrack } from '../../testing/FakeVideoTrack';
-import type { VideoDecoderConfiguration } from '../../ports/Demuxer';
+import type { VideoDecoderConfiguration } from '../../ports/VideoTrack';
 import type {
   VideoDecoderCallbacks,
   VideoDecoderHandle,

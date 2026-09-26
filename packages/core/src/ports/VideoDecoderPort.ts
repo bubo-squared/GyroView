@@ -1,4 +1,4 @@
-import type { EncodedVideoPacket, VideoDecoderConfiguration } from './Demuxer';
+import type { EncodedVideoPacket, VideoDecoderConfiguration } from './VideoTrack';
 import type { Seconds } from '../shared/units/time';
 
 /**

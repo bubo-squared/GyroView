@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { probeDecoding } from './probeDecoding';
-import type { VideoDecoderConfiguration } from '../../ports/Demuxer';
+import type { VideoDecoderConfiguration } from '../../ports/VideoTrack';
 import type {
   VideoDecoderCallbacks,
   VideoDecoderHandle,

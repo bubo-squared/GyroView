@@ -1,9 +1,6 @@
-import type { VideoTrackDescription } from '../../domain/format/layout/VideoTrackDescription';
-import type {
-  EncodedVideoPacket,
-  VideoDecoderConfiguration,
-  VideoTrackReader,
-} from '../../ports/Demuxer';
+import type { VideoTrackDescription } from '../../ports/VideoTrack';
+import type { VideoTrackReader } from '../../ports/Demuxer';
+import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../../ports/VideoTrack';
 import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';
 import type { Signal } from '../../shared/async/Signal';

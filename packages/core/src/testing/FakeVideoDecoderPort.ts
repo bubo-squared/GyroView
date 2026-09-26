@@ -1,4 +1,4 @@
-import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../ports/Demuxer';
+import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../ports/VideoTrack';
 import type {
   DecodedFrame,
   VideoDecoderCallbacks,

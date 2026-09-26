@@ -73,6 +73,17 @@ module.exports = {
       to: { path: '^packages/core/src/domain/format/' },
     },
     {
+      name: 'ports-and-playback-do-not-know-the-format',
+      comment:
+        'The container and decoder ports, and the playback built on them, know nothing of .insv: their vocabulary lives with the ports.',
+      severity: 'error',
+      from: {
+        path: '^packages/core/src/(ports|application/playback)/',
+        pathNot: '\\.test\\.ts$',
+      },
+      to: { path: '^packages/core/src/domain/format/' },
+    },
+    {
       name: 'ports-do-not-know-use-cases',
       comment: "Ports are the core's interfaces; the data crossing them lives with them.",
       severity: 'error',

@@ -31,10 +31,6 @@ export {
   type LensLayoutKind,
   type LensSource,
 } from './domain/format/layout/LensLayout';
-export type {
-  InputDescription,
-  VideoTrackDescription,
-} from './domain/format/layout/VideoTrackDescription';
 export type { ParsedGyroRecord } from './domain/format/records/gyro/parseGyroRecord';
 export { GyroTrack, type GyroSample } from './domain/motion/gyro/GyroTrack';
 export {
@@ -202,10 +198,14 @@ export type {
   DemuxedInput,
   Demuxer,
   EncodedAudioPacket,
-  EncodedVideoPacket,
-  VideoDecoderConfiguration,
   VideoTrackReader,
 } from './ports/Demuxer';
+export type {
+  EncodedVideoPacket,
+  InputDescription,
+  VideoDecoderConfiguration,
+  VideoTrackDescription,
+} from './ports/VideoTrack';
 export type { AudioSegmentSource } from './ports/AudioSegmentSource';
 export type {
   DecodedFrame,

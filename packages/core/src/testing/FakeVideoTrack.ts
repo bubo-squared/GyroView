@@ -1,9 +1,6 @@
-import type { VideoTrackDescription } from '../domain/format/layout/VideoTrackDescription';
-import type {
-  EncodedVideoPacket,
-  VideoDecoderConfiguration,
-  VideoTrackReader,
-} from '../ports/Demuxer';
+import type { VideoTrackDescription } from '../ports/VideoTrack';
+import type { VideoTrackReader } from '../ports/Demuxer';
+import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../ports/VideoTrack';
 import { GyroViewError } from '../shared/errors/GyroViewError';
 import { seconds, type Seconds } from '../shared/units/time';
 

@@ -1,5 +1,7 @@
 import { GyroViewError } from '@gyroview/core';
 
+import { nextOfEvents } from './events';
+
 /**
  * Safari 17+ ships ManagedMediaSource, the only media source on iPhone, and TypeScript's DOM
  * declarations do not know it yet. It has the MediaSource surface this adapter uses.
@@ -93,38 +95,4 @@ function sourceOpenOutcome(
     }, SOURCE_OPEN_TIMEOUT_MS);
   });
   return Promise.race([opened, failed, timedOut]);
-}
-
-export function nextEvent(target: EventTarget, type: string): Promise<void> {
-  return new Promise((resolve) => {
-    target.addEventListener(
-      type,
-      () => {
-        resolve();
-      },
-      { once: true },
-    );
-  });
-}
-
-/**
- * Resolves with the type of the first of the given events; the other listeners are removed then.
- */
-export function nextOfEvents<Type extends string>(
-  target: EventTarget,
-  types: readonly Type[],
-): Promise<Type> {
-  const controller = new AbortController();
-  return new Promise((resolve) => {
-    for (const type of types) {
-      target.addEventListener(
-        type,
-        () => {
-          controller.abort();
-          resolve(type);
-        },
-        { once: true, signal: controller.signal },
-      );
-    }
-  });
 }

@@ -6,7 +6,7 @@ import {
   type Seconds,
 } from '@gyroview/core';
 
-import { nextEvent, nextOfEvents } from './mediaSourceSupport';
+import { nextEvent, nextOfEvents } from './events';
 
 export interface SourceBufferFeederParts {
   readonly element: HTMLMediaElement;

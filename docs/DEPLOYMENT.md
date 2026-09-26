@@ -31,7 +31,9 @@ bucket) hosting the `.insv` files must:
 - answer `HEAD` with `Content-Length`, which saves a request; a server that refuses `HEAD` (a
   `405`, or a `403` from a URL signed for `GET` alone) or omits the length is asked for a
   one-byte range instead;
-- when the page is on another origin, send CORS headers on every response:
+- when the player runs on another origin than the recordings, send CORS headers on every
+  response. The player's origin is the page's for the element form, and for the iframe form
+  the origin serving `embed.html`, whichever site embeds it:
 
   ```
   Access-Control-Allow-Origin: https://your-site.example   (or *)
@@ -59,6 +61,10 @@ add a CORS rule with the headers above. Recordings are large; a CDN in front cac
 The iframe needs `allow="fullscreen; autoplay"` to fill the screen and to start muted
 playback; `GyroView.embed` sets it. The frame trusts one embedding origin: the one the snippet
 puts in the URL (`origin=`), or the referrer's. Frames opened directly play standalone.
+
+The frame fetches the recordings itself, so their host must allow the frame's origin (see
+above). `GyroView.embed` resolves a relative `src` against the embedding page, so a clip next
+to a blog post is fetched from the blog's host, across origins from the frame.
 
 A page with a Content Security Policy needs, for the iframe form, `frame-src` for the frame's
 origin and `script-src` for `embed.js`. The element form runs in the page itself, so it needs

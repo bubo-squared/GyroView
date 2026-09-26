@@ -117,7 +117,8 @@ query parameter (`controls=0` hides the controls; the snippet's `viewMode` optio
 
 The player reads the multi-gigabyte file in byte ranges straight from the camera's layout, so
 the server hosting the recordings must answer `Range` requests with `206` (a `HEAD` with
-`Content-Length` saves a request, but is not required), and send CORS headers when the page is on another origin (a refusal is
+`Content-Length` saves a request, but is not required), and send CORS headers when the player
+runs on another origin, which for the iframe form is the one serving `embed.html` (a refusal is
 reported as `cors`). The player page itself must be served over HTTPS, because WebCodecs
 exists only in secure contexts. `docs/DEPLOYMENT.md` has the exact headers, the hosting layout
 and the error codes.

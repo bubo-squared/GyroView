@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { fittedRectangle, lensTiles, WHOLE_SCREEN } from './screenLayout';
+import { boundsOf, fittedRectangle, lensTiles, WHOLE_SCREEN } from './screenLayout';
 
 describe('screen layout', () => {
   it('fits wider content across the whole width with bars above and below', () => {
@@ -32,6 +32,10 @@ describe('screen layout', () => {
     expect(top?.width).toBeCloseTo(8 / 9, 12);
     expect(top?.x).toBeCloseTo(1 / 18, 12);
     expect(bottom).toEqual({ ...top, y: 0.5 });
+  });
+
+  it('bounds the lens tiles by the rectangle they fill together', () => {
+    expect(boundsOf(lensTiles(2, 1))).toEqual({ x: 0, y: 0.25, width: 1, height: 0.5 });
   });
 
   it('gives a single lens one square tile', () => {

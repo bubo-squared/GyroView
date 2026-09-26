@@ -1,11 +1,21 @@
 import type { Framing } from './Framing';
-import { FITTED } from './magnification';
+import {
+  clampMagnification,
+  FITTED,
+  magnifiedArea,
+  magnifyAt,
+  panMagnification,
+  type Magnification,
+} from './magnification';
 import type { Picture } from './Picture';
 import {
   aspectOf,
+  boundsOf,
   fittedRectangle,
   lensTiles,
+  SCREEN_CENTRE,
   WHOLE_SCREEN,
+  type ScreenRectangle,
   type ViewportSize,
 } from './screenLayout';
 import {
@@ -16,9 +26,9 @@ import {
   type TurnRequest,
   type ZoomRequest,
 } from './viewGestures';
-import { DEFAULT_VIEW, FULL_TURN, viewRotation, type ViewState } from './ViewState';
+import { DEFAULT_VIEW, FULL_TURN, HALF_TURN, viewRotation, type ViewState } from './ViewState';
 import { rotationAboutY } from '../../shared/math/Matrix3';
-import { degrees, degreesToRadians, type Degrees } from '../../shared/units/angle';
+import { degrees, degreesToRadians } from '../../shared/units/angle';
 
 /**
  * An equirectangular picture spans a full turn across for a half turn from top to bottom.
@@ -103,47 +113,163 @@ const NORMAL: ViewModeRules = {
   }),
 };
 
-function turnedPanorama(framing: Framing, yawDelta: Degrees): Framing {
-  const { view } = framing;
-  return withView(framing, lookAt(view, degrees(view.yaw + yawDelta), view.pitch));
+/**
+ * The panorama fitted into the viewport, before any magnification.
+ */
+function fittedPanorama({ viewport }: ViewContext): ScreenRectangle {
+  return fittedRectangle(EQUIRECTANGULAR_ASPECT, aspectOf(viewport));
 }
 
 /**
- * Level, as an exported equirectangular video: only the yaw, which picks the direction at the
- * centre, follows the viewer, a whole turn per viewport width.
+ * The panorama's magnification with its centre kept in the middle across: sideways, the yaw
+ * turns the panorama, which wraps around and so never runs out.
+ */
+function levelled(fitted: ScreenRectangle, magnification: Magnification): Magnification {
+  const clamped = clampMagnification(fitted, magnification);
+  return { ...clamped, centre: { x: SCREEN_CENTRE.x, y: clamped.centre.y } };
+}
+
+function withPanorama(framing: Framing, panorama: Magnification, yawDelta: number): Framing {
+  const { view } = framing;
+  return {
+    ...withView(framing, lookAt(view, degrees(view.yaw + yawDelta), view.pitch)),
+    panorama,
+  };
+}
+
+/**
+ * A drag turns the panorama a whole turn per width of the picture as shown, and moves it up and
+ * down once it is taller than the viewport.
+ */
+function panPanorama(framing: Framing, delta: DragDelta, context: ViewContext): Framing {
+  const fitted = fittedPanorama(context);
+  const { viewport } = context;
+  const panorama = levelled(fitted, framing.panorama);
+  const shownWidth = viewport.width * fitted.width * panorama.scale;
+  const moved = panMagnification(fitted, panorama, {
+    x: 0,
+    y: delta.y / Math.max(viewport.height, 1),
+  });
+  return withPanorama(
+    framing,
+    levelled(fitted, moved),
+    -(delta.x * FULL_TURN) / Math.max(shownWidth, 1),
+  );
+}
+
+/**
+ * Sideways the arrows turn it; up and down they move a panorama taller than the viewport by the
+ * angle they name, the picture spanning a half turn from top to bottom.
+ */
+function turnPanorama(framing: Framing, turn: TurnRequest, context: ViewContext): Framing {
+  const fitted = fittedPanorama(context);
+  const panorama = levelled(fitted, framing.panorama);
+  const raised = {
+    ...panorama,
+    centre: { ...panorama.centre, y: panorama.centre.y - turn.pitch / HALF_TURN },
+  };
+  return withPanorama(framing, levelled(fitted, raised), turn.yaw);
+}
+
+/**
+ * Keeps the point under the pointer where it is: up and down by the magnification's own rule,
+ * sideways by turning the panorama as far as the pointer's longitude moved.
+ */
+function zoomPanorama(framing: Framing, zoom: ZoomRequest, context: ViewContext): Framing {
+  const fitted = fittedPanorama(context);
+  const before = magnifiedArea(fitted, levelled(fitted, framing.panorama));
+  const zoomed = levelled(fitted, magnifyAt(fitted, levelled(fitted, framing.panorama), zoom));
+  const after = magnifiedArea(fitted, zoomed);
+  const across = (area: ScreenRectangle): number => (zoom.focus.x - area.x) / area.width;
+  return withPanorama(framing, zoomed, (across(before) - across(after)) * FULL_TURN);
+}
+
+/**
+ * Level, as an exported equirectangular video: the yaw picks the direction at the centre, and the
+ * panorama magnifies up to four times and moves up and down within itself.
  */
 const EQUIRECTANGULAR: ViewModeRules = {
   isStabilized: true,
   canPan: () => true,
-  pan: (framing, delta, { viewport }) =>
-    turnedPanorama(framing, degrees(-(delta.x * FULL_TURN) / Math.max(viewport.width, 1))),
-  turn: (framing, turn) => turnedPanorama(framing, turn.yaw),
-  zoom: (framing) => framing,
+  pan: panPanorama,
+  turn: turnPanorama,
+  zoom: zoomPanorama,
   reset: (framing) => ({
     ...withView(framing, lookAt(framing.view, degrees(0), framing.view.pitch)),
     panorama: FITTED,
   }),
-  picture: ({ view }, { viewport }) => ({
-    kind: 'equirectangular',
-    rotation: rotationAboutY(degreesToRadians(view.yaw)),
-    area: fittedRectangle(EQUIRECTANGULAR_ASPECT, aspectOf(viewport)),
-  }),
+  picture: ({ view, panorama }, context) => {
+    const fitted = fittedPanorama(context);
+    return {
+      kind: 'equirectangular',
+      rotation: rotationAboutY(degreesToRadians(view.yaw)),
+      area: magnifiedArea(fitted, levelled(fitted, panorama)),
+    };
+  },
 };
 
 /**
- * The decoded images as the camera recorded them: nothing turns or zooms them.
+ * The lens tiles fitted into the viewport, and the rectangle they fill together.
+ */
+function fittedTiles({ viewport, lensCount }: ViewContext): {
+  readonly tiles: readonly ScreenRectangle[];
+  readonly bounds: ScreenRectangle;
+} {
+  const tiles = lensTiles(lensCount, aspectOf(viewport));
+  return { tiles, bounds: boundsOf(tiles) };
+}
+
+function withLenses(framing: Framing, lenses: Magnification): Framing {
+  return { ...framing, lenses };
+}
+
+function panLenses(framing: Framing, delta: DragDelta, context: ViewContext): Framing {
+  const { viewport } = context;
+  const shift = {
+    x: delta.x / Math.max(viewport.width, 1),
+    y: delta.y / Math.max(viewport.height, 1),
+  };
+  return withLenses(framing, panMagnification(fittedTiles(context).bounds, framing.lenses, shift));
+}
+
+/**
+ * The arrows move zoomed tiles as far as a drag of the same angle would turn the normal view at
+ * its default field of view.
+ */
+function turnLenses(framing: Framing, turn: TurnRequest, context: ViewContext): Framing {
+  const pixelsPerDegree = context.viewport.width / DEFAULT_VIEW.fieldOfView;
+  const delta = { x: -(turn.yaw * pixelsPerDegree), y: turn.pitch * pixelsPerDegree };
+  return panLenses(framing, delta, context);
+}
+
+/**
+ * Every tile moved and enlarged by the same map that takes the fitted tiles to the magnified.
+ */
+function magnifiedTiles(framing: Framing, context: ViewContext): ScreenRectangle[] {
+  const { tiles, bounds } = fittedTiles(context);
+  const area = magnifiedArea(bounds, clampMagnification(bounds, framing.lenses));
+  const scale = area.width / bounds.width;
+  return tiles.map((tile) => ({
+    x: area.x + (tile.x - bounds.x) * scale,
+    y: area.y + (tile.y - bounds.y) * scale,
+    width: tile.width * scale,
+    height: tile.height * scale,
+  }));
+}
+
+/**
+ * The decoded images as the camera recorded them, magnified up to four times toward the
+ * pointer and moved within their edges once zoomed; never turned or stitched.
  */
 const RAW_LENSES: ViewModeRules = {
   isStabilized: false,
-  canPan: () => false,
-  pan: (framing) => framing,
-  turn: (framing) => framing,
-  zoom: (framing) => framing,
-  reset: (framing) => ({ ...framing, lenses: FITTED }),
-  picture: (_framing, { viewport, lensCount }) => ({
-    kind: 'lens-tiles',
-    tiles: lensTiles(lensCount, aspectOf(viewport)),
-  }),
+  canPan: ({ lenses }) => lenses.scale > 1,
+  pan: panLenses,
+  turn: turnLenses,
+  zoom: (framing, zoom, context) =>
+    withLenses(framing, magnifyAt(fittedTiles(context).bounds, framing.lenses, zoom)),
+  reset: (framing) => withLenses(framing, FITTED),
+  picture: (framing, context) => ({ kind: 'lens-tiles', tiles: magnifiedTiles(framing, context) }),
 };
 
 const RULES: Readonly<Record<ViewMode, ViewModeRules>> = {

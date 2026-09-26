@@ -21,6 +21,26 @@ const TILTED: ViewState = {
   fieldOfView: degrees(60),
 };
 const ZOOMED_IN = { scale: 2, centre: { x: 0.4, y: 0.6 } };
+/**
+ * A 16:9 viewport, where the fitted panorama leaves bars above and below.
+ */
+const WIDE: ViewContext = { viewport: { width: 1600, height: 900 }, lensCount: 2 };
+
+/**
+ * The longitude and latitude a point of the viewport shows in an equirectangular picture.
+ */
+function panoramaPointAt(
+  framing: Framing,
+  context: ViewContext,
+  point: { x: number; y: number },
+): { longitude: number; latitude: number } {
+  const picture = viewModeRulesFor('equirectangular').picture(framing, context);
+  if (picture.kind !== 'equirectangular') throw new Error(`drew ${picture.kind}`);
+  const { area } = picture;
+  const across = (point.x - area.x) / area.width;
+  const down = (point.y - area.y) / area.height;
+  return { longitude: framing.view.yaw + (across - 0.5) * 360, latitude: (0.5 - down) * 180 };
+}
 
 function framed(view: ViewState): Framing {
   return { ...DEFAULT_FRAMING, view };
@@ -106,11 +126,40 @@ describe('view modes', () => {
       });
     });
 
-    it('ignores zoom, so the normal view comes back as it was', () => {
+    it('zooms toward the pointer: the longitude and latitude under it stay put', () => {
+      const focus = { x: 0.8, y: 0.3 };
       const framing = framed(TILTED);
-      expect(
-        equirectangular.zoom(framing, { steps: 3, focus: { x: 0.2, y: 0.2 } }, SQUARE),
-      ).toEqual(framing);
+      const zoomed = equirectangular.zoom(framing, { steps: 5, focus }, WIDE);
+      const before = panoramaPointAt(framing, WIDE, focus);
+      const after = panoramaPointAt(zoomed, WIDE, focus);
+      expect(zoomed.panorama.scale).toBeCloseTo(1.1 ** 5, 9);
+      expect(after.longitude).toBeCloseTo(before.longitude, 9);
+      expect(after.latitude).toBeCloseTo(before.latitude, 9);
+      expect(zoomed.view.fieldOfView).toBe(TILTED.fieldOfView);
+      expect(zoomed.view.pitch).toBe(TILTED.pitch);
+    });
+
+    it('moves up and down only once taller than the viewport, and stops at its edges', () => {
+      expect(equirectangular.pan(DEFAULT_FRAMING, { x: 0, y: 300 }, WIDE)).toEqual(DEFAULT_FRAMING);
+      const zoomed = { ...DEFAULT_FRAMING, panorama: { scale: 3, centre: { x: 0.5, y: 0.5 } } };
+      const dragged = equirectangular.pan(zoomed, { x: 0, y: 5000 }, WIDE);
+      const picture = equirectangular.picture(dragged, WIDE);
+      if (picture.kind !== 'equirectangular') throw new Error(`drew ${picture.kind}`);
+      expect(picture.area.y).toBeCloseTo(0, 9);
+    });
+
+    it('moves a zoomed panorama up with the up arrow by the angle it names', () => {
+      const zoomed = { ...DEFAULT_FRAMING, panorama: { scale: 3, centre: { x: 0.5, y: 0.5 } } };
+      const raised = equirectangular.turn(zoomed, turnOf(0, 9), WIDE);
+      expect(raised.panorama.centre.y).toBeCloseTo(0.5 - 9 / 180, 9);
+      expect(raised.view).toEqual(zoomed.view);
+    });
+
+    it('draws a magnified panorama grown about the point at the centre, always level', () => {
+      const zoomed = { ...DEFAULT_FRAMING, panorama: { scale: 2, centre: { x: 0.5, y: 0.5 } } };
+      expect(equirectangular.picture(zoomed, SQUARE)).toMatchObject({
+        area: { x: -0.5, y: 0, width: 2, height: 1 },
+      });
     });
 
     it('resets to straight ahead and fitted, keeping the normal view pitch and field of view', () => {
@@ -135,14 +184,40 @@ describe('view modes', () => {
   describe('raw lenses', () => {
     const rawLenses = viewModeRulesFor('raw-lenses');
 
-    it('ignores every gesture: the lens images are shown as recorded', () => {
+    it('neither turns nor moves the fitted lens images', () => {
       const framing = framed(TILTED);
       expect(rawLenses.canPan(framing)).toBe(false);
       expect(rawLenses.pan(framing, { x: 90, y: 90 }, SQUARE)).toEqual(framing);
       expect(rawLenses.turn(framing, turnOf(5, 5), SQUARE)).toEqual(framing);
-      expect(rawLenses.zoom(framing, { steps: 2, focus: { x: 0.5, y: 0.5 } }, SQUARE)).toEqual(
-        framing,
+    });
+
+    it('zooms the tiles together toward the pointer, then moves with drags and arrows', () => {
+      // The centre of the left tile on a square viewport, where the tiles sit side by side.
+      const focus = { x: 0.25, y: 0.5 };
+      const zoomed = rawLenses.zoom(DEFAULT_FRAMING, { steps: 3, focus }, SQUARE);
+      const picture = rawLenses.picture(zoomed, SQUARE);
+      if (picture.kind !== 'lens-tiles') throw new Error(`drew ${picture.kind}`);
+      const [left] = picture.tiles;
+      expect((left?.x ?? 0) + (left?.width ?? 0) / 2).toBeCloseTo(0.25, 9);
+      expect(rawLenses.canPan(zoomed)).toBe(true);
+      expect(rawLenses.pan(zoomed, { x: -30, y: 0 }, SQUARE).lenses.centre.x).toBeGreaterThan(
+        zoomed.lenses.centre.x,
       );
+      expect(rawLenses.turn(zoomed, turnOf(5, 0), SQUARE).lenses.centre.x).toBeGreaterThan(
+        zoomed.lenses.centre.x,
+      );
+      expect(zoomed.view).toEqual(DEFAULT_FRAMING.view);
+    });
+
+    it('draws the tiles magnified together', () => {
+      const zoomed = { ...DEFAULT_FRAMING, lenses: { scale: 2, centre: { x: 0.5, y: 0.5 } } };
+      expect(rawLenses.picture(zoomed, SQUARE)).toEqual({
+        kind: 'lens-tiles',
+        tiles: [
+          { x: -0.5, y: 0, width: 1, height: 1 },
+          { x: 0.5, y: 0, width: 1, height: 1 },
+        ],
+      });
     });
 
     it('resets the lens tiles to fitted and nothing else', () => {

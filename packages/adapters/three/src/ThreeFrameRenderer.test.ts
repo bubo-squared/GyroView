@@ -5,6 +5,7 @@ import {
   degrees,
   GainMatchingFrameSink,
   lensRotation,
+  MAX_MAGNIFICATION,
   quaternionFromAxisAngle,
   radians,
   seconds,
@@ -277,6 +278,33 @@ describe('ThreeFrameRenderer', () => {
     expect(zenith.r).toBeGreaterThan(FAINT);
     expect(zenith.b).toBeGreaterThan(FAINT);
     expect(pixelAt(renderer, { column: 32, row: 18 }, size).r).toBeGreaterThan(BRIGHT);
+  });
+
+  it('fills the letterbox bars with a magnified panorama', () => {
+    const size = { width: 64, height: 36 };
+    const renderer = open(undefined, size);
+    renderer.setViewMode('equirectangular');
+    presentRedAndBlue(renderer);
+    renderer.setFraming({
+      ...DEFAULT_FRAMING,
+      panorama: { scale: MAX_MAGNIFICATION, centre: { x: 0.5, y: 0.5 } },
+    });
+    for (const row of [0, 1, 34, 35]) {
+      const edge = pixelAt(renderer, { column: 32, row }, size);
+      expect(edge.r + edge.g + edge.b).toBeGreaterThan(FAINT);
+    }
+  });
+
+  it('magnifies the raw lens tiles together: at twice the size the left lens fills the view', () => {
+    const renderer = open();
+    renderer.setViewMode('raw-lenses');
+    presentRedAndBlue(renderer);
+    renderer.setFraming({ ...DEFAULT_FRAMING, lenses: { scale: 2, centre: { x: 0.25, y: 0.5 } } });
+    for (const column of [2, 32, 61]) {
+      const shown = pixelAt(renderer, { column, row: 16 });
+      expect(shown.r).toBeGreaterThan(BRIGHT);
+      expect(shown.b).toBeLessThan(DIM);
+    }
   });
 
   it('shows the raw lenses side by side and unstitched: no pose, stabilization or gain', () => {

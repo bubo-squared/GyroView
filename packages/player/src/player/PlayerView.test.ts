@@ -112,13 +112,31 @@ describe('PlayerView', () => {
 
   it('announces nothing for a change that changes nothing', () => {
     const { view, drawn, views, modes } = recordedView();
+    view.setMode('raw-lenses');
+    view.pan({ x: 50, y: 0 });
+    view.set(DEFAULT_VIEW);
+    view.setMode('raw-lenses');
+    expect(views).toEqual([]);
+    expect(modes).toEqual(['raw-lenses']);
+    expect(drawn).toEqual(['raw-lenses']);
+  });
+
+  it('draws a zoomed panorama without announcing the normal view, which it leaves alone', () => {
+    const { view, drawn, views } = recordedView();
     view.setMode('equirectangular');
     view.zoom(2);
-    view.set(DEFAULT_VIEW);
-    view.setMode('equirectangular');
+    expect(drawn).toEqual(['equirectangular', DEFAULT_VIEW]);
     expect(views).toEqual([]);
-    expect(modes).toEqual(['equirectangular']);
-    expect(drawn).toEqual(['equirectangular']);
+    expect(view.canPan).toBe(true);
+  });
+
+  it('lets the raw lenses be dragged once zoomed in', () => {
+    const { view } = recordedView();
+    view.setMode('raw-lenses');
+    view.zoom(1);
+    expect(view.canPan).toBe(true);
+    view.reset();
+    expect(view.canPan).toBe(false);
   });
 
   it('draws its current view and mode on a renderer attached later', () => {

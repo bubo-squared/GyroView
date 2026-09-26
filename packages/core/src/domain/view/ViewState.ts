@@ -29,6 +29,7 @@ const HALF_TURN_DEGREES = 180;
 const FULL_TURN_DEGREES = 360;
 
 export const FULL_TURN = degrees(FULL_TURN_DEGREES);
+export const HALF_TURN = degrees(HALF_TURN_DEGREES);
 
 export const DEFAULT_VIEW: ViewState = {
   yaw: degrees(0),

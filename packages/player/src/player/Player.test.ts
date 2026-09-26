@@ -233,9 +233,13 @@ describe('Player over the synthetic X5 recording', () => {
     expect(redraws[0]).toHaveBeenCalledTimes(2);
   });
 
-  it('lets the view mode rule the gestures: the panorama ignores zoom, the normal view zooms and turns', async () => {
+  it('lets the view mode rule the gestures: each mode zooms its own picture', async () => {
     const { player } = open();
     await player.load(sourceOf(X5_RECORDING_URL));
+    player.setViewMode('raw-lenses');
+    expect(player.canPan).toBe(false);
+    player.zoom(1);
+    expect(player.canPan).toBe(true);
     player.setViewMode('equirectangular');
     player.zoom(1);
     expect(player.view.fieldOfView).toBe(90);

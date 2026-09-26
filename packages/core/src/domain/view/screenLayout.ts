@@ -1,3 +1,5 @@
+import { ensureInvariant } from '../../shared/errors/GyroViewError';
+
 /**
  * A rectangle of the viewport as fractions of its width and height, from the top-left corner.
  */
@@ -68,6 +70,18 @@ function tilesDown(area: ScreenRectangle, count: number): ScreenRectangle[] {
     y: area.y + index * height,
     height,
   }));
+}
+
+/**
+ * The smallest rectangle holding every one of the given rectangles.
+ */
+export function boundsOf(rectangles: readonly ScreenRectangle[]): ScreenRectangle {
+  ensureInvariant(rectangles.length > 0, 'bounds need at least one rectangle');
+  const left = Math.min(...rectangles.map((rectangle) => rectangle.x));
+  const top = Math.min(...rectangles.map((rectangle) => rectangle.y));
+  const right = Math.max(...rectangles.map((rectangle) => rectangle.x + rectangle.width));
+  const bottom = Math.max(...rectangles.map((rectangle) => rectangle.y + rectangle.height));
+  return { x: left, y: top, width: right - left, height: bottom - top };
 }
 
 /**

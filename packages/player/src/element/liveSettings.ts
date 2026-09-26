@@ -1,4 +1,11 @@
-import { degrees, GyroViewError, type Degrees, type ViewState } from '@gyroview/core';
+import {
+  degrees,
+  GyroViewError,
+  type Degrees,
+  type StabilizationMode,
+  type ViewMode,
+  type ViewState,
+} from '@gyroview/core';
 
 import { stabilizationModeOf, viewModeOf } from '../choices';
 import type { Player } from '../player/Player';
@@ -9,13 +16,30 @@ interface Accessor {
 }
 
 /**
+ * The player's settings as the element's properties (ADR 0016): each reports what is in effect
+ * and takes a new value. The element implements it, so a property defined here is declared there.
+ */
+export interface LiveSettings {
+  stabilization: StabilizationMode;
+  viewMode: ViewMode;
+  fov: number;
+  yaw: number;
+  pitch: number;
+  muted: boolean;
+  loop: boolean;
+  volume: number;
+}
+
+type Accessors = { readonly [Name in keyof LiveSettings]: Accessor };
+
+/**
  * Properties that read and change the player's settings as they are now, the way
  * `HTMLMediaElement.muted` does: the attribute of the same name configures the setting, the
  * property reports what is in effect however it was last changed (attribute, menu, keyboard,
  * gesture or script). A value the setting cannot take is refused.
  */
 export function defineLiveSettings(element: HTMLElement, player: Player): void {
-  const accessors: Readonly<Record<string, Accessor>> = {
+  const accessors: Accessors = {
     stabilization: {
       get: (): unknown => player.stabilization,
       set: (value): void => {
@@ -36,7 +60,7 @@ export function defineLiveSettings(element: HTMLElement, player: Player): void {
   }
 }
 
-function viewAccessors(player: Player): Record<string, Accessor> {
+function viewAccessors(player: Player): Pick<Accessors, 'fov' | 'yaw' | 'pitch'> {
   const angle = (key: keyof ViewState): Accessor => ({
     get: (): unknown => player.view[key],
     set: (value): void => {
@@ -46,7 +70,7 @@ function viewAccessors(player: Player): Record<string, Accessor> {
   return { fov: angle('fieldOfView'), yaw: angle('yaw'), pitch: angle('pitch') };
 }
 
-function soundAccessors(player: Player): Record<string, Accessor> {
+function soundAccessors(player: Player): Pick<Accessors, 'muted' | 'loop' | 'volume'> {
   return {
     muted: {
       get: (): unknown => player.isMuted,

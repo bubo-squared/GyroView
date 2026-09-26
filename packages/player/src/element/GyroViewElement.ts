@@ -19,7 +19,7 @@ import { elementSourceOf, type FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
 import { IdleWatcher } from './IdleWatcher';
 import { applyPlaybackAttribute } from './playbackAttributes';
-import { defineLiveSettings } from './liveSettings';
+import { defineLiveSettings, type LiveSettings } from './liveSettings';
 import { defineBooleanProperties, defineStringProperties } from './reflectedProperties';
 import { ELEMENT_TEMPLATE } from './template';
 import { createBrowserPlayer } from '../browserPlayer';
@@ -61,13 +61,15 @@ const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);
  * does; the player's events are dispatched as `CustomEvent`s of the same name with the payload
  * in `detail`. Facade over {@link Player}, the controls and the gestures (ADR 0016).
  */
-export class GyroViewElement extends HTMLElement {
+export class GyroViewElement extends HTMLElement implements LiveSettings {
   public static readonly observedAttributes = OBSERVED_ATTRIBUTES;
   declare public src: string | null;
   declare public src2: string | null;
   declare public proxy: string | null;
   declare public quality: string | null;
   declare public poster: string | null;
+  declare public preload: string | null;
+  declare public gainMatch: string | null;
   declare public autoplay: boolean;
   declare public controls: boolean;
   declare public stabilization: StabilizationMode;

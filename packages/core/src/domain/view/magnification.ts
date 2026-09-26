@@ -22,6 +22,12 @@ export const FITTED: Magnification = { scale: 1, centre: SCREEN_CENTRE };
 export const MAX_MAGNIFICATION = 4;
 
 /**
+ * A scale this close to 1 is the fitted picture: zooming out notch by notch as far as it zoomed
+ * in lands within rounding of 1, and must show the picture fitted again, not a hair enlarged.
+ */
+const FITTED_TOLERANCE = 1e-9;
+
+/**
  * Half of anything along one axis: the middle of the picture, or half of the viewport.
  */
 const HALF = 0.5;
@@ -63,7 +69,8 @@ export function clampMagnification(
   fitted: ScreenRectangle,
   magnification: Magnification,
 ): Magnification {
-  const scale = Math.min(Math.max(magnification.scale, 1), MAX_MAGNIFICATION);
+  const limited = Math.min(Math.max(magnification.scale, 1), MAX_MAGNIFICATION);
+  const scale = limited - 1 < FITTED_TOLERANCE ? 1 : limited;
   return {
     scale,
     centre: {

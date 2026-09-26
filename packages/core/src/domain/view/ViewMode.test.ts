@@ -209,6 +209,15 @@ describe('view modes', () => {
       expect(zoomed.view).toEqual(DEFAULT_FRAMING.view);
     });
 
+    it('stays put again once zoomed back out as far as it zoomed in', () => {
+      const centre = { x: 0.5, y: 0.5 };
+      let framing = DEFAULT_FRAMING;
+      for (const steps of [1, 1, 1, -1, -1, -1]) {
+        framing = rawLenses.zoom(framing, { steps, focus: centre }, SQUARE);
+      }
+      expect(rawLenses.canPan(framing)).toBe(false);
+    });
+
     it('draws the tiles magnified together', () => {
       const zoomed = { ...DEFAULT_FRAMING, lenses: { scale: 2, centre: { x: 0.5, y: 0.5 } } };
       expect(rawLenses.picture(zoomed, SQUARE)).toEqual({

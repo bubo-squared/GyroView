@@ -81,6 +81,20 @@ describe('magnification', () => {
     expect(area.y + area.height).toBeCloseTo(1, 12);
   });
 
+  it('comes back to exactly fitted after zooming out notch by notch as far as it zoomed in', () => {
+    const focus = { x: 0.3, y: 0.6 };
+    for (const notches of [3, 4, 11]) {
+      let magnification = FITTED;
+      for (let notch = 0; notch < notches; notch += 1) {
+        magnification = magnifyAt(PANORAMA, magnification, { steps: 1, focus });
+      }
+      for (let notch = 0; notch < notches; notch += 1) {
+        magnification = magnifyAt(PANORAMA, magnification, { steps: -1, focus });
+      }
+      expect(magnification).toEqual(FITTED);
+    }
+  });
+
   it('does not move a fitted picture', () => {
     expect(panMagnification(PANORAMA, FITTED, { x: 0.3, y: 0.3 })).toEqual(FITTED);
   });

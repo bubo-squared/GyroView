@@ -107,7 +107,7 @@ describe('MediabunnyAudioSegmenter', () => {
     expect(parsed.duration).toBeCloseTo(3, 1);
   });
 
-  it('stops re-packaging when the consumer stops iterating', async () => {
+  it('yields the init segment first, then fragments, as far as the consumer iterates', async () => {
     const segments = await collect(source.segmentsFrom(seconds(0)), 3);
     expect(segments.map((segment) => boxTypeOf(segment))).toEqual(['ftyp', 'moov', 'moof']);
   });

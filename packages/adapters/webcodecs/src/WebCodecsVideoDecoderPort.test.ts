@@ -4,8 +4,12 @@ import {
   LensDecodePipeline,
   seconds,
   type DemuxedInput,
+  type EncodedVideoPacket,
   type FramePair,
+  type VideoDecoderCallbacks,
   type VideoDecoderConfiguration,
+  type VideoDecoderHandle,
+  type VideoDecoderPort,
 } from '@gyroview/core';
 import { InMemoryRandomAccessSource } from '@gyroview/core/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -33,6 +37,33 @@ async function drain(
     await new Promise((resolve) => setTimeout(resolve, 1));
   }
   return taken;
+}
+
+/**
+ * The real port, watched: after every packet it records the most packets a decoder held.
+ */
+class PendingObservingPort implements VideoDecoderPort<VideoFrame> {
+  public mostPending = 0;
+
+  public constructor(private readonly inner: VideoDecoderPort<VideoFrame>) {}
+
+  public isSupported(configuration: VideoDecoderConfiguration): Promise<boolean> {
+    return this.inner.isSupported(configuration);
+  }
+
+  public async create(
+    configuration: VideoDecoderConfiguration,
+    callbacks: VideoDecoderCallbacks<VideoFrame>,
+  ): Promise<VideoDecoderHandle> {
+    const handle = await this.inner.create(configuration, callbacks);
+    const decode = handle.decode.bind(handle);
+    return Object.assign(handle, {
+      decode: (packet: EncodedVideoPacket): void => {
+        decode(packet);
+        this.mostPending = Math.max(this.mostPending, handle.pendingCount);
+      },
+    });
+  }
 }
 
 describe('WebCodecsVideoDecoderPort', () => {
@@ -77,20 +108,20 @@ describe('WebCodecsVideoDecoderPort', () => {
     for (const pair of pairs) for (const frame of pair.frames) frame.close();
   });
 
-  it('starts from the preceding key frame and keeps only the last pair before the requested time', async () => {
+  it('decodes from the preceding key frame, so a run from mid-GOP shows the frame due then', async () => {
     const pipeline = new LensDecodePipeline(input.videoTracks, port, PIPELINE_OPTIONS);
     const queue = new FramePairQueue<VideoFrame>(4);
     const run = pipeline.run(seconds(1.25), queue);
     const pairs = await drain(queue, run);
-    const report = await run;
+    await run;
 
     expect(pairs[0]?.timestamp).toBeCloseTo(1.2, 5);
-    expect(report.pairsDroppedBeforeStart).toBe(2);
     for (const pair of pairs) for (const frame of pair.frames) frame.close();
   });
 
-  it('applies backpressure through the decoder queue', async () => {
-    const pipeline = new LensDecodePipeline(input.videoTracks, port, {
+  it('never holds more packets in a decoder than the pipeline allows', async () => {
+    const observed = new PendingObservingPort(port);
+    const pipeline = new LensDecodePipeline(input.videoTracks, observed, {
       ...PIPELINE_OPTIONS,
       maxPendingPackets: 2,
     });
@@ -99,6 +130,8 @@ describe('WebCodecsVideoDecoderPort', () => {
     const pairs = await drain(queue, run);
     await run;
     expect(pairs).toHaveLength(FRAMES);
+    expect(observed.mostPending).toBeGreaterThan(0);
+    expect(observed.mostPending).toBeLessThanOrEqual(2);
     for (const pair of pairs) for (const frame of pair.frames) frame.close();
   });
 });

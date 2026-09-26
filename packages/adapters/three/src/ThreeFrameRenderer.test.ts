@@ -178,7 +178,7 @@ describe('ThreeFrameRenderer', () => {
     for (const canvas of canvases.splice(0)) canvas.remove();
   });
 
-  it('shows lens 0 straight ahead, lens 1 behind, and swaps the lenses across the seam in an equirectangular view', () => {
+  it('shows lens 0 straight ahead and lens 1 behind in an equirectangular view', () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');
     presentRedAndBlue(renderer);
@@ -188,6 +188,12 @@ describe('ThreeFrameRenderer', () => {
     const behind = pixelTowards(renderer, [0, 0, -1]);
     expect(behind.b).toBeGreaterThan(BRIGHT);
     expect(behind.r).toBeLessThan(DIM);
+  });
+
+  it('swaps the lenses across the seam, the fainter one still showing', () => {
+    const renderer = open();
+    renderer.setViewMode('equirectangular');
+    presentRedAndBlue(renderer);
     const seam = equirectangularPixelOf([1, 0, 0], SIZE);
     const justBeforeSeam = pixelAt(renderer, { column: seam.column - 1, row: seam.row });
     const justAfterSeam = pixelAt(renderer, seam);
@@ -456,10 +462,14 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
   });
 
-  it('clamps the view it is given and refuses to work once disposed', () => {
+  it('clamps the view it is given', () => {
     const renderer = open();
     renderer.setView({ ...DEFAULT_VIEW, pitch: degrees(200), fieldOfView: degrees(10) });
     expect(renderer.view).toEqual({ ...DEFAULT_VIEW, pitch: 90, fieldOfView: 30 });
+  });
+
+  it('refuses to work once disposed', () => {
+    const renderer = open();
     renderer.dispose();
     expect(() => {
       renderer.setView(DEFAULT_VIEW);

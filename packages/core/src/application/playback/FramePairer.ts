@@ -1,4 +1,4 @@
-import type { FramePair } from './FramePair';
+import type { FramePair } from '../../ports/FramePair';
 import type { DecodedFrame } from '../../ports/VideoDecoderPort';
 import { ensureIndexInRange } from '../../shared/errors/GyroViewError';
 import { seconds, type Seconds } from '../../shared/units/time';

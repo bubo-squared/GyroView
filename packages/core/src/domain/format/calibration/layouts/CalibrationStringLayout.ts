@@ -3,8 +3,9 @@ import type {
   CanvasSize,
   EulerDegrees,
   LensCalibration,
-} from '../LensCalibration';
-import { degrees } from '../../../shared/units/angle';
+} from '../../../optics/LensCalibration';
+import { degrees } from '../../../../shared/units/angle';
+import { VERSION_WORD_SHIFT } from '../offsetTokens';
 
 /**
  * Reads one lens block by named token position.
@@ -30,3 +31,30 @@ export interface CalibrationStringLayout {
 export function eulerDegrees(yaw: number, pitch: number, roll: number): EulerDegrees {
   return { yaw: degrees(yaw), pitch: degrees(pitch), roll: degrees(roll) };
 }
+
+/**
+ * For the versioned strings (v2, v3): what is wrong with a version word that does not declare
+ * `version` in its high bits, if anything.
+ */
+export function versionWordMismatch(
+  versionWord: number,
+  version: CalibrationVersion,
+): string | undefined {
+  const declared = versionWord >>> VERSION_WORD_SHIFT;
+  return declared === version ? undefined : `declares version ${declared}`;
+}
+
+/**
+ * For the versioned strings: the canvas the first lens block declares at the given token
+ * positions; an empty canvas when there is no block.
+ */
+export function canvasOfFirstBlock(
+  blocks: readonly LensBlock[],
+  widthToken: number,
+  heightToken: number,
+): CanvasSize {
+  const [first] = blocks;
+  return first ? { width: first(widthToken), height: first(heightToken) } : EMPTY_CANVAS;
+}
+
+const EMPTY_CANVAS: CanvasSize = { width: 0, height: 0 };

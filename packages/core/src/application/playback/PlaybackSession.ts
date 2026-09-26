@@ -1,4 +1,4 @@
-import { closeFramePair, type FramePair } from './FramePair';
+import { closeFramePair, type FramePair } from '../../ports/FramePair';
 import { FramePairQueue } from './FramePairQueue';
 import { DecodePipeline, type DecodePipelineOptions, type DecodeRunReport } from './DecodePipeline';
 import type { FrameTimes } from '../../domain/motion/timing/FrameTimes';

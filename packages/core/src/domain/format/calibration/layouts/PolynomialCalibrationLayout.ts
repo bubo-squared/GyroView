@@ -1,17 +1,18 @@
 import {
+  canvasOfFirstBlock,
   eulerDegrees,
+  versionWordMismatch,
   type CalibrationStringLayout,
   type LensBlock,
 } from './CalibrationStringLayout';
-import { CalibrationVersion, type CanvasSize, type LensCalibration } from '../LensCalibration';
 import {
-  V2_LENS_TOKENS,
-  V2Token,
-  VERSION_WORD_SHIFT,
-  VERSIONED_TRAILING_TOKENS,
-} from '../offsetTokens';
-import { DEFAULT_HALF_FIELD_OF_VIEW } from '../opticsConstants';
-import { PolynomialModel } from '../PolynomialModel';
+  CalibrationVersion,
+  type CanvasSize,
+  type LensCalibration,
+} from '../../../optics/LensCalibration';
+import { V2_LENS_TOKENS, V2Token, VERSIONED_TRAILING_TOKENS } from '../offsetTokens';
+import { DEFAULT_HALF_FIELD_OF_VIEW } from '../../../optics/opticsConstants';
+import { PolynomialModel } from '../../../optics/PolynomialModel';
 
 /**
  * `offset_v2`: `r cx cy yaw pitch roll tx ty tz c1 c2 c3 c4 width height type` per lens, then
@@ -23,8 +24,7 @@ export class PolynomialCalibrationLayout implements CalibrationStringLayout {
   public readonly trailingTokens = VERSIONED_TRAILING_TOKENS;
 
   public versionWordProblem(versionWord: number): string | undefined {
-    const declared = versionWord >>> VERSION_WORD_SHIFT;
-    return declared === this.version ? undefined : `declares version ${declared}`;
+    return versionWordMismatch(versionWord, this.version);
   }
 
   public parseLens(block: LensBlock, lensIndex: number): LensCalibration {
@@ -54,9 +54,6 @@ export class PolynomialCalibrationLayout implements CalibrationStringLayout {
   }
 
   public canvasOf(_numbers: readonly number[], blocks: readonly LensBlock[]): CanvasSize {
-    const [first] = blocks;
-    return first
-      ? { width: first(V2Token.CanvasWidth), height: first(V2Token.CanvasHeight) }
-      : { width: 0, height: 0 };
+    return canvasOfFirstBlock(blocks, V2Token.CanvasWidth, V2Token.CanvasHeight);
   }
 }

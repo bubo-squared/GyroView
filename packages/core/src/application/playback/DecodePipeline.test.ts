@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { FramePair } from './FramePair';
+import type { FramePair } from '../../ports/FramePair';
 import { FramePairQueue } from './FramePairQueue';
 import { DecodePipeline } from './DecodePipeline';
 import { seconds } from '../../shared/units/time';

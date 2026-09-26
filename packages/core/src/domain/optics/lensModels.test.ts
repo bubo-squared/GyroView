@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { LensModel } from './LensModel';
-import { parseOffsetString } from './parseOffsetString';
+import { parseOffsetString } from '../format/calibration/parseOffsetString';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { OFFICE_CALIBRATION } from '../../../test/support/calibrationStrings';
 

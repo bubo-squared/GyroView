@@ -1,5 +1,5 @@
-import type { DecodedFrame } from '../../ports/VideoDecoderPort';
-import type { Seconds } from '../../shared/units/time';
+import type { DecodedFrame } from './VideoDecoderPort';
+import type { Seconds } from '../shared/units/time';
 
 /**
  * The decoded pictures of every frame source for one instant, in frame source order (for a packed

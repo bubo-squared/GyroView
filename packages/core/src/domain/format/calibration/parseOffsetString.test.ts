@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { CalibrationVersion } from './LensCalibration';
+import { CalibrationVersion } from '../../optics/LensCalibration';
 import { parseOffsetString } from './parseOffsetString';
 import {
   OFFICE_CALIBRATION,
   ONE_R_LEGACY_CALIBRATION,
   v6CalibrationString,
-} from '../../../test/support/calibrationStrings';
-import { captureError } from '../../../test/support/errors';
+} from '../../../../test/support/calibrationStrings';
+import { captureError } from '../../../../test/support/errors';
 
 describe('parseOffsetString with the X5 office strings', () => {
   it('parses the legacy offset into equidistant lenses on a 10752x5376 canvas', () => {

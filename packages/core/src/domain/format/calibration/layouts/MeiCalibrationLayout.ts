@@ -1,17 +1,18 @@
 import {
+  canvasOfFirstBlock,
   eulerDegrees,
+  versionWordMismatch,
   type CalibrationStringLayout,
   type LensBlock,
 } from './CalibrationStringLayout';
-import { CalibrationVersion, type CanvasSize, type LensCalibration } from '../LensCalibration';
-import { MeiModel } from '../MeiModel';
 import {
-  V3_LENS_TOKENS,
-  V3Token,
-  VERSION_WORD_SHIFT,
-  VERSIONED_TRAILING_TOKENS,
-} from '../offsetTokens';
-import { DEFAULT_HALF_FIELD_OF_VIEW } from '../opticsConstants';
+  CalibrationVersion,
+  type CanvasSize,
+  type LensCalibration,
+} from '../../../optics/LensCalibration';
+import { MeiModel } from '../../../optics/MeiModel';
+import { V3_LENS_TOKENS, V3Token, VERSIONED_TRAILING_TOKENS } from '../offsetTokens';
+import { DEFAULT_HALF_FIELD_OF_VIEW } from '../../../optics/opticsConstants';
 
 /**
  * `offset_v3`: `xi fx fy cx cy yaw pitch roll tx ty tz k1 k2 k3 p1 p2 width height type` per
@@ -23,8 +24,7 @@ export class MeiCalibrationLayout implements CalibrationStringLayout {
   public readonly trailingTokens = VERSIONED_TRAILING_TOKENS;
 
   public versionWordProblem(versionWord: number): string | undefined {
-    const declared = versionWord >>> VERSION_WORD_SHIFT;
-    return declared === this.version ? undefined : `declares version ${declared}`;
+    return versionWordMismatch(versionWord, this.version);
   }
 
   public parseLens(block: LensBlock, lensIndex: number): LensCalibration {
@@ -51,9 +51,6 @@ export class MeiCalibrationLayout implements CalibrationStringLayout {
   }
 
   public canvasOf(_numbers: readonly number[], blocks: readonly LensBlock[]): CanvasSize {
-    const [first] = blocks;
-    return first
-      ? { width: first(V3Token.CanvasWidth), height: first(V3Token.CanvasHeight) }
-      : { width: 0, height: 0 };
+    return canvasOfFirstBlock(blocks, V3Token.CanvasWidth, V3Token.CanvasHeight);
   }
 }

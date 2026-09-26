@@ -17,7 +17,7 @@ import type { RecordLocation } from '../../domain/format/trailer/RecordLocation'
 import type { Trailer } from '../../domain/format/trailer/Trailer';
 import type { ExposureRecord } from '../../domain/motion/exposure/ExposureRecord';
 import { CaptureClock } from '../../domain/motion/timing/CaptureClock';
-import type { CalibrationChoice } from '../../domain/optics/selectCalibration';
+import type { CalibrationChoice } from '../../domain/format/calibration/selectCalibration';
 import { ByteRange } from '../../shared/binary/ByteRange';
 import { ensureInvariant } from '../../shared/errors/GyroViewError';
 

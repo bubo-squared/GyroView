@@ -7,7 +7,7 @@ import {
   RIGHT_HALF,
   type LensLayout,
 } from '../../domain/format/layout/LensLayout';
-import { parseOffsetString } from '../../domain/optics/parseOffsetString';
+import { parseOffsetString } from '../../domain/format/calibration/parseOffsetString';
 import { transformVector } from '../../shared/math/Matrix3';
 import { captureError } from '../../../test/support/errors';
 import { OFFICE_CALIBRATION } from '../../../test/support/officeCalibration';

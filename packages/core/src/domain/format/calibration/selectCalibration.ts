@@ -1,7 +1,7 @@
-import type { CalibrationSet } from './LensCalibration';
+import type { CalibrationSet } from '../../optics/LensCalibration';
 import { parseOffsetString } from './parseOffsetString';
-import { GyroViewError, type GyroViewErrorCode } from '../../shared/errors/GyroViewError';
-import type { CalibrationStrings } from '../format/info/RecordingInfo';
+import { GyroViewError, type GyroViewErrorCode } from '../../../shared/errors/GyroViewError';
+import type { CalibrationStrings } from '../info/RecordingInfo';
 
 export interface CalibrationChoice {
   /**

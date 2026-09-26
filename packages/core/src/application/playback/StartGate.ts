@@ -1,4 +1,4 @@
-import { closeFramePair, type FramePair } from './FramePair';
+import { closeFramePair, type FramePair } from '../../ports/FramePair';
 import type { Seconds } from '../../shared/units/time';
 
 /**

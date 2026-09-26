@@ -161,8 +161,8 @@ export {
 } from './domain/optics/gainMatch';
 export { GainMatching } from './application/gainMatching/GainMatching';
 export type { SeamMeter } from './ports/SeamMeter';
-export type { CalibrationChoice } from './domain/optics/selectCalibration';
-export { parseOffsetString } from './domain/optics/parseOffsetString';
+export type { CalibrationChoice } from './domain/format/calibration/selectCalibration';
+export { parseOffsetString } from './domain/format/calibration/parseOffsetString';
 
 // Shared vocabulary
 export {
@@ -230,7 +230,7 @@ export type {
   VideoDecoderHandle,
   VideoDecoderPort,
 } from './ports/VideoDecoderPort';
-export { closeFramePair, type FramePair } from './application/playback/FramePair';
+export { closeFramePair, type FramePair } from './ports/FramePair';
 export { FramePairQueue } from './application/playback/FramePairQueue';
 export {
   DecodePipeline,
@@ -249,7 +249,7 @@ export { Signal } from './shared/async/Signal';
 export type { PlaybackClock } from './ports/PlaybackClock';
 export type { FrameSink, Presentation, StabilizableFrameSink } from './ports/FrameSink';
 export type { PictureRenderer } from './ports/PictureRenderer';
-export { WallClock } from './domain/playback/WallClock';
+export { WallClock } from './application/playback/WallClock';
 export { PlayerStateMachine, type PlayerState } from './domain/playback/PlayerState';
 export { TypedEmitter } from './shared/events/TypedEmitter';
 export {

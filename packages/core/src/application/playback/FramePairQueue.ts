@@ -1,4 +1,4 @@
-import { closeFramePair, type FramePair } from './FramePair';
+import { closeFramePair, type FramePair } from '../../ports/FramePair';
 import { ensureInvariant } from '../../shared/errors/GyroViewError';
 import type { Seconds } from '../../shared/units/time';
 

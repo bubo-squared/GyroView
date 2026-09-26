@@ -1,4 +1,4 @@
-import type { FramePair } from '../application/playback/FramePair';
+import type { FramePair } from './FramePair';
 import type { Matrix3 } from '../shared/math/Matrix3';
 import type { Seconds } from '../shared/units/time';
 

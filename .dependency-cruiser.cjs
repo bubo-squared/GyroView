@@ -47,6 +47,39 @@ module.exports = {
       to: { path: '^packages/core/src/shared/(binary/ByteReader|protobuf)/' },
     },
     {
+      name: 'domain-does-not-know-use-cases',
+      comment: 'Domain values and rules sit below the application services that use them.',
+      severity: 'error',
+      from: { path: '^packages/core/src/domain/', pathNot: '\\.test\\.ts$' },
+      to: { path: '^packages/core/src/application/' },
+    },
+    {
+      name: 'only-format-reads-through-ports',
+      comment:
+        'The format layer reads bytes through RandomAccessSource; every other domain folder is pure.',
+      severity: 'error',
+      from: { path: '^packages/core/src/domain/(?!format/)', pathNot: '\\.test\\.ts$' },
+      to: { path: '^packages/core/src/ports/' },
+    },
+    {
+      name: 'format-is-the-way-in',
+      comment:
+        'Format is the anti-corruption layer: it produces motion, optics and view values, never the reverse.',
+      severity: 'error',
+      from: {
+        path: '^packages/core/src/domain/(motion|optics|view|playback)/',
+        pathNot: '\\.test\\.ts$',
+      },
+      to: { path: '^packages/core/src/domain/format/' },
+    },
+    {
+      name: 'ports-do-not-know-use-cases',
+      comment: "Ports are the core's interfaces; the data crossing them lives with them.",
+      severity: 'error',
+      from: { path: '^packages/core/src/ports/' },
+      to: { path: '^packages/core/src/application/' },
+    },
+    {
       name: 'core-does-not-know-outer-layers',
       severity: 'error',
       from: { path: '^packages/core/src' },

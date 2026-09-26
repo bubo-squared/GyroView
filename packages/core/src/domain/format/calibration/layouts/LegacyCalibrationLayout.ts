@@ -3,8 +3,12 @@ import {
   type CalibrationStringLayout,
   type LensBlock,
 } from './CalibrationStringLayout';
-import { EquidistantModel } from '../EquidistantModel';
-import { CalibrationVersion, type CanvasSize, type LensCalibration } from '../LensCalibration';
+import { EquidistantModel } from '../../../optics/EquidistantModel';
+import {
+  CalibrationVersion,
+  type CanvasSize,
+  type LensCalibration,
+} from '../../../optics/LensCalibration';
 import {
   FIRST_LENS_TOKEN,
   LENS_COUNT_TOKEN,
@@ -14,7 +18,7 @@ import {
   V1Token,
   V1Trailing,
 } from '../offsetTokens';
-import { DEFAULT_HALF_FIELD_OF_VIEW } from '../opticsConstants';
+import { DEFAULT_HALF_FIELD_OF_VIEW } from '../../../optics/opticsConstants';
 
 /**
  * The original `offset` string: `r cx cy yaw pitch roll` per lens, then canvas width and height,

@@ -55,10 +55,18 @@ sizes; every constant is named and cites its source.
   circles in one frame). The info record is only a hint.
 - `naming/RecordingFileName` understands `VID_<date>_<time>_<lens><proxy>_<seq>.insv` to guess
   where companion files live; the guess is always verified against the file.
+- `calibration/parseOffsetString` turns the three generations of calibration strings
+  (`offset`, `offset_v2`, `offset_v3`, one layout class each) into the optics `CalibrationSet`;
+  `calibration/selectCalibration` picks the newest usable one.
+- `captureOrigin` resolves the first frame's capture time in the gyro layout's unit, so motion
+  receives branded values only.
 
-**`optics`: lenses and calibration.** `parseOffsetString` turns the three generations of
-calibration strings (`offset`, `offset_v2`, `offset_v3`) into a `CalibrationSet`; each lens
-has a `LensModel` strategy (`MeiModel`, `PolynomialModel`, `EquidistantModel`) that maps a
+Format is the anti-corruption layer: it produces motion, optics and view values, and only it
+reads bytes through a port. Dependency rules keep every other domain folder free of format,
+ports and application code.
+
+**`optics`: lenses and calibration.** A `CalibrationSet` holds one `LensCalibration` per lens;
+each lens has a `LensModel` strategy (`MeiModel`, `PolynomialModel`, `EquidistantModel`) that maps a
 direction to a canvas pixel and also exposes its parameters for the shader. `lensPose` gives
 the body-to-lens rotation from the calibration's yaw, pitch and roll (ADR 0008). `gainMatch`
 holds the exposure-matching model (ADR 0012).
@@ -73,8 +81,7 @@ into a body-to-world quaternion per sample (bias from the stillest window, gravi
 rotation the renderer applies.
 
 **`playback`**: `PlayerStateMachine` with the exhaustive transition table
-(`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`) and the
-`WallClock` used when a recording has no audio.
+(`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`).
 
 **`view`**: `ViewState` (yaw, pitch, field of view) with clamping and the view rotation;
 `ViewMode` with one rules object per mode (how drags, arrow keys and zoom move the view, and the
@@ -117,7 +124,7 @@ Use cases that orchestrate the domain through ports.
 | `RandomAccessSource` | `size()`, `read(ByteRange)`                                                       | `FileRandomAccessSource`, `HttpRangeSource`, `BlobRandomAccessSource` |
 | `Demuxer`            | open a container, list `VideoTrackReader`/`AudioTrackReader`                      | `MediabunnyDemuxer`                                                   |
 | `VideoDecoderPort`   | create decoders that emit frames and apply backpressure                           | `WebCodecsVideoDecoderPort`                                           |
-| `PlaybackClock`      | current time, start/pause/seek, end and failure                                   | `MediaSourceAudioClock`, core `WallClock`                             |
+| `PlaybackClock`      | current time, start/pause/seek, end and failure                                   | `MediaSourceAudioClock`, core `application/playback/WallClock`        |
 | `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                            | `MediabunnyAudioSegmenter`                                            |
 | `FrameSink`          | present a frame pair (`StabilizableFrameSink` adds rotation)                      | `ThreeFrameRenderer`                                                  |
 | `PictureRenderer`    | a `StabilizableFrameSink` that also takes view, view mode, size and gain matching | `ThreeFrameRenderer`                                                  |

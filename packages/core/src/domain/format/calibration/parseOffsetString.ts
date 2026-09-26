@@ -1,4 +1,4 @@
-import type { CalibrationSet } from './LensCalibration';
+import type { CalibrationSet } from '../../optics/LensCalibration';
 import { type CalibrationStringLayout, type LensBlock } from './layouts/CalibrationStringLayout';
 import { LegacyCalibrationLayout } from './layouts/LegacyCalibrationLayout';
 import { MeiCalibrationLayout } from './layouts/MeiCalibrationLayout';
@@ -9,7 +9,7 @@ import {
   V6_LENS_TOKENS,
   VERSIONED_TRAILING_TOKENS,
 } from './offsetTokens';
-import { GyroViewError } from '../../shared/errors/GyroViewError';
+import { GyroViewError } from '../../../shared/errors/GyroViewError';
 
 const TOKEN_SEPARATOR = '_';
 

@@ -5,7 +5,7 @@ import { scanBoxes } from '../../domain/format/boxes/scanBoxes';
 import { RecordType } from '../../domain/format/constants';
 import { parseInfoRecord } from '../../domain/format/info/parseInfoRecord';
 import { readTrailer } from '../../domain/format/trailer/readTrailer';
-import { selectCalibration } from '../../domain/optics/selectCalibration';
+import { selectCalibration } from '../../domain/format/calibration/selectCalibration';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 
 /**

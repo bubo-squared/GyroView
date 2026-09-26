@@ -3,7 +3,7 @@ import {
   type PlaybackSessionParts,
 } from '../../src/application/playback/PlaybackSession';
 import type { PlayerState } from '../../src/domain/playback/PlayerState';
-import { WallClock } from '../../src/domain/playback/WallClock';
+import { WallClock } from '../../src/application/playback/WallClock';
 import type { PlaybackClock } from '../../src/ports/PlaybackClock';
 import { milliseconds, seconds } from '../../src/shared/units/time';
 import { FakeFrameSink } from '../../src/testing/FakeFrameSink';

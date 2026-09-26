@@ -29,7 +29,6 @@ export interface CalibrationSummary {
   readonly version: CalibrationVersion;
   readonly canvas: readonly [width: number, height: number];
   readonly lenses: readonly LensSummary[];
-  readonly warnings: readonly string[];
 }
 
 export interface GyroSummary {
@@ -68,6 +67,9 @@ export interface Inspection {
    * Undefined when the recording carries no usable calibration string.
    */
   readonly calibration: CalibrationSummary | undefined;
+  /**
+   * Why calibration strings were skipped, whether or not one was usable.
+   */
   readonly calibrationWarnings: readonly string[];
   readonly gyro: GyroSummary | undefined;
   readonly exposure: ExposureSummary | undefined;

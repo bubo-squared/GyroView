@@ -67,13 +67,12 @@ function summarizeStructure(file: string, recording: Recording): StructureSummar
 }
 
 function summarizeCalibration(recording: Recording): CalibrationSummary | undefined {
-  const { calibration, warnings } = recording.calibration;
+  const { calibration } = recording.calibration;
   return calibration === undefined
     ? undefined
     : {
         version: calibration.version,
         canvas: [calibration.canvas.width, calibration.canvas.height],
-        warnings,
         lenses: calibration.lenses.map((lens) => ({
           lensIndex: lens.lensIndex,
           model: lens.model.kind,

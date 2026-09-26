@@ -48,7 +48,6 @@ const inspection: Inspection = {
         translationMetres: [0, 0, 0],
       },
     ],
-    warnings: ['offset_v2 skipped: example'],
   },
   calibrationWarnings: ['offset_v2 skipped: example'],
   gyro: {

@@ -8,6 +8,11 @@ export type HttpMethod = 'GET' | 'HEAD';
  */
 export const FIRST_BYTE_RANGE = 'bytes=0-0';
 
+/**
+ * The status of a server that does not allow HEAD; the first byte then answers what HEAD would.
+ */
+export const HTTP_METHOD_NOT_ALLOWED = 405;
+
 export interface HttpRequestOptions {
   /**
    * Extra request settings, for example credentials or headers. `Range` is set by the caller.

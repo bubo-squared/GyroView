@@ -3,6 +3,7 @@ import { GyroViewError, type ByteRange, type RandomAccessSource } from '@gyrovie
 import {
   discardBody,
   FIRST_BYTE_RANGE,
+  HTTP_METHOD_NOT_ALLOWED,
   httpRequest,
   type HttpMethod,
   type HttpRequestOptions,
@@ -26,8 +27,8 @@ export class HttpRangeSource implements RandomAccessSource {
   ) {}
 
   /**
-   * One HEAD request, cached for the lifetime of the source once it succeeded; a failed lookup
-   * is retried on the next call.
+   * One HEAD request (or a one-byte range where HEAD is refused or gives no length), cached for
+   * the lifetime of the source once it succeeded; a failed lookup is retried on the next call.
    */
   public size(): Promise<number> {
     this.sizePromise ??= this.rememberSize();
@@ -80,6 +81,7 @@ export class HttpRangeSource implements RandomAccessSource {
   private async fetchSize(): Promise<number> {
     const response = await this.request('HEAD');
     discardBody(response);
+    if (response.status === HTTP_METHOD_NOT_ALLOWED) return this.sizeFromContentRange();
     if (!response.ok) {
       throw new GyroViewError(
         'source-unreadable',
@@ -92,7 +94,7 @@ export class HttpRangeSource implements RandomAccessSource {
   }
 
   /**
-   * Some servers omit Content-Length on HEAD; a one-byte range then reveals the total.
+   * Some servers omit Content-Length on HEAD or refuse HEAD; a one-byte range reveals the total.
    */
   private async sizeFromContentRange(): Promise<number> {
     const response = await this.request('GET', { Range: FIRST_BYTE_RANGE });

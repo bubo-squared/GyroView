@@ -11,6 +11,10 @@ interface TestServerBehaviour {
    */
   readonly hidesContentLength?: boolean;
   /**
+   * Answer HEAD with 405 Method Not Allowed.
+   */
+  readonly refusesHead?: boolean;
+  /**
    * Answer every request with this status.
    */
   readonly failsWith?: number;
@@ -23,6 +27,7 @@ interface Served {
 
 const HTTP_OK = 200;
 const HTTP_PARTIAL_CONTENT = 206;
+const HTTP_METHOD_NOT_ALLOWED = 405;
 const RANGE_HEADER = /^bytes=(\d+)-(\d+)$/u;
 
 /**
@@ -61,22 +66,41 @@ export class TestServer {
 }
 
 function respond(request: IncomingMessage, response: ServerResponse, served: Served): void {
-  const { body, behaviour } = served;
-  if (behaviour.failsWith !== undefined) {
-    response.writeHead(behaviour.failsWith).end();
+  const refusal = refusalOf(request, served.behaviour);
+  if (refusal !== undefined) {
+    response.writeHead(refusal).end();
     return;
   }
-  const range = RANGE_HEADER.exec(request.headers.range ?? '');
   response.setHeader('Accept-Ranges', 'bytes');
-  if (range && !behaviour.ignoresRanges) {
-    const start = Number(range[1]);
-    const end = Math.min(Number(range[2]), body.byteLength - 1);
-    response.setHeader('Content-Range', `bytes ${start}-${end}/${body.byteLength}`);
-    response.setHeader('Content-Length', String(end - start + 1));
-    response.writeHead(HTTP_PARTIAL_CONTENT);
-    response.end(request.method === 'HEAD' ? undefined : body.subarray(start, end + 1));
-    return;
-  }
+  const isRange = RANGE_HEADER.test(request.headers.range ?? '');
+  if (isRange && !served.behaviour.ignoresRanges) respondWithRange(request, response, served);
+  else respondWhole(request, response, served);
+}
+
+/**
+ * The status a misbehaving server answers this request with instead of the content.
+ */
+function refusalOf(request: IncomingMessage, behaviour: TestServerBehaviour): number | undefined {
+  if (behaviour.failsWith !== undefined) return behaviour.failsWith;
+  return behaviour.refusesHead && request.method === 'HEAD' ? HTTP_METHOD_NOT_ALLOWED : undefined;
+}
+
+function respondWithRange(
+  request: IncomingMessage,
+  response: ServerResponse,
+  { body }: Served,
+): void {
+  const range = RANGE_HEADER.exec(request.headers.range ?? '');
+  const start = Number(range?.[1]);
+  const end = Math.min(Number(range?.[2]), body.byteLength - 1);
+  response.setHeader('Content-Range', `bytes ${start}-${end}/${body.byteLength}`);
+  response.setHeader('Content-Length', String(end - start + 1));
+  response.writeHead(HTTP_PARTIAL_CONTENT);
+  response.end(request.method === 'HEAD' ? undefined : body.subarray(start, end + 1));
+}
+
+function respondWhole(request: IncomingMessage, response: ServerResponse, served: Served): void {
+  const { body, behaviour } = served;
   if (!behaviour.hidesContentLength) response.setHeader('Content-Length', String(body.byteLength));
   response.writeHead(HTTP_OK);
   response.end(request.method === 'HEAD' ? undefined : body);

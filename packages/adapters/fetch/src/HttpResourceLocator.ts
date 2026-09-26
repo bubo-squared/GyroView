@@ -3,11 +3,10 @@ import type { ResourceLocator } from '@gyroview/core';
 import {
   discardBody,
   FIRST_BYTE_RANGE,
+  HTTP_METHOD_NOT_ALLOWED,
   plainHttpRequest,
   type HttpRequestOptions,
 } from './httpRequest';
-
-const HTTP_METHOD_NOT_ALLOWED = 405;
 
 /**
  * ResourceLocator over HTTP: one HEAD request, or a one-byte GET when the server does not allow

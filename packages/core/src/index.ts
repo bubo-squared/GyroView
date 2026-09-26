@@ -107,7 +107,6 @@ export {
 } from './application/stabilization/StabilizingFrameSink';
 export type { PixelPoint } from './domain/optics/PixelPoint';
 export { EquidistantModel, type EquidistantParameters } from './domain/optics/EquidistantModel';
-export { DEFAULT_HALF_FIELD_OF_VIEW } from './domain/optics/opticsConstants';
 export {
   GainMatchingFrameSink,
   type GainMatchingParts,
@@ -185,7 +184,6 @@ export {
 } from './application/playback/DecodePipeline';
 export {
   probeDecoding,
-  type DecodeProbeOptions,
   type DecodeProbeReport,
   type SourceProbeResult,
   type ProbeVerdict,

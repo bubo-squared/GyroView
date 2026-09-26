@@ -7,4 +7,4 @@ import { degrees, degreesToRadians } from '../../shared/units/angle';
  */
 const FIELD_EDGE_DEGREES = 100;
 
-export const DEFAULT_HALF_FIELD_OF_VIEW = degreesToRadians(degrees(FIELD_EDGE_DEGREES));
+export const HALF_FIELD_OF_VIEW = degreesToRadians(degrees(FIELD_EDGE_DEGREES));

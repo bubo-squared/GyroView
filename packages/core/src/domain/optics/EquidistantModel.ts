@@ -2,7 +2,7 @@ import { pixelAtRadius, toPolar } from './lensGeometry';
 import type { LensModel, LensProjectionParameters } from './LensModel';
 import type { PixelPoint } from './PixelPoint';
 import type { Vector3 } from '../../shared/math/Vector3';
-import type { Radians } from '../../shared/units/angle';
+import { HALF_FIELD_OF_VIEW } from './opticsConstants';
 
 export interface EquidistantParameters {
   readonly edgeRadius: number;
@@ -16,12 +16,10 @@ export interface EquidistantParameters {
  */
 export class EquidistantModel implements LensModel {
   public readonly kind = 'equidistant';
+  public readonly halfFieldOfView = HALF_FIELD_OF_VIEW;
   public readonly principalPoint: PixelPoint;
 
-  public constructor(
-    private readonly parameters: EquidistantParameters,
-    public readonly halfFieldOfView: Radians,
-  ) {
+  public constructor(private readonly parameters: EquidistantParameters) {
     this.principalPoint = parameters.principalPoint;
   }
 

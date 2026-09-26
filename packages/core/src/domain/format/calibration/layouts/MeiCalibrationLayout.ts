@@ -17,7 +17,6 @@ import {
   V3Token,
   VERSIONED_TRAILING_TOKENS,
 } from '../offsetTokens';
-import { DEFAULT_HALF_FIELD_OF_VIEW } from '../../../optics/opticsConstants';
 
 /**
  * `offset_v3`: `xi fx fy cx cy yaw pitch roll tx ty tz k1 k2 k3 p1 p2 width height type` per
@@ -35,16 +34,13 @@ export class MeiCalibrationLayout implements CalibrationStringLayout {
   public parseLens(block: LensBlock, lensIndex: number): LensCalibration {
     return {
       lensIndex,
-      model: new MeiModel(
-        {
-          xi: block(V3Token.Xi),
-          focal: [block(V3Token.FocalX), block(V3Token.FocalY)],
-          principalPoint: { x: block(V3Token.CenterX), y: block(V3Token.CenterY) },
-          radial: [block(V3Token.K1), block(V3Token.K2), block(V3Token.K3)],
-          tangential: [block(V3Token.P1), block(V3Token.P2)],
-        },
-        DEFAULT_HALF_FIELD_OF_VIEW,
-      ),
+      model: new MeiModel({
+        xi: block(V3Token.Xi),
+        focal: [block(V3Token.FocalX), block(V3Token.FocalY)],
+        principalPoint: { x: block(V3Token.CenterX), y: block(V3Token.CenterY) },
+        radial: [block(V3Token.K1), block(V3Token.K2), block(V3Token.K3)],
+        tangential: [block(V3Token.P1), block(V3Token.P2)],
+      }),
       orientation: eulerDegrees(block(V3Token.Yaw), block(V3Token.Pitch), block(V3Token.Roll)),
       translation: [
         block(V3Token.TranslationX),

@@ -16,7 +16,6 @@ import {
   V2Token,
   VERSIONED_TRAILING_TOKENS,
 } from '../offsetTokens';
-import { DEFAULT_HALF_FIELD_OF_VIEW } from '../../../optics/opticsConstants';
 import { PolynomialModel } from '../../../optics/PolynomialModel';
 
 /**
@@ -35,19 +34,11 @@ export class PolynomialCalibrationLayout implements CalibrationStringLayout {
   public parseLens(block: LensBlock, lensIndex: number): LensCalibration {
     return {
       lensIndex,
-      model: new PolynomialModel(
-        {
-          edgeRadius: block(V2Token.EdgeRadius),
-          principalPoint: { x: block(V2Token.CenterX), y: block(V2Token.CenterY) },
-          coefficients: [
-            block(V2Token.C1),
-            block(V2Token.C2),
-            block(V2Token.C3),
-            block(V2Token.C4),
-          ],
-        },
-        DEFAULT_HALF_FIELD_OF_VIEW,
-      ),
+      model: new PolynomialModel({
+        edgeRadius: block(V2Token.EdgeRadius),
+        principalPoint: { x: block(V2Token.CenterX), y: block(V2Token.CenterY) },
+        coefficients: [block(V2Token.C1), block(V2Token.C2), block(V2Token.C3), block(V2Token.C4)],
+      }),
       orientation: eulerDegrees(block(V2Token.Yaw), block(V2Token.Pitch), block(V2Token.Roll)),
       translation: [
         block(V2Token.TranslationX),

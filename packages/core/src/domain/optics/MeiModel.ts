@@ -1,7 +1,7 @@
 import type { LensModel, LensProjectionParameters } from './LensModel';
 import type { PixelPoint } from './PixelPoint';
 import type { Vector3 } from '../../shared/math/Vector3';
-import type { Radians } from '../../shared/units/angle';
+import { HALF_FIELD_OF_VIEW } from './opticsConstants';
 
 export interface MeiParameters {
   /**
@@ -21,12 +21,10 @@ export interface MeiParameters {
  */
 export class MeiModel implements LensModel {
   public readonly kind = 'mei';
+  public readonly halfFieldOfView = HALF_FIELD_OF_VIEW;
   public readonly principalPoint: PixelPoint;
 
-  public constructor(
-    private readonly parameters: MeiParameters,
-    public readonly halfFieldOfView: Radians,
-  ) {
+  public constructor(private readonly parameters: MeiParameters) {
     this.principalPoint = parameters.principalPoint;
   }
 

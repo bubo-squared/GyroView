@@ -2,7 +2,7 @@ import { pixelAtRadius, toPolar } from './lensGeometry';
 import type { LensModel, LensProjectionParameters } from './LensModel';
 import type { PixelPoint } from './PixelPoint';
 import type { Vector3 } from '../../shared/math/Vector3';
-import type { Radians } from '../../shared/units/angle';
+import { HALF_FIELD_OF_VIEW } from './opticsConstants';
 
 export interface PolynomialParameters {
   /**
@@ -24,15 +24,13 @@ export interface PolynomialParameters {
  */
 export class PolynomialModel implements LensModel {
   public readonly kind = 'polynomial';
+  public readonly halfFieldOfView = HALF_FIELD_OF_VIEW;
   public readonly principalPoint: PixelPoint;
   private readonly scale: number;
 
-  public constructor(
-    private readonly parameters: PolynomialParameters,
-    public readonly halfFieldOfView: Radians,
-  ) {
+  public constructor(private readonly parameters: PolynomialParameters) {
     this.principalPoint = parameters.principalPoint;
-    this.scale = parameters.edgeRadius / this.polynomial(halfFieldOfView);
+    this.scale = parameters.edgeRadius / this.polynomial(this.halfFieldOfView);
   }
 
   public get projection(): LensProjectionParameters {

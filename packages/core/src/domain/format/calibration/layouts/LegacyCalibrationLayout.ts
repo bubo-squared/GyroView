@@ -17,7 +17,6 @@ import {
   V1Token,
   V1Trailing,
 } from '../offsetTokens';
-import { DEFAULT_HALF_FIELD_OF_VIEW } from '../../../optics/opticsConstants';
 
 /**
  * The original `offset` string: `r cx cy yaw pitch roll` per lens, then canvas width and height,
@@ -36,13 +35,10 @@ export class LegacyCalibrationLayout implements CalibrationStringLayout {
   public parseLens(block: LensBlock, lensIndex: number): LensCalibration {
     return {
       lensIndex,
-      model: new EquidistantModel(
-        {
-          edgeRadius: block(V1Token.EdgeRadius),
-          principalPoint: { x: block(V1Token.CenterX), y: block(V1Token.CenterY) },
-        },
-        DEFAULT_HALF_FIELD_OF_VIEW,
-      ),
+      model: new EquidistantModel({
+        edgeRadius: block(V1Token.EdgeRadius),
+        principalPoint: { x: block(V1Token.CenterX), y: block(V1Token.CenterY) },
+      }),
       orientation: eulerDegrees(block(V1Token.Yaw), block(V1Token.Pitch), block(V1Token.Roll)),
       translation: [0, 0, 0],
     };

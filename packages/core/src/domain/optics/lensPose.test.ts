@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { EquidistantModel } from './EquidistantModel';
 import type { LensCalibration } from './LensCalibration';
 import { lensRotation } from './lensPose';
-import { DEFAULT_HALF_FIELD_OF_VIEW } from './opticsConstants';
 import { transformVector, type Matrix3 } from '../../shared/math/Matrix3';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { degrees } from '../../shared/units/angle';
@@ -18,10 +17,7 @@ interface Pose {
 function rotationOf(pose: Pose): Matrix3 {
   const lens: LensCalibration = {
     lensIndex: pose.lensIndex,
-    model: new EquidistantModel(
-      { edgeRadius: 500, principalPoint: { x: 500, y: 500 } },
-      DEFAULT_HALF_FIELD_OF_VIEW,
-    ),
+    model: new EquidistantModel({ edgeRadius: 500, principalPoint: { x: 500, y: 500 } }),
     orientation: {
       yaw: degrees(pose.yaw ?? 0),
       pitch: degrees(pose.pitch ?? 0),

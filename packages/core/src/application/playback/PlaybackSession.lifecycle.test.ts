@@ -11,7 +11,7 @@ import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { seconds } from '../../shared/units/time';
 import { FakePlaybackClock } from '../../testing/FakePlaybackClock';
 import { FakeVideoDecoderPort, type FakeFrameHandle } from '../../testing/FakeVideoDecoderPort';
-import { sessionHarness } from '../../../test/support/sessionHarness';
+import { DURATION, sessionHarness } from '../../../test/support/sessionHarness';
 import { settle } from '../../../test/support/settle';
 
 /**
@@ -81,6 +81,60 @@ describe('PlaybackSession lifecycle', () => {
     expect(states).toEqual(['buffering', 'playing', 'paused']);
     await advance(0);
     expect(decoderPort.openDecoders).toBe(2);
+    session.dispose();
+  });
+
+  it('ends at once after a seek to the end while playing, and starts over on the next play', async () => {
+    const clock = new FakePlaybackClock({ endsAt: DURATION });
+    const { session, advance } = sessionHarness({ clock });
+    await session.play();
+    await advance(100);
+    session.seek(DURATION);
+    for (let step = 0; step < 5; step += 1) await advance(0);
+    expect(session.state).toBe('ended');
+    await session.play();
+    expect(session.currentTime).toBeLessThan(0.1);
+    session.dispose();
+  });
+
+  it('starts over from a pause at the end', async () => {
+    const clock = new FakePlaybackClock({ endsAt: DURATION });
+    const { session, advance } = sessionHarness({ clock });
+    session.seek(DURATION);
+    await advance(0);
+    expect(session.state).toBe('paused');
+    const playing = session.play();
+    for (let step = 0; step < 3; step += 1) await advance(0);
+    await playing;
+    expect(session.state).toBe('playing');
+    expect(session.currentTime).toBeLessThan(0.1);
+    session.dispose();
+  });
+
+  it('ends when the clock runs out long before the decoders reach the end', async () => {
+    const clock = new FakePlaybackClock({ endsAt: seconds(1.5) });
+    const { session, sink, advance } = sessionHarness({ clock });
+    await session.play();
+    for (let step = 0; step < 25; step += 1) await advance(100);
+    expect(session.state).toBe('ended');
+    expect(sink.lastTimestamp).toBeCloseTo(1.5, 6);
+    session.dispose();
+  });
+
+  it('starts again at the clock after ticks stopped for a while, instead of replaying the gap', async () => {
+    const { session, sink, advance } = sessionHarness();
+    await session.play();
+    await advance(100);
+    // A hidden tab: no ticks for two seconds while the clock runs on. The tick that finds the
+    // gap shows what it has queued once, then decoding starts again at the clock.
+    await advance(2000);
+    for (let step = 0; step < 4; step += 1) await advance(0);
+    expect(session.state).toBe('playing');
+    const replayed = sink.presentations.filter(
+      ({ pair }) => pair.timestamp > 1 && pair.timestamp < 2,
+    );
+    expect(replayed).toEqual([]);
+    expect(sink.lastTimestamp).toBeGreaterThanOrEqual(2);
     session.dispose();
   });
 

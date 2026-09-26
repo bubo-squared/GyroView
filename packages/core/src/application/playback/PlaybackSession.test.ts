@@ -191,8 +191,9 @@ describe('PlaybackSession transport', () => {
   it('does not end while decoded frames are still due, even with the clock past the duration', async () => {
     const { session, advance } = sessionHarness();
     await session.play();
-    await advance(0);
-    await advance(3500);
+    for (let step = 0; step < 22; step += 1) await advance(100);
+    // Past the 3 s duration, with the last frames not decoded yet.
+    await advance(900);
     expect(session.state).toBe('playing');
     await settle();
     session.dispose();

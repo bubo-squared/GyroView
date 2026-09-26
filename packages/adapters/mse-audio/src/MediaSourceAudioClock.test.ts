@@ -13,6 +13,10 @@ import { MediaSourceAudioClock } from './MediaSourceAudioClock';
 import fixtureUrl from '../../../../test/fixtures/synthetic/dual-track-aac-64px-10fps-3s.mp4?url';
 
 const AAC_IN_MP4 = 'audio/mp4; codecs="mp4a.40.2"';
+/**
+ * The fixture's audio track lasts three seconds.
+ */
+const FIXTURE_DURATION = seconds(3);
 const isSupported = MediaSourceAudioClock.isSupported({ mimeType: AAC_IN_MP4 });
 
 function wait(ms: number): Promise<void> {
@@ -75,10 +79,13 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     input.dispose();
   });
 
-  describePlaybackClockContract(async () => ({
-    clock: await openClock(),
-    letTimePass: (elapsed): Promise<void> => wait(secondsToMilliseconds(elapsed)),
-  }));
+  describePlaybackClockContract(
+    async () => ({
+      clock: await openClock(),
+      letTimePass: (elapsed): Promise<void> => wait(secondsToMilliseconds(elapsed)),
+    }),
+    { endsAt: FIXTURE_DURATION },
+  );
 
   it('stops running when someone else pauses its element, as media keys do', async () => {
     const clock = await openClock();

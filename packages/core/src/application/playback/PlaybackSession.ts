@@ -39,6 +39,13 @@ const PRIMING_PAIRS = 2;
  */
 const STARVATION_LAG_SECONDS = 0.25;
 /**
+ * A shown frame this far behind the clock means the ticks stopped while the clock ran on (a
+ * hidden tab or an offscreen frame gets no animation frames); decoding the gap would replay it
+ * at decode speed, so the run starts again at the clock's time. Starvation never lets decoding
+ * fall this far behind: it holds the clock at a quarter second.
+ */
+const CATCH_UP_LAG_SECONDS = 1;
+/**
  * How much media time passes between two `timeupdate`s while playing: the slowest cadence of a
  * media element's, often enough for a seek bar and cheap to relay across `postMessage`.
  */
@@ -82,8 +89,8 @@ export class PlaybackSession<Handle = unknown> {
 
   /**
    * Starts or resumes, resolving once the clock runs. A paused session keeps its pipeline and
-   * the pairs it prefetched; a fresh or ended one starts decoding anew and waits in `buffering`
-   * for the first pairs. Rejects, back in `paused`, when the clock refuses to start (autoplay
+   * the pairs it prefetched; a fresh one starts decoding anew, and an ended one or one paused at
+   * the end starts over from the beginning, and waits in `buffering` for the first pairs. Rejects, back in `paused`, when the clock refuses to start (autoplay
    * policy); the host then waits for a user gesture. Pausing meanwhile resolves quietly.
    */
   public async play(): Promise<void> {
@@ -92,7 +99,7 @@ export class PlaybackSession<Handle = unknown> {
       await this.startAttempt?.promise;
       return;
     }
-    if (this.machine.state === 'ended') this.seek(seconds(0));
+    if (this.isAtTheEnd()) this.seek(seconds(0));
     if (!this.machine.canTransitionTo('buffering')) return;
     if (!this.run) this.startRun(this.parts.clock.currentTime);
     if (this.isPrimed()) {
@@ -213,8 +220,28 @@ export class PlaybackSession<Handle = unknown> {
       this.setState('buffering');
       return;
     }
+    if (this.lagBehind(now) > CATCH_UP_LAG_SECONDS) {
+      this.seek(now);
+      return;
+    }
     if (this.isTimeUpdateDue(now)) this.announceTime(now);
-    if (this.run?.hasReachedEnd === true && this.isPlayedOut(now)) this.end();
+    if (this.isPlayedOut(now)) this.end();
+  }
+
+  /**
+   * How far the frame on screen is behind the clock; none before the first.
+   */
+  private lagBehind(now: Seconds): number {
+    return this.presented ? now - this.presented.pair.timestamp : 0;
+  }
+
+  /**
+   * Ended, or paused at the end: a play from there starts over, as a media element does.
+   */
+  private isAtTheEnd(): boolean {
+    const { clock, duration } = this.parts;
+    const isAtEndOfMedia = clock.hasEnded || clock.currentTime >= duration;
+    return this.machine.state === 'ended' || isAtEndOfMedia;
   }
 
   private isTimeUpdateDue(now: Seconds): boolean {
@@ -297,12 +324,14 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   /**
-   * Everything decoded has been shown, or the clock's own media ran out first (an audio track
-   * a few frames shorter than the video), in which case the remaining pairs are unreachable.
+   * The clock's own media ran out (an audio track shorter than the video: the pairs after it are
+   * unreachable, and the decoders may wait for room to decode them forever), or everything
+   * decoded to the end has been shown and the clock passed the duration.
    */
   private isPlayedOut(now: Seconds): boolean {
-    const isDrained = (this.run?.queuedPairs ?? 0) === 0;
-    return this.parts.clock.hasEnded || (isDrained && now >= this.parts.duration);
+    if (this.parts.clock.hasEnded) return true;
+    const isDrained = this.run?.hasReachedEnd === true && this.run.queuedPairs === 0;
+    return isDrained && now >= this.parts.duration;
   }
 
   private present(pair: FramePair<Handle>, mediaTime: Seconds): void {

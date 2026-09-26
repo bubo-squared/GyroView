@@ -76,8 +76,13 @@ export class MediaSourceAudioClock implements PlaybackClock {
     return !this.element.paused;
   }
 
+  /**
+   * At the end of its media: `ended`, or seeked there, which some engines (WebKit) report as
+   * ended only once the seek settles.
+   */
   public get hasEnded(): boolean {
-    return this.element.ended;
+    const { element } = this;
+    return element.ended || element.currentTime >= element.duration;
   }
 
   public get failure(): GyroViewError | undefined {
@@ -86,9 +91,11 @@ export class MediaSourceAudioClock implements PlaybackClock {
 
   /**
    * Resolves once playback has started. A `pause` that interrupts the start is not an error;
-   * the autoplay policy refusing to start is reported as `playback-blocked`.
+   * the autoplay policy refusing to start is reported as `playback-blocked`. An element at its
+   * end stays there: `play()` would restart it from the beginning, under the last picture.
    */
   public async start(): Promise<void> {
+    if (this.hasEnded) return;
     try {
       await this.element.play();
     } catch (error) {

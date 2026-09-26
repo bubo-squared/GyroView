@@ -21,10 +21,23 @@ const SAME_TIME_TOLERANCE = 0.05;
 const SEEK_TARGET = seconds(1);
 
 /**
- * Behaviour every PlaybackClock must exhibit, the fake and the real adapters alike.
+ * Where a clock that ends by itself runs out of media.
  */
-export function describePlaybackClockContract(open: () => Promise<ClockUnderTest>): void {
+export interface ClockEnding {
+  readonly endsAt: Seconds;
+}
+
+/**
+ * Behaviour every PlaybackClock must exhibit, the fake and the real adapters alike; `ending`
+ * adds what a clock that runs out of media must do there.
+ */
+export function describePlaybackClockContract(
+  open: () => Promise<ClockUnderTest>,
+  ending?: ClockEnding,
+): void {
   describe('PlaybackClock contract', () => {
+    if (ending) describeEnding(open, ending);
+
     it('starts at zero, neither ended nor failed', async () => {
       const { clock } = await open();
       expect(clock.currentTime).toBe(0);
@@ -79,5 +92,24 @@ export function describePlaybackClockContract(open: () => Promise<ClockUnderTest
       await letTimePass(A_WHILE);
       expect(clock.currentTime).toBeLessThanOrEqual(last + SAME_TIME_TOLERANCE);
     });
+  });
+}
+
+/**
+ * A clock at its end stays there when started, as the port promises, until seeked away:
+ * media elements restart an ended playback from the beginning instead.
+ */
+function describeEnding(open: () => Promise<ClockUnderTest>, ending: ClockEnding): void {
+  it('stays at its end when started there, until seeked away', async () => {
+    const { clock, letTimePass } = await open();
+    clock.seek(ending.endsAt);
+    // The session starts a clock it seeked a while ago, once the frames there are ready.
+    await letTimePass(A_WHILE);
+    await clock.start();
+    await letTimePass(A_WHILE);
+    expect(clock.hasEnded).toBe(true);
+    expect(Math.abs(clock.currentTime - ending.endsAt)).toBeLessThan(SAME_TIME_TOLERANCE);
+    clock.seek(seconds(0));
+    expect(clock.hasEnded).toBe(false);
   });
 }

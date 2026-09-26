@@ -34,13 +34,13 @@ describe('BlobRandomAccessSource', () => {
     });
   });
 
-  it('wraps a failing slice in a source-unreadable error', async () => {
+  it('wraps a failing read, as of a file gone from disk, in a source-unreadable error', async () => {
     const broken = new Blob([new Uint8Array(8)]);
-    Object.defineProperty(broken, 'slice', {
-      value: (): never => {
-        throw new Error('gone');
-      },
+    const unreadable = new Blob([new Uint8Array(4)]);
+    Object.defineProperty(unreadable, 'arrayBuffer', {
+      value: (): Promise<never> => Promise.reject(new Error('gone')),
     });
+    Object.defineProperty(broken, 'slice', { value: (): Blob => unreadable });
     const source = new BlobRandomAccessSource(broken);
     await expect(source.read(ByteRange.of(0, 4))).rejects.toMatchObject({
       code: 'source-unreadable',

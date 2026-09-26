@@ -15,7 +15,7 @@ export class BlobRandomAccessSource implements RandomAccessSource {
   public async read(range: ByteRange): Promise<Uint8Array> {
     range.ensureWithin(this.blob.size, 'blob');
     if (range.length === 0) return new Uint8Array();
-    const bytes = new Uint8Array(await this.slice(range).arrayBuffer());
+    const bytes = await this.bytesOf(this.blob.slice(range.offset, range.end));
     if (bytes.byteLength !== range.length) {
       throw new GyroViewError(
         'source-truncated',
@@ -25,9 +25,13 @@ export class BlobRandomAccessSource implements RandomAccessSource {
     return bytes;
   }
 
-  private slice(range: ByteRange): Blob {
+  /**
+   * Reading is what fails, with a `NotReadableError`, when a picked file has changed or gone on
+   * disk; slicing only clamps its arguments.
+   */
+  private async bytesOf(slice: Blob): Promise<Uint8Array> {
     try {
-      return this.blob.slice(range.offset, range.end);
+      return new Uint8Array(await slice.arrayBuffer());
     } catch (error) {
       throw new GyroViewError('source-unreadable', 'the blob could not be read', { cause: error });
     }

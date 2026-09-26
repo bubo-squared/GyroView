@@ -60,9 +60,23 @@ export function isProperRotation(bodyAxes: BodyAxes): boolean {
   return determinantOf(toBodyMatrixOf(bodyAxes)) === 1;
 }
 
-export function imuFrame(name: string, bodyAxes: BodyAxes, isVerified: boolean): ImuFrame {
+/**
+ * A frame measured on a recording of the camera it is for.
+ */
+export function measuredImuFrame(name: string, bodyAxes: BodyAxes): ImuFrame {
+  return { ...frameOf(name, bodyAxes), isVerified: true };
+}
+
+/**
+ * A frame assumed until a recording proves it; it still needs a real file.
+ */
+export function assumedImuFrame(name: string, bodyAxes: BodyAxes): ImuFrame {
+  return { ...frameOf(name, bodyAxes), isVerified: false };
+}
+
+function frameOf(name: string, bodyAxes: BodyAxes): Omit<ImuFrame, 'isVerified'> {
   ensureInvariant(isProperRotation(bodyAxes), `IMU axes ${bodyAxes.join(', ')} are not a rotation`);
-  return { name, toBody: toBodyMatrixOf(bodyAxes), isVerified };
+  return { name, toBody: toBodyMatrixOf(bodyAxes) };
 }
 
 export function toBodyFrame(frame: ImuFrame, imuVector: Vector3): Vector3 {
@@ -75,12 +89,12 @@ export function toBodyFrame(frame: ImuFrame, imuVector: Vector3): Vector3 {
  * is the IMU's minus y. Chosen by the world-stillness ranking in
  * `tools/integration/src/browser/imuMappingRanking.test.ts`, which every other arrangement loses.
  */
-export const X5_IMU_FRAME = imuFrame('X5', ['x', 'z', '-y'], true);
+export const X5_IMU_FRAME = measuredImuFrame('X5', ['x', 'z', '-y']);
 
 /**
  * Until a recording proves otherwise, the IMU is assumed aligned with the body.
  */
-export const ALIGNED_IMU_FRAME = imuFrame('aligned (unverified)', ['x', 'y', 'z'], false);
+export const ALIGNED_IMU_FRAME = assumedImuFrame('aligned (unverified)', ['x', 'y', 'z']);
 
 /**
  * What the info record says about the camera, as far as the IMU frame depends on it.

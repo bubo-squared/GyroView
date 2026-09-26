@@ -43,7 +43,8 @@ export { GyroTrack, type GyroSample } from './domain/motion/gyro/GyroTrack';
 export {
   ALIGNED_IMU_FRAME,
   isProperRotation,
-  imuFrame,
+  assumedImuFrame,
+  measuredImuFrame,
   imuFrameFor,
   toBodyFrame,
   X5_IMU_FRAME,

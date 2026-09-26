@@ -9,9 +9,16 @@ import {
   slerpQuaternions,
   type Quaternion,
 } from '../../../shared/math/Quaternion';
-import { isFiniteVector, type Vector3 } from '../../../shared/math/Vector3';
+import {
+  addVectors,
+  isFiniteVector,
+  scaleVector,
+  subtractVectors,
+  ZERO_VECTOR3,
+  type Vector3,
+} from '../../../shared/math/Vector3';
 import { seconds, type Seconds } from '../../../shared/units/time';
-import type { GyroTrack } from '../gyro/GyroTrack';
+import type { GyroSample, GyroTrack } from '../gyro/GyroTrack';
 import { toBodyFrame, type ImuFrame } from '../imu/ImuFrame';
 import type { CaptureClock } from '../timing/CaptureClock';
 
@@ -26,6 +33,10 @@ export interface IntegrationOptions {
    * Length of the stillest window used to estimate the gyro bias.
    */
   readonly biasWindow: Seconds;
+  /**
+   * Length of the opening window whose mean gravity levels the initial pose.
+   */
+  readonly levellingWindow: Seconds;
 }
 
 export interface OrientationTrackParts {
@@ -37,11 +48,36 @@ export interface OrientationTrackParts {
 
 const DEFAULT_GRAVITY_GAIN = 0.2;
 const DEFAULT_BIAS_WINDOW_SECONDS = 0.5;
+/**
+ * Half a second of accelerometer readings averages out hand shake at the start.
+ */
+const DEFAULT_LEVELLING_WINDOW_SECONDS = 0.5;
 
 export const DEFAULT_INTEGRATION_OPTIONS: IntegrationOptions = {
   gravityGain: DEFAULT_GRAVITY_GAIN,
   biasWindow: seconds(DEFAULT_BIAS_WINDOW_SECONDS),
+  levellingWindow: seconds(DEFAULT_LEVELLING_WINDOW_SECONDS),
 };
+
+/**
+ * Where the integration stands after a sample: the pose, and the bias-corrected rate measured
+ * there, which turns the body until the next sample.
+ */
+interface IntegrationState {
+  readonly orientation: Quaternion;
+  readonly time: Seconds;
+  readonly rate: Vector3;
+}
+
+/**
+ * What every step needs besides the state and the sample.
+ */
+interface IntegrationContext {
+  readonly clock: CaptureClock;
+  readonly frame: ImuFrame;
+  readonly bias: Vector3;
+  readonly gravityGain: number;
+}
 
 const QUATERNION_COMPONENTS = 4;
 /**
@@ -77,25 +113,16 @@ export class OrientationTrack {
     const quaternions = new Float32Array(gyro.length * QUATERNION_COMPONENTS);
     if (gyro.isEmpty) return new OrientationTrack(videoTimes, quaternions);
     const bias = estimateGyroBias(gyro, frame, stillestWindow(gyro, frame, options.biasWindow));
-    let orientation = initialOrientation(gyro, frame, options.biasWindow);
-    let previous = { time: clock.gyroVideoTimeOf(gyro.sampleAt(0).captureTime), rate: ZERO };
+    const context = { clock, frame, bias, gravityGain: options.gravityGain };
+    let state: IntegrationState = {
+      orientation: initialOrientation(gyro, frame, options.levellingWindow),
+      time: clock.gyroVideoTimeOf(gyro.sampleAt(0).captureTime),
+      rate: ZERO_VECTOR3,
+    };
     for (let index = 0; index < gyro.length; index += 1) {
-      const sample = gyro.sampleAt(index);
-      ensureInvariant(
-        isFiniteVector(sample.acceleration) && isFiniteVector(sample.angularVelocity),
-        `gyro sample ${index} is not finite`,
-      );
-      const time = clock.gyroVideoTimeOf(sample.captureTime);
-      const step = Math.min(Math.max(time - previous.time, 0), MAX_STEP_SECONDS);
-      const correction = gravityCorrection(orientation, toBodyFrame(frame, sample.acceleration));
-      orientation = advance(
-        orientation,
-        corrected(previous.rate, correction, options.gravityGain),
-        step,
-      );
-      videoTimes[index] = time;
-      quaternions.set(orientation, index * QUATERNION_COMPONENTS);
-      previous = { time, rate: withoutBias(toBodyFrame(frame, sample.angularVelocity), bias) };
+      state = stepTo(state, finiteSample(gyro, index), context);
+      videoTimes[index] = state.time;
+      quaternions.set(state.orientation, index * QUATERNION_COMPONENTS);
     }
     return new OrientationTrack(videoTimes, quaternions);
   }
@@ -147,21 +174,40 @@ export class OrientationTrack {
   }
 }
 
-const ZERO: Vector3 = [0, 0, 0];
+function finiteSample(gyro: GyroTrack, index: number): GyroSample {
+  const sample = gyro.sampleAt(index);
+  ensureInvariant(
+    isFiniteVector(sample.acceleration) && isFiniteVector(sample.angularVelocity),
+    `gyro sample ${index} is not finite`,
+  );
+  return sample;
+}
 
-function withoutBias(rate: Vector3, bias: Vector3): Vector3 {
-  return [rate[0] - bias[0], rate[1] - bias[1], rate[2] - bias[2]];
+/**
+ * The state at the next sample: the body turned at the previous rate, pulled towards the gravity
+ * this sample measures, for the time since the previous sample (clamped, see MAX_STEP_SECONDS).
+ */
+function stepTo(
+  state: IntegrationState,
+  sample: GyroSample,
+  context: IntegrationContext,
+): IntegrationState {
+  const { clock, frame, bias, gravityGain } = context;
+  const time = clock.gyroVideoTimeOf(sample.captureTime);
+  const step = Math.min(Math.max(time - state.time, 0), MAX_STEP_SECONDS);
+  const correction = gravityCorrection(state.orientation, toBodyFrame(frame, sample.acceleration));
+  return {
+    orientation: advance(state.orientation, corrected(state.rate, correction, gravityGain), step),
+    time,
+    rate: subtractVectors(toBodyFrame(frame, sample.angularVelocity), bias),
+  };
 }
 
 /**
  * The gyro rate with the gravity pull added, radians per second in the body frame.
  */
 function corrected(rate: Vector3, correction: Vector3, gain: number): Vector3 {
-  return [
-    rate[0] + gain * correction[0],
-    rate[1] + gain * correction[1],
-    rate[2] + gain * correction[2],
-  ];
+  return addVectors(rate, scaleVector(correction, gain));
 }
 
 /**
@@ -169,8 +215,6 @@ function corrected(rate: Vector3, correction: Vector3, gain: number): Vector3 {
  * measured at the start of the interval, so a turn beginning at a sample begins exactly there.
  */
 function advance(orientation: Quaternion, rate: Vector3, step: number): Quaternion {
-  const rotation: Vector3 = [rate[0] * step, rate[1] * step, rate[2] * step];
-  return normalizeQuaternion(
-    multiplyQuaternions(orientation, quaternionFromRotationVector(rotation)),
-  );
+  const turn = quaternionFromRotationVector(scaleVector(rate, step));
+  return normalizeQuaternion(multiplyQuaternions(orientation, turn));
 }

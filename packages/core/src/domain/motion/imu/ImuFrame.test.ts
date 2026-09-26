@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { ALIGNED_IMU_FRAME, imuFrame, imuFrameFor, toBodyFrame, X5_IMU_FRAME } from './ImuFrame';
+import {
+  ALIGNED_IMU_FRAME,
+  assumedImuFrame,
+  imuFrameFor,
+  toBodyFrame,
+  X5_IMU_FRAME,
+} from './ImuFrame';
 import type { Vector3 } from '../../../shared/math/Vector3';
 import { captureError } from '../../../../test/support/errors';
 
@@ -27,19 +33,19 @@ describe('ImuFrame', () => {
   });
 
   it('builds a proper rotation from signed axes', () => {
-    const frame = imuFrame('test', ['y', 'z', 'x'], false);
+    const frame = assumedImuFrame('test', ['y', 'z', 'x']);
     expectVector(toBodyFrame(frame, [1, 2, 3]), [2, 3, 1], 9);
     expect(frame.toBody).toEqual([0, 1, 0, 0, 0, 1, 1, 0, 0]);
   });
 
   it('refuses a repeated axis and a reflection', () => {
-    expect(captureError(() => imuFrame('singular', ['x', 'x', 'z'], false))).toMatchObject({
+    expect(captureError(() => assumedImuFrame('singular', ['x', 'x', 'z']))).toMatchObject({
       code: 'invariant-violation',
     });
-    expect(captureError(() => imuFrame('mirror', ['x', 'y', '-z'], false))).toMatchObject({
+    expect(captureError(() => assumedImuFrame('mirror', ['x', 'y', '-z']))).toMatchObject({
       code: 'invariant-violation',
     });
-    expect(imuFrame('turned', ['-x', 'z', 'y'], false).toBody).toEqual([
+    expect(assumedImuFrame('turned', ['-x', 'z', 'y']).toBody).toEqual([
       -1, 0, 0, 0, 0, 1, 0, 1, 0,
     ]);
     expect(X5_IMU_FRAME.toBody).toEqual([1, 0, 0, 0, 0, 1, 0, -1, 0]);

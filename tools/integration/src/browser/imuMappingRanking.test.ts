@@ -3,7 +3,7 @@ import {
   isProperRotation,
   buildStitchingSetup,
   IDENTITY_MATRIX3,
-  imuFrame,
+  assumedImuFrame,
   imuFrameFor,
   LensDecodePipeline,
   LockStabilization,
@@ -51,7 +51,7 @@ function allImuFrames(): readonly ImuFrame[] {
 
 function properFrameOf(x: SignedAxis, y: SignedAxis, z: SignedAxis): ImuFrame[] {
   const axes: BodyAxes = [x, y, z];
-  return isProperRotation(axes) ? [imuFrame(axes.join(','), axes, false)] : [];
+  return isProperRotation(axes) ? [assumedImuFrame(axes.join(','), axes)] : [];
 }
 
 /**

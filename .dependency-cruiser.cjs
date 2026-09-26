@@ -221,6 +221,20 @@ module.exports = {
       },
     },
     {
+      name: 'the-embed-snippet-does-not-reach-the-frame-side',
+      comment:
+        'The frame side of the bridge imports the player, so a value import of it from the snippet side would bundle the player into embed.js through it.',
+      severity: 'error',
+      from: {
+        path: '^apps/embed/src/(snippet|protocol|bridge)/',
+        pathNot: ['\\.test\\.ts$', '^apps/embed/src/bridge/(EmbedHost|commandHandlers)\\.ts$'],
+      },
+      to: {
+        path: '^apps/embed/src/(bridge/(EmbedHost|commandHandlers)\\.ts$|pages/|component\\.ts$)',
+        dependencyTypesNot: ['type-only'],
+      },
+    },
+    {
       name: 'player-is-not-imported-by-libraries',
       comment: 'The real-recording tests open samples through the player composition they test.',
       severity: 'error',

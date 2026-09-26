@@ -24,6 +24,15 @@ class CountingTrack extends FakeVideoTrack {
  */
 const OFFICE_FIRST_FRAME_STAMP = 921_751_839;
 
+/**
+ * A track whose sample table gives no timestamps to time its frames by.
+ */
+class UntimedTrack extends FakeVideoTrack {
+  public override sampleTimestamps(): Promise<readonly Seconds[]> {
+    return Promise.resolve([]);
+  }
+}
+
 function trackOf(frameCount: number): CountingTrack {
   return new CountingTrack({ trackIndex: 0, frameRate: 10, frameCount, framesPerGop: 10 });
 }
@@ -92,6 +101,34 @@ describe('timeRecording', () => {
     expect(timing.warnings).toContain(
       'the IMU frame of Insta360 X3 has not been verified on a recording; stabilization may misbehave',
     );
+  });
+
+  it('plays without stabilization when the camera wrote no gyro record', async () => {
+    const timing = await timeRecording(await officeRecording({ hasGyro: false }), trackOf(10));
+    expect(timing.motion).toBeUndefined();
+    expect(timing.frameTimeSource).toBe('exposure-record');
+    expect(timing.warnings).toEqual([
+      'the recording has no gyro record; stabilization is unavailable',
+    ]);
+  });
+
+  it('still stabilizes when no source times the frames, by the track timestamps', async () => {
+    const info = minimalInfoRecord({
+      model: 'Insta360 X5',
+      firstFrameTimestamp: OFFICE_FIRST_FRAME_STAMP,
+    });
+    const track = new UntimedTrack({
+      trackIndex: 0,
+      frameRate: 10,
+      frameCount: 10,
+      framesPerGop: 10,
+    });
+    const timing = await timeRecording(await officeRecording({ info, hasExposure: false }), track);
+    expect(timing.frameTimes).toBeUndefined();
+    expect(timing.motion).toBeDefined();
+    expect(timing.warnings).toEqual([
+      'no frame timing source is usable; stabilization times each frame by its track timestamp',
+    ]);
   });
 
   it('says there is no capture clock when the info record does not date the first frame', async () => {

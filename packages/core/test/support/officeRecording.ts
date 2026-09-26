@@ -11,6 +11,7 @@ export interface OfficeRecordingParts {
    * An info record in place of the office one.
    */
   readonly info?: Uint8Array;
+  readonly hasGyro?: boolean;
   readonly hasExposure?: boolean;
 }
 
@@ -19,17 +20,17 @@ export interface OfficeRecordingParts {
  * samples and the first 16 exposure entries, behind a minimal MP4.
  */
 export function officeRecording(parts: OfficeRecordingParts = {}): Promise<Recording> {
-  const builder = new TrailerFixtureBuilder()
-    .withPrefix(minimalMp4Prefix())
-    .addRecord({
-      id: RecordType.Info,
-      format: InfoRecordFormat.Protobuf,
-      payload: parts.info ?? loadFixture('x5/office/record-01-info.bin'),
-    })
-    .addRecord({
+  const builder = new TrailerFixtureBuilder().withPrefix(minimalMp4Prefix()).addRecord({
+    id: RecordType.Info,
+    format: InfoRecordFormat.Protobuf,
+    payload: parts.info ?? loadFixture('x5/office/record-01-info.bin'),
+  });
+  if (parts.hasGyro ?? true) {
+    builder.addRecord({
       id: RecordType.Gyro,
       payload: loadFixture('x5/office/record-03-gyro-first2000.bin'),
     });
+  }
   if (parts.hasExposure ?? true) {
     builder.addRecord({
       id: RecordType.Exposure,

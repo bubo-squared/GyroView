@@ -20,7 +20,8 @@ const NO_CLOCK_WARNING =
   'the recording has no capture clock; frame timing and stabilization are unavailable';
 const NO_FRAME_SOURCE_WARNING =
   'the recording has no frame source to time; frame timing and stabilization are unavailable';
-const NO_FRAME_TIMES_WARNING = 'no frame timing source is usable; stabilization is unavailable';
+const NO_FRAME_TIMES_WARNING =
+  'no frame timing source is usable; stabilization times each frame by its track timestamp';
 
 /**
  * Relates the recording to video time: the capture clock, the frame times of its first frame

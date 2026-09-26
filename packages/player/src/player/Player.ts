@@ -59,9 +59,10 @@ export class Player {
   private lastStatus: PlayerStatus = 'idle';
 
   public constructor(private readonly parts: PlayerParts) {
-    this.loop = new FrameLoop(() => {
-      this.loaded?.pipeline.session.tick();
-    });
+    this.loop = new FrameLoop(this.tick);
+    // A hidden tab or an offscreen frame gets no animation frames: the sound's end ticks the
+    // session itself, so the recording still ends, and loops, there.
+    parts.host.audio.addEventListener('ended', this.tick);
     this.sound = new PlayerSound(parts.host.audio, this.events);
     const { canvas } = parts.host;
     this.viewing = new PlayerView(this.events, () => cssSizeOf(canvas));
@@ -263,9 +264,14 @@ export class Player {
 
   public dispose(): void {
     this.unload();
+    this.parts.host.audio.removeEventListener('ended', this.tick);
     this.sound.dispose();
     this.events.removeAll();
   }
+
+  private readonly tick = (): void => {
+    this.loaded?.pipeline.session.tick();
+  };
 
   private get loaded(): LoadedRecording | undefined {
     return this.phase.kind === 'loaded' ? this.phase.loaded : undefined;

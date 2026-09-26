@@ -26,6 +26,7 @@ function sourceOf(url: string): PlayerSource {
 interface Harness {
   readonly player: Player;
   readonly canvas: HTMLCanvasElement;
+  readonly audio: HTMLAudioElement;
   readonly statuses: PlayerStatus[];
   readonly events: string[];
   readonly frames: Seconds[];
@@ -72,7 +73,7 @@ function harness(pipelines: PipelineFactory): Harness {
   player.events.on('error', (error) => {
     errors.push(error);
   });
-  return { player, canvas, statuses, events, frames, warnings, errors };
+  return { player, canvas, audio, statuses, events, frames, warnings, errors };
 }
 
 describe('Player over the synthetic X5 recording', () => {
@@ -226,6 +227,20 @@ describe('Player over the synthetic X5 recording', () => {
     player.seek(seconds(2));
     await loading;
     expect(player.currentTime).toBeCloseTo(2, 3);
+  });
+
+  it('ticks the session when the sound ends, which animation frames may not do', async () => {
+    const ticks: MockInstance<PlaybackSession<VideoFrame>['tick']>[] = [];
+    const { player, audio } = open(async (parts) => {
+      const pipeline = await buildPipeline(parts);
+      ticks.push(vi.spyOn(pipeline.session, 'tick'));
+      return pipeline;
+    });
+    await player.load(sourceOf(X5_RECORDING_URL));
+    player.pause();
+    ticks[0]?.mockClear();
+    audio.dispatchEvent(new Event('ended'));
+    expect(ticks[0]).toHaveBeenCalledOnce();
   });
 
   it('leaves the decoders idle until play when told not to preload', async () => {

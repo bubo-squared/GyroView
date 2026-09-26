@@ -94,6 +94,15 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     expect(clock.currentTime).toBeCloseTo(held, 2);
   });
 
+  it('stops running when someone else pauses its element, as media keys do', async () => {
+    const clock = await openClock();
+    await clock.start();
+    expect(clock.isRunning).toBe(true);
+    elements.at(-1)?.pause();
+    expect(clock.isRunning).toBe(false);
+    expect(clock.hasEnded).toBe(false);
+  });
+
   it('seeks to a time and continues from there', async () => {
     const clock = await openClock();
     clock.seek(seconds(2));

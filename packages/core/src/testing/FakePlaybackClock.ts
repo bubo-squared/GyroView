@@ -29,7 +29,8 @@ export class FakePlaybackClock implements PlaybackClock {
   }
 
   /**
-   * For the test to see: started, not paused, not ended.
+   * Started, not paused, not ended. A test pausing the fake directly plays the platform stopping
+   * a clock by itself.
    */
   public get isRunning(): boolean {
     return this.isStarted && !this.hasEnded;

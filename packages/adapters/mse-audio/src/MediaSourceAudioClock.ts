@@ -68,6 +68,14 @@ export class MediaSourceAudioClock implements PlaybackClock {
     return seconds(this.element.currentTime);
   }
 
+  /**
+   * Whoever paused the element (the session, media keys, an audio interruption): `play()` clears
+   * `paused` at once, so a start in flight counts as running.
+   */
+  public get isRunning(): boolean {
+    return !this.element.paused;
+  }
+
   public get hasEnded(): boolean {
     return this.element.ended;
   }

@@ -20,6 +20,10 @@ export class WallClock implements PlaybackClock {
 
   public constructor(private readonly now: () => Milliseconds = () => milliseconds(Date.now())) {}
 
+  public get isRunning(): boolean {
+    return this.isRunningNow;
+  }
+
   public get currentTime(): Seconds {
     if (!this.isRunningNow) return this.positionAtAnchor;
     const elapsed = millisecondsToSeconds(milliseconds(this.now() - this.anchorMs));

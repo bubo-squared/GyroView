@@ -8,6 +8,11 @@ import type { Seconds } from '../shared/units/time';
 export interface PlaybackClock {
   readonly currentTime: Seconds;
   /**
+   * Advancing now. The platform may stop a clock by itself (media keys, an audio interruption);
+   * the session polls this on every tick and pauses with it.
+   */
+  readonly isRunning: boolean;
+  /**
    * The clock's own media ran out; it will not advance again until seeked. A clock that does
    * not end by itself keeps this false.
    */

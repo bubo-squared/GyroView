@@ -212,6 +212,10 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   private followClock(now: Seconds, hasShown: boolean): void {
+    if (this.isStoppedFromOutside()) {
+      this.setState('paused');
+      return;
+    }
     if (!hasShown && this.isStarved(now)) {
       this.parts.clock.pause();
       this.setState('buffering');
@@ -219,6 +223,15 @@ export class PlaybackSession<Handle = unknown> {
     }
     this.events.emit('timeupdate', now);
     if (this.hasDecodedToEnd && this.isPlayedOut(now)) this.end();
+  }
+
+  /**
+   * The platform stopped the clock by itself (media keys, an audio interruption) while playing:
+   * the session follows, so the next `play` starts it again.
+   */
+  private isStoppedFromOutside(): boolean {
+    const { clock } = this.parts;
+    return !clock.isRunning && !clock.hasEnded;
   }
 
   /**

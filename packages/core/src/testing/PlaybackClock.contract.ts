@@ -38,6 +38,15 @@ export function describePlaybackClockContract(open: () => Promise<ClockUnderTest
       expect(clock.currentTime).toBe(0);
     });
 
+    it('runs from a start until a pause, and not before', async () => {
+      const { clock } = await open();
+      expect(clock.isRunning).toBe(false);
+      await clock.start();
+      expect(clock.isRunning).toBe(true);
+      clock.pause();
+      expect(clock.isRunning).toBe(false);
+    });
+
     it('advances once started', async () => {
       const { clock, letTimePass } = await open();
       await clock.start();

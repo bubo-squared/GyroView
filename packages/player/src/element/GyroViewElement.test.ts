@@ -68,6 +68,20 @@ function menuOf(element: GyroViewElement, name: string): { choices: string[]; ch
 }
 
 /**
+ * A press of the right mouse button at a horizontal position on the page.
+ */
+function secondaryButton(type: string, x: number): PointerEvent {
+  return new PointerEvent(type, {
+    pointerId: 2,
+    pointerType: 'mouse',
+    button: 2,
+    clientX: x,
+    clientY: 50,
+    bubbles: true,
+  });
+}
+
+/**
  * A wheel notch toward the screen (zoom in) over a point of the canvas, given as fractions of it.
  */
 function wheelOver(canvas: HTMLCanvasElement, at: { x: number; y: number }): void {
@@ -266,6 +280,43 @@ describe('<gyro-view>', () => {
     canvas.dispatchEvent(pointer('pointerdown', { x: 10, y: 10 }));
     canvas.dispatchEvent(pointer('pointerup', { x: 11, y: 10 }));
     await playing;
+  });
+
+  it('takes neither a drag nor a tap from another mouse button, nor a tap from a cancelled press', async () => {
+    const element = await createReady();
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    canvas.dispatchEvent(secondaryButton('pointerdown', 100));
+    canvas.dispatchEvent(secondaryButton('pointermove', 160));
+    canvas.dispatchEvent(secondaryButton('pointerup', 160));
+    canvas.dispatchEvent(pointer('pointerdown', { x: 10, y: 10 }));
+    canvas.dispatchEvent(pointer('pointercancel', { x: 10, y: 10 }));
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
+    expect(element.view.yaw).toBe(0);
+    expect(element.status).toBe('ready');
+  });
+
+  it('zooms a pinch toward the point between the fingers', async () => {
+    const element = await createReady();
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    // Synthetic touches are no active pointers, so the browser would refuse to capture them.
+    canvas.setPointerCapture = (): void => undefined;
+    const bounds = canvas.getBoundingClientRect();
+    const finger = (type: string, pointerId: number, x: number): PointerEvent =>
+      new PointerEvent(type, {
+        pointerId,
+        pointerType: 'touch',
+        clientX: bounds.left + x,
+        clientY: bounds.top + bounds.height / 2,
+        bubbles: true,
+      });
+    // Both fingers right of the centre, spreading apart: zoom in toward their midpoint.
+    canvas.dispatchEvent(finger('pointerdown', 1, 170));
+    canvas.dispatchEvent(finger('pointerdown', 2, 210));
+    canvas.dispatchEvent(finger('pointermove', 2, 250));
+    expect(element.view.fieldOfView).toBeLessThan(90);
+    expect(element.view.yaw).toBeGreaterThan(0);
   });
 
   it('zooms toward the pointer: a wheel over the right edge turns the view right as it narrows', async () => {

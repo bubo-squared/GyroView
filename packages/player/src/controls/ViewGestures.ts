@@ -20,6 +20,10 @@ type GestureTarget = Pick<Player, 'pan' | 'zoom' | 'canPan'>;
  */
 const WHEEL_PIXELS_PER_STEP = 100;
 /**
+ * `PointerEvent.button` of the main mouse button.
+ */
+const PRIMARY_BUTTON = 0;
+/**
  * Movement below this is a tap, not a drag.
  */
 const TAP_TOLERANCE_PIXELS = 4;
@@ -43,11 +47,13 @@ export class ViewGestures {
     surface.addEventListener('pointerdown', this.onPointerDown);
     surface.addEventListener('pointermove', this.onPointerMove);
     surface.addEventListener('pointerup', this.onPointerUp);
-    surface.addEventListener('pointercancel', this.onPointerUp);
+    surface.addEventListener('pointercancel', this.onPointerCancel);
     surface.addEventListener('wheel', this.onWheel, { passive: false });
   }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
+    // Only the primary button drags or taps; the others belong to the browser, a context menu.
+    if (event.pointerType === 'mouse' && event.button !== PRIMARY_BUTTON) return;
     if (this.pointers.size === 0) this.dragDistance = 0;
     this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     this.surface.setPointerCapture(event.pointerId);
@@ -67,6 +73,14 @@ export class ViewGestures {
     const wasTracked = this.pointers.delete(event.pointerId);
     if (!wasTracked || this.pointers.size > 0) return;
     if (this.dragDistance < TAP_TOLERANCE_PIXELS) this.onTap();
+  };
+
+  /**
+   * A press the browser took over ends without a tap, however far it had moved.
+   */
+  private readonly onPointerCancel = (event: PointerEvent): void => {
+    this.pointers.delete(event.pointerId);
+    this.dragDistance = Infinity;
   };
 
   private readonly onWheel = (event: WheelEvent): void => {

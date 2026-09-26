@@ -26,7 +26,7 @@ const SEAM_SAMPLES = 64;
  * target and reads the rows back, sharing the stitch's uniforms so it always looks at the frames
  * on screen. Compiled when created, so a broken shader fails there and not mid-playback.
  */
-export class GainMatchPass implements SeamMeter {
+export class SeamMeterPass implements SeamMeter {
   private readonly target = new WebGLRenderTarget(SEAM_SAMPLES, MAX_LENSES, {
     depthBuffer: false,
     stencilBuffer: false,

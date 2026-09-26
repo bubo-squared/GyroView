@@ -6,9 +6,6 @@ import { defineProject } from 'vitest/config';
  * and WebKit builds through Playwright, like the other browser adapters.
  */
 export default defineProject({
-  server: {
-    fs: { allow: ['../../..'] },
-  },
   test: {
     name: 'adapter-three',
     include: ['src/**/*.test.ts'],

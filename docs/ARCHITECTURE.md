@@ -135,7 +135,7 @@ Use cases that orchestrate the domain through ports.
 | `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                       | `MediabunnyAudioSegmenter`                                            |
 | `FrameSink`          | present a frame pair (`StabilizableFrameSink` adds rotation)                                                                 | `ThreeFrameRenderer`                                                  |
 | `PictureRenderer`    | a `StabilizableFrameSink` that also takes view, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
-| `SeamMeter`          | the mean colour each lens shows along the seam                                                                               | `GainMatchPass`                                                       |
+| `SeamMeter`          | the mean colour each lens shows along the seam                                                                               | `SeamMeterPass`                                                       |
 | `ResourceLocator`    | does this URL exist                                                                                                          | `HttpResourceLocator`                                                 |
 
 Every port with a fake in `core/src/testing` has a contract suite that runs against the fake
@@ -177,7 +177,7 @@ One package per external technology; none imports another.
   blends across the feather band; `rawLenses.frag.glsl` copies each lens's frame region into its
   tile. `shaderPrograms` is the only place the order of GLSL chunks is known, `fullscreenPass`
   holds the triangle and material setup every pass shares, and `rendererUniforms` is the only
-  place uniform names are spelled (a test checks them against the chunks). `gainMatch/GainMatchPass`
+  place uniform names are spelled (a test checks them against the chunks). `seamMeter/SeamMeterPass`
   is the `SeamMeter`: it renders the seam ring per lens into a tiny target and reads it back.
 
 ## The player: `packages/player`

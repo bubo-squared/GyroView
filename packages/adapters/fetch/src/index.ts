@@ -1,2 +1,3 @@
-export { HttpRangeSource, type HttpRangeSourceOptions } from './HttpRangeSource';
-export { HttpResourceLocator, type HttpResourceLocatorOptions } from './HttpResourceLocator';
+export { HttpRangeSource } from './HttpRangeSource';
+export { HttpResourceLocator } from './HttpResourceLocator';
+export type { HttpRequestOptions } from './httpRequest';

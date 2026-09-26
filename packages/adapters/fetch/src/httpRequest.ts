@@ -17,7 +17,7 @@ export interface HttpRequestOptions {
   readonly fetch?: typeof fetch;
 }
 
-export interface HttpRequest {
+interface HttpRequest {
   readonly method: HttpMethod;
   readonly headers?: Record<string, string>;
 }

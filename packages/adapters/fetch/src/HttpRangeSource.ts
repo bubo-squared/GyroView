@@ -12,8 +12,6 @@ const HTTP_OK = 200;
 const HTTP_PARTIAL_CONTENT = 206;
 const CONTENT_RANGE_TOTAL = /\/(\d+)$/u;
 
-export type HttpRangeSourceOptions = HttpRequestOptions;
-
 /**
  * RandomAccessSource over HTTP. The server must answer `Range` requests with 206 and, for
  * cross-origin use, send CORS headers that expose `Content-Range`; both are hard requirements
@@ -23,8 +21,8 @@ export class HttpRangeSource implements RandomAccessSource {
   private sizePromise: Promise<number> | undefined;
 
   public constructor(
-    public readonly url: string,
-    private readonly options: HttpRangeSourceOptions = {},
+    private readonly url: string,
+    private readonly options: HttpRequestOptions = {},
   ) {}
 
   /**

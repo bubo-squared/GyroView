@@ -26,7 +26,7 @@ import {
 } from 'three';
 
 import { createFullscreenTriangle } from './fullscreenPass';
-import { GainMatchPass } from './gainMatch/GainMatchPass';
+import { SeamMeterPass } from './seamMeter/SeamMeterPass';
 import {
   compilePictureMaterials,
   createPictureMaterials,
@@ -45,8 +45,8 @@ import {
 
 export interface ThreeFrameRendererOptions {
   /**
-   * Keep the drawing buffer after a frame so it can be read back or captured (tests, seam
-   * inspection); costs a copy per frame, so off by default.
+   * Keep the drawing buffer after a frame, so tests can read it back and captures can save it;
+   * costs a copy per frame, so off by default.
    */
   readonly preserveDrawingBuffer?: boolean;
 }
@@ -66,7 +66,7 @@ interface RendererParts {
 }
 
 /**
- * FrameSink over Three.js: uploads each lens frame to a texture and draws one fullscreen pass per
+ * PictureRenderer over Three.js: uploads each lens frame to a texture and draws one fullscreen pass per
  * frame, laid out on the viewport as the view mode says: the stitched view of `stitch.frag.glsl`,
  * turned by the view and stabilization rotations, or the raw lens images side by side.
  */
@@ -137,7 +137,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
 
   public createSeamMeter(): SeamMeter {
     this.ensureLive();
-    return new GainMatchPass(this.parts.renderer, this.parts.uniforms, this.parts.lensCount);
+    return new SeamMeterPass(this.parts.renderer, this.parts.uniforms, this.parts.lensCount);
   }
 
   /**

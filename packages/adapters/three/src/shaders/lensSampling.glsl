@@ -16,7 +16,7 @@ struct LensSample {
   bool isImaged;
   // Angle from the lens's optical axis.
   float theta;
-  vec4 color;
+  vec3 color;
 };
 
 // Where lens i images direction d on its calibration canvas; false for a kind of lens this
@@ -49,13 +49,13 @@ LensSample sampleLensAt(int i, vec3 dirBody) {
   LensSample result;
   result.isImaged = false;
   result.theta = theta;
-  result.color = vec4(0.0);
+  result.color = vec3(0.0);
   vec2 pixel;
   if (theta >= uLensHalfFov[i] || !canvasPixel(i, d, theta, pixel)) return result;
   vec2 uv = (pixel - uLensWindow[i].xy) / uLensWindow[i].zw;
   if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return result;
   vec2 texel = uLensRegion[i].xy + uv * uLensRegion[i].zw;
   result.isImaged = true;
-  result.color = sampleLens(uLensTexture[i], texel);
+  result.color = sampleLens(uLensTexture[i], texel).rgb;
   return result;
 }

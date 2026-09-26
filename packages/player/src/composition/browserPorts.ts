@@ -1,4 +1,4 @@
-import { HttpResourceLocator, type HttpRangeSourceOptions } from '@gyroview/adapter-fetch';
+import { HttpResourceLocator, type HttpRequestOptions } from '@gyroview/adapter-fetch';
 import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
 import { WebCodecsVideoDecoderPort } from '@gyroview/adapter-webcodecs';
 
@@ -10,7 +10,7 @@ export interface BrowserPortsOptions {
   /**
    * Shared by every request the player makes for the recording and its companions.
    */
-  readonly http?: HttpRangeSourceOptions;
+  readonly http?: HttpRequestOptions;
   /**
    * How long the decode probe may take before a lens is reported as timed out. Default 15 s,
    * generous because hardware decoders wake slowly.

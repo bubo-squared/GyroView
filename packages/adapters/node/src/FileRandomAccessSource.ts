@@ -4,7 +4,8 @@ import { GyroViewError, type ByteRange, type RandomAccessSource } from '@gyrovie
 
 /**
  * RandomAccessSource over a local file. Used by the CLI and by integration tests against the
- * real recordings; the browser uses the fetch adapter instead.
+ * real recordings; the browser reads URLs through the fetch adapter and files through the blob
+ * adapter.
  */
 export class FileRandomAccessSource implements RandomAccessSource {
   private constructor(

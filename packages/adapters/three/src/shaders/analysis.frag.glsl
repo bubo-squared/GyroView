@@ -17,5 +17,5 @@ void main() {
     return;
   }
   LensSample seen = sampleLensAt(lens, dirBody);
-  outColor = seen.isImaged ? vec4(seen.color.rgb, 1.0) : vec4(0.0);
+  outColor = seen.isImaged ? vec4(seen.color, 1.0) : vec4(0.0);
 }

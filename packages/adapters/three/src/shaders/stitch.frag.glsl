@@ -22,7 +22,7 @@ void main() {
     LensSample lens = sampleLensAt(i, dirBody);
     if (!lens.isImaged) continue;
     float weight = 1.0 - smoothstep(uFeather.x, uFeather.y, lens.theta);
-    sum += weight * uLensGain[i] * lens.color.rgb;
+    sum += weight * uLensGain[i] * lens.color;
     weightSum += weight;
   }
   outColor = weightSum > 0.0 ? vec4(sum / weightSum, 1.0) : vec4(0.0, 0.0, 0.0, 1.0);

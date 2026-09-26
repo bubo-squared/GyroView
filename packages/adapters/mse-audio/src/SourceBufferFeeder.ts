@@ -8,7 +8,7 @@ import {
 
 import { nextEvent, nextOfEvents } from './events';
 
-export interface SourceBufferFeederParts {
+interface SourceBufferFeederParts {
   readonly element: HTMLMediaElement;
   readonly mediaSource: MediaSource;
   readonly sourceBuffer: SourceBuffer;

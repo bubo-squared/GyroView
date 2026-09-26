@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-export interface TestServerBehaviour {
+interface TestServerBehaviour {
   /**
    * Answer byte ranges with the whole body and status 200, like a server without Range support.
    */

@@ -1,5 +1,5 @@
 import { GyroViewError, STABILIZATION_MODES, VIEW_MODES } from '@gyroview/core';
-import type { GyroViewElement } from '@gyroview/player';
+import { choiceOf, type GyroViewElement } from '@gyroview/player';
 import { SourceAttribute } from '@gyroview/player/attributes';
 
 import type { EmbedState, LoadRequest } from './EmbedState';
@@ -29,12 +29,16 @@ function isFlagAt(parameters: readonly unknown[], index: number): boolean {
   return value;
 }
 
+/**
+ * A choice read as the element reads its attributes and properties, so a value the element
+ * accepts is accepted here too.
+ */
 function choiceAt<Choice extends string>(
   parameters: readonly unknown[],
   choices: readonly Choice[],
 ): Choice {
   const value = parameters[0];
-  const choice = choices.find((candidate) => candidate === value);
+  const choice = typeof value === 'string' ? choiceOf(value, choices) : undefined;
   if (!choice) throw invalid(`0 must be one of ${choices.join(', ')}`);
   return choice;
 }

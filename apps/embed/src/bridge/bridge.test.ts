@@ -85,12 +85,12 @@ describe('the embed bridge over a message channel', () => {
     expect(heard).toEqual(['play', 'pause', 'seeking', 'seeked']);
   });
 
-  it('changes the view, view mode, stabilization and loop over the channel', async () => {
+  it('changes the view, view mode, stabilization and loop over the channel, reading choices as the element does', async () => {
     const { handle, element } = bridge();
     await handle.load({ src: recordingUrl });
     await handle.lookAt(30, 10);
     await handle.zoom(1);
-    await handle.setStabilization('horizon');
+    await handle.setStabilization(' Horizon');
     await handle.setViewMode('equirectangular');
     await handle.setLoop(true);
     expect(handle.state.view).toMatchObject({ yaw: 30, pitch: 10 });

@@ -29,8 +29,8 @@ import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
 
 /**
- * Headless player: the facade every host (the element, the embed bridge) drives. Owns one
- * loaded recording at a time, relays the session's events in media-element terms, and owns the
+ * Headless player: the facade the element drives (and the embed bridge, through the element).
+ * Owns one loaded recording at a time, relays the session's events in media-element terms, and owns the
  * settings (view, view mode, stabilization, gain matching, sound, loop), which carry over from
  * load to load. Everything DOM it touches is handed in.
  */

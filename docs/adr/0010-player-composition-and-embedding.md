@@ -48,8 +48,8 @@ Errors cross the boundary as `{ code, message }`, so the codes stay stable on bo
 ## Alternatives considered
 
 - Composing inside the element class: one class would own I/O, decoding, rendering and DOM;
-  the headless `Player` keeps the element to attributes and events and lets the embed bridge and
-  tests drive the same object.
+  the headless `Player` keeps the element to attributes and events and lets tests drive the
+  same object the element does (the embed bridge drives the element).
 - `prefer-hardware` decoding, as planned: refused the H.264 test fixtures in Playwright's
   Chromium and would refuse proxies on machines without hardware H.264.
 - Transferring a `MessagePort` to the frame for the bridge: cleaner isolation, but the

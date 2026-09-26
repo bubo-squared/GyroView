@@ -197,7 +197,7 @@ The composition root and the user-facing element, in three layers.
   from a `FrameLoop`, keeps the canvas sized (`Viewport`), and owns the settings (view and view
   mode in `PlayerView`, stabilization and gain matching in `PictureSettings`, sound in
   `PlayerSound`, loop) across loads (ADR 0016). Its
-  life with a recording is one `PlayerPhase`. The element and the embed bridge both drive it.
+  life with a recording is one `PlayerPhase`. The element drives it; the embed bridge drives the element.
 - **`element`** and **`controls`**: `GyroViewElement` is `<gyro-view>`: attributes parsed by
   pure functions in `attributes.ts` (names in `attributeNames.ts`, published as
   `@gyroview/player/attributes`), settings properties live over the player (`liveSettings`),

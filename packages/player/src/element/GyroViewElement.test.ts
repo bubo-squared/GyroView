@@ -1,4 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { page } from 'vitest/browser';
 
 import { defineGyroView } from './defineGyroView';
 import type { GyroViewElement } from './GyroViewElement';
@@ -7,6 +8,11 @@ import { choiceMenuClasses, type ChoiceMenuName } from '../controls/controlsMark
 import { expectIconOnly } from '../test/controls';
 import { fetchBytes, X5_RECORDING_URL } from '../test/recordings';
 import { nextEvent, settle, waitFor } from '../test/waiting';
+
+/**
+ * A desktop page, wider than any phone: the bar must fit the player, not the page.
+ */
+const WIDE_PAGE = { width: 1280, height: 720 };
 
 beforeAll(() => {
   defineGyroView();
@@ -496,6 +502,7 @@ describe('<gyro-view>', () => {
   });
 
   it('keeps every control of the bar within a narrow player on a wide page', async () => {
+    await page.viewport(WIDE_PAGE.width, WIDE_PAGE.height);
     const element = await createReady();
     const bounds = element.getBoundingClientRect();
     const row = control(element, '.row', HTMLElement);
@@ -506,8 +513,19 @@ describe('<gyro-view>', () => {
     }
   });
 
+  it('shows the stop button, the volume and the time where there is room', async () => {
+    const element = await createReady();
+    element.style.width = '640px';
+    for (const part of ['.stop', '.volume', '.time']) {
+      expect(getComputedStyle(control(element, part, HTMLElement)).display).not.toBe('none');
+    }
+  });
+
   it('pins itself over the whole viewport where fullscreen is refused, whatever size the page gave it', async () => {
-    const element = create({ controls: '' });
+    const element = create({
+      controls: '',
+      style: 'width: 300px; margin: 24px 8px; max-height: 100px',
+    });
     element.requestFullscreen = (): Promise<void> => Promise.reject(new Error('refused'));
     await element.toggleFullscreen();
     expect(element.dataset['fill']).toBe('');

@@ -167,11 +167,17 @@ button[hidden] {
   visibility: visible;
 }
 
-/* A narrow player, on a phone or in a narrow column, gives up what the keyboard or the picture
-   also offers, so every other button stays in reach. */
-@container (max-width: 480px) {
-  .volume,
+/* A narrowing player, on a phone or in a narrow column, gives up in turn the stop button (play
+   pauses), the volume slider (mute stays) and the time, so the other buttons stay in reach. Each
+   width is where the bar stops fitting with the part, with times up to an hour. */
+@container (max-width: 490px) {
   .stop {
+    display: none;
+  }
+}
+
+@container (max-width: 450px) {
+  .volume {
     display: none;
   }
 }

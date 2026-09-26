@@ -28,16 +28,23 @@
 
 /*
  * Pinned over the page where the Fullscreen API is refused (iPhone Safari). Like the browser's
- * own fullscreen rules it overrides the size and place the page gave the element, and the insets
- * size it to the visible viewport, where 100vh would reach under Safari's toolbars.
+ * own fullscreen rules it overrides the size, margins and place the page gave the element, and
+ * the insets size it to the visible viewport, where 100vh would reach under Safari's toolbars.
  */
 :host([data-fill]) {
   position: fixed !important;
   inset: 0 !important;
+  box-sizing: border-box !important;
   width: auto !important;
   height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  transform: none !important;
   aspect-ratio: auto !important;
-  z-index: 2147483000;
+  z-index: 2147483000 !important;
 }
 
 :host(:fullscreen) {

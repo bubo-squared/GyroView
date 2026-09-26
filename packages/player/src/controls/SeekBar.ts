@@ -5,18 +5,24 @@ import type { ControlsHost } from './ControlsHost';
 import { formatTime } from './formatTime';
 import type { Player } from '../player/Player';
 
-type SeekParts = Pick<ControlParts, 'seek' | 'time'>;
+export type SeekParts = Pick<ControlParts, 'seek' | 'time'>;
 
 /**
- * What the seek bar follows and moves, and where it reports a failed scrub.
+ * What the seek bar follows and moves.
  */
-interface SeekHost extends Pick<ControlsHost, 'warn'> {
-  readonly player: Pick<Player, 'events' | 'currentTime' | 'duration' | 'seek' | 'scrub'>;
+export type SeekPlayer = Pick<Player, 'events' | 'currentTime' | 'duration' | 'seek' | 'scrub'>;
+
+/**
+ * The player, and where the seek bar reports a failed scrub.
+ */
+export interface SeekHost extends Pick<ControlsHost, 'warn'> {
+  readonly player: SeekPlayer;
 }
 
 /**
  * The seek bar and the time beside it: dragging scrubs to key frames, releasing seeks exactly,
- * and the bar follows playback while it is not held.
+ * and the bar follows playback while it is not held. Its range is the recording's duration,
+ * read on every status change, so a failed or unloaded recording leaves an empty bar.
  */
 export class SeekBar {
   private isScrubbing = false;
@@ -29,17 +35,13 @@ export class SeekBar {
   ) {
     this.bindInput();
     const { events } = this.host.player;
-    events.on('ready', (metadata) => {
-      parts.seek.max = String(metadata.duration);
-      this.showTime(this.host.player.currentTime);
-    });
     events.on('statuschange', () => {
-      this.showTime(this.host.player.currentTime);
+      this.showRecording();
     });
     events.on('timeupdate', (time) => {
       this.follow(time);
     });
-    this.showTime(this.host.player.currentTime);
+    this.showRecording();
   }
 
   private bindInput(): void {
@@ -54,6 +56,12 @@ export class SeekBar {
       this.isScrubbing = false;
       void this.seekExactly(Number(seek.value));
     });
+  }
+
+  private showRecording(): void {
+    const { duration, currentTime } = this.host.player;
+    this.parts.seek.max = String(duration);
+    this.follow(currentTime);
   }
 
   private follow(time: number): void {

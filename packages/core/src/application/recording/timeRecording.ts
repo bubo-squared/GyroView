@@ -4,6 +4,7 @@ import type { Recording } from './Recording';
 import type { VideoTrackReader } from '../../ports/Demuxer';
 import type { FrameTimeSourceName } from '../../domain/motion/timing/FrameTimeSource';
 import type { FrameTimes } from '../../domain/motion/timing/FrameTimes';
+import { hasErrorCode, messageOf } from '../../shared/errors/GyroViewError';
 
 /**
  * Everything time-related a player needs from a recording, each part optional: the recording
@@ -16,18 +17,31 @@ export interface RecordingTiming {
   readonly warnings: readonly string[];
 }
 
-const NO_CLOCK_WARNING =
-  'the recording has no capture clock; frame timing and stabilization are unavailable';
-const NO_FRAME_SOURCE_WARNING =
-  'the recording has no frame source to time; frame timing and stabilization are unavailable';
+const TIMING_UNAVAILABLE = 'frame timing and stabilization are unavailable';
+const NO_CLOCK_WARNING = `the recording has no capture clock; ${TIMING_UNAVAILABLE}`;
+const NO_FRAME_SOURCE_WARNING = `the recording has no frame source to time; ${TIMING_UNAVAILABLE}`;
 const NO_FRAME_TIMES_WARNING =
-  'no frame timing source is usable; stabilization times each frame by its track timestamp';
+  'no frame timing source is usable; frames are timed by their track timestamps';
 
 /**
  * Relates the recording to video time: the capture clock, the frame times of its first frame
  * source (all sources share the camera clock) and the camera's orientation for stabilization.
  */
 export async function timeRecording(
+  recording: Recording,
+  frameSource: VideoTrackReader | undefined,
+): Promise<RecordingTiming> {
+  try {
+    return await timeByTheClock(recording, frameSource);
+  } catch (error) {
+    // Without the info record's flag, a gyro record whose first samples fit neither layout
+    // leaves the clock undated; the recording still plays, untimed.
+    if (!hasErrorCode(error, 'unsupported-gyro-record')) throw error;
+    return withoutTiming([`${messageOf(error)}; ${TIMING_UNAVAILABLE}`]);
+  }
+}
+
+async function timeByTheClock(
   recording: Recording,
   frameSource: VideoTrackReader | undefined,
 ): Promise<RecordingTiming> {

@@ -11,6 +11,10 @@ export interface OfficeRecordingParts {
    * An info record in place of the office one.
    */
   readonly info?: Uint8Array;
+  /**
+   * A gyro record in place of the office one.
+   */
+  readonly gyro?: Uint8Array;
   readonly hasGyro?: boolean;
   readonly hasExposure?: boolean;
 }
@@ -28,7 +32,7 @@ export function officeRecording(parts: OfficeRecordingParts = {}): Promise<Recor
   if (parts.hasGyro ?? true) {
     builder.addRecord({
       id: RecordType.Gyro,
-      payload: loadFixture('x5/office/record-03-gyro-first2000.bin'),
+      payload: parts.gyro ?? loadFixture('x5/office/record-03-gyro-first2000.bin'),
     });
   }
   if (parts.hasExposure ?? true) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { timeRecording } from './timeRecording';
 import { PtsType } from '../../domain/format/info/infoFields';
+import { GYRO_LAYOUT_PROBE_SIZE } from '../../domain/format/records/gyro/parseGyroRecord';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import { minimalInfoRecord } from '../../testing/minimalInfoRecord';
 import { seconds, type Seconds } from '../../shared/units/time';
@@ -112,7 +113,7 @@ describe('timeRecording', () => {
     ]);
   });
 
-  it('still stabilizes when no source times the frames, by the track timestamps', async () => {
+  it('times the frames by their track timestamps when no source can, and still stabilizes', async () => {
     const info = minimalInfoRecord({
       model: 'Insta360 X5',
       firstFrameTimestamp: OFFICE_FIRST_FRAME_STAMP,
@@ -127,7 +128,24 @@ describe('timeRecording', () => {
     expect(timing.frameTimes).toBeUndefined();
     expect(timing.motion).toBeDefined();
     expect(timing.warnings).toEqual([
-      'no frame timing source is usable; stabilization times each frame by its track timestamp',
+      'no frame timing source is usable; frames are timed by their track timestamps',
+    ]);
+  });
+
+  it('plays untimed when the gyro layout cannot be told from the record', async () => {
+    const info = minimalInfoRecord({
+      model: 'Insta360 X5',
+      firstFrameTimestamp: OFFICE_FIRST_FRAME_STAMP,
+    });
+    const unreadable = new Uint8Array(GYRO_LAYOUT_PROBE_SIZE).fill(0xff);
+    const recording = await officeRecording({ info, gyro: unreadable });
+    const timing = await timeRecording(recording, trackOf(10));
+    expect(timing.motion).toBeUndefined();
+    expect(timing.frameTimes).toBeUndefined();
+    expect(timing.warnings).toEqual([
+      expect.stringMatching(
+        /gyro sample layout.*; frame timing and stabilization are unavailable$/u,
+      ),
     ]);
   });
 

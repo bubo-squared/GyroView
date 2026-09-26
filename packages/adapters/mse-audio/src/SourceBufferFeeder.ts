@@ -118,7 +118,10 @@ export class SourceBufferFeeder {
 
   private async waitUntilNeeded(stop: Signal): Promise<void> {
     while (!stop.wasTriggered && this.bufferedAhead() >= BUFFER_AHEAD_SECONDS) {
-      await Promise.race([nextOfEvents(this.parts.element, WAKE_EVENTS), stop.promise]);
+      await Promise.race([
+        nextOfEvents(this.parts.element, WAKE_EVENTS, stop.promise),
+        stop.promise,
+      ]);
     }
   }
 

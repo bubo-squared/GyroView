@@ -103,6 +103,16 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     expect(clock.hasEnded).toBe(false);
   });
 
+  it('leaves the element alone on disposal when it plays another source by then', async () => {
+    const clock = await openClock();
+    const element = elements.at(-1);
+    const newer = URL.createObjectURL(new Blob());
+    if (element) element.src = newer;
+    clock.dispose();
+    expect(element?.src).toBe(newer);
+    URL.revokeObjectURL(newer);
+  });
+
   it('seeks to a time and continues from there', async () => {
     const clock = await openClock();
     clock.seek(seconds(2));

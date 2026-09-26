@@ -1,4 +1,4 @@
-import { GyroViewError } from '@gyroview/core';
+import { GyroViewError, Signal } from '@gyroview/core';
 
 import { nextOfEvents } from './events';
 
@@ -40,7 +40,8 @@ export function isMediaSourceTypeSupported(mimeType: string): boolean {
 export interface AttachedMediaSource {
   readonly mediaSource: MediaSource;
   /**
-   * Detaches the media source from the element and frees the object URL.
+   * Detaches the media source from the element, unless the element plays another source by
+   * now, and frees the object URL.
    */
   readonly detach: () => void;
 }
@@ -67,8 +68,10 @@ export async function attachMediaSource(
   const attached = {
     mediaSource,
     detach: (): void => {
-      element.removeAttribute('src');
-      element.load();
+      if (element.src === url) {
+        element.removeAttribute('src');
+        element.load();
+      }
       URL.revokeObjectURL(url);
     },
   };
@@ -83,16 +86,33 @@ export async function attachMediaSource(
   return attached;
 }
 
-function sourceOpenOutcome(
+/**
+ * Whichever comes first; the losers' listeners and the timer go once it is known, so the element
+ * the host reuses for every load carries nothing over.
+ */
+async function sourceOpenOutcome(
   element: HTMLMediaElement,
   mediaSource: MediaSource,
 ): Promise<'sourceopen' | 'error' | 'timeout'> {
-  const opened = nextOfEvents(mediaSource, ['sourceopen'] as const);
-  const failed = nextOfEvents(element, ['error'] as const);
-  const timedOut = new Promise<'timeout'>((resolve) => {
-    setTimeout(() => {
+  const settled = new Signal();
+  try {
+    return await Promise.race([
+      nextOfEvents(mediaSource, ['sourceopen'] as const, settled.promise),
+      nextOfEvents(element, ['error'] as const, settled.promise),
+      timeoutAfter(SOURCE_OPEN_TIMEOUT_MS, settled.promise),
+    ]);
+  } finally {
+    settled.trigger();
+  }
+}
+
+function timeoutAfter(ms: number, until: Promise<void>): Promise<'timeout'> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
       resolve('timeout');
-    }, SOURCE_OPEN_TIMEOUT_MS);
+    }, ms);
+    void until.then(() => {
+      clearTimeout(timer);
+    });
   });
-  return Promise.race([opened, failed, timedOut]);
 }

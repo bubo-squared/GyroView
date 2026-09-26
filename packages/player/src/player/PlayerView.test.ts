@@ -8,6 +8,7 @@ const VIEWPORT_WIDTH = 900;
 
 interface Recorded {
   readonly view: PlayerView;
+  readonly surface: ViewSurface;
   readonly drawn: (ViewState | ViewMode)[];
   readonly views: ViewState[];
   readonly modes: ViewMode[];
@@ -34,7 +35,9 @@ function recordedView(): Recorded {
     },
   };
   view.attach(surface);
-  return { view, drawn, views, modes };
+  // Attaching draws the state as it is; the tests watch what follows.
+  drawn.length = 0;
+  return { view, surface, drawn, views, modes };
 }
 
 describe('PlayerView', () => {
@@ -89,6 +92,15 @@ describe('PlayerView', () => {
     expect(views).toEqual([]);
     expect(modes).toEqual(['equirectangular']);
     expect(drawn).toEqual(['equirectangular']);
+  });
+
+  it('draws its current view and mode on a renderer attached later', () => {
+    const { view, surface, drawn } = recordedView();
+    view.attach(undefined);
+    view.setMode('equirectangular');
+    view.lookAt(degrees(10), degrees(0));
+    view.attach(surface);
+    expect(drawn).toEqual(['equirectangular', { ...DEFAULT_VIEW, yaw: 10 }]);
   });
 
   it('still announces changes between loads, with no renderer to draw them', () => {

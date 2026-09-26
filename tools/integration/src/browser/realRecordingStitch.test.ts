@@ -95,8 +95,8 @@ async function stitchOneFrame(
   });
   const renderer = ThreeFrameRenderer.create(canvas, setup, {
     preserveDrawingBuffer: true,
-    viewMode: 'equirectangular',
   });
+  renderer.setViewMode('equirectangular');
   cleanups.push(() => {
     renderer.dispose();
   });

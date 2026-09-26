@@ -1,5 +1,11 @@
-import { degrees, GyroViewError, seconds, type Seconds } from '@gyroview/core';
-import { afterEach, describe, expect, it } from 'vitest';
+import {
+  degrees,
+  GyroViewError,
+  seconds,
+  type PictureRenderer,
+  type Seconds,
+} from '@gyroview/core';
+import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import { Player } from './Player';
 import type { PlayerStatus } from './PlayerEvents';
@@ -195,6 +201,19 @@ describe('Player over the synthetic X5 recording', () => {
     expect(player.view).toMatchObject({ yaw: 40, pitch: 10 });
     expect(player.stabilization).toBe('horizon');
     expect(player.viewMode).toBe('equirectangular');
+  });
+
+  it('draws a view mode chosen while the recording was loading', async () => {
+    const modeChanges: MockInstance<PictureRenderer['setViewMode']>[] = [];
+    const { player } = open(async (parts) => {
+      const pipeline = await buildPipeline(parts);
+      modeChanges.push(vi.spyOn(pipeline.renderer, 'setViewMode'));
+      return pipeline;
+    });
+    const loading = player.load(sourceOf(X5_RECORDING_URL));
+    player.setViewMode('raw-lenses');
+    await loading;
+    expect(modeChanges[0]).toHaveBeenLastCalledWith('raw-lenses');
   });
 
   it('lets the view mode rule the gestures: the panorama ignores zoom, the normal view zooms and turns', async () => {

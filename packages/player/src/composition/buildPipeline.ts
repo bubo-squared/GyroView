@@ -14,8 +14,6 @@ import {
   type PlaybackClock,
   type Presentation,
   type VideoDecoderPort,
-  type ViewMode,
-  type ViewState,
   messageOf,
 } from '@gyroview/core';
 
@@ -34,8 +32,6 @@ export interface PipelineParts {
   readonly opened: OpenedRecording;
   readonly host: PipelineHost;
   readonly decoderPort: VideoDecoderPort<VideoFrame>;
-  readonly view: ViewState;
-  readonly viewMode: ViewMode;
   /**
    * Told about every presented pair, after the renderer drew it.
    */
@@ -124,10 +120,7 @@ interface Drawing extends SinkChoice {
  * The GPU stitcher on the host canvas, behind the stabilizing sink when there is a gyro.
  */
 function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
-  const renderer = ThreeFrameRenderer.create(parts.host.canvas, stitchingSetupOf(parts.opened), {
-    view: parts.view,
-    viewMode: parts.viewMode,
-  });
+  const renderer = ThreeFrameRenderer.create(parts.host.canvas, stitchingSetupOf(parts.opened));
   disposables.add(() => {
     renderer.dispose();
   });

@@ -236,7 +236,6 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelAt(renderer, CENTRE).b).toBeLessThan(DIM);
     renderer.setView({ ...DEFAULT_VIEW, yaw: degrees(180) });
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
-    expect(renderer.viewMode).toBe('equirectangular');
   });
 
   it('letterboxes the equirectangular panorama to 2:1 on a wider-than-tall viewport', () => {
@@ -310,7 +309,6 @@ describe('ThreeFrameRenderer', () => {
     presentRedAndBlue(renderer);
     renderer.setViewMode('normal');
     expect(pixelAt(renderer, { column: 48, row: 16 }).r).toBeGreaterThan(BRIGHT);
-    expect(renderer.viewMode).toBe('normal');
   });
 
   it('silences a lens through its gain so the other can be inspected alone', () => {
@@ -460,12 +458,6 @@ describe('ThreeFrameRenderer', () => {
     await restored;
     presentRedAndBlue(renderer);
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
-  });
-
-  it('clamps the view it is given', () => {
-    const renderer = open();
-    renderer.setView({ ...DEFAULT_VIEW, pitch: degrees(200), fieldOfView: degrees(10) });
-    expect(renderer.view).toEqual({ ...DEFAULT_VIEW, pitch: 90, fieldOfView: 30 });
   });
 
   it('refuses to work once disposed', () => {

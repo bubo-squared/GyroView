@@ -1,4 +1,4 @@
-import type { Presentation, ViewMode, ViewState } from '@gyroview/core';
+import type { Presentation } from '@gyroview/core';
 
 import type { PlayerParts } from './PlayerOptions';
 import { Viewport } from './Viewport';
@@ -21,8 +21,6 @@ export interface LoadedRecording {
 export interface LoadRequest {
   readonly source: PlayerSource;
   readonly parts: PlayerParts;
-  readonly view: ViewState;
-  readonly viewMode: ViewMode;
   /**
    * Told about every presented pair, after the renderer drew it.
    */
@@ -46,8 +44,6 @@ export async function loadRecording(request: LoadRequest): Promise<LoadedRecordi
       opened,
       host: parts.host,
       decoderPort: parts.ports.decoderPort,
-      view: request.view,
-      viewMode: request.viewMode,
       onPresent: request.onPresent,
     });
     disposables.add(() => {

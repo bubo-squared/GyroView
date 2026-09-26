@@ -1,5 +1,4 @@
 import {
-  clampView,
   DEFAULT_VIEW,
   DEFAULT_VIEW_MODE,
   ensureInvariant,
@@ -47,8 +46,6 @@ import {
 } from './rendererUniforms';
 
 export interface ThreeFrameRendererOptions {
-  readonly view?: ViewState;
-  readonly viewMode?: ViewMode;
   /**
    * Keep the drawing buffer after a frame so it can be read back or captured (tests, seam
    * inspection); costs a copy per frame, so off by default.
@@ -71,21 +68,13 @@ interface RendererParts {
 }
 
 /**
- * What the renderer starts drawing with.
- */
-interface InitialDrawing {
-  readonly view: ViewState;
-  readonly viewMode: ViewMode;
-}
-
-/**
  * FrameSink over Three.js: uploads each lens frame to a texture and draws one fullscreen pass per
  * frame, laid out on the viewport as the view mode says: the stitched view of `stitch.frag.glsl`,
  * turned by the view and stabilization rotations, or the raw lens images side by side.
  */
 export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
-  private viewState: ViewState;
-  private viewModeValue: ViewMode;
+  private view: ViewState = DEFAULT_VIEW;
+  private viewMode: ViewMode = DEFAULT_VIEW_MODE;
   /**
    * False until the first pair arrives and again after a context loss: the textures then hold
    * frames the session has closed, which must not be uploaded again.
@@ -98,10 +87,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   private constructor(
     private readonly parts: RendererParts,
     private readonly canvas: HTMLCanvasElement,
-    initial: InitialDrawing,
   ) {
-    this.viewState = clampView(initial.view);
-    this.viewModeValue = initial.viewMode;
     this.applyView();
     canvas.addEventListener('webglcontextlost', this.onContextLost);
   }
@@ -128,30 +114,19 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     const lensCount = setup.lenses.length;
     const camera = new Camera();
     const parts = { renderer, scene, camera, pass, materials, textures, uniforms, lensCount };
-    return new ThreeFrameRenderer(parts, canvas, {
-      view: options.view ?? DEFAULT_VIEW,
-      viewMode: options.viewMode ?? DEFAULT_VIEW_MODE,
-    });
-  }
-
-  public get view(): ViewState {
-    return this.viewState;
-  }
-
-  public get viewMode(): ViewMode {
-    return this.viewModeValue;
+    return new ThreeFrameRenderer(parts, canvas);
   }
 
   public setView(view: ViewState): void {
     this.ensureLive();
-    this.viewState = clampView(view);
+    this.view = view;
     this.applyView();
     this.render();
   }
 
   public setViewMode(mode: ViewMode): void {
     this.ensureLive();
-    this.viewModeValue = mode;
+    this.viewMode = mode;
     this.applyView();
     this.render();
   }
@@ -278,8 +253,8 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
    */
   private applyView(): void {
     const viewportAspect = this.canvas.width / Math.max(this.canvas.height, 1);
-    const picture = viewModeRulesFor(this.viewModeValue).picture(
-      this.viewState,
+    const picture = viewModeRulesFor(this.viewMode).picture(
+      this.view,
       viewportAspect,
       this.parts.lensCount,
     );

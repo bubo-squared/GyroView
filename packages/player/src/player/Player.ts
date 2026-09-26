@@ -267,8 +267,6 @@ export class Player {
     return loadRecording({
       source,
       parts: this.parts,
-      view: this.viewing.current,
-      viewMode: this.viewing.viewMode,
       onPresent: (presentation): void => {
         this.onPresent(presentation);
       },

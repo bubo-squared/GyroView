@@ -42,10 +42,13 @@ export class PlayerView {
   }
 
   /**
-   * The renderer of the loaded recording, or nothing between loads.
+   * The renderer of the loaded recording, or nothing between loads. A new renderer draws the view
+   * as it is now, however it changed while the recording was loading.
    */
   public attach(surface: ViewSurface | undefined): void {
     this.surface = surface;
+    surface?.setViewMode(this.mode);
+    surface?.setView(this.state);
   }
 
   public set(view: ViewState): void {

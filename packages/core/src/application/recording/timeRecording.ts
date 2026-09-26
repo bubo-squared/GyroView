@@ -18,6 +18,8 @@ export interface RecordingTiming {
 
 const NO_CLOCK_WARNING =
   'the recording has no capture clock; frame timing and stabilization are unavailable';
+const NO_FRAME_SOURCE_WARNING =
+  'the recording has no frame source to time; frame timing and stabilization are unavailable';
 const NO_FRAME_TIMES_WARNING = 'no frame timing source is usable; stabilization is unavailable';
 
 /**
@@ -29,7 +31,8 @@ export async function timeRecording(
   frameSource: VideoTrackReader | undefined,
 ): Promise<RecordingTiming> {
   const clock = await recording.captureClock();
-  if (!clock || !frameSource) return withoutTiming([NO_CLOCK_WARNING]);
+  if (!clock) return withoutTiming([NO_CLOCK_WARNING]);
+  if (!frameSource) return withoutTiming([NO_FRAME_SOURCE_WARNING]);
   const [frames, motion] = await Promise.all([
     frameTimesOf(recording, frameSource, clock),
     motionOf(recording, clock),

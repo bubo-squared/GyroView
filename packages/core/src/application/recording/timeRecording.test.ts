@@ -103,4 +103,12 @@ describe('timeRecording', () => {
       'the recording has no capture clock; frame timing and stabilization are unavailable',
     ]);
   });
+
+  it('says so when there is no frame source to time', async () => {
+    const timing = await timeRecording(await officeRecording(), undefined);
+    expect(timing.frameTimes).toBeUndefined();
+    expect(timing.warnings).toEqual([
+      'the recording has no frame source to time; frame timing and stabilization are unavailable',
+    ]);
+  });
 });

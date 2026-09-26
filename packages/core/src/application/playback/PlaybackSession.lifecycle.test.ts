@@ -122,7 +122,7 @@ describe('PlaybackSession lifecycle', () => {
   });
 
   it('starts again at the clock after ticks stopped for a while, instead of replaying the gap', async () => {
-    const { session, sink, advance } = sessionHarness();
+    const { session, sink, advance, states } = sessionHarness();
     await session.play();
     await advance(100);
     // A hidden tab: no ticks for two seconds while the clock runs on. The tick that finds the
@@ -135,6 +135,8 @@ describe('PlaybackSession lifecycle', () => {
     );
     expect(replayed).toEqual([]);
     expect(sink.lastTimestamp).toBeGreaterThanOrEqual(2);
+    // Not a seek a page would take for the viewer's.
+    expect(states).not.toContain('seeking');
     session.dispose();
   });
 
@@ -211,5 +213,43 @@ describe('PlaybackSession lifecycle', () => {
     session.tick();
     await expect(session.play()).resolves.toBeUndefined();
     expect(session.state).toBe('disposed');
+  });
+
+  describe('with a listener that pauses as the session announces a change', () => {
+    it('keeps the clock stopped when paused on playing', async () => {
+      const clock = new FakePlaybackClock();
+      const { session, advance } = sessionHarness({ clock });
+      session.preload();
+      for (let step = 0; step < 3; step += 1) await advance(0);
+      session.events.on('statechange', (state) => {
+        if (state === 'playing') session.pause();
+      });
+      await session.play();
+      expect(session.state).toBe('paused');
+      expect(clock.isRunning).toBe(false);
+      session.dispose();
+    });
+
+    it('settles the play when paused on buffering', async () => {
+      const { session } = sessionHarness();
+      session.events.on('statechange', (state) => {
+        if (state === 'buffering') session.pause();
+      });
+      await session.play();
+      expect(session.state).toBe('paused');
+      session.dispose();
+    });
+
+    it('stays paused when paused on seeking', async () => {
+      const { session, advance } = sessionHarness();
+      await session.play();
+      await advance(100);
+      session.events.on('statechange', (state) => {
+        if (state === 'seeking') session.pause();
+      });
+      session.seek(seconds(2));
+      expect(session.state).toBe('paused');
+      session.dispose();
+    });
   });
 });

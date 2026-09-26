@@ -192,9 +192,9 @@ describe('PlaybackSession transport', () => {
     const { session, advance } = sessionHarness();
     await session.play();
     for (let step = 0; step < 22; step += 1) await advance(100);
-    // Past the 3 s duration, with the last frames not decoded yet.
+    // Past the 3 s duration, with the last frames not decoded yet: it waits for them.
     await advance(900);
-    expect(session.state).toBe('playing');
+    expect(session.state).toBe('buffering');
     await settle();
     session.dispose();
   });

@@ -42,12 +42,11 @@ describe('PlaybackSession buffering', () => {
     await advance(0);
     expect(sink.lastTimestamp).toBe(0);
 
-    // Two big jumps without letting the decoders work: the second finds nothing to show.
-    clock.advance(seconds(1));
+    // A jump the decoders have not kept up with: the tick shows what is queued, still well
+    // behind the clock with nothing more to come yet.
+    clock.advance(seconds(0.8));
     session.tick();
-    expect(session.state).toBe('playing');
-    clock.advance(seconds(1));
-    session.tick();
+    expect(sink.lastTimestamp).toBeLessThan(0.6);
     expect(session.state).toBe('buffering');
     expect(clock.isRunning).toBe(false);
 

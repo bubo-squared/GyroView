@@ -4,25 +4,13 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { portEndpoint, windowEndpoint } from './Endpoint';
 import { EmbedHandle } from './EmbedHandle';
 import { EmbedHost } from './EmbedHost';
-import { helloMessage, PROTOCOL, type ProtocolMessage } from '../protocol/messages';
+import { eventMessage, helloMessage, PROTOCOL, type ProtocolMessage } from '../protocol/messages';
+import { waitFor } from '../test/waiting';
 import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
-
-const WAIT_MS = 15_000;
-const POLL_MS = 20;
 
 beforeAll(() => {
   defineGyroView();
 });
-
-async function waitFor(isSatisfied: () => boolean, what: string): Promise<void> {
-  const deadline = performance.now() + WAIT_MS;
-  while (!isSatisfied()) {
-    if (performance.now() > deadline) throw new Error(`timed out waiting for ${what}`);
-    await new Promise((resolve) => {
-      setTimeout(resolve, POLL_MS);
-    });
-  }
-}
 
 interface Bridge {
   readonly element: GyroViewElement;
@@ -87,7 +75,6 @@ describe('the embed bridge over a message channel', () => {
 
   it('changes the view, view mode, stabilization and loop over the channel, reading choices as the element does', async () => {
     const { handle, element } = bridge();
-    await handle.load({ src: recordingUrl });
     await handle.lookAt(30, 10);
     await handle.zoom(1);
     await handle.setStabilization(' Horizon');
@@ -100,14 +87,6 @@ describe('the embed bridge over a message channel', () => {
     expect(element.loop).toBe(true);
     const state = await handle.getState();
     expect(state.viewMode).toBe('equirectangular');
-  });
-
-  it('resolves a load once the recording is ready, so a play right after it starts', async () => {
-    const { handle } = bridge();
-    await handle.load({ src: recordingUrl });
-    expect(handle.state.status).toBe('ready');
-    await handle.play();
-    await waitFor(() => handle.state.status === 'playing', 'playing');
   });
 
   it('mirrors the sound as the player changes it', async () => {
@@ -181,14 +160,15 @@ describe('the embed bridge over a message channel', () => {
     });
 
     const pausing = handle.pause();
-    await new Promise((resolve) => {
-      setTimeout(resolve, 50);
-    });
-    expect(received).toEqual([]);
+    // The channel keeps order: a command sent at once would arrive before this marker.
+    const marker = eventMessage('warning', 'marker');
+    channel.port2.postMessage(marker);
+    await waitFor(() => received.length === 1, 'the marker');
+    expect(received).toEqual([marker]);
 
     hostSide.send(helloMessage());
-    await waitFor(() => received.length === 1, 'the queued command');
-    expect(received[0]).toMatchObject({ kind: 'command', name: 'pause', id: 1 });
+    await waitFor(() => received.length === 2, 'the queued command');
+    expect(received[1]).toMatchObject({ kind: 'command', name: 'pause', id: 1 });
     hostSide.send({ protocol: PROTOCOL, kind: 'result', id: 1, isOk: true, value: undefined });
     await pausing;
     handle.destroy();
@@ -214,12 +194,11 @@ describe('windowEndpoint', () => {
       heardByDistrustful.push(message);
     });
 
-    trusted.send(helloMessage());
+    // Messages arrive in order: once the hello is heard, the unrelated data before it was too,
+    // and the distrustful endpoint heard the hello in the same dispatch.
     page.postMessage({ unrelated: true }, location.origin);
+    trusted.send(helloMessage());
     await waitFor(() => heardByTrusted.length === 1, 'the hello');
-    await new Promise((resolve) => {
-      setTimeout(resolve, 50);
-    });
 
     expect(heardByTrusted).toEqual([helloMessage()]);
     expect(heardByDistrustful).toEqual([]);

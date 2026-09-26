@@ -1,11 +1,10 @@
-import { commands } from '@vitest/browser/context';
 import { afterEach, describe, expect, it } from 'vitest';
+import { commands } from 'vitest/browser';
 
 import { embed, type Embedded } from './embedSnippet';
+import { waitFor } from '../test/waiting';
 import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
 
-const WAIT_MS = 20_000;
-const POLL_MS = 25;
 /**
  * A host name the test server answers for through a browser command: another origin to the
  * browser, so this is a genuine cross-origin embed without a second server. The frame plays a
@@ -20,16 +19,6 @@ async function isServedAsHtml(url: string): Promise<boolean> {
     return response.ok && (response.headers.get('content-type') ?? '').includes('text/html');
   } catch {
     return false;
-  }
-}
-
-async function waitFor(isSatisfied: () => boolean, what: string): Promise<void> {
-  const deadline = performance.now() + WAIT_MS;
-  while (!isSatisfied()) {
-    if (performance.now() > deadline) throw new Error(`timed out waiting for ${what}`);
-    await new Promise((resolve) => {
-      setTimeout(resolve, POLL_MS);
-    });
   }
 }
 

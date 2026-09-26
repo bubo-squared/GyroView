@@ -13,6 +13,7 @@ import type {
 } from '../../ports/VideoDecoderPort';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { FakeVideoDecoderPort, type FakeFrameHandle } from '../../testing/FakeVideoDecoderPort';
+import { settle } from '../../../test/support/settle';
 
 const FRAME_RATE = 10;
 const FRAMES = 30;
@@ -47,7 +48,7 @@ async function drain(
       closeLast(taken);
       taken.push(pair);
     }
-    await new Promise((resolve) => setTimeout(resolve, 1));
+    await settle();
   }
   closeLast(taken);
   return taken;
@@ -129,7 +130,7 @@ describe('DecodePipeline', () => {
     const queue = new FramePairQueue<FakeFrameHandle>(2);
 
     const run = pipeline.run(seconds(0), queue);
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await settle();
     expect(queue.length).toBeLessThanOrEqual(2 + OPTIONS.maxPendingPackets);
     expect(decoderPort.framesCreated.length).toBeLessThan(FRAMES * 2);
 
@@ -143,7 +144,7 @@ describe('DecodePipeline', () => {
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     const run = pipeline.run(seconds(0), queue);
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await settle();
     pipeline.abort();
     const report = await run;
     queue.close();
@@ -270,7 +271,7 @@ describe('DecodePipeline', () => {
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     const run = pipeline.run(seconds(0), queue);
-    await new Promise((resolve) => setTimeout(resolve, 1));
+    await settle();
     pipeline.abort();
     const report = await run;
 

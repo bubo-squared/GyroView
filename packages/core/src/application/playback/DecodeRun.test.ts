@@ -4,7 +4,7 @@ import { DecodeRun, type DecodeRunParts } from './DecodeRun';
 import { seconds } from '../../shared/units/time';
 import { FakeVideoDecoderPort, type FakeFrameHandle } from '../../testing/FakeVideoDecoderPort';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
-import { settle } from '../../../test/support/sessionHarness';
+import { settle } from '../../../test/support/settle';
 
 function parts(frameCount: number): DecodeRunParts<FakeFrameHandle> {
   return {

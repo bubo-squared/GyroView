@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { seconds } from '../../shared/units/time';
-import { DURATION, FRAME_RATE, sessionHarness, settle } from '../../../test/support/sessionHarness';
+import { DURATION, FRAME_RATE, sessionHarness } from '../../../test/support/sessionHarness';
+import { settle } from '../../../test/support/settle';
 
 const FRAME = 1 / FRAME_RATE;
 

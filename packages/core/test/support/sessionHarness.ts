@@ -14,12 +14,12 @@ import {
   type FakeFrameHandle,
 } from '../../src/testing/FakeVideoDecoderPort';
 import { FakeVideoTrack } from '../../src/testing/FakeVideoTrack';
+import { settle } from './settle';
 
 export const FRAME_RATE = 10;
 const FRAMES = 30;
 const FRAMES_PER_GOP = 10;
 export const DURATION = seconds(FRAMES / FRAME_RATE);
-const SETTLE_MS = 5;
 const MILLISECONDS_PER_SECOND = 1000;
 
 export interface SessionHarness {
@@ -53,12 +53,6 @@ function frameSources(frameCount = FRAMES): FakeVideoTrack[] {
         framesPerGop: FRAMES_PER_GOP,
       }),
   );
-}
-
-export function settle(): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, SETTLE_MS);
-  });
 }
 
 export function sessionHarness(options: SessionHarnessOptions = {}): SessionHarness {

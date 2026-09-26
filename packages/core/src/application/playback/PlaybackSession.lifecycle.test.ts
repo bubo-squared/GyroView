@@ -11,7 +11,8 @@ import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { seconds } from '../../shared/units/time';
 import { FakePlaybackClock } from '../../testing/FakePlaybackClock';
 import { FakeVideoDecoderPort, type FakeFrameHandle } from '../../testing/FakeVideoDecoderPort';
-import { sessionHarness, settle } from '../../../test/support/sessionHarness';
+import { sessionHarness } from '../../../test/support/sessionHarness';
+import { settle } from '../../../test/support/settle';
 
 /**
  * A port whose decoders appear only when the test says so.

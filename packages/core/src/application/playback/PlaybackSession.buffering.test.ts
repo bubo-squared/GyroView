@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { seconds } from '../../shared/units/time';
 import { FakePlaybackClock } from '../../testing/FakePlaybackClock';
-import { sessionHarness, settle } from '../../../test/support/sessionHarness';
+import { sessionHarness } from '../../../test/support/sessionHarness';
+import { settle } from '../../../test/support/settle';
 
 describe('PlaybackSession buffering', () => {
   it('waits in buffering for the first pairs and starts the clock only then', async () => {

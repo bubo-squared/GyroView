@@ -12,6 +12,7 @@ import { Signal } from '../../shared/async/Signal';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { FakeVideoDecoderPort } from '../../testing/FakeVideoDecoderPort';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
+import { settle } from '../../../test/support/settle';
 
 function tracks(frameCounts: readonly number[]): FakeVideoTrack[] {
   return frameCounts.map(
@@ -184,7 +185,7 @@ describe('probeDecoding', () => {
     const report = await pending;
     expect(report.sources[0]?.verdict).toBe('timed-out');
     port.gate.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 1));
+    await settle();
     expect(port.decoders.map((decoder) => decoder.isClosed)).toEqual([true]);
   });
 

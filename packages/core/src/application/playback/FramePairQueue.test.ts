@@ -4,6 +4,7 @@ import type { FramePair } from '../../ports/FramePair';
 import { FramePairQueue } from './FramePairQueue';
 import { seconds } from '../../shared/units/time';
 import { captureError } from '../../../test/support/errors';
+import { settle } from '../../../test/support/settle';
 
 interface Probe {
   readonly closed: () => boolean;
@@ -27,10 +28,6 @@ function pair(timestamp: number): FramePair<Probe> {
 
 function isClosed(candidate: FramePair<Probe>): boolean {
   return candidate.frames.every((frame) => frame.handle.closed());
-}
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 describe('FramePairQueue', () => {

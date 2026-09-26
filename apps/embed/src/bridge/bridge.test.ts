@@ -196,19 +196,14 @@ describe('the embed bridge over a message channel', () => {
 });
 
 describe('windowEndpoint', () => {
-  it('delivers protocol messages from allowed origins only, ignoring other data', async () => {
+  it("delivers protocol messages from its peer's window and origin only, ignoring other data", async () => {
+    // A window posting to itself is its own message source.
     const page = globalThis as Window & typeof globalThis;
-    const trusted = windowEndpoint({
-      target: page,
-      targetOrigin: location.origin,
-      listenOn: page,
-      allowedOrigins: [location.origin],
-    });
+    const trusted = windowEndpoint({ peer: page, peerOrigin: location.origin, listenOn: page });
     const distrustful = windowEndpoint({
-      target: page,
-      targetOrigin: location.origin,
+      peer: page,
+      peerOrigin: 'https://someone-else.example',
       listenOn: page,
-      allowedOrigins: ['https://someone-else.example'],
     });
     const heardByTrusted: ProtocolMessage[] = [];
     const heardByDistrustful: ProtocolMessage[] = [];

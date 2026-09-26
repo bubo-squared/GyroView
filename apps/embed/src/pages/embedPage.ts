@@ -23,13 +23,7 @@ export function startEmbedPage(page: Window & typeof globalThis): GyroViewElemen
   if (embedderOrigin !== undefined) {
     new EmbedHost(
       element,
-      windowEndpoint({
-        target: page.parent,
-        targetOrigin: embedderOrigin,
-        listenOn: page,
-        allowedOrigins: [embedderOrigin],
-        expectedSource: page.parent,
-      }),
+      windowEndpoint({ peer: page.parent, peerOrigin: embedderOrigin, listenOn: page }),
     );
   }
   return element;

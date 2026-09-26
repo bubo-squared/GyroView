@@ -54,11 +54,9 @@ export function embed(
   const frameOrigin = new URL(embedPageUrl).origin;
   const handle = new EmbedHandle(
     windowEndpoint({
-      target: frameWindow,
-      targetOrigin: frameOrigin,
+      peer: frameWindow,
+      peerOrigin: frameOrigin,
       listenOn: globalThis as Window & typeof globalThis,
-      allowedOrigins: [frameOrigin],
-      expectedSource: frameWindow,
     }),
   );
   return {

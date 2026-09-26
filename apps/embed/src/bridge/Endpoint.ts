@@ -15,30 +15,27 @@ export interface Endpoint {
 
 export interface WindowEndpointParts {
   /**
-   * Where messages go and which origin may read them.
+   * The one window at the other end, and its origin: messages go only there, and only messages
+   * from that window at that origin are believed (ADR 0010).
    */
-  readonly target: Window;
-  readonly targetOrigin: string;
+  readonly peer: Window;
+  readonly peerOrigin: string;
   /**
-   * The window whose `message` events are read, and which origins (and which sender window,
-   * when given) are believed.
+   * The window whose `message` events are read.
    */
   readonly listenOn: Window;
-  readonly allowedOrigins: readonly string[];
-  readonly expectedSource?: Window;
 }
 
 export function windowEndpoint(parts: WindowEndpointParts): Endpoint {
   return {
     send: (message): void => {
-      parts.target.postMessage(message, parts.targetOrigin);
+      parts.peer.postMessage(message, parts.peerOrigin);
     },
     receive: (handler): (() => void) => {
       const listener = (event: MessageEvent<unknown>): void => {
-        const isFromStranger =
-          parts.expectedSource !== undefined && event.source !== parts.expectedSource;
-        if (isFromStranger || !isTrustedOrigin(event.origin, parts.allowedOrigins)) return;
-        if (isProtocolMessage(event.data)) handler(event.data);
+        const isFromPeer =
+          event.source === parts.peer && isTrustedOrigin(event.origin, parts.peerOrigin);
+        if (isFromPeer && isProtocolMessage(event.data)) handler(event.data);
       };
       parts.listenOn.addEventListener('message', listener);
       return (): void => {

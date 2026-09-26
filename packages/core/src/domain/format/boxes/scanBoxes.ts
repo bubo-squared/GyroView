@@ -1,4 +1,4 @@
-import type { BoxDescriptor, BoxLayout } from './BoxLayout';
+import type { BoxDescriptor } from './BoxLayout';
 import {
   BOX_HEADER_SIZE,
   BOX_SIZE_IS_LARGE,
@@ -16,11 +16,14 @@ import { ByteReader } from '../../../shared/binary/ByteReader';
 import { GyroViewError } from '../../../shared/errors/GyroViewError';
 
 /**
- * Walks the top-level boxes of a file with one small read per box. Stops at the first bytes that
- * do not form a box header and reports them as trailing bytes. `fileSize` is passed in so the
+ * Walks the top-level boxes of a file with one small read per box, and stops at the first bytes
+ * that do not form a box header, where a bare trailer begins. `fileSize` is passed in so the
  * caller can share one size lookup between several readers of the same source.
  */
-export async function scanBoxes(source: RandomAccessSource, fileSize: number): Promise<BoxLayout> {
+export async function scanBoxes(
+  source: RandomAccessSource,
+  fileSize: number,
+): Promise<readonly BoxDescriptor[]> {
   const boxes: BoxDescriptor[] = [];
   let offset = 0;
   while (offset + BOX_HEADER_SIZE <= fileSize) {
@@ -29,8 +32,7 @@ export async function scanBoxes(source: RandomAccessSource, fileSize: number): P
     boxes.push(box);
     offset = box.range.end;
   }
-  const trailingBytes = offset < fileSize ? ByteRange.of(offset, fileSize - offset) : undefined;
-  return { boxes, trailingBytes };
+  return boxes;
 }
 
 async function readBoxAt(
@@ -46,7 +48,7 @@ async function readBoxAt(
   if (!resolved) return undefined;
   const { size, headerSize } = resolved;
   const isWellFormed = size >= headerSize && offset + size <= fileSize;
-  return isWellFormed ? { type, range: ByteRange.of(offset, size), headerSize } : undefined;
+  return isWellFormed ? { type, range: ByteRange.of(offset, size) } : undefined;
 }
 
 interface ResolvedSize {

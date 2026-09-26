@@ -140,9 +140,11 @@ Use cases that orchestrate the domain through ports.
 | `SeamMeter`          | the mean colour each lens shows along the seam                                                                                               | `SeamMeterPass`                                                       |
 | `ResourceLocator`    | does this URL exist                                                                                                                          | `HttpResourceLocator`                                                 |
 
-Every port with a fake in `core/src/testing` has a contract suite that runs against the fake
-and the real adapters alike (`RandomAccessSource`, `Demuxer`, `VideoTrackReader`,
-`VideoDecoderPort`, `PlaybackClock`, `ResourceLocator`), asserting the error codes too. Audio
+Every port whose adapter talks to the platform has a contract suite that runs against its fake
+in `core/src/testing` and the real adapters alike (`RandomAccessSource`, `Demuxer`,
+`VideoTrackReader`, `VideoDecoderPort`, `PlaybackClock`, `ResourceLocator`), asserting the error
+codes too. `FakeFrameSink` only records what it is shown, for tests of what drives a sink; the
+renderer's own browser tests check what it draws. Audio
 reading and segmenting have no fake: only the real adapters exist and they are tested directly.
 `core/src/testing` also holds what only tests need: the fixture builders (with `encodeAscii`)
 and `equirectangularPixelOf`, the oracle the renderer tests read panoramas with.

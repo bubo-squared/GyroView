@@ -7,26 +7,15 @@ export interface BoxDescriptor {
    * The whole box, header included.
    */
   readonly range: ByteRange;
-  readonly headerSize: number;
 }
 
 /**
- * What a top-level scan of an MP4-like file found.
- */
-export interface BoxLayout {
-  readonly boxes: readonly BoxDescriptor[];
-  /**
-   * Bytes after the last well-formed box, if any: a bare Insta360 trailer lives here.
-   */
-  readonly trailingBytes: ByteRange | undefined;
-}
-
-/**
- * How the trailer is attached: inside an `inst` box (newer firmware) or bare after the boxes.
+ * How the trailer is attached: inside an `inst` box (newer firmware) or bare after the boxes,
+ * where the scan stops.
  */
 export type TrailerWrapper = 'inst-box' | 'bare';
 
-export function trailerWrapperOf(layout: BoxLayout): TrailerWrapper {
-  const isWrapped = layout.boxes.some((box) => box.type === BoxType.Insta360Trailer);
+export function trailerWrapperOf(boxes: readonly BoxDescriptor[]): TrailerWrapper {
+  const isWrapped = boxes.some((box) => box.type === BoxType.Insta360Trailer);
   return isWrapped ? 'inst-box' : 'bare';
 }

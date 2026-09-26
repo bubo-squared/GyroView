@@ -4,10 +4,10 @@ import {
   degrees,
   GainMatchingFrameSink,
   lensRotation,
-  LockStabilization,
   quaternionFromAxisAngle,
   radians,
   seconds,
+  stabilizerFor,
   transformVector,
   type DecodedFrame,
   type FrameSink,
@@ -273,7 +273,7 @@ describe('ThreeFrameRenderer', () => {
     const renderer = open();
     renderer.setViewMode('raw-lenses');
     const turnedAround = quaternionFromAxisAngle([0, 1, 0], radians(Math.PI));
-    renderer.setStabilization(new LockStabilization().nextRotation(turnedAround));
+    renderer.setStabilization(stabilizerFor('lock').nextRotation(turnedAround, seconds(0)));
     renderer.setLensGains([
       [0, 0, 0],
       [1, 1, 1],
@@ -386,7 +386,7 @@ describe('ThreeFrameRenderer', () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');
     const turnedAround = quaternionFromAxisAngle([0, 1, 0], radians(Math.PI));
-    renderer.setStabilization(new LockStabilization().nextRotation(turnedAround));
+    renderer.setStabilization(stabilizerFor('lock').nextRotation(turnedAround, seconds(0)));
     presentRedAndBlue(renderer);
     expect(pixelTowards(renderer, [0, 0, 1]).b).toBeGreaterThan(BRIGHT);
     expect(pixelTowards(renderer, [0, 0, -1]).r).toBeGreaterThan(BRIGHT);
@@ -396,7 +396,7 @@ describe('ThreeFrameRenderer', () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');
     const pointingUp = quaternionFromAxisAngle([1, 0, 0], radians(Math.PI / 2));
-    renderer.setStabilization(new LockStabilization().nextRotation(pointingUp));
+    renderer.setStabilization(stabilizerFor('lock').nextRotation(pointingUp, seconds(0)));
     presentRedAndBlue(renderer);
     expect(pixelAt(renderer, { column: WIDTH / 2, row: 0 }).r).toBeGreaterThan(BRIGHT);
     expect(pixelAt(renderer, { column: WIDTH / 2, row: HEIGHT - 1 }).b).toBeGreaterThan(BRIGHT);

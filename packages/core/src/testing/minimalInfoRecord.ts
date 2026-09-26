@@ -12,7 +12,6 @@ const VARINT_MASK = 0x7f;
 
 export interface MinimalInfo {
   readonly model: string;
-  readonly frameRate?: number;
   readonly firstFrameTimestamp?: number;
   readonly ptsType?: number;
   readonly fileLayout?: number;
@@ -29,7 +28,6 @@ export function minimalInfoRecord(info: MinimalInfo): Uint8Array {
     ...tagOf(InfoField.Model, WIRE_LENGTH_DELIMITED),
     ...encodeVarint(model.byteLength),
     ...model,
-    ...varintField(InfoField.FrameRate, info.frameRate),
     ...varintField(InfoField.FirstFrameTimestamp, info.firstFrameTimestamp),
     ...varintField(InfoField.PtsType, info.ptsType),
     ...varintField(InfoField.FileLayout, info.fileLayout),

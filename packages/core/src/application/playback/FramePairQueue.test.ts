@@ -97,7 +97,6 @@ describe('FramePairQueue', () => {
     queue.push(pair(0));
     queue.push(pair(1));
     expect(queue.length).toBe(2);
-    expect(queue.isFull).toBe(true);
   });
 
   it('closes and drops everything on close, and every pair pushed after', () => {

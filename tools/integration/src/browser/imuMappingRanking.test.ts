@@ -6,7 +6,7 @@ import {
   assumedImuFrame,
   imuFrameFor,
   DecodePipeline,
-  LockStabilization,
+  stabilizerFor,
   OrientationTrack,
   type FramePair,
   type BodyAxes,
@@ -112,7 +112,7 @@ interface MeasurementParts {
  * stabilization and under every candidate frame.
  */
 async function measureStillness(parts: MeasurementParts): Promise<Measured> {
-  const lock = new LockStabilization();
+  const lock = stabilizerFor('lock');
   let unstabilized = 0;
   for (const time of parts.times) {
     const pipeline = new DecodePipeline<VideoFrame>(
@@ -128,7 +128,7 @@ async function measureStillness(parts: MeasurementParts): Promise<Measured> {
     unstabilized += movement(renderable, () => IDENTITY_MATRIX3);
     for (const candidate of parts.candidates) {
       candidate.total += movement(renderable, (pair) =>
-        lock.nextRotation(candidate.orientations.orientationAt(pair.timestamp)),
+        lock.nextRotation(candidate.orientations.orientationAt(pair.timestamp), pair.timestamp),
       );
     }
     closeAll(pairs);

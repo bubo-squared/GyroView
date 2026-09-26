@@ -29,14 +29,14 @@ export interface RecordingLayout {
  */
 export async function inspectLayout(source: RandomAccessSource): Promise<RecordingLayout> {
   const fileSize = await source.size();
-  const [boxLayout, trailer] = await Promise.all([
+  const [boxes, trailer] = await Promise.all([
     scanBoxes(source, fileSize),
     readTrailer(source, fileSize),
   ]);
   return {
     fileSize,
-    boxes: boxLayout.boxes,
-    trailerWrapper: trailerWrapperOf(boxLayout),
+    boxes,
+    trailerWrapper: trailerWrapperOf(boxes),
     trailerVersion: trailer.footer.version,
     trailerPayloadStart: trailer.payloadStart,
     records: trailer.records.toSorted((left, right) => left.id - right.id),

@@ -31,7 +31,7 @@ export class FramePairQueue<Handle = unknown> {
     return this.pairs.length;
   }
 
-  public get isFull(): boolean {
+  private get isFull(): boolean {
     return this.pairs.length >= this.capacity;
   }
 

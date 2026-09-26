@@ -14,10 +14,6 @@ export type FileLayoutHint = Exclude<LensLayoutKind, 'packed'>;
  */
 export type TrackOrderHint = 'stream-10-first' | 'stream-00-first';
 
-/**
- * Everything the player learns from the info record. Absent fields are `undefined`; nothing here
- * is assumed present except on cameras where a field has been observed.
- */
 export interface LensDimension {
   readonly width: number;
   readonly height: number;
@@ -46,6 +42,10 @@ export interface CalibrationStrings {
   readonly offsetV3: string | undefined;
 }
 
+/**
+ * Everything the player learns from the info record. Absent fields are `undefined`; nothing here
+ * is assumed present except on cameras where a field has been observed.
+ */
 export interface RecordingInfo {
   readonly serialNumber: string | undefined;
   readonly model: string | undefined;

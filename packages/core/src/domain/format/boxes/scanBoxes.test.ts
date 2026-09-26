@@ -23,21 +23,20 @@ describe('scanBoxes on the real X5 layouts', () => {
       const source = new SparseRandomAccessSource(headers.fileSize);
       for (const entry of headers.boxes) source.place(entry.offset, hexToBytes(entry.headerHex));
 
-      const layout = await scanBoxes(source, headers.fileSize);
+      const boxes = await scanBoxes(source, headers.fileSize);
 
-      expect(layout.boxes.map((entry) => entry.type)).toEqual(['ftyp', 'mdat', 'moov', 'inst']);
-      expect(
-        layout.boxes.map((entry) => [entry.range.offset, entry.range.length, entry.headerSize]),
-      ).toEqual(headers.boxes.map((entry) => [entry.offset, entry.size, entry.headerSize]));
-      expect(layout.trailingBytes).toBeUndefined();
-      expect(trailerWrapperOf(layout)).toBe('inst-box');
+      expect(boxes.map((entry) => entry.type)).toEqual(['ftyp', 'mdat', 'moov', 'inst']);
+      expect(boxes.map((entry) => [entry.range.offset, entry.range.length])).toEqual(
+        headers.boxes.map((entry) => [entry.offset, entry.size]),
+      );
+      expect(trailerWrapperOf(boxes)).toBe('inst-box');
       expect(source.reads).toHaveLength(4);
     },
   );
 });
 
 describe('scanBoxes on synthetic files', () => {
-  it('reports bytes after the last box as trailing bytes (bare trailer layout)', async () => {
+  it('stops after the last box, before a bare trailer', async () => {
     const file = new Uint8Array([
       ...encodeBox('ftyp', new Uint8Array(4)),
       ...encodeBox('moov', new Uint8Array(10)),
@@ -47,39 +46,34 @@ describe('scanBoxes on synthetic files', () => {
       0xff,
       0xff,
     ]);
-    const layout = await scanFile(file);
-    expect(layout.boxes.map((entry) => entry.type)).toEqual(['ftyp', 'moov']);
-    expect(layout.trailingBytes).toMatchObject({ offset: 30, length: 5 });
-    expect(trailerWrapperOf(layout)).toBe('bare');
+    const boxes = await scanFile(file);
+    expect(boxes.map((entry) => entry.type)).toEqual(['ftyp', 'moov']);
+    expect(trailerWrapperOf(boxes)).toBe('bare');
   });
 
   it('does not mistake trailer bytes with a plausible size but a non-printable type for a box', async () => {
     const file = new Uint8Array([...encodeBox('ftyp', new Uint8Array(4)), 0, 0, 0, 8, 1, 2, 3, 4]);
-    const layout = await scanFile(file);
-    expect(layout.boxes.map((entry) => entry.type)).toEqual(['ftyp']);
-    expect(layout.trailingBytes).toMatchObject({ offset: 12, length: 8 });
+    const boxes = await scanFile(file);
+    expect(boxes.map((entry) => entry.type)).toEqual(['ftyp']);
   });
 
   it('treats size zero as "to the end of the file"', async () => {
     const open = new Uint8Array(20);
     open.set(new TextEncoder().encode('mdat'), 4);
-    const layout = await scanFile(open);
-    expect(layout.boxes[0]).toMatchObject({ type: 'mdat', range: { offset: 0, length: 20 } });
-    expect(layout.trailingBytes).toBeUndefined();
+    const boxes = await scanFile(open);
+    expect(boxes[0]).toMatchObject({ type: 'mdat', range: { offset: 0, length: 20 } });
   });
 
   it('accepts a header-only box that ends exactly at the end of the file', async () => {
     const headerOnly = new InMemoryRandomAccessSource(encodeBox('free', new Uint8Array()));
-    const layout = await scanBoxes(headerOnly, encodeBox('free', new Uint8Array()).byteLength);
-    expect(layout.boxes).toHaveLength(1);
-    expect(layout.trailingBytes).toBeUndefined();
+    const boxes = await scanBoxes(headerOnly, encodeBox('free', new Uint8Array()).byteLength);
+    expect(boxes).toHaveLength(1);
   });
 
   it('stops at a box whose declared size is smaller than its header', async () => {
     const bogus = new Uint8Array([0, 0, 0, 4, 0x6d, 0x6f, 0x6f, 0x76, 0, 0, 0, 0]);
-    const layout = await scanFile(bogus);
-    expect(layout.boxes).toEqual([]);
-    expect(layout.trailingBytes).toMatchObject({ offset: 0, length: 12 });
+    const boxes = await scanFile(bogus);
+    expect(boxes).toEqual([]);
   });
 
   it('treats a large-size header whose size is not a safe integer as trailer bytes', async () => {
@@ -87,26 +81,24 @@ describe('scanBoxes on synthetic files', () => {
       0, 0, 0, 1, 0x61, 0x62, 0x63, 0x64, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     ]);
     const file = new Uint8Array([...encodeBox('ftyp', new Uint8Array(4)), ...bogus]);
-    const layout = await scanFile(file);
-    expect(layout.boxes.map((entry) => entry.type)).toEqual(['ftyp']);
-    expect(layout.trailingBytes).toMatchObject({ offset: 12, length: 16 });
+    const boxes = await scanFile(file);
+    expect(boxes.map((entry) => entry.type)).toEqual(['ftyp']);
   });
 
   it('stops at a large-size box whose 16-byte header is truncated', async () => {
     const truncated = new Uint8Array([0, 0, 0, 1, 0x6d, 0x64, 0x61, 0x74, 0, 0, 0, 0]);
-    const layout = await scanFile(truncated);
-    expect(layout.boxes).toEqual([]);
+    const boxes = await scanFile(truncated);
+    expect(boxes).toEqual([]);
   });
 
   it('stops at a box that claims more bytes than the file has', async () => {
     const truncated = encodeBox('moov', new Uint8Array(10)).subarray(0, 12);
-    const layout = await scanFile(truncated);
-    expect(layout.boxes).toEqual([]);
-    expect(layout.trailingBytes).toMatchObject({ offset: 0, length: 12 });
+    const boxes = await scanFile(truncated);
+    expect(boxes).toEqual([]);
   });
 
   it('scans an empty file to nothing', async () => {
-    const layout = await scanFile(new Uint8Array());
-    expect(layout).toEqual({ boxes: [], trailingBytes: undefined });
+    const boxes = await scanFile(new Uint8Array());
+    expect(boxes).toEqual([]);
   });
 });

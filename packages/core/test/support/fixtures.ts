@@ -55,7 +55,6 @@ interface BoxHeaderFixture {
   type: string;
   offset: number;
   size: number;
-  headerSize: number;
   headerHex: string;
 }
 

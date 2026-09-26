@@ -34,7 +34,7 @@ export {
   type LensSource,
 } from './domain/stitching/LensLayout';
 export type { ParsedGyroRecord } from './domain/format/records/gyro/parseGyroRecord';
-export { GyroTrack, type GyroSample } from './domain/motion/gyro/GyroTrack';
+export type { GyroSample, GyroTrack } from './domain/motion/gyro/GyroTrack';
 export {
   isProperRotation,
   assumedImuFrame,
@@ -56,12 +56,7 @@ export {
   type StabilizationMode,
   type Stabilizer,
 } from './domain/motion/stabilization/Stabilizer';
-export {
-  HorizonStabilization,
-  LockStabilization,
-  OffStabilization,
-  stabilizerFor,
-} from './domain/motion/stabilization/stabilizers';
+export { stabilizerFor } from './domain/motion/stabilization/stabilizers';
 export { ExposureRecord, type ExposureEntry } from './domain/motion/exposure/ExposureRecord';
 export { CaptureClock } from './domain/motion/timing/CaptureClock';
 export { FrameTimes } from './domain/motion/timing/FrameTimes';

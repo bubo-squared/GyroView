@@ -42,11 +42,23 @@ export function inputName(input: MediaInput): string {
 const PLACEHOLDER_BASE = 'https://gyro-view.invalid/';
 
 function fileNameOfUrl(url: string): string {
-  const { pathname } = new URL(url, PLACEHOLDER_BASE);
-  const encoded = pathname.slice(pathname.lastIndexOf('/') + 1);
+  const path = pathOf(url);
+  const encoded = path.slice(path.lastIndexOf('/') + 1);
   try {
     return decodeURIComponent(encoded);
   } catch {
     return encoded;
+  }
+}
+
+/**
+ * The URL's path; one that does not parse is read as a path itself, so its name still shows and
+ * the load fails on it where it is fetched.
+ */
+function pathOf(url: string): string {
+  try {
+    return new URL(url, PLACEHOLDER_BASE).pathname;
+  } catch {
+    return url;
   }
 }

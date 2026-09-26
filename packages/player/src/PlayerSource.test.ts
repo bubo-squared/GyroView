@@ -14,6 +14,10 @@ describe('inputName', () => {
     expect(inputName({ url: 'media/clip.insv' })).toBe('clip.insv');
   });
 
+  it('reads the name of a URL that does not parse, for the load to fail on later', () => {
+    expect(inputName({ url: 'http://[::1/clips/x_10_.insv' })).toBe('x_10_.insv');
+  });
+
   it('keeps a badly percent-encoded name as written', () => {
     expect(inputName({ url: 'https://cdn.example/bad%zz.insv' })).toBe('bad%zz.insv');
   });

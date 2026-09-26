@@ -19,6 +19,11 @@ import { Matrix3, Vector2, Vector3, Vector4, type IUniform, type Texture } from 
  * The shader draws at most this many lenses; the Insta360 X series has two.
  */
 export const MAX_LENSES = 2;
+/**
+ * Decoded frames the shader samples, one sampler each (`uTexture0`, `uTexture1` in
+ * `lensTextures.glsl`).
+ */
+export const LENS_TEXTURES = 2;
 
 const LENS_MEI = 0;
 const LENS_RADIAL_POLYNOMIAL = 1;

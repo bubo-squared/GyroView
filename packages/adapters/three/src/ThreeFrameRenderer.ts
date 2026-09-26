@@ -39,6 +39,7 @@ import {
   applyPicture,
   applyStabilization,
   createRendererUniforms,
+  LENS_TEXTURES,
   MAX_LENSES,
   type RendererUniforms,
 } from './rendererUniforms';
@@ -94,12 +95,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     setup: StitchingSetup,
     options: ThreeFrameRendererOptions = {},
   ): ThreeFrameRenderer {
-    if (setup.lenses.length > MAX_LENSES) {
-      throw new GyroViewError(
-        'unsupported-layout',
-        `the renderer draws at most ${MAX_LENSES} lenses, the layout has ${setup.lenses.length}`,
-      );
-    }
+    ensureDrawable(setup);
     const renderer = createRenderer(canvas, options);
     const textures = Array.from({ length: setup.frameSlotCount }, () => createLensTexture());
     const uniforms = createRendererUniforms(setup, textures);
@@ -237,6 +233,18 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   private ensureLive(): void {
     ensureInvariant(!this.isDisposed, 'the renderer has been disposed');
   }
+}
+
+/**
+ * The shader has room for `MAX_LENSES` lenses from `LENS_TEXTURES` decoded frames; a layout
+ * beyond either would be drawn wrong without a word, so it is refused.
+ */
+function ensureDrawable(setup: StitchingSetup): void {
+  if (setup.lenses.length <= MAX_LENSES && setup.frameSlotCount <= LENS_TEXTURES) return;
+  throw new GyroViewError(
+    'unsupported-layout',
+    `the renderer draws at most ${MAX_LENSES} lenses from ${LENS_TEXTURES} frames; the layout has ${setup.lenses.length} lenses in ${setup.frameSlotCount} frames`,
+  );
 }
 
 function createRenderer(

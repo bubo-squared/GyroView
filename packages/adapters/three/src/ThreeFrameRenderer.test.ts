@@ -495,6 +495,13 @@ describe('ThreeFrameRenderer', () => {
     }).toThrow(/disposed/u);
   });
 
+  it('refuses a layout with more decoded frames than the shader samples', () => {
+    const setup = buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
+    expect(() => open({ ...setup, frameSlotCount: 3 })).toThrow(
+      expect.objectContaining({ code: 'unsupported-layout' }),
+    );
+  });
+
   it('refuses a pair that does not match the lens textures', () => {
     const renderer = open();
     expect(() => {

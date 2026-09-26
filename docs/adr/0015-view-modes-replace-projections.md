@@ -37,7 +37,7 @@ stabilization mode: the `view-mode` attribute, `setViewMode`, the `viewmodechang
   black bars around. Tiles are square because every accepted layout has square lens images
   (square tracks, or the halves of a 2:1 packed frame).
 
-Each mode is a rules object in `core/domain/view/ViewMode.ts` (strategy): how a drag, a turn
+Each mode is a rules object (strategy; one module per mode since ADR 0018): how a drag, a turn
 and a zoom move the view, and the picture it draws for a view. A picture
 (`core/domain/view/Picture.ts`) is a union: a rectilinear or an equirectangular picture of the
 stitched sphere, with its rotation and its area of the viewport, or the lens images in tiles.

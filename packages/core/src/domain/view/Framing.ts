@@ -24,3 +24,17 @@ export function isSameFraming(a: Framing, b: Framing): boolean {
     isSameMagnification(a.lenses, b.lenses)
   );
 }
+
+/**
+ * The framing with the normal view replaced, the flat pictures' parts kept.
+ */
+export function withView(framing: Framing, view: ViewState): Framing {
+  return { ...framing, view };
+}
+
+/**
+ * The framing with the lens tiles' magnification replaced, the other parts kept.
+ */
+export function withLenses(framing: Framing, lenses: Magnification): Framing {
+  return { ...framing, lenses };
+}

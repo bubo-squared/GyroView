@@ -93,11 +93,14 @@ sources the session decodes (`lensFrameOrder`).
 
 **`view`**: `ViewState` (yaw, pitch, field of view) with clamping and the view rotation;
 `Framing`, the view with the `Magnification` of the panorama and of the lens tiles;
-`ViewMode` with one rules object per mode (how drags, arrow keys and zooms toward a point change
+`ViewMode` and its `ViewModeRules` strategy, one module per mode (`normalView`, `panoramaView`,
+`lensTilesView`, looked up by `viewModes`): how drags, arrow keys and zooms toward a point change
 its part of the framing, whether a drag moves the picture, how it resets, and the `Picture` it
-draws: rectilinear, equirectangular or lens tiles; ADRs 0015 and 0018); `screenLayout` for
-letterboxing; `magnification` for enlarging and moving a flat picture within its edges; and the
-pure drag/zoom/look-at gestures, among them the normal view's zoom toward a point.
+draws: rectilinear, equirectangular or lens tiles (ADRs 0015 and 0018); `screenLayout` for
+letterboxing and the screen's measures; `magnification` for enlarging and moving a flat picture
+within its edges; `rectilinear` for the rays of the normal view's picture, shared with the
+renderer; and the pure drag/zoom/look-at gestures, among them the normal view's zoom toward a
+point.
 
 ### Application: `core/src/application`
 

@@ -77,11 +77,11 @@ export { clampView, DEFAULT_VIEW, isSameView, type ViewState } from './domain/vi
 export {
   DEFAULT_VIEW_MODE,
   VIEW_MODES,
-  viewModeRulesFor,
   type ViewContext,
   type ViewMode,
   type ViewModeRules,
 } from './domain/view/ViewMode';
+export { viewModeRulesFor } from './domain/view/viewModes';
 export { DEFAULT_FRAMING, isSameFraming, type Framing } from './domain/view/Framing';
 export { aspectOfArea, planeHalfExtentOf } from './domain/view/rectilinear';
 export { FITTED, MAX_MAGNIFICATION, type Magnification } from './domain/view/magnification';

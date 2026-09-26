@@ -205,7 +205,7 @@ The composition root and the user-facing element, in three layers.
   events re-dispatched as `CustomEvent`s, a shadow tree with the canvas, the audio element,
   poster and overlays. `ControlsBar` composes `TransportButtons`, `SeekBar` (key-frame
   scrubbing), `SoundControls` and `SettingsMenu`; `ViewGestures` turns drags, pinches and wheel turns into view
-  changes; `KeyboardBinding` maps keys to commands; `FullscreenToggle` and `IdleWatcher` handle
+  changes; `keyboard` maps keys to commands; `FullscreenToggle` and `IdleWatcher` handle
   filling the screen and fading the controls.
 
 ## The site: `apps/embed`

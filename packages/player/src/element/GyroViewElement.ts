@@ -28,7 +28,7 @@ import { buildPipeline, type PipelineHost } from '../composition/buildPipeline';
 import { queryShadow } from '../controls/controlParts';
 import { ControlsBar } from '../controls/ControlsBar';
 import type { ControlsHost } from '../controls/ControlsHost';
-import { KeyboardBinding, type KeyboardHost } from '../controls/KeyboardBinding';
+import { bindKeyboard, type KeyboardHost } from '../controls/keyboard';
 import { ViewGestures } from '../controls/ViewGestures';
 import { Player } from '../player/Player';
 import type { PlayerStatus } from '../player/PlayerEvents';
@@ -97,7 +97,7 @@ export class GyroViewElement extends HTMLElement {
     const host = this.controlsHost();
     this.controlsBar = new ControlsBar(shadow, host);
     new ViewGestures(canvas, this.player, this.togglePlayLater);
-    new KeyboardBinding(this, host);
+    bindKeyboard(this, host);
     this.idle = new IdleWatcher(this, () => this.player.status === 'playing');
     this.observePlayer();
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { shortcutFor } from './keyboardShortcuts';
+import { shortcutFor } from './keyboard';
 
 function press(
   key: string,

@@ -15,7 +15,10 @@ import { loadFixture } from '../../../../test/support/fixtures';
 const OFFICE_FIRST_FRAME = microseconds(921_751_839);
 const OFFICE_READOUT = millisecondsToSeconds(milliseconds(8.4075));
 const OFFICE_FPS = 60_000 / 1001;
-const exposureHead = parseExposureRecord(loadFixture('x5/office/record-04-exposure-first16.bin'));
+const exposureHead = parseExposureRecord(
+  loadFixture('x5/office/record-04-exposure-first16.bin'),
+  microseconds,
+);
 
 /**
  * Resolves where the test expects a source to succeed.

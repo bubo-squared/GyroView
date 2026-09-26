@@ -114,22 +114,32 @@ describe('readRecording on synthetic X5 files', () => {
     expect(recording.info.model).toBeUndefined();
   });
 
-  it('infers a float gyro layout from the record when the info record has no flag, and reads the clock in milliseconds', async () => {
+  // A float-layout camera writes every capture stamp in milliseconds, as telemetry-parser reads
+  // them; no such recording is at hand (verify on real file).
+  it('infers a float gyro layout from the record when the info record has no flag, and reads the clock and the exposure stamps in milliseconds', async () => {
     const floatSamples = new Uint8Array(56 * 2);
-    const view = new DataView(floatSamples.buffer);
-    view.setBigUint64(0, 5000n, true);
-    view.setBigUint64(56, 5001n, true);
+    const samples = new DataView(floatSamples.buffer);
+    samples.setBigUint64(0, 5000n, true);
+    samples.setBigUint64(56, 5001n, true);
+    const exposureEntries = new Uint8Array(16 * 2);
+    const entries = new DataView(exposureEntries.buffer);
+    entries.setBigUint64(0, 1999n, true);
+    entries.setBigUint64(16, 2016n, true);
     const info = new Uint8Array([0xc0, 0x01, 0xd0, 0x0f]); // field 24 (first frame timestamp) = 2000
     const file = new TrailerFixtureBuilder()
       .withPrefix(minimalMp4Prefix())
       .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: info })
       .addRecord({ id: RecordType.Gyro, payload: floatSamples })
+      .addRecord({ id: RecordType.Exposure, payload: exposureEntries })
       .buildContiguous();
     const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
     const clock = await recording.captureClock();
     expect(clock?.firstFrameCaptureTime).toBe(2_000_000);
     const gyro = await recording.readGyroRecord();
     expect(gyro?.layout).toBe('float');
+    const exposure = await recording.readExposureRecord();
+    expect(exposure?.entryAt(1).captureTime).toBe(2_016_000);
+    expect(exposure?.indexAtOrAfter(microseconds(2_000_000))).toBe(1);
   });
 
   it('opens with one size lookup and leaves the box headers at the start of the file alone', async () => {

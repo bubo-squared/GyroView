@@ -3,15 +3,25 @@ import type { GyroSampleLayout } from './records/gyro/GyroSampleLayout';
 import { microseconds, type Microseconds } from '../../shared/units/time';
 
 /**
- * The capture-clock time of the first encoded frame, the origin of video time. The info record
- * stamps it in the gyro layout's unit; a camera without a gyro layout stamps microseconds.
- * Undefined when the record does not say.
+ * A capture-clock stamp written outside the gyro record (the first frame's, the exposure
+ * entries'), as a time: cameras write them in the gyro layout's unit (milliseconds for the
+ * float layout, as telemetry-parser reads them), microseconds without a gyro layout.
+ */
+export function captureTimeOfStamp(
+  stamp: number,
+  gyroLayout: GyroSampleLayout | undefined,
+): Microseconds {
+  return gyroLayout ? gyroLayout.captureTimeOf(stamp) : microseconds(stamp);
+}
+
+/**
+ * The capture-clock time of the first encoded frame, the origin of video time; undefined when
+ * the info record does not say.
  */
 export function firstFrameCaptureTime(
   info: RecordingInfo,
   gyroLayout: GyroSampleLayout | undefined,
 ): Microseconds | undefined {
   const stamp = info.firstFrameTimestamp;
-  if (stamp === undefined) return undefined;
-  return gyroLayout ? gyroLayout.captureTimeOf(stamp) : microseconds(stamp);
+  return stamp === undefined ? undefined : captureTimeOfStamp(stamp, gyroLayout);
 }

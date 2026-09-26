@@ -30,7 +30,10 @@ export async function inspectFile(file: string): Promise<Inspection> {
   const source = await FileRandomAccessSource.open(file);
   try {
     const [layout, recording] = await Promise.all([inspectLayout(source), readRecording(source)]);
-    const [gyro, exposure] = await Promise.all([gyroOf(recording), recording.readExposureRecord()]);
+    const [gyro, exposure] = await Promise.all([
+      gyroOf(recording),
+      unlessGyroUnreadable(recording.readExposureRecord()),
+    ]);
     return {
       ...summarizeStructure(file, layout),
       info: recording.info,
@@ -141,18 +144,25 @@ async function gyroOf(recording: Recording): Promise<GyroSummary | UnreadableGyr
 }
 
 /**
- * The exposure entry of the first encoded frame; unknown without a capture clock, which an
- * unreadable gyro layout leaves undated.
+ * What `read` finds, or nothing where the gyro layout cannot be told: the exposure stamps and
+ * the first frame's are in its unit, so they are as unreadable as the gyro record.
+ */
+async function unlessGyroUnreadable<Value>(read: Promise<Value>): Promise<Value | undefined> {
+  try {
+    return await read;
+  } catch (error) {
+    if (hasErrorCode(error, 'unsupported-gyro-record')) return undefined;
+    throw error;
+  }
+}
+
+/**
+ * The exposure entry of the first encoded frame; unknown without a capture clock.
  */
 async function firstEncodedFrameEntry(
   exposure: ExposureRecord,
   recording: Recording,
 ): Promise<number | undefined> {
-  try {
-    const clock = await recording.captureClock();
-    return clock === undefined ? undefined : exposure.indexAtOrAfter(clock.firstFrameCaptureTime);
-  } catch (error) {
-    if (hasErrorCode(error, 'unsupported-gyro-record')) return undefined;
-    throw error;
-  }
+  const clock = await unlessGyroUnreadable(recording.captureClock());
+  return clock === undefined ? undefined : exposure.indexAtOrAfter(clock.firstFrameCaptureTime);
 }

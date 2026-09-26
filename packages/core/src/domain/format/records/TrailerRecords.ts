@@ -7,7 +7,7 @@ import {
   type GyroLayoutHints,
   type ParsedGyroRecord,
 } from './gyro/parseGyroRecord';
-import { firstFrameCaptureTime } from '../captureOrigin';
+import { captureTimeOfStamp, firstFrameCaptureTime } from '../captureOrigin';
 import { RecordType } from '../constants';
 import type { RecordingInfo } from '../info/RecordingInfo';
 import type { RecordLocation } from '../trailer/RecordLocation';
@@ -48,13 +48,17 @@ export class TrailerRecords {
   }
 
   /**
-   * Undefined when the camera wrote no exposure record.
+   * Undefined when the camera wrote no exposure record. Its stamps are in the gyro layout's unit,
+   * so a layout that cannot be told refuses it as it refuses the gyro record.
    */
   public async readExposure(): Promise<ExposureRecord | undefined> {
     const location = this.parts.trailer.locationOf(RecordType.Exposure);
-    return location === undefined
-      ? undefined
-      : parseExposureRecord(await this.parts.source.read(location.payload));
+    if (location === undefined) return undefined;
+    const [payload, layout] = await Promise.all([
+      this.parts.source.read(location.payload),
+      this.gyroSampleLayout(),
+    ]);
+    return parseExposureRecord(payload, (stamp) => captureTimeOfStamp(stamp, layout));
   }
 
   /**

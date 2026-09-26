@@ -75,13 +75,16 @@ u16 gx gy gz`; components are offset-binary around 32768 and scale by
 
 ## Exposure record (id 4)
 
-16-byte entries `u64 capture timestamp us, f64 exposure s`, one per captured frame. Entries
+16-byte entries `u64 capture timestamp, f64 exposure s`, one per captured frame, the timestamp
+in the gyro layout's unit (microseconds raw, milliseconds float). Entries
 begin a few frames before `first_frame_timestamp` (six on the office file) and end a few after
 the last encoded frame. Frame k of the video is entry `indexAtOrAfter(first_frame_timestamp) + k`.
 
 ## Capture clock
 
-Gyro samples, exposure entries and `first_frame_timestamp` share one microsecond clock.
+Gyro samples, exposure entries and `first_frame_timestamp` share one clock, stamped in the gyro
+layout's unit: microseconds on raw-layout cameras, milliseconds on float-layout ones (as
+telemetry-parser reads them; verify on a float-layout file).
 `video time = first frame's track time + (timestamp - first_frame_timestamp) / 1e6`, the first
 frame's track time being zero unless an edit list starts the track later; gyro readings are
 additionally shifted by the info record's gyro offset (1.6 ms on X5). Stabilization samples the orientation at

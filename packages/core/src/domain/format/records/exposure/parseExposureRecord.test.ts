@@ -7,7 +7,10 @@ import { loadFixture } from '../../../../../test/support/fixtures';
 const OFFICE_FIRST_FRAME = microseconds(921_751_839);
 
 describe('parseExposureRecord on the office X5 recording', () => {
-  const record = parseExposureRecord(loadFixture('x5/office/record-04-exposure-first16.bin'));
+  const record = parseExposureRecord(
+    loadFixture('x5/office/record-04-exposure-first16.bin'),
+    microseconds,
+  );
 
   it('decodes one entry per 16 bytes', () => {
     expect(record.length).toBe(16);
@@ -29,17 +32,20 @@ describe('parseExposureRecord on the office X5 recording', () => {
   });
 
   it('reads the tail of the record', () => {
-    const tail = parseExposureRecord(loadFixture('x5/office/record-04-exposure-last16.bin'));
+    const tail = parseExposureRecord(
+      loadFixture('x5/office/record-04-exposure-last16.bin'),
+      microseconds,
+    );
     expect(tail.entryAt(15).captureTime).toBe(1_183_876_117);
   });
 });
 
 describe('parseExposureRecord edge cases', () => {
   it('ignores a partial trailing entry', () => {
-    expect(parseExposureRecord(new Uint8Array(17)).length).toBe(1);
+    expect(parseExposureRecord(new Uint8Array(17), microseconds).length).toBe(1);
   });
 
   it('decodes an empty payload to an empty record', () => {
-    expect(parseExposureRecord(new Uint8Array()).length).toBe(0);
+    expect(parseExposureRecord(new Uint8Array(), microseconds).length).toBe(0);
   });
 });

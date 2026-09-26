@@ -6,7 +6,6 @@ import {
   GainMatchingFrameSink,
   lensRotation,
   LockStabilization,
-  parseOffsetString,
   quaternionFromAxisAngle,
   radians,
   seconds,
@@ -17,6 +16,7 @@ import {
   type StitchingSetup,
   type Vector3,
 } from '@gyroview/core';
+import { parseOffsetString } from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { MULTI_TRACK, PACKED, syntheticCalibration } from './test/syntheticStitching';

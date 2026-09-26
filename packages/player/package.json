@@ -12,6 +12,10 @@
     "./attributes": {
       "types": "./src/element/attributeNames.ts",
       "default": "./src/element/attributeNames.ts"
+    },
+    "./composition": {
+      "types": "./src/composition/index.ts",
+      "default": "./src/composition/index.ts"
     }
   },
   "scripts": {

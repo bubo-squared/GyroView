@@ -1,18 +1,20 @@
 import { MediabunnyAudioSegmenter } from '@gyroview/adapter-mediabunny';
 import { MediaSourceAudioClock } from '@gyroview/adapter-mse-audio';
 import { DecodePipeline, PlaybackSession, seconds } from '@gyroview/core';
-import type { OpenedRecording } from '@gyroview/player';
 import { FakeFrameSink } from '@gyroview/core/testing';
+import {
+  DECODE_PIPELINE_OPTIONS,
+  PAIR_QUEUE_CAPACITY,
+  type OpenedRecording,
+} from '@gyroview/player/composition';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   closeAll,
   expectLockstep,
   openSample,
-  PIPELINE_OPTIONS,
   port,
   DECODE_TIMEOUT_MS,
-  QUEUE_CAPACITY,
   skipUnlessServed,
   takePairs,
   waitFor,
@@ -82,7 +84,11 @@ describe('the browser pipeline on the real X5 recordings', () => {
     expect(opened.recording.info.model).toBe('Insta360 X5');
     expect(opened.frameSources).toHaveLength(2);
 
-    const pipeline = new DecodePipeline<VideoFrame>(opened.frameSources, port, PIPELINE_OPTIONS);
+    const pipeline = new DecodePipeline<VideoFrame>(
+      opened.frameSources,
+      port,
+      DECODE_PIPELINE_OPTIONS,
+    );
     const pairs = await takePairs(pipeline, MID_FILE_START, PAIRS_TO_TAKE);
     try {
       const first = pairs[0]?.timestamp ?? NaN;
@@ -108,8 +114,8 @@ describe('the browser pipeline on the real X5 recordings', () => {
       clock,
       sink,
       duration: opened.duration,
-      pipeline: PIPELINE_OPTIONS,
-      queueCapacity: QUEUE_CAPACITY,
+      pipeline: DECODE_PIPELINE_OPTIONS,
+      queueCapacity: PAIR_QUEUE_CAPACITY,
     });
     cleanups.push(() => {
       session.dispose();
@@ -143,7 +149,11 @@ describe('the browser pipeline on the real X5 recordings', () => {
       opened.dispose();
     });
 
-    const pipeline = new DecodePipeline<VideoFrame>(opened.frameSources, port, PIPELINE_OPTIONS);
+    const pipeline = new DecodePipeline<VideoFrame>(
+      opened.frameSources,
+      port,
+      DECODE_PIPELINE_OPTIONS,
+    );
     const pairs = await takePairs(pipeline, 0, 5);
     try {
       expect(pairs[0]?.timestamp).toBeCloseTo(0, 3);

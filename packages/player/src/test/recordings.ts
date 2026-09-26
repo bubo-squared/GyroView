@@ -1,6 +1,5 @@
 import {
   readRecording,
-  RecordType,
   Signal,
   type Demuxer,
   type Recording,
@@ -12,7 +11,9 @@ import {
   FakeResourceLocator,
   FakeVideoDecoderPort,
   FakeVideoTrack,
+  InfoRecordFormat,
   InMemoryRandomAccessSource,
+  RecordType,
   TrailerFixtureBuilder,
   type FakeVideoTrackOptions,
 } from '@gyroview/core/testing';
@@ -25,8 +26,6 @@ import infoUrl from '../../../../test/fixtures/x5/office/record-01-info.bin?url'
 
 export { default as X5_RECORDING_URL } from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
 export { default as X5_RECORDING_WITH_AUDIO_URL } from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-aac-64px-10fps-3s.mp4?url';
-
-const PROTOBUF_FORMAT = 1;
 
 export async function fetchBytes(url: string): Promise<Uint8Array<ArrayBuffer>> {
   const response = await fetch(url);
@@ -65,7 +64,7 @@ export function syntheticRecordingBytes(trailer: SyntheticTrailer): Uint8Array {
   ]);
   const builder = new TrailerFixtureBuilder()
     .withPrefix(prefix)
-    .addRecord({ id: RecordType.Info, format: PROTOBUF_FORMAT, payload: trailer.info });
+    .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: trailer.info });
   if (trailer.gyro) builder.addRecord({ id: RecordType.Gyro, payload: trailer.gyro });
   if (trailer.exposure) builder.addRecord({ id: RecordType.Exposure, payload: trailer.exposure });
   return builder.buildIndexed({ alignment: 64, wrapInInstBox: true }).bytes;

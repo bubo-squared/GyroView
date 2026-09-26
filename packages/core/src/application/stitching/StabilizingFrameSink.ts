@@ -19,22 +19,18 @@ export interface StabilizingParts<Handle> {
  * exposure and tells the sink how to turn the picture for the current stabilization mode.
  */
 export class StabilizingFrameSink<Handle = unknown> implements FrameSink<Handle> {
-  private stabilizerValue: Stabilizer = new OffStabilization();
+  private stabilizer: Stabilizer = new OffStabilization();
 
   public constructor(private readonly parts: StabilizingParts<Handle>) {}
 
-  public get stabilizer(): Stabilizer {
-    return this.stabilizerValue;
-  }
-
   public setStabilizer(stabilizer: Stabilizer): void {
-    this.stabilizerValue = stabilizer;
+    this.stabilizer = stabilizer;
   }
 
   public present(presentation: Presentation<Handle>): void {
     const time = this.exposureTimeOf(presentation);
     const orientation = this.parts.orientations.orientationAt(time);
-    this.parts.sink.setStabilization(this.stabilizerValue.nextRotation(orientation, time));
+    this.parts.sink.setStabilization(this.stabilizer.nextRotation(orientation, time));
     this.parts.sink.present(presentation);
   }
 

@@ -14,16 +14,10 @@ import {
   type SignedAxis,
 } from '@gyroview/core';
 import { commands } from '@vitest/browser/context';
+import { DECODE_PIPELINE_OPTIONS } from '@gyroview/player/composition';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  closeAll,
-  openSample,
-  PIPELINE_OPTIONS,
-  port,
-  skipUnlessServed,
-  takePairs,
-} from './realRecordingSupport';
+import { closeAll, openSample, port, skipUnlessServed, takePairs } from './realRecordingSupport';
 import { OFFICE_5K7_60, SAILING_8K_30 } from './sampleUrls';
 
 const WIDTH = 384;
@@ -124,7 +118,7 @@ async function measureStillness(parts: MeasurementParts): Promise<Measured> {
     const pipeline = new DecodePipeline<VideoFrame>(
       parts.opened.frameSources,
       port,
-      PIPELINE_OPTIONS,
+      DECODE_PIPELINE_OPTIONS,
     );
     const pairs = await takePairs(pipeline, time, PAIRS_APART);
     const [first] = pairs;

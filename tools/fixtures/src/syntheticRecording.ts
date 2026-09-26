@@ -1,5 +1,4 @@
-import { RecordType } from '@gyroview/core';
-import { InfoRecordFormat, TrailerFixtureBuilder } from '@gyroview/core/testing';
+import { InfoRecordFormat, RecordType, TrailerFixtureBuilder } from '@gyroview/core/testing';
 
 /**
  * The trailer records a synthetic recording carries, cut from a real X5 file.

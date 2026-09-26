@@ -19,16 +19,10 @@ import {
   type StabilizationMode,
 } from '@gyroview/core';
 import { commands } from '@vitest/browser/context';
+import { DECODE_PIPELINE_OPTIONS } from '@gyroview/player/composition';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  closeAll,
-  openSample,
-  PIPELINE_OPTIONS,
-  port,
-  skipUnlessServed,
-  takePairs,
-} from './realRecordingSupport';
+import { closeAll, openSample, port, skipUnlessServed, takePairs } from './realRecordingSupport';
 import { OFFICE_5K7_60, SAILING_8K_30 } from './sampleUrls';
 
 const WIDTH = 1536;
@@ -175,7 +169,7 @@ describe('stabilizing the real recordings', () => {
         const pipeline = new DecodePipeline<VideoFrame>(
           opened.frameSources,
           port,
-          PIPELINE_OPTIONS,
+          DECODE_PIPELINE_OPTIONS,
         );
         const pairs = await takePairs(pipeline, time, 1);
         const [pair] = pairs;

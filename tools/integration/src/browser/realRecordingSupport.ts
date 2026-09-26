@@ -5,13 +5,13 @@ import {
   type DecodePipeline,
   type FramePair,
 } from '@gyroview/core';
+import { browserPorts } from '@gyroview/player';
 import {
-  browserPorts,
   DECODE_PIPELINE_OPTIONS,
   openRecording,
   PAIR_QUEUE_CAPACITY,
   type OpenedRecording,
-} from '@gyroview/player';
+} from '@gyroview/player/composition';
 import { expect, type TestContext } from 'vitest';
 
 import { isServed, type SampleRecording } from './sampleUrls';
@@ -22,9 +22,6 @@ const TIMESTAMP_DIGITS = 3;
  */
 export const DECODE_TIMEOUT_MS = 15_000;
 const POLL_INTERVAL_MS = 20;
-
-export const PIPELINE_OPTIONS = DECODE_PIPELINE_OPTIONS;
-export const QUEUE_CAPACITY = PAIR_QUEUE_CAPACITY;
 
 const ports = browserPorts();
 export const port = ports.decoderPort;
@@ -88,7 +85,7 @@ export async function takePairs(
   from: number,
   count: number,
 ): Promise<FramePair<VideoFrame>[]> {
-  const queue = new FramePairQueue<VideoFrame>(QUEUE_CAPACITY);
+  const queue = new FramePairQueue<VideoFrame>(PAIR_QUEUE_CAPACITY);
   const run = pipeline.run(seconds(from), queue);
   const taken: FramePair<VideoFrame>[] = [];
   await waitFor(
@@ -120,7 +117,7 @@ export function expectLockstep(
     expect(pair.frames.every((frame) => frame.handle.codedWidth === sample.codedSize)).toBe(true);
     const [first, second] = pair.frames;
     expect(Math.abs((first?.timestamp ?? 0) - (second?.timestamp ?? 0))).toBeLessThan(
-      PIPELINE_OPTIONS.pairTolerance,
+      DECODE_PIPELINE_OPTIONS.pairTolerance,
     );
     const previous = pairs[index - 1];
     if (previous) {

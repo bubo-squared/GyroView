@@ -1,5 +1,5 @@
-import { readRecording, RecordType } from '@gyroview/core';
-import { InMemoryRandomAccessSource } from '@gyroview/core/testing';
+import { readRecording } from '@gyroview/core';
+import { InMemoryRandomAccessSource, RecordType } from '@gyroview/core/testing';
 import { describe, expect, it } from 'vitest';
 
 import { readFixture } from './fixtureFiles';

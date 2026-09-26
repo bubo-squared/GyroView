@@ -10,17 +10,11 @@ import {
   type WindowCrop,
 } from '@gyroview/core';
 import { commands } from '@vitest/browser/context';
+import { DECODE_PIPELINE_OPTIONS } from '@gyroview/player/composition';
 import { afterEach, describe, expect, it, type TestContext } from 'vitest';
 
 import { imageCircleOf, type PixelPoint } from './imageCircle';
-import {
-  closeAll,
-  openSample,
-  PIPELINE_OPTIONS,
-  port,
-  skipUnlessServed,
-  takePairs,
-} from './realRecordingSupport';
+import { closeAll, openSample, port, skipUnlessServed, takePairs } from './realRecordingSupport';
 import { OFFICE_5K7_60, OFFICE_PROXY, SAILING_8K_30, type SampleRecording } from './sampleUrls';
 
 const WIDTH = 1536;
@@ -81,7 +75,11 @@ async function stitchOneFrame(
   });
   const calibration = opened.recording.calibration.calibration;
   if (!calibration) throw new Error(`${sample.name} carries no calibration`);
-  const pipeline = new DecodePipeline<VideoFrame>(opened.frameSources, port, PIPELINE_OPTIONS);
+  const pipeline = new DecodePipeline<VideoFrame>(
+    opened.frameSources,
+    port,
+    DECODE_PIPELINE_OPTIONS,
+  );
   const pairs = await takePairs(pipeline, RENDER_TIME, 1);
   cleanups.push(() => {
     closeAll(pairs);

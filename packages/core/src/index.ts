@@ -11,7 +11,6 @@ export type { ResourceLocator } from './ports/ResourceLocator';
 export { ByteRange } from './shared/binary/ByteRange';
 
 // Domain models
-export { RecordType } from './domain/format/constants';
 export type { BoxDescriptor, TrailerWrapper } from './domain/format/boxes/BoxLayout';
 export { RecordingFileName } from './domain/format/naming/RecordingFileName';
 export type {
@@ -22,11 +21,7 @@ export type {
   SensorRanges,
   WindowCrop,
 } from './domain/format/info/RecordingInfo';
-export {
-  detectLensLayout,
-  FileLayoutHint,
-  type LayoutHints,
-} from './domain/format/layout/detectLensLayout';
+export { detectLensLayout, type LayoutHints } from './domain/format/layout/detectLensLayout';
 export {
   FULL_FRAME,
   LEFT_HALF,
@@ -79,14 +74,7 @@ export { ExposureRecord, type ExposureEntry } from './domain/motion/exposure/Exp
 export { CaptureClock } from './domain/motion/timing/CaptureClock';
 export { firstFrameCaptureTime } from './domain/format/captureOrigin';
 export { FrameTimes, type FrameTime } from './domain/motion/timing/FrameTimes';
-export type {
-  FrameTimeSourceName,
-  FrameTimingContext,
-} from './domain/motion/timing/FrameTimeSource';
-export {
-  resolveFrameTimes,
-  type ResolvedFrameTimes,
-} from './domain/motion/timing/resolveFrameTimes';
+export type { FrameTimeSourceName } from './domain/motion/timing/FrameTimeSource';
 export {
   CalibrationVersion,
   type CalibrationSet,
@@ -150,23 +138,13 @@ export {
 } from './application/stitching/StabilizingFrameSink';
 export type { PixelPoint } from './domain/optics/PixelPoint';
 export { EquidistantModel, type EquidistantParameters } from './domain/optics/EquidistantModel';
-export { MeiModel, type MeiParameters } from './domain/optics/MeiModel';
-export { PolynomialModel, type PolynomialParameters } from './domain/optics/PolynomialModel';
 export { DEFAULT_HALF_FIELD_OF_VIEW } from './domain/optics/opticsConstants';
-export {
-  DEFAULT_GAIN_MATCH_OPTIONS,
-  GainMatcher,
-  gainsMatching,
-  type GainMatchOptions,
-} from './domain/optics/gainMatch';
-export { GainMatching } from './application/gainMatching/GainMatching';
 export {
   GainMatchingFrameSink,
   type GainMatchingParts,
 } from './application/gainMatching/GainMatchingFrameSink';
 export type { SeamMeter } from './ports/SeamMeter';
 export type { CalibrationChoice } from './domain/format/calibration/selectCalibration';
-export { parseOffsetString } from './domain/format/calibration/parseOffsetString';
 
 // Shared vocabulary
 export {
@@ -235,7 +213,7 @@ export type {
   VideoDecoderHandle,
   VideoDecoderPort,
 } from './ports/VideoDecoderPort';
-export { closeFramePair, type FramePair } from './ports/FramePair';
+export type { FramePair } from './ports/FramePair';
 export { FramePairQueue } from './application/playback/FramePairQueue';
 export {
   DecodePipeline,
@@ -255,7 +233,7 @@ export type { PlaybackClock } from './ports/PlaybackClock';
 export type { FrameSink, Presentation, StabilizableFrameSink } from './ports/FrameSink';
 export type { PictureRenderer } from './ports/PictureRenderer';
 export { WallClock } from './application/playback/WallClock';
-export { isFlowing, PlayerStateMachine, type PlayerState } from './domain/playback/PlayerState';
+export { isFlowing, type PlayerState } from './domain/playback/PlayerState';
 export { TypedEmitter } from './shared/events/TypedEmitter';
 export {
   PlaybackSession,

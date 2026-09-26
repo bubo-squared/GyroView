@@ -168,6 +168,15 @@ describe('<gyro-view>', () => {
     expect(element.muted).toBe(true);
   });
 
+  it('plays and seeks what src names in the same task, as a media element does', async () => {
+    const element = create({ controls: '' });
+    element.src = X5_RECORDING_URL;
+    element.currentTime = 1.5;
+    await element.play();
+    expect(element.paused).toBe(false);
+    expect(element.currentTime).toBeGreaterThanOrEqual(1.5);
+  });
+
   it('starts playing on its own once loaded when told to autoplay', async () => {
     const element = create({ controls: '', autoplay: '' });
     const playing = nextEvent(element, 'play');

@@ -3,6 +3,7 @@ import {
   messageOf,
   seconds,
   type GyroViewError,
+  type Seconds,
   type StabilizationMode,
   type ViewMode,
   type ViewState,
@@ -126,7 +127,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   }
 
   public set currentTime(time: number) {
-    this.player.seek(seconds(time));
+    this.seek(time);
   }
 
   /**
@@ -179,10 +180,12 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   }
 
   /**
-   * Starts playing, waiting for a load in progress; rejects when the browser refuses to start.
+   * Starts playing, waiting for a load in progress, or one the attributes set just now asked
+   * for; rejects when the browser refuses to start.
    */
-  public play(): Promise<void> {
-    return this.player.play();
+  public async play(): Promise<void> {
+    await this.scheduledLoadSettled();
+    await this.player.play();
   }
 
   /**
@@ -200,10 +203,11 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   }
 
   /**
-   * Seeks exactly to `time` seconds.
+   * Seeks exactly to `time` seconds; right after a new `src`, the new recording starts there.
    */
   public seek(time: number): void {
-    this.player.seek(seconds(time));
+    if (this.scheduledLoad) void this.seekAfterScheduledLoad(seconds(time));
+    else this.player.seek(seconds(time));
   }
 
   /**
@@ -317,6 +321,23 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
       this.warn(`playback could not start: ${messageOf(error)}`);
     });
   };
+
+  private async seekAfterScheduledLoad(time: Seconds): Promise<void> {
+    await this.scheduledLoadSettled();
+    this.player.seek(time);
+  }
+
+  /**
+   * Waits for the load the attributes set just now asked for, if any, however it ends: a
+   * failure has been dispatched as an `error` event already.
+   */
+  private async scheduledLoadSettled(): Promise<void> {
+    try {
+      await this.scheduledLoad;
+    } catch {
+      // Reported as an `error` event.
+    }
+  }
 
   private scheduleLoad(): void {
     if (this.scheduledLoad || !this.isConnected) return;

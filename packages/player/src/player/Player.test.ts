@@ -220,6 +220,14 @@ describe('Player over the synthetic X5 recording', () => {
     expect(redraws[0]).toHaveBeenCalledTimes(2);
   });
 
+  it('starts the recording where a seek during its load asked', async () => {
+    const { player } = open();
+    const loading = player.load(sourceOf(X5_RECORDING_URL));
+    player.seek(seconds(2));
+    await loading;
+    expect(player.currentTime).toBeCloseTo(2, 3);
+  });
+
   it('leaves the decoders idle until play when told not to preload', async () => {
     const preloads: MockInstance<PlaybackSession<VideoFrame>['preload']>[] = [];
     const { player } = open(async (parts) => {

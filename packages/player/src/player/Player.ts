@@ -41,6 +41,10 @@ export class Player {
   private phase: PlayerPhase = IDLE;
   private readonly viewing: PlayerView;
   private readonly picture = new PictureSettings(this.events);
+  /**
+   * A seek asked for before a recording was ready, where the next one starts.
+   */
+  private pendingStartTime: Seconds | undefined;
   private readonly sound: PlayerSound;
   private readonly relay = new SessionRelay({
     events: this.events,
@@ -179,8 +183,14 @@ export class Player {
     this.loaded?.pipeline.session.stop();
   }
 
+  /**
+   * Seeks exactly to `time`; while a recording is loading, or before one is, the next one starts
+   * there, as a media element's default playback start position has it.
+   */
   public seek(time: Seconds): void {
-    this.loaded?.pipeline.session.seek(time);
+    const session = this.loaded?.pipeline.session;
+    if (session) session.seek(time);
+    else this.pendingStartTime = time;
   }
 
   /**
@@ -279,8 +289,15 @@ export class Player {
       return;
     }
     this.attach(loaded);
+    this.startAtPendingTime(loaded);
     if (options.preload !== false) loaded.pipeline.session.preload();
     if (options.autoplay) await this.autoplay();
+  }
+
+  private startAtPendingTime(loaded: LoadedRecording): void {
+    const time = this.pendingStartTime;
+    this.pendingStartTime = undefined;
+    if (time !== undefined) loaded.pipeline.session.seek(time);
   }
 
   private attach(loaded: LoadedRecording): void {

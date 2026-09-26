@@ -4,7 +4,7 @@ import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../../ports/
 import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';
 import type { Signal } from '../../shared/async/Signal';
-import { GyroViewError, messageOf } from '../../shared/errors/GyroViewError';
+import { hasErrorCode, messageOf } from '../../shared/errors/GyroViewError';
 
 export type ProbeVerdict =
   'decodes' | 'unsupported-configuration' | 'no-key-frame' | 'decode-failed' | 'timed-out';
@@ -152,7 +152,7 @@ function unsupported(configuration: VideoDecoderConfiguration): Outcome {
 
 function failedWith(error: unknown): Outcome {
   const message = messageOf(error);
-  const isUnsupported = error instanceof GyroViewError && error.code === 'codec-unsupported';
+  const isUnsupported = hasErrorCode(error, 'codec-unsupported');
   return {
     verdict: isUnsupported ? 'unsupported-configuration' : 'decode-failed',
     detail: message,

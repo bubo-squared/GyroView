@@ -13,7 +13,7 @@ import {
 import type { RandomAccessSource } from '../../../ports/RandomAccessSource';
 import { ByteRange } from '../../../shared/binary/ByteRange';
 import { ByteReader } from '../../../shared/binary/ByteReader';
-import { GyroViewError } from '../../../shared/errors/GyroViewError';
+import { hasErrorCode } from '../../../shared/errors/GyroViewError';
 
 /**
  * Walks the top-level boxes of a file with one small read per box, and stops at the first bytes
@@ -77,7 +77,7 @@ function largeSize(header: ByteReader): ResolvedSize | undefined {
   try {
     return { size: header.uint64BeAt(LARGE_SIZE_OFFSET), headerSize: LARGE_BOX_HEADER_SIZE };
   } catch (error) {
-    if (error instanceof GyroViewError && error.code === 'binary-unsafe-integer') return undefined;
+    if (hasErrorCode(error, 'binary-unsafe-integer')) return undefined;
     throw error;
   }
 }

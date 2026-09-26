@@ -550,7 +550,7 @@ describe('<gyro-view>', () => {
       for (const remInPixels of [16, 20]) {
         root.style.fontSize = `${remInPixels}px`;
         // Just above each breakpoint, where the most parts show, and the narrowest player.
-        for (const widthInRem of [31, 28.5, 23, 16.5]) {
+        for (const widthInRem of [31, 28.5, 23, 16.5, 14]) {
           element.style.width = `${widthInRem * remInPixels}px`;
           expectBarWithin(element);
         }

@@ -1,10 +1,15 @@
-import { HttpResourceLocator, type HttpRequestOptions } from '@gyroview/adapter-fetch';
+import { BlobRandomAccessSource } from '@gyroview/adapter-blob';
+import {
+  HttpRangeSource,
+  HttpResourceLocator,
+  type HttpRequestOptions,
+} from '@gyroview/adapter-fetch';
 import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
 import { WebCodecsVideoDecoderPort } from '@gyroview/adapter-webcodecs';
+import { Signal } from '@gyroview/core';
 
-import { BrowserSourceOpener } from './BrowserSourceOpener';
-import { deadlineIn } from './deadline';
-import type { RecordingPorts } from './ports';
+import type { RecordingPorts, SourceOpener } from './ports';
+import { isUrlInput } from '../PlayerSource';
 
 export interface BrowserPortsOptions {
   /**
@@ -27,10 +32,33 @@ export function browserPorts(options: BrowserPortsOptions = {}): RecordingPorts<
   const http = options.http ?? {};
   const probeTimeoutMs = options.probeTimeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
   return {
-    sources: new BrowserSourceOpener(http),
+    sources: sourcesOver(http),
     demuxer: new MediabunnyDemuxer(),
     decoderPort: new WebCodecsVideoDecoderPort(),
     locator: new HttpResourceLocator(http),
     probeDeadline: () => deadlineIn(probeTimeoutMs),
   };
+}
+
+/**
+ * URLs are read with HTTP ranges, blobs by slicing.
+ */
+function sourcesOver(http: HttpRequestOptions): SourceOpener {
+  return {
+    open: (input) =>
+      isUrlInput(input)
+        ? new HttpRangeSource(input.url, http)
+        : new BlobRandomAccessSource(input.blob),
+  };
+}
+
+/**
+ * A signal that fires after `ms`: the core has no timers, so the host supplies deadlines.
+ */
+function deadlineIn(ms: number): Signal {
+  const signal = new Signal();
+  setTimeout(() => {
+    signal.trigger();
+  }, ms);
+  return signal;
 }

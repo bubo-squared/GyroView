@@ -13,7 +13,7 @@ import type { Pipeline } from '../composition/ports';
 export type PictureTarget = Pick<Pipeline, 'setStabilization' | 'setGainMatching'>;
 
 /**
- * The settings that shape the picture beyond the view, stabilization and exposure matching:
+ * The settings that shape the picture beyond the view: stabilization and exposure matching,
  * kept across loads, applied to whichever pipeline is attached, announced when they change.
  */
 export class PictureSettings {
@@ -36,7 +36,12 @@ export class PictureSettings {
     target?.setGainMatching(this.isMatching);
   }
 
+  /**
+   * The mode already in effect changes nothing: a stateful mode such as Follow keeps what it has
+   * smoothed so far instead of starting over.
+   */
   public setStabilization(mode: StabilizationMode): void {
+    if (mode === this.mode) return;
     this.mode = mode;
     this.target?.setStabilization(mode);
     this.events.emit('stabilizationchange', mode);

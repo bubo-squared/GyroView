@@ -55,6 +55,17 @@ describe('PictureSettings', () => {
     expect(announced).toEqual(['horizon']);
   });
 
+  it('applies and announces nothing for the mode already in effect, so Follow keeps its smoothing', () => {
+    const { settings, target, calls, announced } = recordedSettings();
+    settings.attach(target);
+    settings.setStabilization('follow');
+    calls.length = 0;
+    announced.length = 0;
+    settings.setStabilization('follow');
+    expect(calls).toEqual([]);
+    expect(announced).toEqual([]);
+  });
+
   it('keeps changes made between loads for the next one', () => {
     const { settings, target, calls } = recordedSettings();
     settings.attach(target);

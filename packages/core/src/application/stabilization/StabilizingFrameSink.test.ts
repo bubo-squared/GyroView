@@ -5,7 +5,8 @@ import { ALIGNED_IMU_FRAME } from '../../domain/motion/imu/ImuFrame';
 import { OrientationTrack } from '../../domain/motion/orientation/OrientationTrack';
 import { LockStabilization } from '../../domain/motion/stabilization/stabilizers';
 import { FrameTimes } from '../../domain/motion/timing/FrameTimes';
-import type { Presentation, StabilizableFrameSink } from '../../ports/FrameSink';
+import type { Presentation } from '../../ports/FrameSink';
+import type { PictureRenderer } from '../../ports/PictureRenderer';
 import { IDENTITY_MATRIX3, transformVector, type Matrix3 } from '../../shared/math/Matrix3';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { seconds } from '../../shared/units/time';
@@ -17,7 +18,7 @@ import {
 
 const FORWARD: Vector3 = [0, 0, 1];
 
-class RecordingSink implements StabilizableFrameSink<string> {
+class RecordingSink implements Pick<PictureRenderer<string>, 'present' | 'setStabilization'> {
   public readonly rotations: Matrix3[] = [];
   public readonly presented: Presentation<string>[] = [];
 

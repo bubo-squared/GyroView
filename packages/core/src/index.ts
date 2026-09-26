@@ -191,7 +191,7 @@ export {
 export { Deferred } from './shared/async/Deferred';
 export { Signal } from './shared/async/Signal';
 export type { PlaybackClock } from './ports/PlaybackClock';
-export type { FrameSink, Presentation, StabilizableFrameSink } from './ports/FrameSink';
+export type { FrameSink, Presentation } from './ports/FrameSink';
 export type { PictureRenderer } from './ports/PictureRenderer';
 export { WallClock } from './application/playback/WallClock';
 export { isFlowing, type PlayerState } from './domain/playback/PlayerState';

@@ -28,7 +28,7 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
 - **Modes** (`Stabilizer` strategies): `off`, `lock` (view fixed to the world), `horizon` (roll
   and pitch removed, heading follows the camera), `follow` (view low-passes the camera direction
   with a 1.5 s time constant, resetting on a seek). The renderer applies the resulting rotation
-  between the view rotation and the lens poses (`StabilizableFrameSink.setStabilization`); the
+  between the view rotation and the lens poses (`PictureRenderer.setStabilization`); the
   `StabilizingFrameSink` use case samples the orientation at each frame's mid-exposure time.
 
 ## Evidence

@@ -2,11 +2,15 @@ import type { OrientationTrack } from '../../domain/motion/orientation/Orientati
 import type { Stabilizer } from '../../domain/motion/stabilization/Stabilizer';
 import { OffStabilization } from '../../domain/motion/stabilization/stabilizers';
 import type { FrameTimes } from '../../domain/motion/timing/FrameTimes';
-import type { FrameSink, Presentation, StabilizableFrameSink } from '../../ports/FrameSink';
+import type { FrameSink, Presentation } from '../../ports/FrameSink';
+import type { PictureRenderer } from '../../ports/PictureRenderer';
 import type { Seconds } from '../../shared/units/time';
 
 export interface StabilizingParts<Handle> {
-  readonly sink: StabilizableFrameSink<Handle>;
+  /**
+   * What draws the picture, turned as each presentation's orientation says.
+   */
+  readonly sink: Pick<PictureRenderer<Handle>, 'present' | 'setStabilization'>;
   readonly orientations: OrientationTrack;
   /**
    * Gives each frame its mid-exposure time; without it the frame's track timestamp stands in.

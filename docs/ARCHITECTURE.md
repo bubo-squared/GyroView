@@ -121,22 +121,22 @@ Use cases that orchestrate the domain through ports.
   media, one measurement at a time, and applies the gains `GainMatcher` follows (ADR 0012).
   `GainMatchingFrameSink` puts it in front of the sink chain: it measures after each
   presentation while enabled, with a meter the renderer creates over what it draws.
-- `stabilization/StabilizingFrameSink` wraps a `StabilizableFrameSink` and sets the
+- `stabilization/StabilizingFrameSink` wraps the renderer and sets the
   stabilization rotation for each frame's mid-exposure orientation before presenting it.
 
 ### Ports: `core/src/ports`
 
-| Port                 | What the core needs                                                                                                          | Implementations                                                       |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `RandomAccessSource` | `size()`, `read(ByteRange)`                                                                                                  | `FileRandomAccessSource`, `HttpRangeSource`, `BlobRandomAccessSource` |
-| `Demuxer`            | open a container, list `VideoTrackReader`/`AudioTrackReader`                                                                 | `MediabunnyDemuxer`                                                   |
-| `VideoDecoderPort`   | create decoders that emit frames and apply backpressure                                                                      | `WebCodecsVideoDecoderPort`                                           |
-| `PlaybackClock`      | current time, start/pause/seek, end and failure                                                                              | `MediaSourceAudioClock`, core `application/playback/WallClock`        |
-| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                       | `MediabunnyAudioSegmenter`                                            |
-| `FrameSink`          | present a frame pair (`StabilizableFrameSink` adds rotation)                                                                 | `ThreeFrameRenderer`                                                  |
-| `PictureRenderer`    | a `StabilizableFrameSink` that also takes view, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
-| `SeamMeter`          | the mean colour each lens shows along the seam                                                                               | `SeamMeterPass`                                                       |
-| `ResourceLocator`    | does this URL exist                                                                                                          | `HttpResourceLocator`                                                 |
+| Port                 | What the core needs                                                                                                                          | Implementations                                                       |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `RandomAccessSource` | `size()`, `read(ByteRange)`                                                                                                                  | `FileRandomAccessSource`, `HttpRangeSource`, `BlobRandomAccessSource` |
+| `Demuxer`            | open a container, list `VideoTrackReader`/`AudioTrackReader`                                                                                 | `MediabunnyDemuxer`                                                   |
+| `VideoDecoderPort`   | create decoders that emit frames and apply backpressure                                                                                      | `WebCodecsVideoDecoderPort`                                           |
+| `PlaybackClock`      | current time, start/pause/seek, end and failure                                                                                              | `MediaSourceAudioClock`, core `application/playback/WallClock`        |
+| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                                       | `MediabunnyAudioSegmenter`                                            |
+| `FrameSink`          | present a frame pair                                                                                                                         | `ThreeFrameRenderer`                                                  |
+| `PictureRenderer`    | a `FrameSink` that also takes the stabilization rotation, view, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
+| `SeamMeter`          | the mean colour each lens shows along the seam                                                                                               | `SeamMeterPass`                                                       |
+| `ResourceLocator`    | does this URL exist                                                                                                                          | `HttpResourceLocator`                                                 |
 
 Every port with a fake in `core/src/testing` has a contract suite that runs against the fake
 and the real adapters alike (`RandomAccessSource`, `Demuxer`, `VideoTrackReader`,

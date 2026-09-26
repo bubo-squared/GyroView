@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { detectLensLayout, FileLayoutHint, TrackOrderHint } from './detectLensLayout';
-import { FULL_FRAME, LEFT_HALF, RIGHT_HALF } from './LensLayout';
+import { FULL_FRAME, LEFT_HALF, RIGHT_HALF } from '../../stitching/LensLayout';
 import type { InputDescription, VideoTrackDescription } from '../../../ports/VideoTrack';
 import { captureError } from '../../../../test/support/errors';
 

@@ -50,9 +50,9 @@ sizes; every constant is named and cites its source.
   calibration strings, timing fields, layout hints. Absent fields are `undefined`.
 - `records/gyro` parses IMU samples in the raw (20-byte) or float (56-byte) layout, selected by
   the info record or inferred from the bytes; `records/exposure` parses per-frame shutter times.
-- `layout/detectLensLayout` decides how the lens images are stored from the tracks actually
-  present: multi-track (one file, two tracks), split files (`_00_` and `_10_`) or packed (both
-  circles in one frame). The info record is only a hint.
+- `layout/detectLensLayout` decides how the lens images are stored (a stitching `LensLayout`)
+  from the tracks the demuxer port describes: multi-track (one file, two tracks), split files
+  (`_00_` and `_10_`) or packed (both circles in one frame). The info record is only a hint.
 - `naming/RecordingFileName` understands `VID_<date>_<time>_<lens><proxy>_<seq>.insv` to guess
   where companion files live; the guess is always verified against the file.
 - `calibration/parseOffsetString` turns the three generations of calibration strings
@@ -61,8 +61,8 @@ sizes; every constant is named and cites its source.
 - `captureOrigin` resolves the first frame's capture time in the gyro layout's unit, so motion
   receives branded values only.
 
-Format is the anti-corruption layer: it produces motion, optics and view values, and only it
-reads bytes through a port. Dependency rules keep every other domain folder free of format,
+Format is the anti-corruption layer: it produces motion, optics, view and stitching values, and
+only it reads bytes through a port. Dependency rules keep every other domain folder free of format,
 ports and application code.
 
 **`optics`: lenses and calibration.** A `CalibrationSet` holds one `LensCalibration` per lens;
@@ -79,6 +79,11 @@ record as a structure of arrays; `ImuFrame` says how the IMU's axes sit in the c
 into a body-to-world quaternion per sample (bias from the stillest window, gravity pull). The
 `Stabilizer` strategies (`off`, `lock`, `horizon`, `follow`) turn an orientation into the
 rotation the renderer applies.
+
+**`stitching`**: `LensLayout` (where each lens's pixels are: which input, track and frame
+region) and `StitchingSetup`, which joins calibration and layout into the per-lens numbers a
+renderer binds (each frame shows its whole calibration square, ADR 0014) and orders the frame
+sources the session decodes (`lensFrameOrder`).
 
 **`playback`**: `PlayerStateMachine` with the exhaustive transition table
 (`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`).
@@ -115,8 +120,7 @@ Use cases that orchestrate the domain through ports.
   media, one measurement at a time, and applies the gains `GainMatcher` follows (ADR 0012).
   `GainMatchingFrameSink` puts it in front of the sink chain: it measures after each
   presentation while enabled, with a meter the renderer creates over what it draws.
-- `stitching/StitchingSetup` joins calibration and layout into the per-lens numbers a
-  renderer binds (each frame shows its whole calibration square, ADR 0014); `StabilizingFrameSink` wraps a `StabilizableFrameSink` and sets the
+- `stabilization/StabilizingFrameSink` wraps a `StabilizableFrameSink` and sets the
   stabilization rotation for each frame's mid-exposure orientation before presenting it.
 
 ### Ports: `core/src/ports`

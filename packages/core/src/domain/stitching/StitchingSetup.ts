@@ -1,7 +1,7 @@
-import type { FrameRegion, LensLayout, LensSource } from '../../domain/format/layout/LensLayout';
-import type { CalibrationSet, LensCalibration } from '../../domain/optics/LensCalibration';
-import type { LensProjectionParameters } from '../../domain/optics/LensModel';
-import { lensRotation } from '../../domain/optics/lensPose';
+import type { FrameRegion, LensLayout, LensSource } from './LensLayout';
+import type { CalibrationSet, LensCalibration } from '../optics/LensCalibration';
+import type { LensProjectionParameters } from '../optics/LensModel';
+import { lensRotation } from '../optics/lensPose';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import type { Matrix3 } from '../../shared/math/Matrix3';
 import { degrees, degreesToRadians, type Radians } from '../../shared/units/angle';

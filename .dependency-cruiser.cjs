@@ -64,10 +64,10 @@ module.exports = {
     {
       name: 'format-is-the-way-in',
       comment:
-        'Format is the anti-corruption layer: it produces motion, optics and view values, never the reverse.',
+        'Format is the anti-corruption layer: it produces motion, optics, view and stitching values, never the reverse.',
       severity: 'error',
       from: {
-        path: '^packages/core/src/domain/(motion|optics|view|playback)/',
+        path: '^packages/core/src/domain/(motion|optics|view|playback|stitching)/',
         pathNot: '\\.test\\.ts$',
       },
       to: { path: '^packages/core/src/domain/format/' },

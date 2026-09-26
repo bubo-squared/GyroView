@@ -30,7 +30,7 @@ export {
   type LensLayout,
   type LensLayoutKind,
   type LensSource,
-} from './domain/format/layout/LensLayout';
+} from './domain/stitching/LensLayout';
 export type { ParsedGyroRecord } from './domain/format/records/gyro/parseGyroRecord';
 export { GyroTrack, type GyroSample } from './domain/motion/gyro/GyroTrack';
 export {
@@ -127,11 +127,11 @@ export {
   type LensStitch,
   type StitchingInputs,
   type StitchingSetup,
-} from './application/stitching/StitchingSetup';
+} from './domain/stitching/StitchingSetup';
 export {
   StabilizingFrameSink,
   type StabilizingParts,
-} from './application/stitching/StabilizingFrameSink';
+} from './application/stabilization/StabilizingFrameSink';
 export type { PixelPoint } from './domain/optics/PixelPoint';
 export { EquidistantModel, type EquidistantParameters } from './domain/optics/EquidistantModel';
 export { DEFAULT_HALF_FIELD_OF_VIEW } from './domain/optics/opticsConstants';

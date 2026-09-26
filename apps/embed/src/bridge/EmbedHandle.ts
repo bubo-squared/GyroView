@@ -7,7 +7,6 @@ import {
   isGyroViewErrorCode,
   TypedEmitter,
 } from '@gyroview/core';
-import type { SoundLevel } from '@gyroview/player';
 
 import type { Endpoint } from './Endpoint';
 import type { EmbedState, LoadRequest } from './EmbedState';
@@ -180,8 +179,7 @@ export class EmbedHandle {
         break;
       }
       case 'event': {
-        this.stateValue = stateAfter(this.stateValue, message.name, message.detail);
-        this.emitForwarded(message);
+        this.onEvent(message);
         break;
       }
       case 'command': {
@@ -194,8 +192,10 @@ export class EmbedHandle {
    * The detail is the frame's: its origin is pinned and the message's shape and event name are
    * checked, so the payload is trusted to be that event's (ADR 0010).
    */
-  private emitForwarded(message: EventMessage): void {
-    this.events.emit(message.name, message.detail as EmbedEvents[ForwardedEventName]);
+  private onEvent(message: EventMessage): void {
+    const detail = message.detail as EmbedEvents[ForwardedEventName];
+    this.stateValue = stateAfter(this.stateValue, message.name, detail);
+    this.events.emit(message.name, detail);
   }
 
   private settle(result: ResultMessage): void {
@@ -212,55 +212,38 @@ function errorFrom(error: SerializedError): GyroViewError {
   return new GyroViewError(code, error.message);
 }
 
-type StateUpdater = (state: EmbedState, detail: unknown) => EmbedState;
+type StateUpdaters = {
+  readonly [Name in ForwardedEventName]?: (
+    state: EmbedState,
+    detail: EmbedEvents[Name],
+  ) => EmbedState;
+};
 
-function withTime(state: EmbedState, detail: unknown): EmbedState {
-  return { ...state, currentTime: detail as number };
+function withTime(state: EmbedState, currentTime: number): EmbedState {
+  return { ...state, currentTime };
 }
 
 /**
  * How each event moves the mirror: status, time, view, view mode, stabilization and sound follow
  * their events, the metadata arrives with `ready`.
  */
-const STATE_UPDATERS: ReadonlyMap<string, StateUpdater> = new Map<string, StateUpdater>([
-  [
-    'statuschange',
-    (state, detail): EmbedState => {
-      const status = detail as EmbedState['status'];
-      return { ...state, status, isPaused: !isFlowing(status) };
-    },
-  ],
-  ['timeupdate', withTime],
-  ['seeking', withTime],
-  ['seeked', withTime],
-  [
-    'ready',
-    (state, detail): EmbedState => {
-      const metadata = detail as NonNullable<EmbedState['metadata']>;
-      return { ...state, metadata, duration: metadata.duration };
-    },
-  ],
-  ['viewchange', (state, detail): EmbedState => ({ ...state, view: detail as EmbedState['view'] })],
-  [
-    'viewmodechange',
-    (state, detail): EmbedState => ({ ...state, viewMode: detail as EmbedState['viewMode'] }),
-  ],
-  [
-    'volumechange',
-    (state, detail): EmbedState => {
-      const sound = detail as SoundLevel;
-      return { ...state, volume: sound.volume, isMuted: sound.isMuted };
-    },
-  ],
-  [
-    'stabilizationchange',
-    (state, detail): EmbedState => ({
-      ...state,
-      stabilization: detail as EmbedState['stabilization'],
-    }),
-  ],
-]);
+const STATE_UPDATERS: StateUpdaters = {
+  statuschange: (state, status) => ({ ...state, status, isPaused: !isFlowing(status) }),
+  timeupdate: withTime,
+  seeking: withTime,
+  seeked: withTime,
+  ready: (state, metadata) => ({ ...state, metadata, duration: metadata.duration }),
+  viewchange: (state, view) => ({ ...state, view }),
+  viewmodechange: (state, viewMode) => ({ ...state, viewMode }),
+  volumechange: (state, sound) => ({ ...state, volume: sound.volume, isMuted: sound.isMuted }),
+  stabilizationchange: (state, stabilization) => ({ ...state, stabilization }),
+};
 
-function stateAfter(state: EmbedState, name: string, detail: unknown): EmbedState {
-  return STATE_UPDATERS.get(name)?.(state, detail) ?? state;
+function stateAfter<Name extends ForwardedEventName>(
+  state: EmbedState,
+  name: Name,
+  detail: EmbedEvents[Name],
+): EmbedState {
+  const update = STATE_UPDATERS[name];
+  return update ? update(state, detail) : state;
 }

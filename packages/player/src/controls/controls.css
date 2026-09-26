@@ -167,9 +167,17 @@ button[hidden] {
   visibility: visible;
 }
 
-@media (max-width: 480px) {
+/* A narrow player, on a phone or in a narrow column, gives up what the keyboard or the picture
+   also offers, so every other button stays in reach. */
+@container (max-width: 480px) {
   .volume,
   .stop {
+    display: none;
+  }
+}
+
+@container (max-width: 360px) {
+  .time {
     display: none;
   }
 }

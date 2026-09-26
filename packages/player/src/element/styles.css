@@ -26,12 +26,17 @@
   outline-offset: 2px;
 }
 
+/*
+ * Pinned over the page where the Fullscreen API is refused (iPhone Safari). Like the browser's
+ * own fullscreen rules it overrides the size and place the page gave the element, and the insets
+ * size it to the visible viewport, where 100vh would reach under Safari's toolbars.
+ */
 :host([data-fill]) {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  aspect-ratio: auto;
+  position: fixed !important;
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
   z-index: 2147483000;
 }
 
@@ -41,9 +46,11 @@
   aspect-ratio: auto;
 }
 
+/* The size container the controls fit themselves to: the player's width, not the page's. */
 .stage {
   position: absolute;
   inset: 0;
+  container-type: inline-size;
 }
 
 canvas {

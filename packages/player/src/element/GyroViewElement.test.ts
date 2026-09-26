@@ -495,6 +495,30 @@ describe('<gyro-view>', () => {
     expect(getComputedStyle(controls).pointerEvents).toBe('none');
   });
 
+  it('keeps every control of the bar within a narrow player on a wide page', async () => {
+    const element = await createReady();
+    const bounds = element.getBoundingClientRect();
+    const row = control(element, '.row', HTMLElement);
+    const shown = [...row.children].filter((child) => child.getBoundingClientRect().width > 0);
+    expect(shown.length).toBeGreaterThan(0);
+    for (const child of shown) {
+      expect(child.getBoundingClientRect().right).toBeLessThanOrEqual(bounds.right);
+    }
+  });
+
+  it('pins itself over the whole viewport where fullscreen is refused, whatever size the page gave it', async () => {
+    const element = create({ controls: '' });
+    element.requestFullscreen = (): Promise<void> => Promise.reject(new Error('refused'));
+    await element.toggleFullscreen();
+    expect(element.dataset['fill']).toBe('');
+    const { width, height } = element.getBoundingClientRect();
+    const viewport = document.documentElement;
+    expect({ width, height }).toEqual({
+      width: viewport.clientWidth,
+      height: viewport.clientHeight,
+    });
+  });
+
   it('fills the screen one way or another and leaves on Escape', async () => {
     const element = create({ controls: '' });
 

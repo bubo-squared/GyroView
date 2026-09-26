@@ -100,6 +100,16 @@ function isFillingTheScreen(element: GyroViewElement): boolean {
   return document.fullscreenElement === element || element.dataset['fill'] !== undefined;
 }
 
+/**
+ * Every part of the control bar ends within the element, none clipped out of reach.
+ */
+function expectBarWithin(element: GyroViewElement): void {
+  const bounds = element.getBoundingClientRect();
+  for (const part of control(element, '.row', HTMLElement).children) {
+    expect(part.getBoundingClientRect().right).toBeLessThanOrEqual(bounds.right);
+  }
+}
+
 function pointer(type: string, at: { x: number; y: number }): PointerEvent {
   return new PointerEvent(type, {
     pointerId: 1,
@@ -501,15 +511,21 @@ describe('<gyro-view>', () => {
     expect(getComputedStyle(controls).pointerEvents).toBe('none');
   });
 
-  it('keeps every control of the bar within a narrow player on a wide page', async () => {
+  it('keeps every control of the bar within the player at every width, whatever the text size', async () => {
     await page.viewport(WIDE_PAGE.width, WIDE_PAGE.height);
     const element = await createReady();
-    const bounds = element.getBoundingClientRect();
-    const row = control(element, '.row', HTMLElement);
-    const shown = [...row.children].filter((child) => child.getBoundingClientRect().width > 0);
-    expect(shown.length).toBeGreaterThan(0);
-    for (const child of shown) {
-      expect(child.getBoundingClientRect().right).toBeLessThanOrEqual(bounds.right);
+    const root = document.documentElement;
+    try {
+      for (const remInPixels of [16, 20]) {
+        root.style.fontSize = `${remInPixels}px`;
+        // Just above each breakpoint, where the most parts show, and the narrowest player.
+        for (const widthInRem of [31, 28.5, 23, 16.5]) {
+          element.style.width = `${widthInRem * remInPixels}px`;
+          expectBarWithin(element);
+        }
+      }
+    } finally {
+      root.style.fontSize = '';
     }
   });
 

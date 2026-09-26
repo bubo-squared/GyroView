@@ -169,20 +169,21 @@ button[hidden] {
 
 /* A narrowing player, on a phone or in a narrow column, gives up in turn the stop button (play
    pauses), the volume slider (mute stays) and the time, so the other buttons stay in reach. Each
-   width is where the bar stops fitting with the part, with times up to an hour. */
-@container (max-width: 490px) {
+   width is where the bar stops fitting with the part, with times up to an hour, in rem like the
+   bar itself, so larger page text moves them with it (490, 450 and 360 px at 16 px a rem). */
+@container (max-width: 30.625rem) {
   .stop {
     display: none;
   }
 }
 
-@container (max-width: 450px) {
+@container (max-width: 28.125rem) {
   .volume {
     display: none;
   }
 }
 
-@container (max-width: 360px) {
+@container (max-width: 22.5rem) {
   .time {
     display: none;
   }

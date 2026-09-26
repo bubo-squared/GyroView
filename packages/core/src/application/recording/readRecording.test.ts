@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { microseconds } from '../../shared/units/time';
 import { readRecording } from './readRecording';
-import { RecordType } from '../../domain/format/constants';
+import { InfoRecordFormat, RecordType } from '../../domain/format/constants';
 import { CalibrationVersion } from '../../domain/optics/LensCalibration';
 import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSource';
 import { TrailerFixtureBuilder } from '../../testing/TrailerFixtureBuilder';
@@ -14,14 +14,12 @@ import {
   RAW_ZERO_POINT,
 } from '../../../test/support/officeGyroSample';
 
-const PROTOBUF = 1;
-
 function officeRecords(): TrailerFixtureBuilder {
   return new TrailerFixtureBuilder()
     .withPrefix(minimalMp4Prefix())
     .addRecord({
       id: RecordType.Info,
-      format: PROTOBUF,
+      format: InfoRecordFormat.Protobuf,
       payload: loadFixture('x5/office/record-01-info.bin'),
     })
     .addRecord({
@@ -92,7 +90,7 @@ describe('readRecording on synthetic X5 files', () => {
       .withPrefix(minimalMp4Prefix())
       .addRecord({
         id: RecordType.Info,
-        format: PROTOBUF,
+        format: InfoRecordFormat.Protobuf,
         payload: loadFixture('x5/office/record-01-info.bin'),
       })
       .buildContiguous();
@@ -114,7 +112,11 @@ describe('readRecording on synthetic X5 files', () => {
   it('reports a recording without any calibration string as having none, and still opens it', async () => {
     const file = new TrailerFixtureBuilder()
       .withPrefix(minimalMp4Prefix())
-      .addRecord({ id: RecordType.Info, format: PROTOBUF, payload: new Uint8Array() })
+      .addRecord({
+        id: RecordType.Info,
+        format: InfoRecordFormat.Protobuf,
+        payload: new Uint8Array(),
+      })
       .buildContiguous();
     const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
     expect(recording.calibration).toEqual({ calibration: undefined, warnings: [] });
@@ -129,7 +131,7 @@ describe('readRecording on synthetic X5 files', () => {
     const info = new Uint8Array([0xc0, 0x01, 0xd0, 0x0f]); // field 24 (first frame timestamp) = 2000
     const file = new TrailerFixtureBuilder()
       .withPrefix(minimalMp4Prefix())
-      .addRecord({ id: RecordType.Info, format: PROTOBUF, payload: info })
+      .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: info })
       .addRecord({ id: RecordType.Gyro, payload: floatSamples })
       .buildContiguous();
     const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));

@@ -1,12 +1,10 @@
 import { readRecording } from '../../src/application/recording/readRecording';
 import type { Recording } from '../../src/application/recording/Recording';
-import { RecordType } from '../../src/domain/format/constants';
+import { InfoRecordFormat, RecordType } from '../../src/domain/format/constants';
 import { InMemoryRandomAccessSource } from '../../src/testing/InMemoryRandomAccessSource';
 import { TrailerFixtureBuilder } from '../../src/testing/TrailerFixtureBuilder';
 import { loadFixture } from './fixtures';
 import { minimalMp4Prefix } from './mp4Prefix';
-
-const PROTOBUF = 1;
 
 export interface OfficeRecordingParts {
   /**
@@ -25,7 +23,7 @@ export function officeRecording(parts: OfficeRecordingParts = {}): Promise<Recor
     .withPrefix(minimalMp4Prefix())
     .addRecord({
       id: RecordType.Info,
-      format: PROTOBUF,
+      format: InfoRecordFormat.Protobuf,
       payload: parts.info ?? loadFixture('x5/office/record-01-info.bin'),
     })
     .addRecord({

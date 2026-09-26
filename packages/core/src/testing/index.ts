@@ -32,3 +32,4 @@ export {
 } from './TrailerFixtureBuilder';
 export { FakeDemuxer, type FakeInputSpec } from './FakeDemuxer';
 export { minimalInfoRecord, type MinimalInfo } from './minimalInfoRecord';
+export { InfoRecordFormat } from '../domain/format/constants';

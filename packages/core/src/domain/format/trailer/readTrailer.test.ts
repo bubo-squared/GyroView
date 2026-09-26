@@ -6,6 +6,7 @@ import {
   FOOTER_TRAILER_SIZE_OFFSET,
   INDEX_SLOT_OFFSET_OFFSET,
   INDEX_SLOT_SIZE,
+  InfoRecordFormat,
   RECORD_HEADER_SIZE,
   RecordType,
   TRAILER_FOOTER_SIZE,
@@ -34,7 +35,7 @@ function realFileStandIn(sample: 'office' | 'sailing'): SparseRandomAccessSource
 function syntheticRecords(): TrailerFixtureBuilder {
   return new TrailerFixtureBuilder()
     .withPrefix(new Uint8Array([0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32]))
-    .addRecord({ id: RecordType.Info, format: 1, payload: INFO_PAYLOAD })
+    .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: INFO_PAYLOAD })
     .addRecord({ id: RecordType.Gyro, payload: GYRO_PAYLOAD })
     .addRecord({ id: RecordType.Exposure, payload: EXPOSURE_PAYLOAD });
 }
@@ -126,7 +127,7 @@ describe('readTrailer with synthetic layouts', () => {
 
   it('accepts a trailer that spans the whole file', async () => {
     const file = new TrailerFixtureBuilder()
-      .addRecord({ id: RecordType.Info, format: 1, payload: INFO_PAYLOAD })
+      .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: INFO_PAYLOAD })
       .buildContiguous();
     const trailer = await readTrailer(new InMemoryRandomAccessSource(file.bytes));
     expect(trailer.payloadStart).toBe(0);

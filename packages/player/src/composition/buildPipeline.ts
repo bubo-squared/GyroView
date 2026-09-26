@@ -11,6 +11,7 @@ import {
   type DecodePipelineOptions,
   type FrameSink,
   type PlaybackClock,
+  type StitchingSetup,
   messageOf,
 } from '@gyroview/core';
 
@@ -152,7 +153,7 @@ function wallClock(warning: string): ChosenClock {
   return { clock: new WallClock(), warnings: [warning] };
 }
 
-function stitchingSetupOf(opened: OpenedRecording): ReturnType<typeof buildStitchingSetup> {
+function stitchingSetupOf(opened: OpenedRecording): StitchingSetup {
   return buildStitchingSetup({ calibration: opened.calibration, layout: opened.layout });
 }
 

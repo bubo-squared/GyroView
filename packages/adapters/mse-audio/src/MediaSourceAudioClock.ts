@@ -130,7 +130,7 @@ function isNamed(error: unknown, name: string): boolean {
  */
 function asClockFailure(error: unknown): GyroViewError {
   if (error instanceof GyroViewError) return error;
-  const isUnsupported = error instanceof DOMException && error.name === 'NotSupportedError';
+  const isUnsupported = isNamed(error, 'NotSupportedError');
   return new GyroViewError(
     isUnsupported ? 'codec-unsupported' : 'decode',
     `the audio element refused the recording's sound: ${messageOf(error)}`,

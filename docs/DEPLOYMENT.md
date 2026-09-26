@@ -28,8 +28,9 @@ bucket) hosting the `.insv` files must:
 
 - answer `Range` requests with `206 Partial Content` and `Accept-Ranges: bytes`; a server that
   answers `200` with the whole file shows as `range-unsupported`;
-- answer `HEAD` with `Content-Length`, or with `405`, in which case a one-byte range is asked
-  for instead;
+- answer `HEAD` with `Content-Length`, which saves a request; a server that refuses `HEAD` (a
+  `405`, or a `403` from a URL signed for `GET` alone) or omits the length is asked for a
+  one-byte range instead;
 - when the page is on another origin, send CORS headers on every response:
 
   ```

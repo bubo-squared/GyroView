@@ -3,7 +3,6 @@ import { GyroViewError, type ByteRange, type RandomAccessSource } from '@gyrovie
 import {
   discardBody,
   FIRST_BYTE_RANGE,
-  HTTP_METHOD_NOT_ALLOWED,
   httpRequest,
   type HttpMethod,
   type HttpRequestOptions,
@@ -81,13 +80,9 @@ export class HttpRangeSource implements RandomAccessSource {
   private async fetchSize(): Promise<number> {
     const response = await this.request('HEAD');
     discardBody(response);
-    if (response.status === HTTP_METHOD_NOT_ALLOWED) return this.sizeFromContentRange();
-    if (!response.ok) {
-      throw new GyroViewError(
-        'source-unreadable',
-        `${this.url} answered ${response.status} to HEAD`,
-      );
-    }
+    // A refused HEAD (a 405, or a 403 from a URL signed for GET alone) says nothing about the
+    // file: the byte range the player needs anyway answers, and names any real problem.
+    if (!response.ok) return this.sizeFromContentRange();
     const contentLength = Number(response.headers.get('content-length'));
     const hasContentLength = Number.isSafeInteger(contentLength) && contentLength > 0;
     return hasContentLength ? contentLength : this.sizeFromContentRange();

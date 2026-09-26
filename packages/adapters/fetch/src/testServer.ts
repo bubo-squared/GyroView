@@ -11,9 +11,10 @@ interface TestServerBehaviour {
    */
   readonly hidesContentLength?: boolean;
   /**
-   * Answer HEAD with 405 Method Not Allowed.
+   * Answer HEAD with this status, as a server that does not allow it (405) or a URL signed for
+   * GET alone (403) does.
    */
-  readonly refusesHead?: boolean;
+  readonly answersHeadWith?: number;
   /**
    * Answer every request with this status.
    */
@@ -27,7 +28,6 @@ interface Served {
 
 const HTTP_OK = 200;
 const HTTP_PARTIAL_CONTENT = 206;
-const HTTP_METHOD_NOT_ALLOWED = 405;
 const RANGE_HEADER = /^bytes=(\d+)-(\d+)$/u;
 
 /**
@@ -85,7 +85,7 @@ function respond(request: IncomingMessage, response: ServerResponse, served: Ser
  */
 function refusalOf(request: IncomingMessage, behaviour: TestServerBehaviour): number | undefined {
   if (behaviour.failsWith !== undefined) return behaviour.failsWith;
-  return behaviour.refusesHead && request.method === 'HEAD' ? HTTP_METHOD_NOT_ALLOWED : undefined;
+  return request.method === 'HEAD' ? behaviour.answersHeadWith : undefined;
 }
 
 /**

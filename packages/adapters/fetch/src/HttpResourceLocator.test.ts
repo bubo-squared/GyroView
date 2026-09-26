@@ -52,7 +52,7 @@ describe('HttpResourceLocator', () => {
   });
 
   it('falls back to a one-byte GET when HEAD is not allowed', async () => {
-    const server = await serve({ refusesHead: true });
+    const server = await serve({ answersHeadWith: 405 });
     await expect(new HttpResourceLocator().exists(server.url)).resolves.toBe(true);
   });
 

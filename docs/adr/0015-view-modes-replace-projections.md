@@ -21,7 +21,7 @@ the player shows, not of where the viewer looks.
 The view state is only where the viewer looks: yaw, pitch and a horizontal field of view of 30
 to 120 degrees. What the picture shows is a separate setting, the view mode, carried like the
 stabilization mode: the `view-mode` attribute, `setViewMode`, the `viewmodechange` event, the
-`setViewMode` bridge command and the settings menu's "View" choice.
+`setViewMode` bridge command and the "View" menu behind its own button in the control bar.
 
 - `normal`: the rectilinear window into the stitched, stabilized sphere, turned by drags and
   arrow keys and zoomed by the wheel, pinch and the zoom keys.

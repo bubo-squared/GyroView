@@ -1,5 +1,7 @@
 import { ensureInvariant } from '@gyroview/core';
 
+import type { ChoiceMenuParts } from './ChoiceMenu';
+
 /**
  * The elements the controls bar drives, found once in the shadow tree.
  */
@@ -12,11 +14,9 @@ export interface ControlParts {
   readonly mute: HTMLButtonElement;
   readonly volume: HTMLInputElement;
   readonly resetView: HTMLButtonElement;
-  readonly settings: HTMLButtonElement;
+  readonly stabilization: ChoiceMenuParts;
+  readonly viewMode: ChoiceMenuParts;
   readonly fullscreen: HTMLButtonElement;
-  readonly menu: HTMLElement;
-  readonly stabilization: HTMLSelectElement;
-  readonly viewMode: HTMLSelectElement;
 }
 
 /**
@@ -32,6 +32,16 @@ export function queryShadow<Found extends Element>(
   return element;
 }
 
+/**
+ * The button `.<name>-button` and its popup `.<name>-menu`.
+ */
+function queryChoiceMenu(root: ParentNode, name: string): ChoiceMenuParts {
+  return {
+    button: queryShadow(root, `.${name}-button`, HTMLButtonElement),
+    popup: queryShadow(root, `.${name}-menu`, HTMLElement),
+  };
+}
+
 export function queryControlParts(root: ParentNode): ControlParts {
   return {
     seek: queryShadow(root, '.seek', HTMLInputElement),
@@ -42,10 +52,8 @@ export function queryControlParts(root: ParentNode): ControlParts {
     mute: queryShadow(root, '.mute', HTMLButtonElement),
     volume: queryShadow(root, '.volume', HTMLInputElement),
     resetView: queryShadow(root, '.reset-view', HTMLButtonElement),
-    settings: queryShadow(root, '.settings', HTMLButtonElement),
+    stabilization: queryChoiceMenu(root, 'stabilization'),
+    viewMode: queryChoiceMenu(root, 'view-mode'),
     fullscreen: queryShadow(root, '.fullscreen', HTMLButtonElement),
-    menu: queryShadow(root, '.menu', HTMLElement),
-    stabilization: queryShadow(root, '.stabilization', HTMLSelectElement),
-    viewMode: queryShadow(root, '.view-mode', HTMLSelectElement),
   };
 }

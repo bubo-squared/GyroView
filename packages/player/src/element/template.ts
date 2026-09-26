@@ -23,11 +23,39 @@ const VIEW_MODE_LABELS: Readonly<Record<ViewMode, string>> = {
   'raw-lenses': 'Raw lenses',
 };
 
-function optionsOf<Choice extends string>(
+function menuItemsOf<Choice extends string>(
   choices: readonly Choice[],
   labels: Readonly<Record<Choice, string>>,
 ): string {
-  return choices.map((choice) => `<option value="${choice}">${labels[choice]}</option>`).join('');
+  return choices
+    .map(
+      (choice) =>
+        `<button type="button" role="menuitemradio" aria-checked="false" data-choice="${choice}">${labels[choice]}</button>`,
+    )
+    .join('');
+}
+
+interface ChoiceMenuMarkup {
+  /**
+   * Names the button `.<name>-button` and its popup `.<name>-menu`.
+   */
+  readonly name: string;
+  readonly title: string;
+  readonly icon: string;
+  readonly items: string;
+}
+
+/**
+ * A button opening a popup of choices; the popup's title repeats the button's label for sight.
+ */
+function choiceMenuOf(menu: ChoiceMenuMarkup): string {
+  return `<div class="choice">
+        <button class="${menu.name}-button" type="button" aria-label="${menu.title}" aria-haspopup="menu" aria-expanded="false">${menu.icon}</button>
+        <div class="popup ${menu.name}-menu" hidden>
+          <p class="popup-title" aria-hidden="true">${menu.title}</p>
+          <div role="menu" aria-label="${menu.title}">${menu.items}</div>
+        </div>
+      </div>`;
 }
 
 /**
@@ -56,21 +84,19 @@ export const ELEMENT_TEMPLATE = `
       <button class="mute" type="button" aria-label="Mute" aria-pressed="false">${ICONS.sound}</button>
       <input class="volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume" />
       <button class="reset-view" type="button" aria-label="Reset view">${ICONS.resetView}</button>
-      <button class="settings" type="button" aria-label="Settings" aria-haspopup="true" aria-expanded="false">${ICONS.settings}</button>
+      ${choiceMenuOf({
+        name: 'stabilization',
+        title: 'Stabilization',
+        icon: ICONS.stabilization,
+        items: menuItemsOf(STABILIZATION_MODES, STABILIZATION_LABELS),
+      })}
+      ${choiceMenuOf({
+        name: 'view-mode',
+        title: 'View',
+        icon: ICONS.viewMode,
+        items: menuItemsOf(VIEW_MODES, VIEW_MODE_LABELS),
+      })}
       <button class="fullscreen" type="button" aria-label="Fullscreen">${ICONS.fullscreen}</button>
-    </div>
-    <div class="menu" hidden>
-      <label>Stabilization
-        <select class="stabilization" aria-label="Stabilization">
-          ${optionsOf(STABILIZATION_MODES, STABILIZATION_LABELS)}
-        </select>
-      </label>
-      <label>View
-        <select class="view-mode" aria-label="View">
-          ${optionsOf(VIEW_MODES, VIEW_MODE_LABELS)}
-        </select>
-      </label>
-
     </div>
   </div>
 </div>

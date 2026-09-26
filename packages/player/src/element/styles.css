@@ -205,8 +205,7 @@ button:focus-visible {
 }
 
 button:focus-visible,
-input:focus-visible,
-select:focus-visible {
+input:focus-visible {
   outline: 2px solid var(--gyro-view-accent);
   outline-offset: 1px;
 }
@@ -225,35 +224,60 @@ input[type='range'] {
   width: 5rem;
 }
 
-.menu {
-  position: absolute;
-  right: 0.5rem;
-  bottom: 3.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border-radius: var(--gyro-view-radius);
-  background: var(--gyro-view-controls-background);
-  font-size: 0.85rem;
-}
-
-.menu[hidden],
-.menu label[hidden] {
+button[hidden] {
   display: none;
 }
 
-.menu label {
+.choice {
+  position: relative;
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: center;
 }
 
-select {
-  font: inherit;
+.popup {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.5rem);
+  display: flex;
+  flex-direction: column;
+  min-width: 9rem;
+  padding: 0.35rem;
   border-radius: var(--gyro-view-radius);
-  padding: 0.15rem 0.3rem;
+  background: var(--gyro-view-controls-background);
+}
+
+.popup[hidden] {
+  display: none;
+}
+
+.popup-title {
+  margin: 0.2rem 0.5rem 0.35rem;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+[role='menu'] {
+  display: flex;
+  flex-direction: column;
+}
+
+[role='menuitemradio'] {
+  justify-content: flex-start;
+  gap: 0.4rem;
+  height: 2rem;
+  padding: 0 0.75rem 0 0.4rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+[role='menuitemradio']::before {
+  content: '\2713';
+  width: 1rem;
+  color: var(--gyro-view-accent);
+  visibility: hidden;
+}
+
+[role='menuitemradio'][aria-checked='true']::before {
+  visibility: visible;
 }
 
 @media (max-width: 480px) {

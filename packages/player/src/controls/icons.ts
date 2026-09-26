@@ -23,8 +23,11 @@ export const ICONS = {
   sound: icon(`${SPEAKER}<path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18.5 6a8 8 0 0 1 0 12"/>`),
   muted: icon(`${SPEAKER}<path d="M16 9.5l5 5M21 9.5l-5 5"/>`),
   resetView: icon('<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/>'),
-  settings: icon(
-    '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+  stabilization: icon(
+    '<rect x="2.5" y="8.5" width="19" height="7" rx="3.5"/><path d="M8.5 8.5v7M15.5 8.5v7"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/>',
+  ),
+  viewMode: icon(
+    '<circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.5" ry="8.5"/><path d="M3.5 12h17"/>',
   ),
   fullscreen: icon('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
 } satisfies Readonly<Record<string, string>>;

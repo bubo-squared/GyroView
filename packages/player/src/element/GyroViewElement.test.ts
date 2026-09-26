@@ -52,6 +52,21 @@ function control<Found extends Element>(
   return queryShadow(shadowOf(element), selector, kind);
 }
 
+/**
+ * The choices a menu offers, and the one it checks.
+ */
+function menuOf(element: GyroViewElement, name: string): { choices: string[]; checked: string[] } {
+  const items = control(element, `.${name}-menu`, HTMLElement).querySelectorAll<HTMLElement>(
+    ':scope [role="menuitemradio"]',
+  );
+  const choicesOf = (list: HTMLElement[]): string[] =>
+    list.map((item) => item.dataset['choice'] ?? '');
+  return {
+    choices: choicesOf([...items]),
+    checked: choicesOf([...items].filter((item) => item.getAttribute('aria-checked') === 'true')),
+  };
+}
+
 function pointer(type: string, at: { x: number; y: number }): PointerEvent {
   return new PointerEvent(type, {
     pointerId: 1,
@@ -124,7 +139,10 @@ describe('<gyro-view>', () => {
     expect(play.getAttribute('aria-label')).toBe('Play');
     expect(getComputedStyle(controls).display).not.toBe('none');
     const stage = control(element, '.stage', HTMLElement);
-    for (const button of stage.querySelectorAll(':scope .big-play, :scope .row button')) {
+    const buttons = stage.querySelectorAll(
+      ':scope .big-play, :scope .row button:not([role="menuitemradio"])',
+    );
+    for (const button of buttons) {
       expect(button.getAttribute('aria-label')).not.toBeNull();
       expect(button.querySelectorAll('svg.icon')).toHaveLength(1);
       expect(button.textContent).toBe('');
@@ -216,20 +234,17 @@ describe('<gyro-view>', () => {
     element.setViewMode('equirectangular');
     expect(await modeChanged).toBe('equirectangular');
     expect(element.viewMode).toBe('equirectangular');
-    expect(control(element, '.view-mode', HTMLSelectElement).value).toBe('equirectangular');
+    expect(menuOf(element, 'view-mode').checked).toEqual(['equirectangular']);
     element.setAttribute('view-mode', 'bogus');
-    expect(control(element, '.view-mode', HTMLSelectElement).value).toBe('equirectangular');
-    const options = control(element, '.view-mode', HTMLSelectElement).options;
-    expect([...options].map((option) => option.value)).toEqual([
-      'normal',
-      'equirectangular',
-      'raw-lenses',
-    ]);
+    expect(menuOf(element, 'view-mode')).toEqual({
+      choices: ['normal', 'equirectangular', 'raw-lenses'],
+      checked: ['equirectangular'],
+    });
 
     const changed = nextEvent<string>(element, 'stabilizationchange');
     element.setStabilization('off');
     expect(await changed).toBe('off');
-    expect(control(element, '.stabilization', HTMLSelectElement).value).toBe('off');
+    expect(menuOf(element, 'stabilization').checked).toEqual(['off']);
 
     element.loop = true;
     element.poster = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
@@ -242,12 +257,26 @@ describe('<gyro-view>', () => {
 
   it('keeps a setting chosen in the menu when it reloads', async () => {
     const element = await createReady({ stabilization: 'horizon' });
-    const menuChoice = control(element, '.stabilization', HTMLSelectElement);
-    menuChoice.value = 'off';
-    menuChoice.dispatchEvent(new Event('change'));
+    control(element, '.stabilization-button', HTMLButtonElement).click();
+    control(element, '.stabilization-menu [data-choice="off"]', HTMLButtonElement).click();
     await element.load();
     expect(element.stabilization).toBe('off');
-    expect(menuChoice.value).toBe('off');
+    expect(menuOf(element, 'stabilization').checked).toEqual(['off']);
+  });
+
+  it('offers stabilization only in the view modes it changes', async () => {
+    const element = await createReady();
+    const stabilization = control(element, '.stabilization-button', HTMLButtonElement);
+    expect(stabilization.hidden).toBe(false);
+
+    control(element, '.view-mode-button', HTMLButtonElement).click();
+    control(element, '.view-mode-menu [data-choice="raw-lenses"]', HTMLButtonElement).click();
+    expect(element.viewMode).toBe('raw-lenses');
+    expect(stabilization.hidden).toBe(true);
+    expect(getComputedStyle(stabilization).display).toBe('none');
+
+    element.setViewMode('equirectangular');
+    expect(stabilization.hidden).toBe(false);
   });
 
   it('reports the settings in effect whether or not an attribute names them', async () => {
@@ -348,12 +377,16 @@ describe('<gyro-view>', () => {
   it('lets an open menu take the Escape and stays in fullscreen until the next one', async () => {
     const element = await createReady();
     await element.toggleFullscreen();
-    control(element, '.settings', HTMLButtonElement).click();
+    control(element, '.view-mode-button', HTMLButtonElement).click();
+    const popup = control(element, '.view-mode-menu', HTMLElement);
+    expect(popup.hidden).toBe(false);
 
     const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true });
-    control(element, '.stabilization', HTMLSelectElement).dispatchEvent(escape);
+    control(element, '.view-mode-menu [data-choice="normal"]', HTMLButtonElement).dispatchEvent(
+      escape,
+    );
 
-    expect(control(element, '.menu', HTMLElement).hidden).toBe(true);
+    expect(popup.hidden).toBe(true);
     const isFilling =
       document.fullscreenElement === element || element.dataset['fill'] !== undefined;
     expect(isFilling).toBe(true);

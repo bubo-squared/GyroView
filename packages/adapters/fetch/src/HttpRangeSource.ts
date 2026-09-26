@@ -67,13 +67,7 @@ export class HttpRangeSource implements RandomAccessSource {
    * typed error, so the range is checked against the (cached) size first.
    */
   private async ensureFits(range: ByteRange): Promise<void> {
-    const size = await this.size();
-    if (!range.fitsWithin(size)) {
-      throw new GyroViewError(
-        'invalid-byte-range',
-        `range ${range.offset}+${range.length} exceeds the ${size}-byte resource ${this.url}`,
-      );
-    }
+    range.ensureWithin(await this.size(), `resource ${this.url}`);
   }
 
   private async rememberSize(): Promise<number> {

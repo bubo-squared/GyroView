@@ -38,12 +38,7 @@ export class FileRandomAccessSource implements RandomAccessSource {
   }
 
   public async read(range: ByteRange): Promise<Uint8Array> {
-    if (!range.fitsWithin(this.totalSize)) {
-      throw new GyroViewError(
-        'invalid-byte-range',
-        `range ${range.offset}+${range.length} exceeds the ${this.totalSize}-byte file ${this.path}`,
-      );
-    }
+    range.ensureWithin(this.totalSize, `file ${this.path}`);
     const buffer = new Uint8Array(range.length);
     let filled = 0;
     while (filled < range.length) {

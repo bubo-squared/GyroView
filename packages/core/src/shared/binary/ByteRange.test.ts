@@ -18,6 +18,19 @@ describe('ByteRange', () => {
     expect(ByteRange.of(91, 10).fitsWithin(100)).toBe(false);
   });
 
+  it('refuses to run past the end of a source, naming it', () => {
+    const error = captureError(() => {
+      ByteRange.of(91, 10).ensureWithin(100, 'blob');
+    });
+    expect(error).toMatchObject({
+      code: 'invalid-byte-range',
+      message: 'range 91+10 exceeds the 100-byte blob',
+    });
+    expect(() => {
+      ByteRange.of(90, 10).ensureWithin(100, 'blob');
+    }).not.toThrow();
+  });
+
   it.each([
     [-1, 4],
     [1.5, 4],

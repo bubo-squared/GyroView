@@ -1,6 +1,5 @@
 import type { RandomAccessSource } from '../ports/RandomAccessSource';
 import { ByteRange } from '../shared/binary/ByteRange';
-import { GyroViewError } from '../shared/errors/GyroViewError';
 
 interface Segment {
   readonly range: ByteRange;
@@ -39,12 +38,7 @@ export class SparseRandomAccessSource implements RandomAccessSource {
 
   public place(offset: number, bytes: Uint8Array): this {
     const range = ByteRange.of(offset, bytes.byteLength);
-    if (!range.fitsWithin(this.totalSize)) {
-      throw new GyroViewError(
-        'invalid-byte-range',
-        `segment ${offset}+${bytes.byteLength} exceeds size ${this.totalSize}`,
-      );
-    }
+    range.ensureWithin(this.totalSize, 'sparse source');
     this.segments.push({ range, bytes });
     return this;
   }
@@ -56,9 +50,10 @@ export class SparseRandomAccessSource implements RandomAccessSource {
 
   public read(range: ByteRange): Promise<Uint8Array> {
     this.readLog.push(range);
-    return range.fitsWithin(this.totalSize)
-      ? Promise.resolve(this.assemble(range))
-      : Promise.reject(this.outOfRange(range));
+    return new Promise((resolve) => {
+      range.ensureWithin(this.totalSize, 'sparse source');
+      resolve(this.assemble(range));
+    });
   }
 
   private assemble(range: ByteRange): Uint8Array {
@@ -74,13 +69,6 @@ export class SparseRandomAccessSource implements RandomAccessSource {
     into.set(
       segment.bytes.subarray(start - segment.range.offset, end - segment.range.offset),
       start - range.offset,
-    );
-  }
-
-  private outOfRange(range: ByteRange): GyroViewError {
-    return new GyroViewError(
-      'invalid-byte-range',
-      `range ${range.offset}+${range.length} exceeds size ${this.totalSize}`,
     );
   }
 }

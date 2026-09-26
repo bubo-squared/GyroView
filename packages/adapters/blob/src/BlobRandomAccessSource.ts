@@ -13,12 +13,7 @@ export class BlobRandomAccessSource implements RandomAccessSource {
   }
 
   public async read(range: ByteRange): Promise<Uint8Array> {
-    if (!range.fitsWithin(this.blob.size)) {
-      throw new GyroViewError(
-        'invalid-byte-range',
-        `range ${range.offset}+${range.length} exceeds the ${this.blob.size}-byte blob`,
-      );
-    }
+    range.ensureWithin(this.blob.size, 'blob');
     if (range.length === 0) return new Uint8Array();
     const bytes = new Uint8Array(await this.slice(range).arrayBuffer());
     if (bytes.byteLength !== range.length) {

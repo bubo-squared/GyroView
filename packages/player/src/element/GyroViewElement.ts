@@ -45,6 +45,15 @@ const STRING_ATTRIBUTES = [
 ];
 const BOOLEAN_ATTRIBUTES = [PlaybackAttribute.Autoplay, PlaybackAttribute.Controls];
 const SOURCE_ATTRIBUTES: readonly string[] = Object.values(SourceAttribute);
+/**
+ * The source attributes that name what to play; `quality` only picks a rendition of it, so
+ * changing it reloads files handed in as well.
+ */
+const NAMING_ATTRIBUTES: ReadonlySet<string> = new Set([
+  SourceAttribute.Src,
+  SourceAttribute.Src2,
+  SourceAttribute.Proxy,
+]);
 const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);
 
 /**
@@ -147,7 +156,7 @@ export class GyroViewElement extends HTMLElement {
     value: string | null,
   ): void {
     if (SOURCE_ATTRIBUTES.includes(name)) {
-      this.files = undefined;
+      if (NAMING_ATTRIBUTES.has(name)) this.files = undefined;
       this.scheduleLoad();
     } else if (VIEW_ATTRIBUTES.includes(name)) {
       this.player.setView(viewAfterAttribute(this.player.view, name, value));
@@ -214,7 +223,8 @@ export class GyroViewElement extends HTMLElement {
   }
 
   /**
-   * Plays local files instead of the `src` attributes, until those change again.
+   * Plays local files instead of the `src` attributes, until `src`, `src2` or `proxy` change;
+   * a change of `quality` reloads the files.
    */
   public loadFiles(files: FileSource): void {
     this.files = files;

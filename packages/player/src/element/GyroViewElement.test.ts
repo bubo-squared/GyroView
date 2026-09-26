@@ -310,6 +310,20 @@ describe('<gyro-view>', () => {
     expect(element.metadata?.model).toBe('Insta360 X5');
   });
 
+  it('reloads the same local files when the quality changes', async () => {
+    const element = create({ controls: '' });
+    const bytes = await fetchBytes(X5_RECORDING_URL);
+    const firstReady = nextEvent(element, 'ready');
+    element.loadFiles({ main: new File([bytes], 'VID_20260814_132640_00_013.insv') });
+    await firstReady;
+
+    const reloaded = nextEvent(element, 'ready');
+    element.quality = 'full';
+
+    await reloaded;
+    expect(element.status).toBe('ready');
+  });
+
   it('fills the screen one way or another and leaves on Escape', async () => {
     const element = await createReady();
 

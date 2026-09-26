@@ -45,7 +45,10 @@ export interface LensStitch {
 
 export interface StitchingSetup {
   readonly lenses: readonly LensStitch[];
-  readonly frameCount: number;
+  /**
+   * How many decoded frames make up one pair: one per distinct track the lenses draw from.
+   */
+  readonly frameSlotCount: number;
   readonly feather: FeatherBand;
 }
 
@@ -111,7 +114,7 @@ export function buildStitchingSetup(inputs: StitchingInputs): StitchingSetup {
       halfFieldOfView: lens.model.halfFieldOfView,
     };
   });
-  return { lenses, frameCount: frames.length, feather: DEFAULT_FEATHER };
+  return { lenses, frameSlotCount: frames.length, feather: DEFAULT_FEATHER };
 }
 
 function isSameSource(key: FrameSourceKey, source: LensSource): boolean {

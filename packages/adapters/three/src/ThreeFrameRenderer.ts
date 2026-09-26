@@ -101,7 +101,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
       );
     }
     const renderer = createRenderer(canvas, options);
-    const textures = Array.from({ length: setup.frameCount }, () => createLensTexture());
+    const textures = Array.from({ length: setup.frameSlotCount }, () => createLensTexture());
     const uniforms = createRendererUniforms(setup, textures);
     const materials = createPictureMaterials(uniforms);
     const pass = new Mesh(createFullscreenTriangle(), materials.rectilinear);

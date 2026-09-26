@@ -52,7 +52,7 @@ describe('buildStitchingSetup', () => {
 
   it('maps each lens onto its frame and the whole canvas square holding its principal point', () => {
     const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
-    expect(setup.frameCount).toBe(2);
+    expect(setup.frameSlotCount).toBe(2);
     expect(setup.feather.start).toBeLessThan(setup.feather.end);
     expect(setup.lenses.map((lens) => [lens.lensIndex, lens.frameSlot])).toEqual([
       [0, 0],
@@ -69,7 +69,7 @@ describe('buildStitchingSetup', () => {
 
   it('gives each file of a split-file pair its own frame', () => {
     const setup = buildStitchingSetup({ calibration, layout: SPLIT_FILES });
-    expect(setup.frameCount).toBe(2);
+    expect(setup.frameSlotCount).toBe(2);
     expect(setup.lenses.map((lens) => lens.frameSlot)).toEqual([0, 1]);
   });
 
@@ -84,7 +84,7 @@ describe('buildStitchingSetup', () => {
 
   it('shares one frame between the halves of a packed layout', () => {
     const setup = buildStitchingSetup({ calibration, layout: PACKED });
-    expect(setup.frameCount).toBe(1);
+    expect(setup.frameSlotCount).toBe(1);
     expect(setup.lenses.map((lens) => [lens.frameSlot, lens.region])).toEqual([
       [0, LEFT_HALF],
       [0, RIGHT_HALF],

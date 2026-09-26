@@ -6,12 +6,10 @@ import {
 } from '@gyroview/player';
 
 import { FpsCounter } from './FpsCounter';
-import {
-  sampleRecordingsOf,
-  type SampleFolderListing,
-  type SampleRecording,
-} from './sampleRecordings';
+import { sampleRecordingsOf, type SampleRecording } from './sampleRecordings';
+import { SAMPLES_ENDPOINT, type SampleFolderListing } from './samplesListing';
 import { embedUrlFor } from '../bridge/embedUrl';
+import { FRAME_PERMISSIONS } from '../snippet/embedSnippet';
 
 interface DevelopmentPageParts {
   readonly player: GyroViewElement;
@@ -25,7 +23,6 @@ interface DevelopmentPageParts {
   readonly embedLink: HTMLAnchorElement;
 }
 
-const SAMPLES_ENDPOINT = '/samples.json';
 const STATUS_INTERVAL_MS = 250;
 const JSON_INDENT = 2;
 
@@ -174,7 +171,7 @@ function showEmbedding(parts: DevelopmentPageParts, url: string): void {
   const embedUrl = embedUrlFor(embedPage, { src: url, muted: true }, location.origin);
   parts.embedLink.href = embedUrl;
   parts.snippet.textContent = [
-    `<iframe src="${embedUrl}" allow="fullscreen; autoplay" width="960" height="540"></iframe>`,
+    `<iframe src="${embedUrl}" allow="${FRAME_PERMISSIONS}" width="960" height="540"></iframe>`,
     '',
     `<script src="${new URL('embed.js', location.href).href}"></script>`,
     `<script>GyroView.embed(document.querySelector('#player'), { src: '${url}', muted: true });</script>`,

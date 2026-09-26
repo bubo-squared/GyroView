@@ -36,9 +36,7 @@ describe('GyroView.embed', () => {
 
     embedded.destroy();
     expect(container.querySelector('iframe')).toBeNull();
-    await expect(embedded.handle.play()).rejects.toMatchObject({
-      message: 'the embed was destroyed',
-    });
+    await expect(embedded.handle.play()).rejects.toMatchObject({ code: 'embed-destroyed' });
   });
 
   it('needs to know where the embed page is when the script has no URL', () => {

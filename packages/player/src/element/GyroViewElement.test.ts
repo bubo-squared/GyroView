@@ -325,7 +325,7 @@ describe('<gyro-view>', () => {
     expect(getComputedStyle(canvas).cursor).toBe('grab');
   });
 
-  it('applies view and playback attributes without reloading', async () => {
+  it('applies view, playback and poster attributes without reloading', async () => {
     const element = await createReady();
     const readies: number[] = [];
     element.addEventListener('ready', () => {
@@ -334,31 +334,37 @@ describe('<gyro-view>', () => {
 
     element.setAttribute('pitch', '15');
     element.fov = 60;
-    expect(element.view).toMatchObject({ pitch: 15, fieldOfView: 60 });
-
-    const modeChanged = nextEvent<string>(element, 'viewmodechange');
-    element.setViewMode('equirectangular');
-    expect(await modeChanged).toBe('equirectangular');
-    expect(element.viewMode).toBe('equirectangular');
-    expect(menuOf(element, 'view-mode').checked).toEqual(['equirectangular']);
-    element.setAttribute('view-mode', 'bogus');
-    expect(menuOf(element, 'view-mode')).toEqual({
-      choices: ['normal', 'equirectangular', 'raw-lenses'],
-      checked: ['equirectangular'],
-    });
-
-    const changed = nextEvent<string>(element, 'stabilizationchange');
-    element.setStabilization('off');
-    expect(await changed).toBe('off');
-    expect(menuOf(element, 'stabilization').checked).toEqual(['off']);
-
     element.loop = true;
     element.poster = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+
+    expect(element.view).toMatchObject({ pitch: 15, fieldOfView: 60 });
+    expect(element.loop).toBe(true);
     expect(control(element, '.poster', HTMLImageElement).src).toContain('data:image/gif');
     await new Promise((resolve) => {
       setTimeout(resolve, 50);
     });
     expect(readies).toEqual([]);
+  });
+
+  it('shows a view mode set by its method in the View menu, and keeps it past an unknown value', async () => {
+    const element = await createReady();
+    const modeChanged = nextEvent<string>(element, 'viewmodechange');
+    element.setViewMode('equirectangular');
+    expect(await modeChanged).toBe('equirectangular');
+    expect(element.viewMode).toBe('equirectangular');
+    element.setAttribute('view-mode', 'bogus');
+    expect(menuOf(element, 'view-mode')).toEqual({
+      choices: ['normal', 'equirectangular', 'raw-lenses'],
+      checked: ['equirectangular'],
+    });
+  });
+
+  it('shows a stabilization set by its method in the Stabilization menu', async () => {
+    const element = await createReady();
+    const changed = nextEvent<string>(element, 'stabilizationchange');
+    element.setStabilization('off');
+    expect(await changed).toBe('off');
+    expect(menuOf(element, 'stabilization').checked).toEqual(['off']);
   });
 
   it('keeps a setting chosen in the menu when it reloads', async () => {

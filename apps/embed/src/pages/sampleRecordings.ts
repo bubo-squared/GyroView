@@ -1,12 +1,6 @@
 import { RecordingFileName } from '@gyroview/core';
 
-/**
- * One folder of local files as the dev server lists it.
- */
-export interface SampleFolderListing {
-  readonly folder: string;
-  readonly files: readonly { readonly name: string; readonly url: string }[];
-}
+import type { SampleFolderListing } from './samplesListing';
 
 export interface SampleRecording {
   readonly label: string;

@@ -1,20 +1,12 @@
 import type { Plugin } from 'vite';
 
 import { listSampleFolders } from './listSamples';
+import { SAMPLES_ENDPOINT, type SampleFolderListing } from '../src/pages/samplesListing.ts';
 
-const SAMPLES_ENDPOINT = '/samples.json';
 /**
  * Vite serves any allowed file at this prefix followed by its absolute path, with byte ranges.
  */
 const FILE_SYSTEM_PREFIX = '/@fs';
-
-/**
- * What the dev page receives: folders of files, each with the URL Vite serves it at.
- */
-export interface SampleFolderEntry {
-  readonly folder: string;
-  readonly files: readonly { readonly name: string; readonly url: string }[];
-}
 
 /**
  * Dev-server plugin: `/samples.json` lists the local sample folders under `samplesRoot` with
@@ -27,7 +19,7 @@ export function samplesPlugin(samplesRoot: string): Plugin {
     configureServer(server): void {
       server.middlewares.use(SAMPLES_ENDPOINT, (_request, response) => {
         void listSampleFolders(samplesRoot).then((folders) => {
-          const entries: SampleFolderEntry[] = folders.map((folder) => ({
+          const entries: SampleFolderListing[] = folders.map((folder) => ({
             folder: folder.folder,
             files: folder.files.map((file) => ({
               name: file.name,

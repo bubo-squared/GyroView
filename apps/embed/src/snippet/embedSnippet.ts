@@ -30,7 +30,7 @@ export interface Embedded {
 }
 
 const DEFAULT_TITLE = '360 video player';
-const FRAME_PERMISSIONS = 'fullscreen; autoplay';
+export const FRAME_PERMISSIONS = 'fullscreen; autoplay';
 
 /**
  * The URL this script was loaded from, remembered at load time because `currentScript` is gone

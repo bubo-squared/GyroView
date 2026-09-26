@@ -4,7 +4,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { portEndpoint, windowEndpoint } from './Endpoint';
 import { EmbedHandle } from './EmbedHandle';
 import { EmbedHost } from './EmbedHost';
-import { helloMessage, type ProtocolMessage } from '../protocol/messages';
+import { helloMessage, PROTOCOL, type ProtocolMessage } from '../protocol/messages';
 import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
 
 const WAIT_MS = 15_000;
@@ -189,7 +189,7 @@ describe('the embed bridge over a message channel', () => {
     hostSide.send(helloMessage());
     await waitFor(() => received.length === 1, 'the queued command');
     expect(received[0]).toMatchObject({ kind: 'command', name: 'pause', id: 1 });
-    hostSide.send({ protocol: 'gyro-view/1', kind: 'result', id: 1, isOk: true, value: undefined });
+    hostSide.send({ protocol: PROTOCOL, kind: 'result', id: 1, isOk: true, value: undefined });
     await pausing;
     handle.destroy();
   });

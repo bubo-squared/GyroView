@@ -1,7 +1,8 @@
+import { directionAt, rayThroughPicture } from './rectilinear';
 import { SCREEN_CENTRE, type DragDelta, type ScreenPoint } from './screenLayout';
-import { clampView, viewRotation, type ViewState } from './ViewState';
+import { clampView, type ViewState } from './ViewState';
 import { rotationAboutX, transformVector } from '../../shared/math/Matrix3';
-import { magnitudeOf, scaleVector, type Vector3 } from '../../shared/math/Vector3';
+import type { Vector3 } from '../../shared/math/Vector3';
 import {
   degrees,
   degreesToRadians,
@@ -63,14 +64,14 @@ export function panView(view: ViewState, delta: DragDelta, viewportWidth: number
 /**
  * Narrows the field of view by `steps` zoom steps (negative widens), within its bounds.
  */
-export function zoomView(view: ViewState, steps: number): ViewState {
+function zoomView(view: ViewState, steps: number): ViewState {
   return clampView({ ...view, fieldOfView: degrees(view.fieldOfView / zoomFactor(steps)) });
 }
 
 /**
- * Zooms the normal view toward a point of the viewport: the field of view narrows or widens as
- * `zoomView` does, and the view turns so that the direction under the point stays under it. When
- * the poles leave no such turn, it zooms about the centre.
+ * Zooms the normal view toward a point of the viewport: the field of view narrows or widens by
+ * the zoom's steps within its bounds, and the view turns so that the direction under the point
+ * stays under it. When the poles leave no such turn, it zooms about the centre.
  */
 export function zoomViewAt(view: ViewState, zoom: ZoomRequest, viewportAspect: number): ViewState {
   const zoomed = zoomView(view, zoom.steps);
@@ -78,7 +79,7 @@ export function zoomViewAt(view: ViewState, zoom: ZoomRequest, viewportAspect: n
   const isAtCentre = zoom.focus.x === SCREEN_CENTRE.x && zoom.focus.y === SCREEN_CENTRE.y;
   if (isAtCentre || zoomed.fieldOfView === view.fieldOfView) return zoomed;
   const direction = directionAt(view, zoom.focus, viewportAspect);
-  const ray = rayThrough(zoomed.fieldOfView, zoom.focus, viewportAspect);
+  const ray = rayThroughPicture(zoomed.fieldOfView, zoom.focus, viewportAspect);
   const pitch = pitchRaising(ray, direction[1], view.pitch);
   if (pitch === undefined) return zoomed;
   const tilted = transformVector(rotationAboutX(degreesToRadians(pitch)), ray);
@@ -86,28 +87,6 @@ export function zoomViewAt(view: ViewState, zoom: ZoomRequest, viewportAspect: n
     radians(Math.atan2(direction[0], direction[2]) - Math.atan2(tilted[0], tilted[2])),
   );
   return clampView({ ...zoomed, yaw, pitch });
-}
-
-/**
- * The camera body direction seen through a point of the viewport in the normal view, as the
- * renderer draws it: a rectilinear picture spanning the field of view across the viewport.
- */
-export function directionAt(view: ViewState, point: ScreenPoint, viewportAspect: number): Vector3 {
-  return transformVector(viewRotation(view), rayThrough(view.fieldOfView, point, viewportAspect));
-}
-
-/**
- * The view-space direction (x right, y down, z forward) through a point of a rectilinear picture
- * with this horizontal field of view; the renderer's `rectilinearRays.glsl` in TypeScript.
- */
-function rayThrough(fieldOfView: Degrees, point: ScreenPoint, viewportAspect: number): Vector3 {
-  const halfExtent = Math.tan(degreesToRadians(degrees(fieldOfView / 2)));
-  const plane: Vector3 = [
-    (point.x * 2 - 1) * halfExtent,
-    ((point.y * 2 - 1) * halfExtent) / viewportAspect,
-    1,
-  ];
-  return scaleVector(plane, 1 / magnitudeOf(plane));
 }
 
 /**

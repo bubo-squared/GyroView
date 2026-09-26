@@ -1,10 +1,9 @@
 import {
-  degrees,
-  degreesToRadians,
+  aspectOfArea,
   ensureIndexInRange,
   ensureInvariant,
   IDENTITY_MATRIX3,
-  type Degrees,
+  planeHalfExtentOf,
   type LensProjectionParameters,
   type LensStitch,
   type Matrix3 as CoreMatrix3,
@@ -245,7 +244,7 @@ function valuesOf(picture: Picture, viewportAspect: number): PictureValues {
       return {
         rotation: picture.rotation,
         planeHalfExtent: planeHalfExtentOf(picture.fieldOfView),
-        pictureAspect: (viewportAspect * picture.area.width) / picture.area.height,
+        pictureAspect: aspectOfArea(picture.area, viewportAspect),
         areas: [picture.area],
       };
     }
@@ -256,14 +255,6 @@ function valuesOf(picture: Picture, viewportAspect: number): PictureValues {
       return { ...NEUTRAL, areas: picture.tiles };
     }
   }
-}
-
-/**
- * Half the width of the image plane at the picture's edge, so that the horizontal field of view
- * is the one the picture names.
- */
-function planeHalfExtentOf(fieldOfView: Degrees): number {
-  return Math.tan(degreesToRadians(degrees(fieldOfView / 2)));
 }
 
 function toVector4(area: ScreenRectangle): Vector4 {

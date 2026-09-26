@@ -1,13 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  directionAt,
-  lookAt,
-  panView,
-  zoomStepsForPinch,
-  zoomView,
-  zoomViewAt,
-} from './viewGestures';
+import { directionAt } from './rectilinear';
+import { SCREEN_CENTRE } from './screenLayout';
+import { lookAt, panView, zoomStepsForPinch, zoomViewAt } from './viewGestures';
 import { DEFAULT_VIEW, type ViewState } from './ViewState';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { degrees } from '../../shared/units/angle';
@@ -17,6 +12,13 @@ const ASPECT = 16 / 9;
 
 function viewOf(yaw: number, pitch: number, fieldOfView: number): ViewState {
   return { yaw: degrees(yaw), pitch: degrees(pitch), fieldOfView: degrees(fieldOfView) };
+}
+
+/**
+ * The default view zoomed by `steps` about the centre, as the keys zoom it.
+ */
+function centred(steps: number): ViewState {
+  return zoomViewAt(DEFAULT_VIEW, { steps, focus: SCREEN_CENTRE }, ASPECT);
 }
 
 function expectVector(actual: Vector3, expected: Vector3): void {
@@ -41,10 +43,10 @@ describe('view gestures', () => {
   });
 
   it('zooms in steps and stays within the field of view range', () => {
-    expect(zoomView(DEFAULT_VIEW, 1).fieldOfView).toBeCloseTo(90 / 1.1, 9);
-    expect(zoomView(DEFAULT_VIEW, -1).fieldOfView).toBeCloseTo(99, 9);
-    expect(zoomView(DEFAULT_VIEW, 20).fieldOfView).toBe(30);
-    expect(zoomView(DEFAULT_VIEW, -20).fieldOfView).toBe(120);
+    expect(centred(1).fieldOfView).toBeCloseTo(90 / 1.1, 9);
+    expect(centred(-1).fieldOfView).toBeCloseTo(99, 9);
+    expect(centred(20).fieldOfView).toBe(30);
+    expect(centred(-20).fieldOfView).toBe(120);
   });
 
   it.each([
@@ -55,14 +57,14 @@ describe('view gestures', () => {
   ])('keeps the direction under the pointer where it is: $focus', ({ focus, view, steps }) => {
     const underPointer = directionAt(view, focus, ASPECT);
     const zoomed = zoomViewAt(view, { steps, focus }, ASPECT);
-    expect(zoomed.fieldOfView).toBeCloseTo(zoomView(view, steps).fieldOfView, 9);
+    expect(zoomed.fieldOfView).toBeCloseTo(view.fieldOfView / 1.1 ** steps, 9);
     expectVector(directionAt(zoomed, focus, ASPECT), underPointer);
   });
 
   it('zooms about the centre like the centred zoom for a pointer at the centre', () => {
     const view = viewOf(40, -15, 90);
-    const zoomed = zoomViewAt(view, { steps: 2, focus: { x: 0.5, y: 0.5 } }, ASPECT);
-    expect(zoomed).toEqual(zoomView(view, 2));
+    const zoomed = zoomViewAt(view, { steps: 2, focus: SCREEN_CENTRE }, ASPECT);
+    expect(zoomed).toEqual({ ...view, fieldOfView: 90 / 1.1 ** 2 });
   });
 
   it('only changes the field of view once it is at its limit', () => {

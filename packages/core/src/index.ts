@@ -83,6 +83,7 @@ export {
   type ViewModeRules,
 } from './domain/view/ViewMode';
 export { DEFAULT_FRAMING, isSameFraming, type Framing } from './domain/view/Framing';
+export { aspectOfArea, planeHalfExtentOf } from './domain/view/rectilinear';
 export { FITTED, MAX_MAGNIFICATION, type Magnification } from './domain/view/magnification';
 export type {
   EquirectangularPicture,

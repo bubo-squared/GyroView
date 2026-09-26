@@ -12,16 +12,12 @@ import {
   type VideoDecoderPort,
 } from '@gyroview/core';
 
-export interface WebCodecsDecoderOptions {
-  /**
-   * Default `no-preference`: a hard `prefer-hardware` refuses codecs the browser could decode in
-   * software (H.264 proxies on machines without a hardware decoder), and with no preference the
-   * browser still picks hardware when it has it (ADR 0010).
-   */
-  readonly hardwareAcceleration?: HardwareAcceleration;
-}
-
-const DEFAULT_HARDWARE_ACCELERATION: HardwareAcceleration = 'no-preference';
+/**
+ * A hard `prefer-hardware` refuses codecs the browser could decode in software (H.264 proxies on
+ * machines without a hardware decoder); with no preference the browser still picks hardware when
+ * it has it (ADR 0010).
+ */
+const HARDWARE_ACCELERATION: HardwareAcceleration = 'no-preference';
 
 /**
  * The error a decoder reported through its callback, shared between the callback and the
@@ -45,8 +41,6 @@ class ReportedFailure {
  * it afterwards.
  */
 export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
-  public constructor(private readonly options: WebCodecsDecoderOptions = {}) {}
-
   /**
    * A configuration WebCodecs finds malformed is one it does not support.
    */
@@ -115,7 +109,7 @@ export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
       codedHeight: configuration.codedHeight,
       ...(description && { description }),
       ...(isFullRange !== undefined && { colorSpace: { fullRange: isFullRange } }),
-      hardwareAcceleration: this.options.hardwareAcceleration ?? DEFAULT_HARDWARE_ACCELERATION,
+      hardwareAcceleration: HARDWARE_ACCELERATION,
       optimizeForLatency: false,
     };
   }

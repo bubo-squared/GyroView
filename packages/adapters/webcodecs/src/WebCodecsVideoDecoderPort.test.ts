@@ -19,7 +19,7 @@ import fixtureUrl from '../../../../test/fixtures/synthetic/dual-track-64px-10fp
 
 const FRAMES = 30;
 const PIPELINE_OPTIONS = { maxPendingPackets: 4, pairTolerance: seconds(0.0001) };
-const port = new WebCodecsVideoDecoderPort({ hardwareAcceleration: 'no-preference' });
+const port = new WebCodecsVideoDecoderPort();
 
 async function drain(
   queue: FramePairQueue<VideoFrame>,

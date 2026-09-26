@@ -16,5 +16,5 @@ describeVideoDecoderPortContract('WebCodecsVideoDecoderPort', async () => {
   );
   const [track] = input.videoTracks;
   if (!track) throw new Error('the fixture has no video track');
-  return { port: new WebCodecsVideoDecoderPort({ hardwareAcceleration: 'no-preference' }), track };
+  return { port: new WebCodecsVideoDecoderPort(), track };
 });

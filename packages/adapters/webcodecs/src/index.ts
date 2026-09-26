@@ -1,4 +1,1 @@
-export {
-  WebCodecsVideoDecoderPort,
-  type WebCodecsDecoderOptions,
-} from './WebCodecsVideoDecoderPort';
+export { WebCodecsVideoDecoderPort } from './WebCodecsVideoDecoderPort';

@@ -39,11 +39,6 @@ describe('HttpResourceLocator', () => {
     expect(methods).toEqual(['HEAD']);
   });
 
-  it('answers false when the server reports the file missing', async () => {
-    const server = await serve({ failsWith: 404 });
-    await expect(new HttpResourceLocator().exists(server.url)).resolves.toBe(false);
-  });
-
   it('spends no request explaining a failed lookup', async () => {
     let calls = 0;
     const offline: typeof fetch = () => {

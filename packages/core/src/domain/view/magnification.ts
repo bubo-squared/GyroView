@@ -1,4 +1,11 @@
-import { SCREEN_CENTRE, type ScreenPoint, type ScreenRectangle } from './screenLayout';
+import {
+  HALF,
+  pictureAt,
+  SCREEN_CENTRE,
+  type ScreenPoint,
+  type ScreenRectangle,
+  type ScreenShift,
+} from './screenLayout';
 import { zoomFactor, type ZoomRequest } from './viewGestures';
 
 /**
@@ -11,9 +18,15 @@ export interface Magnification {
 }
 
 /**
- * The picture whole: every flat picture starts fitted into the viewport.
+ * The middle of a picture, as fractions of it.
  */
-export const FITTED: Magnification = { scale: 1, centre: SCREEN_CENTRE };
+const PICTURE_MIDDLE: ScreenPoint = { x: HALF, y: HALF };
+
+/**
+ * The picture whole: every flat picture starts fitted into the viewport, its middle at the
+ * viewport's centre.
+ */
+export const FITTED: Magnification = { scale: 1, centre: PICTURE_MIDDLE };
 
 /**
  * Close enough to read detail in the panorama and to look at a lens; beyond it the picture only
@@ -26,17 +39,6 @@ export const MAX_MAGNIFICATION = 4;
  * in lands within rounding of 1, and must show the picture fitted again, not a hair enlarged.
  */
 const FITTED_TOLERANCE = 1e-9;
-
-/**
- * Half of anything along one axis: the middle of the picture, or half of the viewport.
- */
-const HALF = 0.5;
-
-/**
- * A movement across the viewport, as fractions of its width and height; positive to the right and
- * down.
- */
-export type ScreenShift = ScreenPoint;
 
 export function isSameMagnification(a: Magnification, b: Magnification): boolean {
   return a.scale === b.scale && a.centre.x === b.centre.x && a.centre.y === b.centre.y;
@@ -90,11 +92,7 @@ export function magnifyAt(
   zoom: ZoomRequest,
 ): Magnification {
   const current = clampMagnification(fitted, magnification);
-  const area = magnifiedArea(fitted, current);
-  const underFocus = {
-    x: (zoom.focus.x - area.x) / area.width,
-    y: (zoom.focus.y - area.y) / area.height,
-  };
+  const underFocus = pictureAt(magnifiedArea(fitted, current), zoom.focus);
   const scale = current.scale * zoomFactor(zoom.steps);
   return clampMagnification(fitted, {
     scale,
@@ -114,13 +112,26 @@ export function panMagnification(
   shift: ScreenShift,
 ): Magnification {
   const current = clampMagnification(fitted, magnification);
+  const moved = pictureShiftOf(fitted, current, shift);
   return clampMagnification(fitted, {
     scale: current.scale,
-    centre: {
-      x: current.centre.x - shift.x / (fitted.width * current.scale),
-      y: current.centre.y - shift.y / (fitted.height * current.scale),
-    },
+    centre: { x: current.centre.x - moved.across, y: current.centre.y - moved.down },
   });
+}
+
+/**
+ * A shift across the viewport as fractions of the picture as magnified: the part of the picture
+ * that passes under a fixed point.
+ */
+export function pictureShiftOf(
+  fitted: ScreenRectangle,
+  magnification: Magnification,
+  shift: ScreenShift,
+): ScreenShift {
+  return {
+    across: shift.across / (fitted.width * magnification.scale),
+    down: shift.down / (fitted.height * magnification.scale),
+  };
 }
 
 /**

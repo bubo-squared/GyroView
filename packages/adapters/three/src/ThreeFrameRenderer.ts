@@ -1,4 +1,5 @@
 import {
+  aspectOf,
   DEFAULT_FRAMING,
   DEFAULT_VIEW_MODE,
   ensureInvariant,
@@ -226,7 +227,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
       lensCount: this.parts.lensCount,
     });
     this.parts.pass.material = this.parts.materials[picture.kind];
-    applyPicture(this.parts.uniforms, picture, viewport.width / Math.max(viewport.height, 1));
+    applyPicture(this.parts.uniforms, picture, aspectOf(viewport));
   }
 
   private ensureLive(): void {

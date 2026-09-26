@@ -1,4 +1,4 @@
-import { SCREEN_CENTRE, type ScreenPoint } from './screenLayout';
+import { SCREEN_CENTRE, type DragDelta, type ScreenPoint } from './screenLayout';
 import { clampView, viewRotation, type ViewState } from './ViewState';
 import { rotationAboutX, transformVector } from '../../shared/math/Matrix3';
 import { magnitudeOf, scaleVector, type Vector3 } from '../../shared/math/Vector3';
@@ -10,14 +10,6 @@ import {
   wrapHalfTurn,
   type Degrees,
 } from '../../shared/units/angle';
-
-/**
- * A pointer movement on the viewport, in CSS pixels; positive x to the right, positive y down.
- */
-export interface DragDelta {
-  readonly x: number;
-  readonly y: number;
-}
 
 /**
  * A turn by angles, as the arrow keys make: positive yaw to the right, positive pitch up.

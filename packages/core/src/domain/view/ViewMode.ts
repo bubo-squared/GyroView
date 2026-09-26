@@ -5,6 +5,7 @@ import {
   magnifiedArea,
   magnifyAt,
   panMagnification,
+  pictureShiftOf,
   type Magnification,
 } from './magnification';
 import type { Picture } from './Picture';
@@ -13,19 +14,15 @@ import {
   boundsOf,
   fittedRectangle,
   lensTiles,
+  pictureAt,
   SCREEN_CENTRE,
+  shiftOf,
   WHOLE_SCREEN,
+  type DragDelta,
   type ScreenRectangle,
   type ViewportSize,
 } from './screenLayout';
-import {
-  lookAt,
-  panView,
-  zoomViewAt,
-  type DragDelta,
-  type TurnRequest,
-  type ZoomRequest,
-} from './viewGestures';
+import { lookAt, panView, zoomViewAt, type TurnRequest, type ZoomRequest } from './viewGestures';
 import { DEFAULT_VIEW, viewRotation, type ViewState } from './ViewState';
 import { rotationAboutY } from '../../shared/math/Matrix3';
 import { degrees, degreesToRadians, FULL_TURN, HALF_TURN } from '../../shared/units/angle';
@@ -143,18 +140,11 @@ function withPanorama(framing: Framing, panorama: Magnification, yawDelta: numbe
  */
 function panPanorama(framing: Framing, delta: DragDelta, context: ViewContext): Framing {
   const fitted = fittedPanorama(context);
-  const { viewport } = context;
   const panorama = levelled(fitted, framing.panorama);
-  const shownWidth = viewport.width * fitted.width * panorama.scale;
-  const moved = panMagnification(fitted, panorama, {
-    x: 0,
-    y: delta.y / Math.max(viewport.height, 1),
-  });
-  return withPanorama(
-    framing,
-    levelled(fitted, moved),
-    -(delta.x * FULL_TURN) / Math.max(shownWidth, 1),
-  );
+  const shift = shiftOf(delta, context.viewport);
+  const moved = panMagnification(fitted, panorama, { across: 0, down: shift.down });
+  const turned = pictureShiftOf(fitted, panorama, shift).across * FULL_TURN;
+  return withPanorama(framing, levelled(fitted, moved), -turned);
 }
 
 /**
@@ -180,8 +170,8 @@ function zoomPanorama(framing: Framing, zoom: ZoomRequest, context: ViewContext)
   const before = magnifiedArea(fitted, levelled(fitted, framing.panorama));
   const zoomed = levelled(fitted, magnifyAt(fitted, levelled(fitted, framing.panorama), zoom));
   const after = magnifiedArea(fitted, zoomed);
-  const across = (area: ScreenRectangle): number => (zoom.focus.x - area.x) / area.width;
-  return withPanorama(framing, zoomed, (across(before) - across(after)) * FULL_TURN);
+  const turned = pictureAt(before, zoom.focus).x - pictureAt(after, zoom.focus).x;
+  return withPanorama(framing, zoomed, turned * FULL_TURN);
 }
 
 /**
@@ -224,11 +214,7 @@ function withLenses(framing: Framing, lenses: Magnification): Framing {
 }
 
 function panLenses(framing: Framing, delta: DragDelta, context: ViewContext): Framing {
-  const { viewport } = context;
-  const shift = {
-    x: delta.x / Math.max(viewport.width, 1),
-    y: delta.y / Math.max(viewport.height, 1),
-  };
+  const shift = shiftOf(delta, context.viewport);
   return withLenses(framing, panMagnification(fittedTiles(context).bounds, framing.lenses, shift));
 }
 

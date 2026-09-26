@@ -28,16 +28,59 @@ export interface ViewportSize {
 }
 
 /**
- * Width over height; an empty viewport counts as one unit high.
+ * A pointer movement on the viewport, in the unit of its size; positive x to the right, positive
+ * y down.
  */
-export function aspectOf(viewport: ViewportSize): number {
-  return viewport.width / Math.max(viewport.height, 1);
+export interface DragDelta {
+  readonly x: number;
+  readonly y: number;
 }
 
-export const WHOLE_SCREEN: ScreenRectangle = { x: 0, y: 0, width: 1, height: 1 };
-export const SCREEN_CENTRE: ScreenPoint = { x: 0.5, y: 0.5 };
+/**
+ * A movement across the viewport as fractions of its width and height, positive to the right and
+ * down; named apart from a drag's pixels so that one cannot pass for the other.
+ */
+export interface ScreenShift {
+  readonly across: number;
+  readonly down: number;
+}
 
-const CENTRE = 0.5;
+/**
+ * Half of a length along one axis, as a fraction of it: the middle of the viewport or of a
+ * picture.
+ */
+export const HALF = 0.5;
+
+export const WHOLE_SCREEN: ScreenRectangle = { x: 0, y: 0, width: 1, height: 1 };
+export const SCREEN_CENTRE: ScreenPoint = { x: HALF, y: HALF };
+
+/**
+ * An empty viewport counts as one unit wide and high, so no measure of it divides by zero.
+ */
+function measured(length: number): number {
+  return Math.max(length, 1);
+}
+
+/**
+ * Width over height.
+ */
+export function aspectOf(viewport: ViewportSize): number {
+  return viewport.width / measured(viewport.height);
+}
+
+/**
+ * A drag as fractions of the viewport it happened on.
+ */
+export function shiftOf(delta: DragDelta, viewport: ViewportSize): ScreenShift {
+  return { across: delta.x / measured(viewport.width), down: delta.y / measured(viewport.height) };
+}
+
+/**
+ * The point of a picture shown at a point of the viewport, as fractions of the picture.
+ */
+export function pictureAt(area: ScreenRectangle, point: ScreenPoint): ScreenPoint {
+  return { x: (point.x - area.x) / area.width, y: (point.y - area.y) / area.height };
+}
 
 /**
  * One square tile per lens, in a row or in a column, whichever gives the larger tiles on this
@@ -91,8 +134,8 @@ export function boundsOf(rectangles: readonly ScreenRectangle[]): ScreenRectangl
 export function fittedRectangle(contentAspect: number, viewportAspect: number): ScreenRectangle {
   if (contentAspect >= viewportAspect) {
     const height = viewportAspect / contentAspect;
-    return { x: 0, y: (1 - height) * CENTRE, width: 1, height };
+    return { x: 0, y: (1 - height) * HALF, width: 1, height };
   }
   const width = contentAspect / viewportAspect;
-  return { x: (1 - width) * CENTRE, y: 0, width, height: 1 };
+  return { x: (1 - width) * HALF, y: 0, width, height: 1 };
 }

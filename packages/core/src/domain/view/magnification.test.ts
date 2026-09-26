@@ -9,19 +9,12 @@ import {
   panMagnification,
   type Magnification,
 } from './magnification';
-import { fittedRectangle, type ScreenPoint, type ScreenRectangle } from './screenLayout';
+import { fittedRectangle, pictureAt, type ScreenPoint } from './screenLayout';
 
 /**
  * A 2:1 panorama on a 16:9 viewport: the whole width, with bars above and below.
  */
 const PANORAMA = fittedRectangle(2, 16 / 9);
-
-/**
- * The point of the picture shown at a point of the viewport.
- */
-function pictureAt(area: ScreenRectangle, point: ScreenPoint): ScreenPoint {
-  return { x: (point.x - area.x) / area.width, y: (point.y - area.y) / area.height };
-}
 
 function expectPoint(actual: ScreenPoint, expected: ScreenPoint): void {
   expect(actual.x).toBeCloseTo(expected.x, 12);
@@ -66,16 +59,16 @@ describe('magnification', () => {
   it('magnifies about the centre for a focus at the centre, and returns to fitted when zoomed out', () => {
     const zoomed = magnifyAt(PANORAMA, FITTED, { steps: 5, focus: { x: 0.5, y: 0.5 } });
     expectPoint(zoomed.centre, { x: 0.5, y: 0.5 });
-    const moved = panMagnification(PANORAMA, zoomed, { x: 0.2, y: -0.1 });
+    const moved = panMagnification(PANORAMA, zoomed, { across: 0.2, down: -0.1 });
     expect(magnifyAt(PANORAMA, moved, { steps: -20, focus: { x: 0.9, y: 0.9 } })).toEqual(FITTED);
   });
 
   it('moves the picture with a shift, and stops it at its edges', () => {
     const zoomed = { scale: 2, centre: { x: 0.5, y: 0.5 } };
-    const moved = panMagnification(PANORAMA, zoomed, { x: 0.1, y: 0 });
+    const moved = panMagnification(PANORAMA, zoomed, { across: 0.1, down: 0 });
     // The picture moves right by a tenth of the viewport, a twentieth of its own width.
     expect(moved.centre.x).toBeCloseTo(0.45, 12);
-    const far = panMagnification(PANORAMA, zoomed, { x: 5, y: -5 });
+    const far = panMagnification(PANORAMA, zoomed, { across: 5, down: -5 });
     const area = magnifiedArea(PANORAMA, far);
     expect(area.x).toBeCloseTo(0, 12);
     expect(area.y + area.height).toBeCloseTo(1, 12);
@@ -96,6 +89,6 @@ describe('magnification', () => {
   });
 
   it('does not move a fitted picture', () => {
-    expect(panMagnification(PANORAMA, FITTED, { x: 0.3, y: 0.3 })).toEqual(FITTED);
+    expect(panMagnification(PANORAMA, FITTED, { across: 0.3, down: 0.3 })).toEqual(FITTED);
   });
 });

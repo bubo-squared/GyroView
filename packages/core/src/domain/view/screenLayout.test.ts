@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { boundsOf, fittedRectangle, lensTiles, WHOLE_SCREEN } from './screenLayout';
+import {
+  aspectOf,
+  boundsOf,
+  fittedRectangle,
+  lensTiles,
+  pictureAt,
+  shiftOf,
+  WHOLE_SCREEN,
+} from './screenLayout';
 
 describe('screen layout', () => {
   it('fits wider content across the whole width with bars above and below', () => {
@@ -36,6 +44,21 @@ describe('screen layout', () => {
 
   it('bounds the lens tiles by the rectangle they fill together', () => {
     expect(boundsOf(lensTiles(2, 1))).toEqual({ x: 0, y: 0.25, width: 1, height: 0.5 });
+  });
+
+  it('measures a drag as fractions of the viewport, an empty one as one unit a side', () => {
+    expect(shiftOf({ x: 80, y: -45 }, { width: 1600, height: 900 })).toEqual({
+      across: 0.05,
+      down: -0.05,
+    });
+    expect(shiftOf({ x: 3, y: 2 }, { width: 0, height: 0 })).toEqual({ across: 3, down: 2 });
+    expect(aspectOf({ width: 1600, height: 0 })).toBe(1600);
+  });
+
+  it('finds the point of a picture shown at a point of the viewport', () => {
+    const area = { x: -0.5, y: 0.25, width: 2, height: 0.5 };
+    expect(pictureAt(area, { x: 0.5, y: 0.5 })).toEqual({ x: 0.5, y: 0.5 });
+    expect(pictureAt(area, { x: 0, y: 0.25 })).toEqual({ x: 0.25, y: 0 });
   });
 
   it('gives a single lens one square tile', () => {

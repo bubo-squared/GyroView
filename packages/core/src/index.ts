@@ -92,7 +92,9 @@ export type {
   RectilinearPicture,
 } from './domain/view/Picture';
 export {
+  aspectOf,
   SCREEN_CENTRE,
+  type DragDelta,
   type ScreenPoint,
   type ScreenRectangle,
   type ViewportSize,
@@ -100,7 +102,6 @@ export {
 export {
   lookAt,
   zoomStepsForPinch,
-  type DragDelta,
   type TurnRequest,
   type ZoomRequest,
 } from './domain/view/viewGestures';

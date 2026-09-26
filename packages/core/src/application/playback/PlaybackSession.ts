@@ -1,6 +1,6 @@
 import { closeFramePair, type FramePair } from '../../ports/FramePair';
-import { FramePairQueue } from './FramePairQueue';
-import { DecodePipeline, type DecodePipelineOptions, type DecodeRunReport } from './DecodePipeline';
+import type { DecodePipelineOptions } from './DecodePipeline';
+import { DecodeRun } from './DecodeRun';
 import { isFlowing, PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
 import type { VideoTrackReader } from '../../ports/Demuxer';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
@@ -62,24 +62,19 @@ export class PlaybackSession<Handle = unknown> {
   public readonly events = new TypedEmitter<PlaybackSessionEvents>();
   private readonly machine = new PlayerStateMachine();
   /**
-   * One queue per pipeline run: a superseded run's late frames land in its own closed queue and
-   * are dropped, never presented as if they belonged to the run that replaced it.
+   * The decode under way, if any: one per start or seek, replaced whole.
    */
-  private queue: FramePairQueue<Handle>;
-  private pipeline: DecodePipeline<Handle> | undefined;
+  private run: DecodeRun<Handle> | undefined;
   /**
    * The pair on screen, kept open until the next one replaces it.
    */
   private presented: Presentation<Handle> | undefined;
-  private hasDecodedToEnd = false;
   /**
    * The `play` call waiting for the clock to start once frames are ready.
    */
   private startAttempt: Deferred<void> | undefined;
 
-  public constructor(private readonly parts: PlaybackSessionParts<Handle>) {
-    this.queue = new FramePairQueue<Handle>(parts.queueCapacity);
-  }
+  public constructor(private readonly parts: PlaybackSessionParts<Handle>) {}
 
   public get state(): PlayerState {
     return this.machine.state;
@@ -103,7 +98,7 @@ export class PlaybackSession<Handle = unknown> {
     }
     if (this.machine.state === 'ended') this.seek(seconds(0));
     if (!this.machine.canTransitionTo('buffering')) return;
-    if (!this.pipeline) this.startPipeline(this.parts.clock.currentTime);
+    if (!this.run) this.startRun(this.parts.clock.currentTime);
     if (this.isPrimed()) {
       this.setState('playing');
       await this.startClock();
@@ -141,8 +136,7 @@ export class PlaybackSession<Handle = unknown> {
     this.setState('seeking');
     this.parts.clock.pause();
     this.parts.clock.seek(target);
-    this.stopPipeline();
-    this.startPipeline(target);
+    this.startRun(target);
     this.setState(shouldResume ? 'buffering' : 'paused');
     this.events.emit('timeupdate', target);
   }
@@ -165,8 +159,8 @@ export class PlaybackSession<Handle = unknown> {
    * session is still `ready`.
    */
   public preload(): void {
-    if (this.pipeline || this.machine.state !== 'ready') return;
-    this.startPipeline(this.parts.clock.currentTime);
+    if (this.run || this.machine.state !== 'ready') return;
+    this.startRun(this.parts.clock.currentTime);
   }
 
   /**
@@ -196,7 +190,7 @@ export class PlaybackSession<Handle = unknown> {
 
   public dispose(): void {
     if (this.machine.state === 'disposed') return;
-    this.stopPipeline();
+    this.stopRun();
     if (this.presented) closeFramePair(this.presented.pair);
     this.presented = undefined;
     this.parts.clock.pause();
@@ -206,7 +200,7 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   private presentDue(now: Seconds): boolean {
-    const pair = this.queue.takePairAt(now);
+    const pair = this.run?.takePairAt(now);
     if (pair) this.present(pair, now);
     return pair !== undefined;
   }
@@ -222,7 +216,7 @@ export class PlaybackSession<Handle = unknown> {
       return;
     }
     this.events.emit('timeupdate', now);
-    if (this.hasDecodedToEnd && this.isPlayedOut(now)) this.end();
+    if (this.run?.hasReachedEnd === true && this.isPlayedOut(now)) this.end();
   }
 
   /**
@@ -239,9 +233,9 @@ export class PlaybackSession<Handle = unknown> {
    * left is already there.
    */
   private isPrimed(): boolean {
-    return (
-      this.hasDecodedToEnd || this.queue.length >= Math.min(PRIMING_PAIRS, this.parts.queueCapacity)
-    );
+    const { run } = this;
+    const primingPairs = Math.min(PRIMING_PAIRS, this.parts.queueCapacity);
+    return run !== undefined && (run.hasReachedEnd || run.queuedPairs >= primingPairs);
   }
 
   /**
@@ -249,7 +243,8 @@ export class PlaybackSession<Handle = unknown> {
    * behind the clock: the decoders cannot keep up.
    */
   private isStarved(now: Seconds): boolean {
-    const isWaitingOnDecoders = this.queue.length === 0 && !this.hasDecodedToEnd;
+    const { run } = this;
+    const isWaitingOnDecoders = run?.queuedPairs === 0 && !run.hasReachedEnd;
     const lag = now - (this.presented?.pair.timestamp ?? -Infinity);
     return isWaitingOnDecoders && lag > STARVATION_LAG_SECONDS;
   }
@@ -296,7 +291,8 @@ export class PlaybackSession<Handle = unknown> {
    * a few frames shorter than the video), in which case the remaining pairs are unreachable.
    */
   private isPlayedOut(now: Seconds): boolean {
-    return this.parts.clock.hasEnded || (this.queue.length === 0 && now >= this.parts.duration);
+    const isDrained = (this.run?.queuedPairs ?? 0) === 0;
+    return this.parts.clock.hasEnded || (isDrained && now >= this.parts.duration);
   }
 
   private present(pair: FramePair<Handle>, mediaTime: Seconds): void {
@@ -306,43 +302,25 @@ export class PlaybackSession<Handle = unknown> {
     this.events.emit('present', mediaTime);
   }
 
-  private startPipeline(from: Seconds): void {
-    this.hasDecodedToEnd = false;
-    const queue = new FramePairQueue<Handle>(this.parts.queueCapacity, () => {
-      if (queue === this.queue) this.resumeIfPrimed();
-    });
-    this.queue = queue;
-    const pipeline = new DecodePipeline<Handle>(
-      this.parts.frameSources,
-      this.parts.decoderPort,
-      this.parts.pipeline,
-    );
-    this.pipeline = pipeline;
-    void this.followRun(pipeline, pipeline.run(from, this.queue));
-  }
-
   /**
-   * A run that was replaced by a seek reports to nobody: only the current run may end or fail
-   * the session.
+   * Replaces the run under way; the one replaced reports to nobody, so only the current run may
+   * wake a waiting start, end or fail the session.
    */
-  private async followRun(
-    pipeline: DecodePipeline<Handle>,
-    run: Promise<DecodeRunReport>,
-  ): Promise<void> {
-    try {
-      const report = await run;
-      if (this.pipeline !== pipeline) return;
-      this.hasDecodedToEnd = report.hasReachedEnd;
-      this.resumeIfPrimed();
-    } catch (error) {
-      if (this.pipeline === pipeline) this.fail(error);
-    }
+  private startRun(from: Seconds): void {
+    this.stopRun();
+    this.run = DecodeRun.start(this.parts, from, {
+      onProgress: (): void => {
+        this.resumeIfPrimed();
+      },
+      onFailure: (error): void => {
+        this.fail(error);
+      },
+    });
   }
 
-  private stopPipeline(): void {
-    this.pipeline?.abort();
-    this.pipeline = undefined;
-    this.queue.close();
+  private stopRun(): void {
+    this.run?.stop();
+    this.run = undefined;
   }
 
   private end(): void {
@@ -355,7 +333,7 @@ export class PlaybackSession<Handle = unknown> {
   private fail(error: unknown): void {
     if (!this.machine.canTransitionTo('error')) return;
     this.parts.clock.pause();
-    this.stopPipeline();
+    this.stopRun();
     this.setState('error');
     this.settleStartAttempt();
     this.events.emit(

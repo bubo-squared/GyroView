@@ -111,8 +111,8 @@ Use cases that orchestrate the domain through ports.
   decoder per source, packets fed under backpressure, frames paired by timestamp
   (`FramePairer`), pairs before the start dropped by the `StartGate`, output into a
   `FramePairQueue`.
-- `playback/PlaybackSession` is the transport: it drives a pipeline in step with a
-  `PlaybackClock`, presents the pair due at each tick to a `FrameSink`, and owns the state
+- `playback/PlaybackSession` is the transport: it drives one `DecodeRun` at a time (a pipeline
+  and its own queue, replaced whole on a seek) in step with a `PlaybackClock`, presents the pair due at each tick to a `FrameSink`, and owns the state
   machine. Sound follows the picture: playback waits in `buffering` until two pairs are queued,
   after a seek, and whenever the decoders fall behind (ADR 0011). It also offers `preload`
   (first frame while ready) and `scrub` (seek to the key frame at or before a time).

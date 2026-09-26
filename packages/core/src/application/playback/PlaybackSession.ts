@@ -205,6 +205,7 @@ export class PlaybackSession<Handle = unknown> {
   private followClock(now: Seconds, hasShown: boolean): void {
     if (this.isStoppedFromOutside()) {
       this.setState('paused');
+      this.announceTime(now);
       return;
     }
     if (!hasShown && this.isStarved(now)) {

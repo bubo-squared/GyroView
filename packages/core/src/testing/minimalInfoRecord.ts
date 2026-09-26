@@ -1,5 +1,5 @@
 import { InfoField } from '../domain/format/info/infoFields';
-import { encodeAscii } from '../shared/text/ascii';
+import { encodeAscii } from './encodeAscii';
 
 /**
  * Protobuf wire types and the bits of a field key that hold them (protobuf encoding spec).

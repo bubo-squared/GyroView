@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { encodeAscii } from './ascii';
-import { captureError } from '../../../test/support/errors';
+import { encodeAscii } from './encodeAscii';
+import { captureError } from '../../test/support/errors';
 
 describe('encodeAscii', () => {
   it('encodes each character as one byte', () => {

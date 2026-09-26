@@ -2,7 +2,6 @@ import {
   buildStitchingSetup,
   DEFAULT_VIEW,
   degrees,
-  equirectangularPixelOf,
   GainMatchingFrameSink,
   lensRotation,
   LockStabilization,
@@ -16,7 +15,7 @@ import {
   type StitchingSetup,
   type Vector3,
 } from '@gyroview/core';
-import { parseOffsetString } from '@gyroview/core/testing';
+import { equirectangularPixelOf, parseOffsetString } from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { MULTI_TRACK, PACKED, syntheticCalibration } from './test/syntheticStitching';

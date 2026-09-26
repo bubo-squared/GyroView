@@ -17,7 +17,7 @@ import {
   TRAILER_FOOTER_SIZE,
   TRAILER_MAGIC,
 } from '../domain/format/constants';
-import { encodeAscii } from '../shared/text/ascii';
+import { encodeAscii } from './encodeAscii';
 
 export interface FixtureRecordSpec {
   readonly id: number;

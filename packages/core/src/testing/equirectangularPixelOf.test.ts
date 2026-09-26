@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { equirectangularPixelOf } from './equirectangular';
+import { equirectangularPixelOf } from './equirectangularPixelOf';
 
 const SIZE = { width: 360, height: 180 };
 

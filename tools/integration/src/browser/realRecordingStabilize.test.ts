@@ -2,7 +2,6 @@ import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
   conjugateQuaternion,
-  equirectangularPixelOf,
   imuFrameFor,
   DecodePipeline,
   microseconds,
@@ -18,6 +17,7 @@ import {
   type Recording,
   type StabilizationMode,
 } from '@gyroview/core';
+import { equirectangularPixelOf } from '@gyroview/core/testing';
 import { commands } from '@vitest/browser/context';
 import { DECODE_PIPELINE_OPTIONS } from '@gyroview/player/composition';
 import { afterEach, describe, expect, it } from 'vitest';

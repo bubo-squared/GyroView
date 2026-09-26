@@ -1,4 +1,4 @@
-import type { Vector3 } from '../../shared/math/Vector3';
+import type { Vector3 } from '../shared/math/Vector3';
 
 export interface PixelSize {
   readonly width: number;
@@ -13,18 +13,14 @@ export interface EquirectangularPixel {
   readonly row: number;
 }
 
-/**
- * A full turn across for a half turn from top to bottom.
- */
-export const EQUIRECTANGULAR_ASPECT = 2;
-
 const HALF_TURN = Math.PI;
 const QUARTER_TURN = Math.PI / 2;
 
 /**
  * Where a direction (in the frame the image is drawn in: x right, y down, z forward) lands in an
  * equirectangular image: yaw across the width from -180 to 180 degrees, pitch down the height
- * from +90 to -90. The inverse of the ray the stitching shader casts.
+ * from +90 to -90. The inverse of the ray the stitching shader casts, which makes it the oracle
+ * the renderer's tests read panoramas with.
  */
 export function equirectangularPixelOf(direction: Vector3, size: PixelSize): EquirectangularPixel {
   const [x, y, z] = direction;

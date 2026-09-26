@@ -1,5 +1,5 @@
 import { BOX_HEADER_SIZE, BOX_TYPE_OFFSET } from '../domain/format/boxes/boxConstants';
-import { encodeAscii } from '../shared/text/ascii';
+import { encodeAscii } from './encodeAscii';
 
 /**
  * One ISOBMFF box with a 32-bit size, for synthetic files in tests.

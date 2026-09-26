@@ -92,11 +92,6 @@ export type {
 export type { ScreenRectangle } from './domain/view/screenLayout';
 export { lookAt, zoomStepsForPinch, type DragDelta } from './domain/view/viewGestures';
 export {
-  equirectangularPixelOf,
-  type EquirectangularPixel,
-  type PixelSize,
-} from './domain/view/equirectangular';
-export {
   buildStitchingSetup,
   lensFrameOrder,
   type CanvasWindow,

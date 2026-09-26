@@ -93,8 +93,7 @@ sources the session decodes (`lensFrameOrder`).
 **`view`**: `ViewState` (yaw, pitch, field of view) with clamping and the view rotation;
 `ViewMode` with one rules object per mode (how drags, arrow keys and zoom move the view, and the
 `Picture` it draws: rectilinear, equirectangular or lens tiles; ADR 0015); `screenLayout`
-for letterboxing; the pure drag/zoom/look-at gestures; and the equirectangular mapping used by
-tests.
+for letterboxing; and the pure drag/zoom/look-at gestures.
 
 ### Application: `core/src/application`
 
@@ -143,6 +142,8 @@ Every port with a fake in `core/src/testing` has a contract suite that runs agai
 and the real adapters alike (`RandomAccessSource`, `Demuxer`, `VideoTrackReader`,
 `VideoDecoderPort`, `PlaybackClock`, `ResourceLocator`), asserting the error codes too. Audio
 reading and segmenting have no fake: only the real adapters exist and they are tested directly.
+`core/src/testing` also holds what only tests need: the fixture builders (with `encodeAscii`)
+and `equirectangularPixelOf`, the oracle the renderer tests read panoramas with.
 
 ### Shared: `core/src/shared`
 

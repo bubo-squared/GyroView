@@ -1,10 +1,14 @@
-import { EQUIRECTANGULAR_ASPECT } from './equirectangular';
 import type { Picture } from './Picture';
 import { fittedRectangle, lensTiles, WHOLE_SCREEN } from './screenLayout';
 import { lookAt, panView, zoomView, type DragDelta } from './viewGestures';
 import { FULL_TURN, viewRotation, type ViewState } from './ViewState';
 import { rotationAboutY } from '../../shared/math/Matrix3';
 import { degrees, degreesToRadians, type Degrees } from '../../shared/units/angle';
+
+/**
+ * An equirectangular picture spans a full turn across for a half turn from top to bottom.
+ */
+const EQUIRECTANGULAR_ASPECT = 2;
 
 /**
  * What the player shows: `normal` is a rectilinear window into the stitched sphere that the

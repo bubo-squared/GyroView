@@ -19,6 +19,7 @@ export const GYRO_VIEW_ERROR_CODES = [
   'no-calibration',
   'no-frame-times',
   'no-info-record',
+  'no-key-frame',
   'playback-blocked',
   'range-unsupported',
   'record-not-found',

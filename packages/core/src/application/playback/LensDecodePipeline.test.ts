@@ -224,7 +224,7 @@ describe('LensDecodePipeline', () => {
     expect(decoderPort.inner.openDecoders).toBe(0);
   });
 
-  it('rejects with no-frame-times when a track has no key frame', async () => {
+  it('rejects with no-key-frame when a track has no key frame', async () => {
     const pipeline = new LensDecodePipeline(
       twoLensTracks(0),
       new FakeVideoDecoderPort(DECODER_LATENCY),
@@ -232,7 +232,7 @@ describe('LensDecodePipeline', () => {
     );
     await expect(
       pipeline.run(seconds(0), new FramePairQueue<FakeFrameHandle>(4)),
-    ).rejects.toMatchObject({ code: 'no-frame-times' });
+    ).rejects.toMatchObject({ code: 'no-key-frame' });
   });
 
   it('delivers the last pair of the track when started past its last frame', async () => {

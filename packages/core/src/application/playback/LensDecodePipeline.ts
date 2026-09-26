@@ -200,7 +200,7 @@ export class LensDecodePipeline<Handle = unknown> {
         const start = (await track.keyPacketAt(from)) ?? (await track.keyPacketAt(seconds(0)));
         if (!start) {
           throw new GyroViewError(
-            'no-frame-times',
+            'no-key-frame',
             `track ${track.description.trackIndex} has no key frame`,
           );
         }

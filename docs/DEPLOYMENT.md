@@ -77,6 +77,7 @@ Every failure is a `GyroViewError` with a stable `code`; the `error` event carri
 | `missing-second-file`   | A split-file recording without its `_10_` sibling: set `src2`.               |
 | `no-calibration`        | The file carries no lens calibration; it cannot be stitched.                 |
 | `no-info-record`        | Not an Insta360 recording (or a truncated one).                              |
+| `no-key-frame`          | A video track has no key frame to start decoding from.                       |
 | `unsupported-container` | Not a media file the demuxer can read (or not an MP4 at all).                |
 | `unsupported-layout`    | The tracks do not form two lens images the player understands.               |
 | `playback-blocked`      | The browser wants a user gesture before sound starts (autoplay policy).      |

@@ -20,22 +20,6 @@ import {
 const HARDWARE_ACCELERATION: HardwareAcceleration = 'no-preference';
 
 /**
- * The error a decoder reported through its callback, shared between the callback and the
- * handle so that later calls fail with the real cause instead of a bare "closed" state.
- */
-class ReportedFailure {
-  private error: GyroViewError | undefined;
-
-  public get current(): GyroViewError | undefined {
-    return this.error;
-  }
-
-  public record(error: GyroViewError): void {
-    this.error ??= error;
-  }
-}
-
-/**
  * VideoDecoderPort over the browser's WebCodecs `VideoDecoder`. Frames are exposed as
  * `DecodedFrame<VideoFrame>`; the renderer uploads the handle to the GPU and the pipeline closes
  * it afterwards.
@@ -78,27 +62,7 @@ export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
     if (typeof VideoDecoder === 'undefined') {
       throw new GyroViewError('codec-unsupported', 'this browser has no WebCodecs VideoDecoder');
     }
-    const failure = new ReportedFailure();
-    const decoder = new VideoDecoder({
-      output: (frame): void => {
-        callbacks.onFrame(wrapFrame(frame));
-      },
-      error: (error): void => {
-        const reported = new GyroViewError('decode', `video decoder failed: ${error.message}`, {
-          cause: error,
-        });
-        failure.record(reported);
-        callbacks.onError(reported);
-      },
-    });
-    const config = this.toWebCodecsConfig(configuration);
-    try {
-      decoder.configure(config);
-    } catch (error) {
-      decoder.close();
-      throw error;
-    }
-    return new WebCodecsDecoderHandle(decoder, config, failure);
+    return new WebCodecsDecoderHandle(this.toWebCodecsConfig(configuration), callbacks);
   }
 
   private toWebCodecsConfig(configuration: VideoDecoderConfiguration): VideoDecoderConfig {
@@ -115,12 +79,36 @@ export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
   }
 }
 
+/**
+ * One configured `VideoDecoder` for its whole life. The error it reported through its callback
+ * is kept, so later calls fail with the real cause instead of a bare "closed" state.
+ */
 class WebCodecsDecoderHandle implements VideoDecoderHandle {
+  private readonly decoder: VideoDecoder;
+  private failure: GyroViewError | undefined;
+
   public constructor(
-    private readonly decoder: VideoDecoder,
     private readonly config: VideoDecoderConfig,
-    private readonly failure: ReportedFailure,
-  ) {}
+    callbacks: VideoDecoderCallbacks<VideoFrame>,
+  ) {
+    this.decoder = new VideoDecoder({
+      output: (frame): void => {
+        callbacks.onFrame(wrapFrame(frame));
+      },
+      error: (error): void => {
+        this.failure ??= new GyroViewError('decode', `video decoder failed: ${error.message}`, {
+          cause: error,
+        });
+        callbacks.onError(this.failure);
+      },
+    });
+    try {
+      this.decoder.configure(config);
+    } catch (error) {
+      this.decoder.close();
+      throw error;
+    }
+  }
 
   public get pendingCount(): number {
     return this.decoder.decodeQueueSize;
@@ -131,7 +119,7 @@ class WebCodecsDecoderHandle implements VideoDecoderHandle {
    * decoder); they cross the port as `decode` failures, as the fake's do.
    */
   public decode(packet: EncodedVideoPacket): void {
-    if (this.failure.current) throw this.failure.current;
+    if (this.failure) throw this.failure;
     try {
       this.decoder.decode(chunkOf(packet));
     } catch (error) {
@@ -162,13 +150,13 @@ class WebCodecsDecoderHandle implements VideoDecoderHandle {
 
   public async flush(): Promise<void> {
     if (this.decoder.state !== 'configured') {
-      throw this.failure.current ?? new GyroViewError('decode', 'flush on a closed decoder');
+      throw this.failure ?? new GyroViewError('decode', 'flush on a closed decoder');
     }
     try {
       await this.decoder.flush();
     } catch (error) {
       throw (
-        this.failure.current ??
+        this.failure ??
         new GyroViewError('decode', 'the decoder could not be flushed', { cause: error })
       );
     }

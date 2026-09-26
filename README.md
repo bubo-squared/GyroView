@@ -45,7 +45,9 @@ found by itself when it sits beside `src` under the camera's name), `autoplay`, 
 the first frame shows at once), `gain-match` (`off` leaves the lenses' exposure as recorded),
 `fov` (30 to 120 degrees), `yaw`, `pitch`, `view-mode` (`normal`;
 `equirectangular` for the whole sphere as a level 2:1 panorama; `raw-lenses` for the decoded
-lens images side by side, unstitched and as recorded) and `stabilization` (`off`, `lock`,
+lens images side by side, unstitched and as recorded; the camera records a square a little
+smaller than each lens's image circle, so the circles show cut at the frame's edges, where the
+two tiles meet as well) and `stabilization` (`off`, `lock`,
 `horizon`, `follow`). The settings (`stabilization`, `view-mode`, `fov`, `yaw`, `pitch`,
 `muted`, `loop`) are applied when their attribute changes, and their properties (`viewMode` for
 `view-mode`, plus `volume`) report and change the setting in effect, as a video's `muted`

@@ -1,3 +1,4 @@
+import type { AudioSegmentSource } from './AudioSegmentSource';
 import type { RandomAccessSource } from './RandomAccessSource';
 import type {
   EncodedVideoPacket,
@@ -15,36 +16,15 @@ export interface AudioTrackDescription {
 }
 
 /**
- * One compressed audio sample as the container stores it. Every audio packet is a key packet.
- */
-export interface EncodedAudioPacket {
-  readonly timestamp: Seconds;
-  readonly duration: Seconds;
-  readonly data: Uint8Array;
-}
-
-export interface AudioDecoderConfiguration {
-  readonly codec: string;
-  readonly sampleRate: number;
-  readonly channelCount: number;
-  /**
-   * Codec-specific bytes (the AudioSpecificConfig for AAC) when the container carries them.
-   */
-  readonly description: Uint8Array | undefined;
-}
-
-/**
- * Random access into one audio track's samples.
+ * One audio track of an opened container. The core never reads audio samples: the track goes,
+ * re-packaged, to the platform's media pipeline, which plays it as the master clock.
  */
 export interface AudioTrackReader {
   readonly description: AudioTrackDescription;
-  decoderConfiguration(): Promise<AudioDecoderConfiguration>;
-  duration(): Promise<Seconds>;
   /**
-   * Packets in decode order from the one playing at `time` (or the first one after it) to the
-   * end of the track.
+   * The track as fragmented MP4; rejects with `codec-unsupported` when it cannot be re-packaged.
    */
-  packetsFrom(time: Seconds): AsyncIterable<EncodedAudioPacket>;
+  openSegments(): Promise<AudioSegmentSource>;
 }
 
 /**

@@ -135,27 +135,8 @@ describe('MediabunnyDemuxer on the synthetic fixture with an AAC track', () => {
     input.dispose();
   });
 
-  it('describes the audio track and its decoder configuration', async () => {
+  it('describes the audio track', () => {
     const [audio] = input.audioTracks;
     expect(audio?.description).toEqual({ trackIndex: 0, codec: 'mp4a.40.2' });
-    await expect(audio?.duration()).resolves.toBeCloseTo(3, 1);
-    const configuration = await audio?.decoderConfiguration();
-    expect(configuration).toMatchObject({
-      codec: 'mp4a.40.2',
-      sampleRate: 48_000,
-      channelCount: 2,
-    });
-    expect(configuration?.description?.byteLength).toBeGreaterThan(0);
-  });
-
-  it('iterates audio packets from the one playing at a time to the end', async () => {
-    const [audio] = input.audioTracks;
-    const timestamps: number[] = [];
-    const packets = audio?.packetsFrom(seconds(1.5)) ?? [];
-    for await (const packet of packets) timestamps.push(packet.timestamp);
-    expect(timestamps[0]).toBeLessThanOrEqual(1.5);
-    expect(timestamps[0]).toBeGreaterThan(1.4);
-    expect(timestamps.at(-1)).toBeGreaterThan(2.9);
-    expect(timestamps).toEqual(timestamps.toSorted((left, right) => left - right));
   });
 });

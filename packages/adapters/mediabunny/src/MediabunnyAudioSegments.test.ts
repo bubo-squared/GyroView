@@ -2,12 +2,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { seconds, type AudioSegmentSource, type AudioTrackReader } from '@gyroview/core';
+import { seconds, type AudioSegmentSource } from '@gyroview/core';
 import { InMemoryRandomAccessSource } from '@gyroview/core/testing';
 import { BufferSource, EncodedPacketSink, Input, MP4 } from 'mediabunny';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { MediabunnyAudioSegmenter } from './MediabunnyAudioSegmenter';
 import { MediabunnyDemuxer } from './MediabunnyDemuxer';
 
 const FIXTURE = path.resolve(
@@ -61,8 +60,7 @@ async function parseBack(bytes: Uint8Array): Promise<{ duration: number; firstTi
   }
 }
 
-describe('MediabunnyAudioSegmenter', () => {
-  let track: AudioTrackReader;
+describe('MediabunnyAudioSegments', () => {
   let source: AudioSegmentSource;
 
   beforeAll(async () => {
@@ -72,8 +70,7 @@ describe('MediabunnyAudioSegmenter', () => {
     );
     const [audio] = input.audioTracks;
     if (!audio) throw new Error('fixture has no audio track');
-    track = audio;
-    source = await new MediabunnyAudioSegmenter().open(track);
+    source = await audio.openSegments();
   });
 
   it('describes the output as fragmented MP4 audio with the track codec', () => {

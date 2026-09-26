@@ -1,4 +1,3 @@
-import { MediabunnyAudioSegmenter } from '@gyroview/adapter-mediabunny';
 import { MediaSourceAudioClock } from '@gyroview/adapter-mse-audio';
 import { DecodePipeline, PlaybackSession, seconds } from '@gyroview/core';
 import { FakeFrameSink } from '@gyroview/core/testing';
@@ -39,7 +38,7 @@ async function openAudioClock(
   cleanups.push(() => {
     element.remove();
   });
-  const segments = await new MediabunnyAudioSegmenter().open(audioTrack);
+  const segments = await audioTrack.openSegments();
   return MediaSourceAudioClock.open(element, segments);
 }
 

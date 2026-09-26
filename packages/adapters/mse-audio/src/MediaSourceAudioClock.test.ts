@@ -1,4 +1,4 @@
-import { MediabunnyAudioSegmenter, MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
+import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
 import {
   GyroViewError,
   seconds,
@@ -58,7 +58,7 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     );
     const [audio] = input.audioTracks;
     if (!audio) throw new Error('fixture has no audio track');
-    source = await new MediabunnyAudioSegmenter().open(audio);
+    source = await audio.openSegments();
   });
 
   afterEach(() => {

@@ -1,4 +1,3 @@
-import { MediabunnyAudioSegmenter } from '@gyroview/adapter-mediabunny';
 import { MediaSourceAudioClock } from '@gyroview/adapter-mse-audio';
 import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
@@ -145,7 +144,7 @@ async function clockFor(
 ): Promise<ChosenClock> {
   if (!audioTrack) return wallClock(NO_AUDIO_WARNING);
   try {
-    const segments = await new MediabunnyAudioSegmenter().open(audioTrack);
+    const segments = await audioTrack.openSegments();
     if (!MediaSourceAudioClock.isSupported(segments)) return wallClock(AUDIO_UNSUPPORTED_WARNING);
     const clock = await MediaSourceAudioClock.open(audio, segments);
     return { clock, warnings: [] };

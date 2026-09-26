@@ -21,10 +21,9 @@ describe.skipIf(!hasSamples())(
         expect(input.audioTracks.map((track) => track.description.codec)).toEqual([
           expect.stringMatching(/^mp4a/),
         ]);
-        await expect(input.audioTracks[0]?.decoderConfiguration()).resolves.toMatchObject({
-          sampleRate: 48_000,
-          channelCount: 2,
-        });
+        const segments = await input.audioTracks[0]?.openSegments();
+        expect(segments?.mimeType).toMatch(/^audio\/mp4; codecs="mp4a/);
+        expect(segments?.duration).toBeCloseTo(262, 0);
 
         const configuration = await input.videoTracks[0]!.decoderConfiguration();
         expect(configuration.isFullRange).toBe(true);

@@ -129,10 +129,10 @@ Use cases that orchestrate the domain through ports.
 | Port                 | What the core needs                                                                                                                          | Implementations                                                       |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `RandomAccessSource` | `size()`, `read(ByteRange)`                                                                                                                  | `FileRandomAccessSource`, `HttpRangeSource`, `BlobRandomAccessSource` |
-| `Demuxer`            | open a container, list `VideoTrackReader`/`AudioTrackReader`                                                                                 | `MediabunnyDemuxer`                                                   |
+| `Demuxer`            | open a container, list `VideoTrackReader`s and audio tracks that open as `AudioSegmentSource`s                                               | `MediabunnyDemuxer`                                                   |
 | `VideoDecoderPort`   | create decoders that emit frames and apply backpressure                                                                                      | `WebCodecsVideoDecoderPort`                                           |
 | `PlaybackClock`      | current time, start/pause/seek, end and failure                                                                                              | `MediaSourceAudioClock`, core `application/playback/WallClock`        |
-| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                                       | `MediabunnyAudioSegmenter`                                            |
+| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                                       | `MediabunnyAudioSegments`                                             |
 | `FrameSink`          | present a frame pair                                                                                                                         | `ThreeFrameRenderer`                                                  |
 | `PictureRenderer`    | a `FrameSink` that also takes the stabilization rotation, view, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
 | `SeamMeter`          | the mean colour each lens shows along the seam                                                                                               | `SeamMeterPass`                                                       |
@@ -162,9 +162,9 @@ One package per external technology; none imports another.
   (`range-unsupported`, `cors`, `source-unreadable`); `HttpResourceLocator` answers "does it
   exist" with one HEAD.
 - **`blob`**: `BlobRandomAccessSource` slices a `File` from a picker or a drop.
-- **`mediabunny`**: the demuxer and track readers over the mediabunny library, and
-  `MediabunnyAudioSegmenter`, which re-packages the AAC track into fragmented MP4 without
-  re-encoding (ADR 0003, ADR 0007).
+- **`mediabunny`**: the demuxer and track readers over the mediabunny library; an audio track
+  opens as `MediabunnyAudioSegments`, its packets re-packaged into fragmented MP4 without
+  re-encoding (ADR 0003, ADR 0007). The core never reads audio samples.
 - **`webcodecs`**: `WebCodecsVideoDecoderPort`, hardware decoding in the browser with the
   port's key-frame and backpressure contract (ADR 0002).
 - **`mse-audio`**: `MediaSourceAudioClock`, a hidden audio element fed through Media Source

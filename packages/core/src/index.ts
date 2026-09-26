@@ -154,12 +154,10 @@ export {
 
 // Playback ports and pipeline
 export type {
-  AudioDecoderConfiguration,
   AudioTrackDescription,
   AudioTrackReader,
   DemuxedInput,
   Demuxer,
-  EncodedAudioPacket,
   VideoTrackReader,
 } from './ports/Demuxer';
 export type {

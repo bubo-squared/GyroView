@@ -8,10 +8,17 @@ import type { PlayerEvents } from './PlayerEvents';
  * browser's own media keys).
  */
 export class PlayerSound {
+  /**
+   * Whether the platform lets a page set the volume: iOS keeps media at the device's volume and
+   * ignores the setting, where a volume slider would move and change nothing.
+   */
+  public readonly canSetVolume: boolean;
+
   public constructor(
     private readonly audio: HTMLMediaElement,
     private readonly events: TypedEmitter<PlayerEvents>,
   ) {
+    this.canSetVolume = isVolumeSettable(audio.ownerDocument);
     audio.addEventListener('volumechange', this.onVolumeChange);
   }
 
@@ -41,4 +48,18 @@ export class PlayerSound {
   private readonly onVolumeChange = (): void => {
     this.events.emit('volumechange', { volume: this.volume, isMuted: this.isMuted });
   };
+}
+
+/**
+ * A volume the probe sets, other than the default of 1.
+ */
+const PROBE_VOLUME = 0.5;
+
+/**
+ * Tried on an element of its own, so the one playing hears no volume change.
+ */
+function isVolumeSettable(document: Document): boolean {
+  const probe = document.createElement('audio');
+  probe.volume = PROBE_VOLUME;
+  return probe.volume === PROBE_VOLUME;
 }

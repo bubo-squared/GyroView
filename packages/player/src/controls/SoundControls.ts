@@ -9,17 +9,22 @@ const PERCENT = 100;
 /**
  * The sound the controls show and change.
  */
-export type SoundPlayer = Pick<Player, 'events' | 'volume' | 'isMuted' | 'setVolume' | 'setMuted'>;
+export type SoundPlayer = Pick<
+  Player,
+  'events' | 'volume' | 'isMuted' | 'canSetVolume' | 'setVolume' | 'setMuted'
+>;
 
 /**
  * The mute button and the volume slider, showing the sound however it was last changed. The
- * button is a toggle named "Mute": pressed means muted, as assistive technology expects.
+ * button is a toggle named "Mute": pressed means muted, as assistive technology expects. The
+ * slider shows only where a page can set the volume.
  */
 export class SoundControls {
   public constructor(
     private readonly parts: SoundParts,
     private readonly player: SoundPlayer,
   ) {
+    parts.volume.hidden = !player.canSetVolume;
     parts.mute.addEventListener('click', () => {
       player.setMuted(!player.isMuted);
     });

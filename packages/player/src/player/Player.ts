@@ -118,6 +118,13 @@ export class Player {
   }
 
   /**
+   * Whether `setVolume` changes anything on this platform; iOS leaves media at the device's volume.
+   */
+  public get canSetVolume(): boolean {
+    return this.sound.canSetVolume;
+  }
+
+  /**
    * Replaces whatever was loaded. Resolves once the recording is ready (and started, with
    * `autoplay`); rejects with the failure after reporting it as an `error` event. A load that a
    * newer load or `unload` supersedes resolves quietly.

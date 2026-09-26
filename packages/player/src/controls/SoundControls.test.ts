@@ -13,6 +13,8 @@ class FakeSound implements SoundPlayer {
   public volume = 1;
   public isMuted = false;
 
+  public constructor(public readonly canSetVolume = true) {}
+
   public setVolume(volume: number): void {
     this.volume = volume;
     this.announce();
@@ -28,7 +30,7 @@ class FakeSound implements SoundPlayer {
   }
 }
 
-function soundControls(): { parts: SoundParts; sound: FakeSound } {
+function soundControls(canSetVolume = true): { parts: SoundParts; sound: FakeSound } {
   const volume = document.createElement('input');
   volume.type = 'range';
   volume.max = '1';
@@ -36,7 +38,7 @@ function soundControls(): { parts: SoundParts; sound: FakeSound } {
   const mute = document.createElement('button');
   mute.setAttribute('aria-label', 'Mute');
   const parts = { mute, volume };
-  const sound = new FakeSound();
+  const sound = new FakeSound(canSetVolume);
   new SoundControls(parts, sound);
   return { parts, sound };
 }
@@ -71,5 +73,10 @@ describe('SoundControls', () => {
     sound.setVolume(0.5);
     expect(parts.volume.value).toBe('0.5');
     expect(parts.volume.getAttribute('aria-valuetext')).toBe('50%');
+  });
+
+  it('shows the volume slider only where the platform lets a page set the volume', () => {
+    expect(soundControls().parts.volume.hidden).toBe(false);
+    expect(soundControls(false).parts.volume.hidden).toBe(true);
   });
 });

@@ -42,8 +42,8 @@ are covered by synthetic fixtures built from the documented format variants.
   pitch on real material. The code paths exist and are tested on synthetic files; the IMU
   frames default to "aligned" with a `warning` until measured.
 - **An iPhone**: to run the developer page on iOS Safari and confirm `ManagedMediaSource`
-  audio, hardware decoder limits with several players on a page, and the pinned fullscreen
-  fallback.
+  audio, hardware decoder limits with several players on a page, the pinned fullscreen
+  fallback, and that the volume slider hides where the volume cannot be set.
 - **An Insta360 Studio export** of one clip: an external reference for stitching and
   stabilization quality.
 

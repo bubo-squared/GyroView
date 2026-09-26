@@ -55,12 +55,15 @@ export interface KeyPress {
 }
 
 /**
- * The player command a key press means, or undefined when the press is not a shortcut.
+ * The player command a key press means, or undefined when the press is not a shortcut. A
+ * character already carries what Shift did to it (`+` is Shift and `=` on a US keyboard), so
+ * Shift picks other commands for the named keys only.
  */
 export function shortcutFor(press: KeyPress): ShortcutCommand | undefined {
   if (press.hasSystemModifier) return undefined;
-  const key = press.key.length === 1 ? press.key.toLowerCase() : press.key;
-  return press.isShiftPressed ? SHIFTED_KEYS.get(key) : PLAIN_KEYS.get(key);
+  const isCharacter = press.key.length === 1;
+  if (isCharacter) return PLAIN_KEYS.get(press.key.toLowerCase());
+  return press.isShiftPressed ? SHIFTED_KEYS.get(press.key) : PLAIN_KEYS.get(press.key);
 }
 
 /**

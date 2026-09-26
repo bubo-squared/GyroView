@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { shortcutFor } from './keyboard';
+import { shortcutFor, type KeyPress } from './keyboard';
 
-function press(
-  key: string,
-  isShiftPressed = false,
-  hasSystemModifier = false,
-): Parameters<typeof shortcutFor>[0] {
-  return { key, isShiftPressed, hasSystemModifier };
+function press(key: string, modifiers: Partial<Omit<KeyPress, 'key'>> = {}): KeyPress {
+  return { key, isShiftPressed: false, hasSystemModifier: false, ...modifiers };
 }
 
 describe('shortcutFor', () => {
@@ -24,9 +20,9 @@ describe('shortcutFor', () => {
   it('looks around with the arrows and seeks with shifted arrows', () => {
     expect(shortcutFor(press('ArrowLeft'))).toBe('look-left');
     expect(shortcutFor(press('ArrowUp'))).toBe('look-up');
-    expect(shortcutFor(press('ArrowLeft', true))).toBe('seek-back');
-    expect(shortcutFor(press('ArrowRight', true))).toBe('seek-forward');
-    expect(shortcutFor(press('ArrowUp', true))).toBeUndefined();
+    expect(shortcutFor(press('ArrowLeft', { isShiftPressed: true }))).toBe('seek-back');
+    expect(shortcutFor(press('ArrowRight', { isShiftPressed: true }))).toBe('seek-forward');
+    expect(shortcutFor(press('ArrowUp', { isShiftPressed: true }))).toBeUndefined();
   });
 
   it('zooms and resets the view', () => {
@@ -36,8 +32,14 @@ describe('shortcutFor', () => {
     expect(shortcutFor(press('0'))).toBe('reset-view');
   });
 
+  it('reads a character as the key reports it, Shift already applied', () => {
+    // Plus is Shift and = on US and UK keyboards; the digits are shifted on AZERTY.
+    expect(shortcutFor(press('+', { isShiftPressed: true }))).toBe('zoom-in');
+    expect(shortcutFor(press('0', { isShiftPressed: true }))).toBe('reset-view');
+  });
+
   it('leaves browser shortcuts and unknown keys alone', () => {
-    expect(shortcutFor(press('k', false, true))).toBeUndefined();
+    expect(shortcutFor(press('k', { hasSystemModifier: true }))).toBeUndefined();
     expect(shortcutFor(press('q'))).toBeUndefined();
     expect(shortcutFor(press('Enter'))).toBeUndefined();
   });

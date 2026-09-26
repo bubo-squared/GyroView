@@ -102,7 +102,13 @@ export class SeekBar {
     this.host.player.seek(seconds(time));
   }
 
+  /**
+   * The time beside the bar, and the same time for screen readers, which would read the slider's
+   * raw seconds.
+   */
   private showTime(time: number): void {
-    this.parts.time.textContent = `${formatTime(time)} / ${formatTime(this.host.player.duration)}`;
+    const [shown, total] = [formatTime(time), formatTime(this.host.player.duration)];
+    this.parts.time.textContent = `${shown} / ${total}`;
+    this.parts.seek.setAttribute('aria-valuetext', `${shown} of ${total}`);
   }
 }

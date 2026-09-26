@@ -94,6 +94,7 @@ describe('SeekBar', () => {
     transport.events.emit('timeupdate', seconds(2));
     expect(parts.seek.value).toBe('4');
     expect(parts.time.textContent).toBe('0:04 / 0:10');
+    expect(parts.seek.getAttribute('aria-valuetext')).toBe('0:04 of 0:10');
   });
 
   it('scrubs one position at a time, the latest one a drag passed', async () => {

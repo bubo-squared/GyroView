@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { CalibrationVersion } from '../../optics/LensCalibration';
 import { parseOffsetString } from './parseOffsetString';
 import {
-  OFFICE_CALIBRATION,
   ONE_R_LEGACY_CALIBRATION,
   v6CalibrationString,
 } from '../../../../test/support/calibrationStrings';
+import { OFFICE_CALIBRATION } from '../../../../test/support/officeCalibration';
 import { captureError } from '../../../../test/support/errors';
 
 describe('parseOffsetString with the X5 office strings', () => {

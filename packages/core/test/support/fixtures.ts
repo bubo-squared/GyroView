@@ -26,14 +26,14 @@ export function loadFixture(relativePath: string): Uint8Array {
   return new Uint8Array(readFileSync(path.resolve(FIXTURE_ROOT, relativePath)));
 }
 
-export interface FixtureRecord {
+interface FixtureRecord {
   format: number;
   size: number;
   offset: number;
   rel: number;
 }
 
-export interface FixtureManifestEntry {
+interface FixtureManifestEntry {
   source: string;
   fileSize: number;
   trailerSize: number;
@@ -51,7 +51,7 @@ export function loadManifest(): Record<'office' | 'sailing', FixtureManifestEntr
   >;
 }
 
-export interface BoxHeaderFixture {
+interface BoxHeaderFixture {
   type: string;
   offset: number;
   size: number;

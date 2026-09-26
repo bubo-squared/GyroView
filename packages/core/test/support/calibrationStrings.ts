@@ -1,5 +1,3 @@
-export { OFFICE_CALIBRATION } from './officeCalibration';
-
 /**
  * Legacy calibration string of the ONE R fixture (test/fixtures/thirdparty/insta360py/sample.insv):
  * version word 3105 = lens type 33 with different upper bits than the X5's 1137.

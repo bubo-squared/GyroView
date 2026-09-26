@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { CalibrationVersion } from '../../optics/LensCalibration';
 import { selectCalibration } from './selectCalibration';
-import {
-  OFFICE_CALIBRATION,
-  v6CalibrationString,
-} from '../../../../test/support/calibrationStrings';
+import { v6CalibrationString } from '../../../../test/support/calibrationStrings';
+import { OFFICE_CALIBRATION } from '../../../../test/support/officeCalibration';
 
 describe('selectCalibration', () => {
   it('prefers the MEI calibration when all three strings exist', () => {

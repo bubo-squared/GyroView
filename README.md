@@ -70,9 +70,12 @@ are listed in `docs/DEPLOYMENT.md`).
 Keyboard: space or K play/pause, J and L seek, S stops, arrows look around (Shift + arrows
 seek), plus and minus zoom, 0 resets the view, M mutes, F fills the screen, Escape closes an
 open menu and then leaves fullscreen. A focused slider keeps its arrows and a focused button
-its Space. Mouse and touch: drag to look,
-wheel or pinch to zoom, tap to play or pause. The equirectangular panorama only turns sideways
-and does not zoom; the raw lenses neither turn nor zoom.
+its Space. Mouse and touch: drag to look, wheel or pinch to zoom toward the pointer or the
+fingers (the keys zoom about the centre), tap to play or pause. The equirectangular panorama and
+the raw lenses zoom up to four times; a zoomed panorama moves up and down as well as turning,
+zoomed raw lenses move in every direction, by drags and arrows alike, and Reset view returns the
+current view to where it started. The cursor turns into a hand only where a drag moves the
+picture.
 
 Styling: the host element sizes the player (a block with a 16:9 aspect ratio by default);
 `--gyro-view-accent`, `--gyro-view-controls-background`, `--gyro-view-text`,
@@ -167,4 +170,4 @@ clock, 0008 stitching frames and poses, 0009 IMU frame and stabilization, 0010 p
 composition and embedding, 0011 sound follows the picture, 0012 gain matching along the seam,
 0013 byte-range reads bypass the browser cache, 0014 the frame shows the whole calibration
 square, 0015 view modes replace projections, 0016 the player owns its settings, 0017 the
-recording itself or an error.
+recording itself or an error, 0018 every view mode zooms toward the pointer.

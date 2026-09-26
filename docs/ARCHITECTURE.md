@@ -92,9 +92,12 @@ sources the session decodes (`lensFrameOrder`).
 (`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`).
 
 **`view`**: `ViewState` (yaw, pitch, field of view) with clamping and the view rotation;
-`ViewMode` with one rules object per mode (how drags, arrow keys and zoom move the view, and the
-`Picture` it draws: rectilinear, equirectangular or lens tiles; ADR 0015); `screenLayout`
-for letterboxing; and the pure drag/zoom/look-at gestures.
+`Framing`, the view with the `Magnification` of the panorama and of the lens tiles;
+`ViewMode` with one rules object per mode (how drags, arrow keys and zooms toward a point change
+its part of the framing, whether a drag moves the picture, how it resets, and the `Picture` it
+draws: rectilinear, equirectangular or lens tiles; ADRs 0015 and 0018); `screenLayout` for
+letterboxing; `magnification` for enlarging and moving a flat picture within its edges; and the
+pure drag/zoom/look-at gestures, among them the normal view's zoom toward a point.
 
 ### Application: `core/src/application`
 
@@ -129,17 +132,17 @@ Use cases that orchestrate the domain through ports.
 
 ### Ports: `core/src/ports`
 
-| Port                 | What the core needs                                                                                                                          | Implementations                                                       |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `RandomAccessSource` | `size()`, `read(ByteRange)`                                                                                                                  | `FileRandomAccessSource`, `HttpRangeSource`, `BlobRandomAccessSource` |
-| `Demuxer`            | open a container, list `VideoTrackReader`s and audio tracks that open as `AudioSegmentSource`s                                               | `MediabunnyDemuxer`                                                   |
-| `VideoDecoderPort`   | create decoders that emit frames and apply backpressure                                                                                      | `WebCodecsVideoDecoderPort`                                           |
-| `PlaybackClock`      | current time, start/pause/seek, whether it runs, end and failure                                                                             | `MediaSourceAudioClock`, core `application/playback/WallClock`        |
-| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                                       | `MediabunnyAudioSegments`                                             |
-| `FrameSink`          | present a frame pair                                                                                                                         | `ThreeFrameRenderer`                                                  |
-| `PictureRenderer`    | a `FrameSink` that also takes the stabilization rotation, view, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
-| `SeamMeter`          | the mean colour each lens shows along the seam                                                                                               | `SeamMeterPass`                                                       |
-| `ResourceLocator`    | does this URL exist                                                                                                                          | `HttpResourceLocator`                                                 |
+| Port                 | What the core needs                                                                                                                             | Implementations                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `RandomAccessSource` | `size()`, `read(ByteRange)`                                                                                                                     | `FileRandomAccessSource`, `HttpRangeSource`, `BlobRandomAccessSource` |
+| `Demuxer`            | open a container, list `VideoTrackReader`s and audio tracks that open as `AudioSegmentSource`s                                                  | `MediabunnyDemuxer`                                                   |
+| `VideoDecoderPort`   | create decoders that emit frames and apply backpressure                                                                                         | `WebCodecsVideoDecoderPort`                                           |
+| `PlaybackClock`      | current time, start/pause/seek, whether it runs, end and failure                                                                                | `MediaSourceAudioClock`, core `application/playback/WallClock`        |
+| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                                          | `MediabunnyAudioSegments`                                             |
+| `FrameSink`          | present a frame pair                                                                                                                            | `ThreeFrameRenderer`                                                  |
+| `PictureRenderer`    | a `FrameSink` that also takes the stabilization rotation, framing, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
+| `SeamMeter`          | the mean colour each lens shows along the seam                                                                                                  | `SeamMeterPass`                                                       |
+| `ResourceLocator`    | does this URL exist                                                                                                                             | `HttpResourceLocator`                                                 |
 
 Every port whose adapter talks to the platform has a contract suite that runs against its fake
 in `core/src/testing` and the real adapters alike (`RandomAccessSource`, `Demuxer`,

@@ -1,6 +1,7 @@
 # ADR 0015: View modes replace projections
 
-Status: accepted (2026-09-25)
+Status: accepted (2026-09-25); "pitch and zoom are ignored" in the panorama and "no drag or zoom"
+in the raw lenses superseded by ADR 0018
 
 ## Context
 

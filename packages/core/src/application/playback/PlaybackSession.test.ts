@@ -83,7 +83,7 @@ describe('PlaybackSession transport', () => {
     session.dispose();
   });
 
-  it('announces its time every quarter second of playback, and the time it pauses at', async () => {
+  it('announces its time every quarter second of playback, and on a pause and a seek', async () => {
     const { session, advance } = sessionHarness();
     const updates: number[] = [];
     session.events.on('timeupdate', (time) => {
@@ -92,7 +92,8 @@ describe('PlaybackSession transport', () => {
     await session.play();
     for (let step = 0; step < 5; step += 1) await advance(100);
     session.pause();
-    expect(updates.map((time) => Number(time.toFixed(6)))).toEqual([0.1, 0.4, 0.5]);
+    session.seek(seconds(2));
+    expect(updates.map((time) => Number(time.toFixed(6)))).toEqual([0.1, 0.4, 0.5, 2]);
     session.dispose();
   });
 
@@ -165,15 +166,19 @@ describe('PlaybackSession transport', () => {
 
   it('ends when the clock passes the duration and every frame was shown, then can replay', async () => {
     const { session, clock, advance, states } = sessionHarness();
-    let endedCount = 0;
+    const heard: (number | 'ended')[] = [];
+    session.events.on('timeupdate', (time) => {
+      heard.push(time);
+    });
     session.events.on('ended', () => {
-      endedCount += 1;
+      heard.push('ended');
     });
     await session.play();
     for (let step = 0; step < 40; step += 1) await advance(100);
     expect(session.state).toBe('ended');
-    expect(endedCount).toBe(1);
     const held = clock.currentTime;
+    expect(heard.filter((event) => event === 'ended')).toHaveLength(1);
+    expect(heard.slice(-2)).toEqual([held, 'ended']);
     await advance(300);
     expect(clock.currentTime).toBe(held);
     await session.play();

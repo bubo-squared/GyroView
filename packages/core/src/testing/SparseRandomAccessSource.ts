@@ -18,13 +18,6 @@ export class SparseRandomAccessSource implements RandomAccessSource {
 
   public constructor(private readonly totalSize: number) {}
 
-  /**
-   * A source holding exactly `bytes`, for tests that have the whole file in memory.
-   */
-  public static over(bytes: Uint8Array): SparseRandomAccessSource {
-    return new SparseRandomAccessSource(bytes.byteLength).place(0, bytes);
-  }
-
   public get reads(): readonly ByteRange[] {
     return this.readLog;
   }

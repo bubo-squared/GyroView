@@ -28,12 +28,6 @@ describe('SparseRandomAccessSource', () => {
     await expect(source.read(ByteRange.of(0, 5))).resolves.toEqual(new Uint8Array([1, 1, 9, 9, 0]));
   });
 
-  it('wraps a whole byte array', async () => {
-    const source = SparseRandomAccessSource.over(new Uint8Array([5, 6, 7]));
-    await expect(source.size()).resolves.toBe(3);
-    await expect(source.read(ByteRange.of(1, 2))).resolves.toEqual(new Uint8Array([6, 7]));
-  });
-
   it('rejects placing a segment beyond its size', () => {
     expect(() => new SparseRandomAccessSource(10).place(8, new Uint8Array(4))).toThrow(
       expect.objectContaining({ code: 'invalid-byte-range' }) as Error,

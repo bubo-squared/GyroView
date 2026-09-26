@@ -7,8 +7,8 @@ import {
   degreesToRadians,
   radians,
   radiansToDegrees,
+  wrapHalfTurn,
   type Degrees,
-  type Radians,
 } from '../../shared/units/angle';
 
 /**
@@ -89,9 +89,11 @@ export function zoomViewAt(view: ViewState, zoom: ZoomRequest, viewportAspect: n
   const ray = rayThrough(zoomed.fieldOfView, zoom.focus, viewportAspect);
   const pitch = pitchRaising(ray, direction[1], view.pitch);
   if (pitch === undefined) return zoomed;
-  const tilted = transformVector(rotationAboutX(pitch), ray);
-  const yaw = radians(Math.atan2(direction[0], direction[2]) - Math.atan2(tilted[0], tilted[2]));
-  return clampView({ ...zoomed, yaw: radiansToDegrees(yaw), pitch: radiansToDegrees(pitch) });
+  const tilted = transformVector(rotationAboutX(degreesToRadians(pitch)), ray);
+  const yaw = radiansToDegrees(
+    radians(Math.atan2(direction[0], direction[2]) - Math.atan2(tilted[0], tilted[2])),
+  );
+  return clampView({ ...zoomed, yaw, pitch });
 }
 
 /**
@@ -121,24 +123,15 @@ function rayThrough(fieldOfView: Degrees, point: ScreenPoint, viewportAspect: nu
  * applied after it leaves alone: `y cos θ - z sin θ` is `reach cos(θ + phase)`. Of the two
  * solutions the one nearer `current`; none when no pitch reaches that height.
  */
-function pitchRaising(ray: Vector3, height: number, current: Degrees): Radians | undefined {
+function pitchRaising(ray: Vector3, height: number, current: Degrees): Degrees | undefined {
   const [, y, z] = ray;
-  const reach = Math.hypot(y, z);
-  const cosine = height / reach;
+  const cosine = height / Math.hypot(y, z);
   if (Math.abs(cosine) > 1) return undefined;
-  const phase = Math.atan2(z, y);
-  const spread = Math.acos(cosine);
-  const rising = wrapped(spread - phase);
-  const falling = wrapped(-spread - phase);
-  const target = degreesToRadians(current);
-  return radians(Math.abs(rising - target) <= Math.abs(falling - target) ? rising : falling);
-}
-
-/**
- * An angle in radians wrapped into (-π, π].
- */
-function wrapped(angle: number): number {
-  return Math.atan2(Math.sin(angle), Math.cos(angle));
+  const phase = radiansToDegrees(radians(Math.atan2(z, y)));
+  const spread = radiansToDegrees(radians(Math.acos(cosine)));
+  const rising = wrapHalfTurn(degrees(spread - phase));
+  const falling = wrapHalfTurn(degrees(0 - spread - phase));
+  return Math.abs(rising - current) <= Math.abs(falling - current) ? rising : falling;
 }
 
 /**

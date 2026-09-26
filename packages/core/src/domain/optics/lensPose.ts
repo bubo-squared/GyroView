@@ -6,9 +6,7 @@ import {
   rotationAboutZ,
   type Matrix3,
 } from '../../shared/math/Matrix3';
-import { degreesToRadians, radians } from '../../shared/units/angle';
-
-const HALF_TURN = radians(Math.PI);
+import { degrees, degreesToRadians, HALF_TURN } from '../../shared/units/angle';
 
 /**
  * Turns directions in the camera body frame (x right, y down, z forward along lens 0's optical
@@ -23,7 +21,7 @@ const HALF_TURN = radians(Math.PI);
  */
 export function lensRotation(lens: LensCalibration): Matrix3 {
   const { yaw, pitch, roll } = lens.orientation;
-  const facing = rotationAboutX(radians(HALF_TURN * lens.lensIndex));
+  const facing = rotationAboutX(degreesToRadians(degrees(HALF_TURN * lens.lensIndex)));
   const yawed = multiplyMatrices(rotationAboutY(degreesToRadians(yaw)), facing);
   const pitched = multiplyMatrices(rotationAboutX(degreesToRadians(pitch)), yawed);
   return multiplyMatrices(rotationAboutZ(degreesToRadians(roll)), pitched);

@@ -26,9 +26,9 @@ import {
   type TurnRequest,
   type ZoomRequest,
 } from './viewGestures';
-import { DEFAULT_VIEW, FULL_TURN, HALF_TURN, viewRotation, type ViewState } from './ViewState';
+import { DEFAULT_VIEW, viewRotation, type ViewState } from './ViewState';
 import { rotationAboutY } from '../../shared/math/Matrix3';
-import { degrees, degreesToRadians } from '../../shared/units/angle';
+import { degrees, degreesToRadians, FULL_TURN, HALF_TURN } from '../../shared/units/angle';
 
 /**
  * An equirectangular picture spans a full turn across for a half turn from top to bottom.

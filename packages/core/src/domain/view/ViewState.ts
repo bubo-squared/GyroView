@@ -5,7 +5,7 @@ import {
   rotationAboutY,
   type Matrix3,
 } from '../../shared/math/Matrix3';
-import { degrees, degreesToRadians, type Degrees } from '../../shared/units/angle';
+import { degrees, degreesToRadians, wrapHalfTurn, type Degrees } from '../../shared/units/angle';
 
 /**
  * Where the viewer looks. Angles are in the camera body frame: yaw positive looks right, pitch
@@ -25,11 +25,6 @@ const NARROWEST_DEGREES = 30;
 const WIDEST_DEGREES = 120;
 const DEFAULT_FIELD_OF_VIEW_DEGREES = 90;
 const MAX_PITCH_DEGREES = 90;
-const HALF_TURN_DEGREES = 180;
-const FULL_TURN_DEGREES = 360;
-
-export const FULL_TURN = degrees(FULL_TURN_DEGREES);
-export const HALF_TURN = degrees(HALF_TURN_DEGREES);
 
 export const DEFAULT_VIEW: ViewState = {
   yaw: degrees(0),
@@ -68,11 +63,4 @@ export function viewRotation(view: ViewState): Matrix3 {
     rotationAboutY(degreesToRadians(view.yaw)),
     rotationAboutX(degreesToRadians(view.pitch)),
   );
-}
-
-function wrapHalfTurn(angle: Degrees): Degrees {
-  let wrapped: number = angle % FULL_TURN_DEGREES;
-  if (wrapped > HALF_TURN_DEGREES) wrapped -= FULL_TURN_DEGREES;
-  if (wrapped <= -HALF_TURN_DEGREES) wrapped += FULL_TURN_DEGREES;
-  return degrees(wrapped);
 }

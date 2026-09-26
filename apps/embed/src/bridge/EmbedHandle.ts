@@ -3,6 +3,7 @@ import {
   DEFAULT_VIEW,
   DEFAULT_VIEW_MODE,
   GyroViewError,
+  isFlowing,
   isGyroViewErrorCode,
   TypedEmitter,
 } from '@gyroview/core';
@@ -226,7 +227,7 @@ const STATE_UPDATERS: ReadonlyMap<string, StateUpdater> = new Map<string, StateU
     'statuschange',
     (state, detail): EmbedState => {
       const status = detail as EmbedState['status'];
-      return { ...state, status, isPaused: status !== 'playing' && status !== 'buffering' };
+      return { ...state, status, isPaused: !isFlowing(status) };
     },
   ],
   ['timeupdate', withTime],

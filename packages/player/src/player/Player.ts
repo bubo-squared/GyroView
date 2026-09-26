@@ -2,6 +2,7 @@ import {
   Deferred,
   GyroViewError,
   hasErrorCode,
+  isFlowing,
   messageOf,
   seconds,
   TypedEmitter,
@@ -69,8 +70,7 @@ export class Player {
    * False while playing or holding for frames, as a media element's `paused`.
    */
   public get isPaused(): boolean {
-    const state = this.loaded?.pipeline.session.state;
-    return state !== 'playing' && state !== 'buffering';
+    return !isFlowing(this.loaded?.pipeline.session.state);
   }
 
   public get view(): ViewState {

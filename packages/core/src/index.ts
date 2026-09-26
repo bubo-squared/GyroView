@@ -255,7 +255,7 @@ export type { PlaybackClock } from './ports/PlaybackClock';
 export type { FrameSink, Presentation, StabilizableFrameSink } from './ports/FrameSink';
 export type { PictureRenderer } from './ports/PictureRenderer';
 export { WallClock } from './application/playback/WallClock';
-export { PlayerStateMachine, type PlayerState } from './domain/playback/PlayerState';
+export { isFlowing, PlayerStateMachine, type PlayerState } from './domain/playback/PlayerState';
 export { TypedEmitter } from './shared/events/TypedEmitter';
 export {
   PlaybackSession,

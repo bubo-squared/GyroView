@@ -1,7 +1,7 @@
 import { closeFramePair, type FramePair } from '../../ports/FramePair';
 import { FramePairQueue } from './FramePairQueue';
 import { DecodePipeline, type DecodePipelineOptions, type DecodeRunReport } from './DecodePipeline';
-import { PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
+import { isFlowing, PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
 import type { VideoTrackReader } from '../../ports/Demuxer';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
@@ -144,7 +144,7 @@ export class PlaybackSession<Handle = unknown> {
   public seek(time: Seconds): void {
     if (this.machine.isOneOf('disposed', 'error')) return;
     const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
-    const shouldResume = this.machine.isOneOf('playing', 'buffering');
+    const shouldResume = isFlowing(this.machine.state);
     this.setState('seeking');
     this.parts.clock.pause();
     this.parts.clock.seek(target);

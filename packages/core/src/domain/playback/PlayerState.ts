@@ -21,6 +21,16 @@ const TRANSITIONS: Readonly<Record<PlayerState, readonly PlayerState[]>> = {
   disposed: [],
 };
 
+const FLOWING_STATES: ReadonlySet<string> = new Set<PlayerState>(['playing', 'buffering']);
+
+/**
+ * Whether playback is under way: frames flow, or the clock holds for them. A media element is not
+ * `paused` then. Any status vocabulary that extends the player states can ask.
+ */
+export function isFlowing(state: string | undefined): boolean {
+  return state !== undefined && FLOWING_STATES.has(state);
+}
+
 /**
  * Explicit player lifecycle instead of a set of booleans.
  */

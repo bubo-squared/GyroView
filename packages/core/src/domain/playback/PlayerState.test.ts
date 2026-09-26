@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PlayerStateMachine, type PlayerState } from './PlayerState';
+import { isFlowing, PlayerStateMachine, type PlayerState } from './PlayerState';
 import { captureError } from '../../../test/support/errors';
 
 /**
@@ -86,5 +86,13 @@ describe('PlayerStateMachine', () => {
     expect(machine.canTransitionTo('ready')).toBe(false);
     expect(machine.isOneOf('disposed', 'error')).toBe(true);
     expect(machine.isOneOf('ready', 'playing')).toBe(false);
+  });
+});
+
+describe('isFlowing', () => {
+  it('holds while playing or buffering, and for nothing else', () => {
+    expect(ALL_STATES.filter((state) => isFlowing(state))).toEqual(['playing', 'buffering']);
+    expect(isFlowing('loading')).toBe(false);
+    expect(isFlowing(undefined)).toBe(false);
   });
 });

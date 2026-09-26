@@ -7,7 +7,7 @@ import { FramePairQueue } from './FramePairQueue';
 import type { VideoTrackReader } from '../../ports/Demuxer';
 import type { FramePair } from '../../ports/FramePair';
 import type { VideoDecoderPort } from '../../ports/VideoDecoderPort';
-import type { Seconds } from '../../shared/units/time';
+import { seconds, type Seconds } from '../../shared/units/time';
 
 export interface DecodeRunParts<Handle> {
   /**
@@ -43,6 +43,7 @@ export class DecodeRun<Handle> {
   private readonly pipeline: DecodePipeline<Handle>;
   private isAborted = false;
   private hasReachedEndValue = false;
+  private hasHandedOutPair = false;
 
   private constructor(
     parts: DecodeRunParts<Handle>,
@@ -79,8 +80,16 @@ export class DecodeRun<Handle> {
     return this.queue.length;
   }
 
+  /**
+   * The latest pair due at `time`. Until the run has handed one out, its first pair is due at
+   * once: on tracks whose first frame comes after `time`, that frame is the picture there.
+   */
   public takePairAt(time: Seconds): FramePair<Handle> | undefined {
-    return this.queue.takePairAt(time);
+    const head = this.queue.peekTimestamp();
+    const isFirst = !this.hasHandedOutPair && head !== undefined;
+    const pair = this.queue.takePairAt(isFirst ? seconds(Math.max(time, head)) : time);
+    if (pair) this.hasHandedOutPair = true;
+    return pair;
   }
 
   public abort(): void {

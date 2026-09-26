@@ -64,7 +64,7 @@ const ABORTED = Symbol('aborted');
 
 /**
  * Decodes the frame sources of a recording in lockstep from a chosen time: starts every decoder at
- * the key packet before that time, feeds packets round-robin with bounded decoder queues, pairs
+ * the key packet at or before that time (the first one, for a time before it), feeds packets round-robin with bounded decoder queues, pairs
  * the resulting frames and hands pairs to the output queue through a {@link StartGate}. One
  * instance runs once; each `DecodeRun` creates its own.
  */

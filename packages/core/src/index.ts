@@ -182,7 +182,7 @@ export { FramePairQueue } from './application/playback/FramePairQueue';
 export {
   DecodePipeline,
   type DecodePipelineOptions,
-  type DecodeRunReport,
+  type DecodePipelineReport,
 } from './application/playback/DecodePipeline';
 export {
   probeDecoding,

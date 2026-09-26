@@ -36,10 +36,10 @@ describe('DecodeRun', () => {
     expect(run.hasReachedEnd).toBe(true);
     expect(progress).toBeGreaterThanOrEqual(3);
     expect(run.takePairAt(seconds(0))?.timestamp).toBe(0);
-    run.stop();
+    run.abort();
   });
 
-  it('drops what arrives and tells nothing once stopped', async () => {
+  it('drops what arrives and tells nothing once aborted', async () => {
     let progress = 0;
     const run = DecodeRun.start(parts(3), seconds(0), {
       onProgress: () => {
@@ -47,7 +47,7 @@ describe('DecodeRun', () => {
       },
       onFailure: failOnError,
     });
-    run.stop();
+    run.abort();
     await settle();
     expect(progress).toBe(0);
     expect(run.queuedPairs).toBe(0);

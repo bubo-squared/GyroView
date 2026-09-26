@@ -1,11 +1,8 @@
 import { closeFramePair, type FramePair } from '../../ports/FramePair';
-import type { DecodePipelineOptions } from './DecodePipeline';
-import { DecodeRun } from './DecodeRun';
+import { DecodeRun, type DecodeRunParts } from './DecodeRun';
 import { isFlowing, PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
-import type { VideoTrackReader } from '../../ports/Demuxer';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
-import type { VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { TypedEmitter } from '../../shared/events/TypedEmitter';
@@ -26,20 +23,10 @@ export interface PlaybackSessionEvents {
  * What a session works with. The session borrows every part: the composition root that opened
  * the clock and the sink disposes them after the session, the session only pauses the clock.
  */
-export interface PlaybackSessionParts<Handle> {
-  /**
-   * One reader per frame source, in the order of `lensFrameOrder`.
-   */
-  readonly frameSources: readonly VideoTrackReader[];
-  readonly decoderPort: VideoDecoderPort<Handle>;
+export interface PlaybackSessionParts<Handle> extends DecodeRunParts<Handle> {
   readonly clock: PlaybackClock;
   readonly sink: FrameSink<Handle>;
   readonly duration: Seconds;
-  readonly pipeline: DecodePipelineOptions;
-  /**
-   * Decoded pairs kept ahead of the playhead.
-   */
-  readonly queueCapacity: number;
 }
 
 /**
@@ -190,7 +177,7 @@ export class PlaybackSession<Handle = unknown> {
 
   public dispose(): void {
     if (this.machine.state === 'disposed') return;
-    this.stopRun();
+    this.abortRun();
     if (this.presented) closeFramePair(this.presented.pair);
     this.presented = undefined;
     this.parts.clock.pause();
@@ -307,7 +294,7 @@ export class PlaybackSession<Handle = unknown> {
    * wake a waiting start, end or fail the session.
    */
   private startRun(from: Seconds): void {
-    this.stopRun();
+    this.abortRun();
     this.run = DecodeRun.start(this.parts, from, {
       onProgress: (): void => {
         this.resumeIfPrimed();
@@ -318,8 +305,8 @@ export class PlaybackSession<Handle = unknown> {
     });
   }
 
-  private stopRun(): void {
-    this.run?.stop();
+  private abortRun(): void {
+    this.run?.abort();
     this.run = undefined;
   }
 
@@ -333,7 +320,7 @@ export class PlaybackSession<Handle = unknown> {
   private fail(error: unknown): void {
     if (!this.machine.canTransitionTo('error')) return;
     this.parts.clock.pause();
-    this.stopRun();
+    this.abortRun();
     this.setState('error');
     this.settleStartAttempt();
     this.events.emit(

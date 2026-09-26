@@ -24,7 +24,7 @@ export interface DecodePipelineOptions {
  * How one run went. The session acts on `hasReachedEnd`; the counts make the run observable,
  * which is how its pairing, backpressure and start gate are tested.
  */
-export interface DecodeRunReport {
+export interface DecodePipelineReport {
   readonly packetsDecoded: number;
   readonly pairsDelivered: number;
   readonly unpairedFrames: number;
@@ -66,7 +66,7 @@ const ABORTED = Symbol('aborted');
  * Decodes the frame sources of a recording in lockstep from a chosen time: starts every decoder at
  * the key packet before that time, feeds packets round-robin with bounded decoder queues, pairs
  * the resulting frames and hands pairs to the output queue through a {@link StartGate}. One
- * instance runs once; the session creates a new one per run.
+ * instance runs once; each `DecodeRun` creates its own.
  */
 export class DecodePipeline<Handle = unknown> {
   private readonly abortSignal = new Signal();
@@ -89,7 +89,7 @@ export class DecodePipeline<Handle = unknown> {
    * Runs until the tracks end, the output queue is closed or {@link abort} is called. Resolves
    * with a report; rejects when a decoder fails or a track cannot be read.
    */
-  public async run(from: Seconds, output: FramePairQueue<Handle>): Promise<DecodeRunReport> {
+  public async run(from: Seconds, output: FramePairQueue<Handle>): Promise<DecodePipelineReport> {
     ensureInvariant(!this.hasRun, 'a decode pipeline runs once; create a new one for each run');
     this.hasRun = true;
     const run = await this.openRun(from, output);
@@ -254,7 +254,7 @@ function closeIterators(iterators: readonly PacketIterator[]): void {
   for (const iterator of iterators) void iterator.return?.();
 }
 
-function reportOf<Handle>(run: Run<Handle>, hasReachedEnd: boolean): DecodeRunReport {
+function reportOf<Handle>(run: Run<Handle>, hasReachedEnd: boolean): DecodePipelineReport {
   return {
     packetsDecoded: run.tally.packets,
     pairsDelivered: run.tally.pairs,

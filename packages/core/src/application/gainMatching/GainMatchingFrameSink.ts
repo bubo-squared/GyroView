@@ -8,13 +8,13 @@ import type { Seconds } from '../../shared/units/time';
 export interface GainMatchingParts<Handle> {
   readonly sink: FrameSink<Handle>;
   /**
-   * The renderer that draws what the sink is handed: it measures its seam and takes the gains.
+   * The renderer that draws what the sink is handed: it measures its seam and takes the gains,
+   * which go back to one for each lens it draws when matching stops.
    */
-  readonly renderer: Pick<PictureRenderer<Handle>, 'createSeamMeter' | 'setLensGains'>;
-  /**
-   * How many lenses the renderer draws, whose gains go back to one when matching stops.
-   */
-  readonly lensCount: number;
+  readonly renderer: Pick<
+    PictureRenderer<Handle>,
+    'createSeamMeter' | 'setLensGains' | 'lensCount'
+  >;
 }
 
 /**
@@ -50,7 +50,7 @@ export class GainMatchingFrameSink<Handle = unknown> implements FrameSink<Handle
 
   public disable(): void {
     this.stop();
-    const unitGains = Array.from({ length: this.parts.lensCount }, () => UNIT_GAIN);
+    const unitGains = Array.from({ length: this.parts.renderer.lensCount }, () => UNIT_GAIN);
     this.parts.renderer.setLensGains(unitGains);
   }
 

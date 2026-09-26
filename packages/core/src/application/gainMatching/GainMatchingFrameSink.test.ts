@@ -15,6 +15,7 @@ const BRIGHT_AND_DARK: readonly Vector3[] = [
  * A renderer whose seam always reads bright on lens 0 and dark on lens 1.
  */
 class FakeRenderer {
+  public readonly lensCount = 2;
   public readonly meters: { isDisposed: boolean }[] = [];
   public readonly applied: (readonly Vector3[])[] = [];
 
@@ -41,7 +42,7 @@ function subject(): {
 } {
   const sink = new FakeFrameSink<string>();
   const renderer = new FakeRenderer();
-  return { sink, renderer, matching: new GainMatchingFrameSink({ sink, renderer, lensCount: 2 }) };
+  return { sink, renderer, matching: new GainMatchingFrameSink({ sink, renderer }) };
 }
 
 function presentAt(matching: GainMatchingFrameSink<string>, time: number): void {

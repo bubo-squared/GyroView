@@ -42,16 +42,12 @@ export class ByteRange {
     return this.offset + this.length;
   }
 
-  public fitsWithin(totalSize: number): boolean {
-    return this.end <= totalSize;
-  }
-
   /**
    * Refuses a range that runs past the end of a `totalSize`-byte source with the error the
    * `RandomAccessSource` contract asks for; `source` names the source in the message.
    */
   public ensureWithin(totalSize: number, source: string): void {
-    if (this.fitsWithin(totalSize)) return;
+    if (this.end <= totalSize) return;
     throw new GyroViewError(
       'invalid-byte-range',
       `range ${this.offset}+${this.length} exceeds the ${totalSize}-byte ${source}`,

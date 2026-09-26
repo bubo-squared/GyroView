@@ -12,15 +12,10 @@ export const BOX_SIZE_IS_LARGE = 1;
 export const BOX_SIZE_TO_END_OF_FILE = 0;
 
 /**
- * Box types the player cares about. `inst` is Insta360's wrapper around the trailer on newer
+ * The box types the player looks for. `inst` is Insta360's wrapper around the trailer on newer
  * firmware; older firmware appends the trailer bare, outside any box.
  */
 export const BoxType = {
-  FileType: 'ftyp',
-  MediaData: 'mdat',
-  Movie: 'moov',
-  Free: 'free',
-  Wide: 'wide',
   Insta360Trailer: 'inst',
 } as const;
 

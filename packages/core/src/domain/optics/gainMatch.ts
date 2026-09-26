@@ -21,7 +21,7 @@ const DEFAULT_TIME_CONSTANT_SECONDS = 1.5;
 const DARK_CHANNEL = 0.01;
 const UNIT_GAIN: Vector3 = [1, 1, 1];
 
-export const DEFAULT_GAIN_MATCH_OPTIONS: GainMatchOptions = {
+const DEFAULT_GAIN_MATCH_OPTIONS: GainMatchOptions = {
   maxGain: DEFAULT_MAX_GAIN,
   timeConstant: seconds(DEFAULT_TIME_CONSTANT_SECONDS),
 };

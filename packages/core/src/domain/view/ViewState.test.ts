@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  clampView,
-  DEFAULT_VIEW,
-  FIELD_OF_VIEW_BOUNDS,
-  isSameView,
-  viewRotation,
-} from './ViewState';
+import { clampView, DEFAULT_VIEW, isSameView, viewRotation } from './ViewState';
 import { transformVector } from '../../shared/math/Matrix3';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { degrees } from '../../shared/units/angle';
@@ -29,10 +23,6 @@ describe('ViewState', () => {
     const pitched = viewRotation({ ...DEFAULT_VIEW, pitch: degrees(90) });
     expectVector(transformVector(yawed, FORWARD), [1, 0, 0]);
     expectVector(transformVector(pitched, FORWARD), [0, -1, 0]);
-  });
-
-  it('keeps the field of view within an ordinary lens range', () => {
-    expect(FIELD_OF_VIEW_BOUNDS).toEqual({ min: 30, max: 120 });
   });
 
   it('wraps the yaw, clamps the pitch at the poles and the field of view to its range', () => {

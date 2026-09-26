@@ -28,7 +28,7 @@ export interface FrameTimesParts {
  * Capture timing of every encoded frame, in frame order.
  */
 export class FrameTimes {
-  public readonly readoutTime: Seconds;
+  private readonly readoutTime: Seconds;
   private readonly clock: CaptureClock;
   private readonly captureTimes: Float64Array;
   private readonly shutterTimes: Float64Array | undefined;

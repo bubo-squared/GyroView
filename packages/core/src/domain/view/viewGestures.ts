@@ -17,7 +17,7 @@ const ZOOM_STEP = 1.1;
 /**
  * Angle covered by one pixel across the viewport: the field of view spread over its width.
  */
-export function degreesPerPixel(view: ViewState, viewportWidth: number): Degrees {
+function degreesPerPixel(view: ViewState, viewportWidth: number): Degrees {
   return degrees(view.fieldOfView / Math.max(viewportWidth, 1));
 }
 

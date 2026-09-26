@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { findBox, trailerWrapperOf } from './BoxLayout';
-import { BoxType } from './boxConstants';
+import { trailerWrapperOf } from './BoxLayout';
 import { scanBoxes } from './scanBoxes';
 import { InMemoryRandomAccessSource } from '../../../testing/InMemoryRandomAccessSource';
 import { SparseRandomAccessSource } from '../../../testing/SparseRandomAccessSource';
@@ -31,7 +30,6 @@ describe('scanBoxes on the real X5 layouts', () => {
         layout.boxes.map((entry) => [entry.range.offset, entry.range.length, entry.headerSize]),
       ).toEqual(headers.boxes.map((entry) => [entry.offset, entry.size, entry.headerSize]));
       expect(layout.trailingBytes).toBeUndefined();
-      expect(findBox(layout, BoxType.Movie)?.range.offset).toBe(headers.boxes[2]!.offset);
       expect(trailerWrapperOf(layout)).toBe('inst-box');
       expect(source.reads).toHaveLength(4);
     },

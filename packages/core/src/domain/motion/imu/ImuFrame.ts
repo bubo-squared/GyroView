@@ -63,7 +63,7 @@ export function isProperRotation(bodyAxes: BodyAxes): boolean {
 /**
  * A frame measured on a recording of the camera it is for.
  */
-export function measuredImuFrame(name: string, bodyAxes: BodyAxes): ImuFrame {
+function measuredImuFrame(name: string, bodyAxes: BodyAxes): ImuFrame {
   return { ...frameOf(name, bodyAxes), isVerified: true };
 }
 

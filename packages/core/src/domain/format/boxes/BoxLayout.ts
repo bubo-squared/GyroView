@@ -26,10 +26,7 @@ export interface BoxLayout {
  */
 export type TrailerWrapper = 'inst-box' | 'bare';
 
-export function findBox(layout: BoxLayout, type: string): BoxDescriptor | undefined {
-  return layout.boxes.find((box) => box.type === type);
-}
-
 export function trailerWrapperOf(layout: BoxLayout): TrailerWrapper {
-  return findBox(layout, BoxType.Insta360Trailer) ? 'inst-box' : 'bare';
+  const isWrapped = layout.boxes.some((box) => box.type === BoxType.Insta360Trailer);
+  return isWrapped ? 'inst-box' : 'bare';
 }

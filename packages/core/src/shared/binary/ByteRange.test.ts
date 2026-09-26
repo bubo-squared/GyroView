@@ -13,11 +13,6 @@ describe('ByteRange', () => {
     expect([range.offset, range.length]).toEqual([28, 72]);
   });
 
-  it('knows whether it fits within a source', () => {
-    expect(ByteRange.of(90, 10).fitsWithin(100)).toBe(true);
-    expect(ByteRange.of(91, 10).fitsWithin(100)).toBe(false);
-  });
-
   it('refuses to run past the end of a source, naming it', () => {
     const error = captureError(() => {
       ByteRange.of(91, 10).ensureWithin(100, 'blob');

@@ -55,7 +55,7 @@ export function stillestWindow(gyro: GyroTrack, frame: ImuFrame, length: Seconds
 /**
  * A gyro track together with the frame its readings are expressed in.
  */
-export interface FramedGyro {
+interface FramedGyro {
   readonly gyro: GyroTrack;
   readonly frame: ImuFrame;
 }

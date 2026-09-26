@@ -71,14 +71,14 @@ describe('FramePairQueue', () => {
     }).not.toThrow();
   });
 
-  it('releases a waiting producer when cleared', async () => {
+  it('releases a waiting producer when closed', async () => {
     const queue = new FramePairQueue<Probe>(1);
     queue.push(pair(0));
     let hasRoom = false;
     void queue.waitForRoom().then(() => {
       hasRoom = true;
     });
-    queue.clear();
+    queue.close();
     await settle();
     expect(hasRoom).toBe(true);
   });
@@ -100,15 +100,14 @@ describe('FramePairQueue', () => {
     expect(queue.isFull).toBe(true);
   });
 
-  it('closes and drops everything on clear, and closes pushes after close', () => {
+  it('closes and drops everything on close, and every pair pushed after', () => {
     const queue = new FramePairQueue<Probe>(3);
     const [first, second] = [pair(0), pair(1)];
     queue.push(first);
     queue.push(second);
-    queue.clear();
+    queue.close();
     expect(queue.length).toBe(0);
     expect(isClosed(first) && isClosed(second)).toBe(true);
-    queue.close();
     const late = pair(2);
     queue.push(late);
     expect(isClosed(late)).toBe(true);

@@ -37,12 +37,11 @@ export interface PlaybackSessionParts<Handle> {
   readonly duration: Seconds;
   readonly pipeline: DecodePipelineOptions;
   /**
-   * Decoded pairs kept ahead of the playhead; default 4.
+   * Decoded pairs kept ahead of the playhead.
    */
-  readonly queueCapacity?: number;
+  readonly queueCapacity: number;
 }
 
-const DEFAULT_QUEUE_CAPACITY = 4;
 /**
  * Pairs queued before the clock (re)starts, so playback does not stall on its first frames.
  */
@@ -62,7 +61,6 @@ const STARVATION_LAG_SECONDS = 0.25;
 export class PlaybackSession<Handle = unknown> {
   public readonly events = new TypedEmitter<PlaybackSessionEvents>();
   private readonly machine = new PlayerStateMachine();
-  private readonly queueCapacity: number;
   /**
    * One queue per pipeline run: a superseded run's late frames land in its own closed queue and
    * are dropped, never presented as if they belonged to the run that replaced it.
@@ -80,8 +78,7 @@ export class PlaybackSession<Handle = unknown> {
   private startAttempt: Deferred<void> | undefined;
 
   public constructor(private readonly parts: PlaybackSessionParts<Handle>) {
-    this.queueCapacity = parts.queueCapacity ?? DEFAULT_QUEUE_CAPACITY;
-    this.queue = new FramePairQueue<Handle>(this.queueCapacity);
+    this.queue = new FramePairQueue<Handle>(parts.queueCapacity);
   }
 
   public get state(): PlayerState {
@@ -229,7 +226,9 @@ export class PlaybackSession<Handle = unknown> {
    * left is already there.
    */
   private isPrimed(): boolean {
-    return this.hasDecodedToEnd || this.queue.length >= Math.min(PRIMING_PAIRS, this.queueCapacity);
+    return (
+      this.hasDecodedToEnd || this.queue.length >= Math.min(PRIMING_PAIRS, this.parts.queueCapacity)
+    );
   }
 
   /**
@@ -296,7 +295,7 @@ export class PlaybackSession<Handle = unknown> {
 
   private startPipeline(from: Seconds): void {
     this.hasDecodedToEnd = false;
-    const queue = new FramePairQueue<Handle>(this.queueCapacity, () => {
+    const queue = new FramePairQueue<Handle>(this.parts.queueCapacity, () => {
       if (queue === this.queue) this.resumeIfPrimed();
     });
     this.queue = queue;

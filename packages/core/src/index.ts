@@ -35,20 +35,16 @@ export {
 export type { ParsedGyroRecord } from './domain/format/records/gyro/parseGyroRecord';
 export { GyroTrack, type GyroSample } from './domain/motion/gyro/GyroTrack';
 export {
-  ALIGNED_IMU_FRAME,
   isProperRotation,
   assumedImuFrame,
-  measuredImuFrame,
   imuFrameFor,
   toBodyFrame,
-  X5_IMU_FRAME,
   type BodyAxes,
   type ImuFrame,
   type ImuFrameHints,
   type SignedAxis,
 } from './domain/motion/imu/ImuFrame';
 export {
-  DEFAULT_INTEGRATION_OPTIONS,
   OrientationTrack,
   type IntegrationOptions,
   type OrientationTrackParts,
@@ -60,16 +56,14 @@ export {
   type Stabilizer,
 } from './domain/motion/stabilization/Stabilizer';
 export {
-  FollowStabilization,
   HorizonStabilization,
   LockStabilization,
   OffStabilization,
   stabilizerFor,
-  type FollowOptions,
 } from './domain/motion/stabilization/stabilizers';
 export { ExposureRecord, type ExposureEntry } from './domain/motion/exposure/ExposureRecord';
 export { CaptureClock } from './domain/motion/timing/CaptureClock';
-export { FrameTimes, type FrameTime } from './domain/motion/timing/FrameTimes';
+export { FrameTimes } from './domain/motion/timing/FrameTimes';
 export type { FrameTimeSourceName } from './domain/motion/timing/FrameTimeSource';
 export {
   CalibrationVersion,
@@ -80,15 +74,7 @@ export {
 } from './domain/optics/LensCalibration';
 export type { LensModel, LensModelKind, LensProjectionParameters } from './domain/optics/LensModel';
 export { lensRotation } from './domain/optics/lensPose';
-export {
-  clampView,
-  DEFAULT_VIEW,
-  FIELD_OF_VIEW_BOUNDS,
-  isSameView,
-  viewRotation,
-  type FieldOfViewBounds,
-  type ViewState,
-} from './domain/view/ViewState';
+export { clampView, DEFAULT_VIEW, isSameView, type ViewState } from './domain/view/ViewState';
 export {
   DEFAULT_VIEW_MODE,
   VIEW_MODES,
@@ -103,15 +89,9 @@ export type {
   PictureKind,
   RectilinearPicture,
 } from './domain/view/Picture';
-export {
-  fittedRectangle,
-  lensTiles,
-  WHOLE_SCREEN,
-  type ScreenRectangle,
-} from './domain/view/screenLayout';
+export type { ScreenRectangle } from './domain/view/screenLayout';
 export { lookAt, zoomStepsForPinch, type DragDelta } from './domain/view/viewGestures';
 export {
-  EQUIRECTANGULAR_ASPECT,
   equirectangularPixelOf,
   type EquirectangularPixel,
   type PixelSize,
@@ -144,45 +124,39 @@ export type { CalibrationChoice } from './domain/format/calibration/selectCalibr
 export {
   ensureIndexInRange,
   ensureInvariant,
-  GYRO_VIEW_ERROR_CODES,
   GyroViewError,
   hasErrorCode,
   isGyroViewErrorCode,
   messageOf,
   type GyroViewErrorCode,
 } from './shared/errors/GyroViewError';
-export {
-  crossProduct,
-  dotProduct,
-  isFiniteVector,
-  magnitudeOf,
-  type Vector3,
-} from './shared/math/Vector3';
-export {
-  determinantOf,
-  IDENTITY_MATRIX3,
-  multiplyMatrices,
-  rotationAboutX,
-  rotationAboutY,
-  rotationAboutZ,
-  transformVector,
-  type Matrix3,
-} from './shared/math/Matrix3';
+export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
+export { IDENTITY_MATRIX3, transformVector, type Matrix3 } from './shared/math/Matrix3';
 export {
   conjugateQuaternion,
-  IDENTITY_QUATERNION,
-  multiplyQuaternions,
-  normalizeQuaternion,
   quaternionFromAxisAngle,
-  quaternionFromRotationVector,
-  quaternionToMatrix,
   rotateVector,
-  slerpQuaternions,
   type Quaternion,
 } from './shared/math/Quaternion';
 export type { ReadonlyFloat64Array } from './shared/binary/ReadonlyTypedArray';
-export * from './shared/units/time';
-export * from './shared/units/angle';
+export {
+  microseconds,
+  microsecondsToSeconds,
+  milliseconds,
+  seconds,
+  secondsToMicroseconds,
+  secondsToMilliseconds,
+  type Microseconds,
+  type Milliseconds,
+  type Seconds,
+} from './shared/units/time';
+export {
+  degrees,
+  degreesToRadians,
+  radians,
+  type Degrees,
+  type Radians,
+} from './shared/units/angle';
 
 // Playback ports and pipeline
 export type {

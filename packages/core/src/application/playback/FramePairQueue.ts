@@ -18,7 +18,7 @@ export class FramePairQueue<Handle = unknown> {
    * `onPush` hears about every pair kept, so a consumer waiting for frames need not poll.
    */
   public constructor(
-    public readonly capacity: number,
+    private readonly capacity: number,
     private readonly onPush: () => void = doNothing,
   ) {
     ensureInvariant(
@@ -82,17 +82,13 @@ export class FramePairQueue<Handle = unknown> {
   }
 
   /**
-   * Drops and closes everything, for a seek.
+   * Drops and closes everything held, and every pair pushed from now on.
    */
-  public clear(): void {
+  public close(): void {
+    this.isClosed = true;
     for (const pair of this.pairs) closeFramePair(pair);
     this.pairs.length = 0;
     this.wakeWaiters();
-  }
-
-  public close(): void {
-    this.isClosed = true;
-    this.clear();
   }
 
   private wakeWaiters(): void {

@@ -17,11 +17,6 @@ export interface ViewState {
   readonly fieldOfView: Degrees;
 }
 
-export interface FieldOfViewBounds {
-  readonly min: Degrees;
-  readonly max: Degrees;
-}
-
 /**
  * From a short telephoto to a wide angle: past 120 degrees a rectilinear view stretches its
  * edges more than it shows.
@@ -33,18 +28,12 @@ const MAX_PITCH_DEGREES = 90;
 const HALF_TURN_DEGREES = 180;
 const FULL_TURN_DEGREES = 360;
 
-export const FIELD_OF_VIEW_BOUNDS: FieldOfViewBounds = {
-  min: degrees(NARROWEST_DEGREES),
-  max: degrees(WIDEST_DEGREES),
-};
-
-export const DEFAULT_FIELD_OF_VIEW = degrees(DEFAULT_FIELD_OF_VIEW_DEGREES);
 export const FULL_TURN = degrees(FULL_TURN_DEGREES);
 
 export const DEFAULT_VIEW: ViewState = {
   yaw: degrees(0),
   pitch: degrees(0),
-  fieldOfView: DEFAULT_FIELD_OF_VIEW,
+  fieldOfView: degrees(DEFAULT_FIELD_OF_VIEW_DEGREES),
 };
 
 /**
@@ -56,12 +45,11 @@ export function clampView(view: ViewState): ViewState {
     [view.yaw, view.pitch, view.fieldOfView].every((angle) => Number.isFinite(angle)),
     'view angles must be finite',
   );
-  const { min, max } = FIELD_OF_VIEW_BOUNDS;
   return {
     ...view,
     yaw: wrapHalfTurn(view.yaw),
     pitch: degrees(Math.min(Math.max(view.pitch, -MAX_PITCH_DEGREES), MAX_PITCH_DEGREES)),
-    fieldOfView: degrees(Math.min(Math.max(view.fieldOfView, min), max)),
+    fieldOfView: degrees(Math.min(Math.max(view.fieldOfView, NARROWEST_DEGREES), WIDEST_DEGREES)),
   };
 }
 

@@ -2,7 +2,7 @@ import { buildStitchingSetup } from '@gyroview/core';
 import { Texture } from 'three';
 import { describe, expect, it } from 'vitest';
 
-import { createRendererUniforms } from './rendererUniforms';
+import { createRendererUniforms, SHADER_DEFINES } from './rendererUniforms';
 import { ALL_CHUNKS } from './shaderPrograms';
 import { MULTI_TRACK, syntheticCalibration } from './test/syntheticStitching';
 
@@ -21,5 +21,12 @@ describe('renderer uniforms', () => {
     const bound = Object.keys(createRendererUniforms(setup, [new Texture(), new Texture()]));
     expect(declared.toSorted(byName)).toEqual(bound.toSorted(byName));
     expect(new Set(declared).size).toBe(declared.length);
+  });
+
+  it('injects only defines a chunk reads, so no constant is dead on one side', () => {
+    const source = ALL_CHUNKS.join('\n');
+    for (const name of Object.keys(SHADER_DEFINES)) {
+      expect(source, name).toMatch(new RegExp(String.raw`\b${name}\b`, 'u'));
+    }
   });
 });

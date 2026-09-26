@@ -10,7 +10,7 @@ import {
 
 import { createPassMaterial } from './fullscreenPass';
 import type { RendererUniforms } from './rendererUniforms';
-import { EQUIRECTANGULAR_STITCH, LENS_TILES, RECTILINEAR_STITCH } from './shaderPrograms';
+import { PICTURE_PROGRAMS } from './shaderPrograms';
 
 /**
  * The program each kind of picture is drawn with; all read the same uniform objects.
@@ -19,9 +19,9 @@ export type PictureMaterials = Readonly<Record<PictureKind, RawShaderMaterial>>;
 
 export function createPictureMaterials(uniforms: RendererUniforms): PictureMaterials {
   return {
-    rectilinear: createPassMaterial(uniforms, RECTILINEAR_STITCH),
-    equirectangular: createPassMaterial(uniforms, EQUIRECTANGULAR_STITCH),
-    'lens-tiles': createPassMaterial(uniforms, LENS_TILES),
+    rectilinear: createPassMaterial(uniforms, PICTURE_PROGRAMS.rectilinear),
+    equirectangular: createPassMaterial(uniforms, PICTURE_PROGRAMS.equirectangular),
+    'lens-tiles': createPassMaterial(uniforms, PICTURE_PROGRAMS['lens-tiles']),
   };
 }
 

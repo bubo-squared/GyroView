@@ -1,3 +1,5 @@
+import type { PictureKind } from '@gyroview/core';
+
 import analysisFragment from './shaders/analysis.frag.glsl?raw';
 import constants from './shaders/constants.glsl?raw';
 import equirectangularRays from './shaders/equirectangularRays.glsl?raw';
@@ -21,14 +23,20 @@ function stitchThrough(rays: string): readonly string[] {
   return [...HEADER, screenAreas, rays, ...LENS_PROJECTION, stitchFragment];
 }
 
-export const RECTILINEAR_STITCH = stitchThrough(rectilinearRays);
-export const EQUIRECTANGULAR_STITCH = stitchThrough(equirectangularRays);
-export const LENS_TILES = [...HEADER, screenAreas, lensTextures, rawLensesFragment];
+/**
+ * The program each kind of picture is drawn with.
+ */
+export const PICTURE_PROGRAMS: Readonly<Record<PictureKind, readonly string[]>> = {
+  rectilinear: stitchThrough(rectilinearRays),
+  equirectangular: stitchThrough(equirectangularRays),
+  'lens-tiles': [...HEADER, screenAreas, lensTextures, rawLensesFragment],
+};
+
 export const SEAM_ANALYSIS = [...HEADER, ...LENS_PROJECTION, analysisFragment];
 
 /**
- * Every chunk once, for checking the uniforms they declare against the TypeScript side.
+ * Every chunk of every program once, for checking them against the TypeScript side.
  */
 export const ALL_CHUNKS: readonly string[] = [
-  ...new Set([...RECTILINEAR_STITCH, ...EQUIRECTANGULAR_STITCH, ...LENS_TILES, ...SEAM_ANALYSIS]),
+  ...new Set([...Object.values(PICTURE_PROGRAMS).flat(), ...SEAM_ANALYSIS]),
 ];

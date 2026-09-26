@@ -19,17 +19,25 @@ struct LensSample {
   vec4 color;
 };
 
-vec2 canvasPixel(int i, vec3 d, float theta) {
-  return uLensKind[i] == LENS_MEI
-    ? projectMei(
+// Where lens i images direction d on its calibration canvas; false for a kind of lens this
+// shader does not know, which images nothing.
+bool canvasPixel(int i, vec3 d, float theta, out vec2 pixel) {
+  if (uLensKind[i] == LENS_MEI) {
+    pixel = projectMei(
       d,
       uLensXi[i],
       uLensFocal[i],
       uLensPrincipalPoint[i],
       uLensRadial[i],
       uLensTangential[i]
-    )
-    : projectRadialPolynomial(d, theta, uLensPolynomial[i], uLensPrincipalPoint[i]);
+    );
+    return true;
+  }
+  if (uLensKind[i] == LENS_RADIAL_POLYNOMIAL) {
+    pixel = projectRadialPolynomial(d, theta, uLensPolynomial[i], uLensPrincipalPoint[i]);
+    return true;
+  }
+  return false;
 }
 
 // What lens i shows in a body direction, if it images it at all: outside its field, or beyond
@@ -42,8 +50,9 @@ LensSample sampleLensAt(int i, vec3 dirBody) {
   result.isImaged = false;
   result.theta = theta;
   result.color = vec4(0.0);
-  if (theta >= uLensHalfFov[i]) return result;
-  vec2 uv = (canvasPixel(i, d, theta) - uLensWindow[i].xy) / uLensWindow[i].zw;
+  vec2 pixel;
+  if (theta >= uLensHalfFov[i] || !canvasPixel(i, d, theta, pixel)) return result;
+  vec2 uv = (pixel - uLensWindow[i].xy) / uLensWindow[i].zw;
   if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return result;
   vec2 texel = uLensRegion[i].xy + uv * uLensRegion[i].zw;
   result.isImaged = true;

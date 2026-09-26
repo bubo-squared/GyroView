@@ -1,24 +1,35 @@
-import { DEFAULT_VIEW, degrees, TypedEmitter, type ViewMode, type ViewState } from '@gyroview/core';
+import {
+  DEFAULT_FRAMING,
+  DEFAULT_VIEW,
+  degrees,
+  TypedEmitter,
+  type Framing,
+  type ViewMode,
+  type ViewportSize,
+  type ViewState,
+} from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
 import type { PlayerEvents } from './PlayerEvents';
 import { PlayerView, type ViewSurface } from './PlayerView';
 
-/**
- * The canvas the gestures happen on, in CSS pixels.
- */
-const VIEWPORT = { width: 900, height: 450 };
-
 interface Recorded {
   readonly view: PlayerView;
   readonly surface: ViewSurface;
-  readonly drawn: (ViewState | ViewMode)[];
+  /**
+   * What the renderer was asked to draw, framings and modes in order.
+   */
+  readonly drawn: (Framing | ViewMode)[];
   readonly views: ViewState[];
   readonly modes: ViewMode[];
+  /**
+   * The canvas the gestures happen on, in CSS pixels; a test may resize it.
+   */
+  readonly canvas: { size: ViewportSize };
 }
 
-function recordedView(): Recorded {
-  const drawn: (ViewState | ViewMode)[] = [];
+function recordedView(lensCount = 2): Recorded {
+  const drawn: (Framing | ViewMode)[] = [];
   const views: ViewState[] = [];
   const modes: ViewMode[] = [];
   const events = new TypedEmitter<PlayerEvents>();
@@ -28,10 +39,12 @@ function recordedView(): Recorded {
   events.on('viewmodechange', (mode) => {
     modes.push(mode);
   });
-  const view = new PlayerView(events, () => VIEWPORT);
+  const canvas = { size: { width: 900, height: 450 } };
+  const view = new PlayerView(events, () => canvas.size);
   const surface: ViewSurface = {
+    lensCount,
     setFraming: (framing) => {
-      drawn.push(framing.view);
+      drawn.push(framing);
     },
     setViewMode: (mode) => {
       drawn.push(mode);
@@ -40,7 +53,23 @@ function recordedView(): Recorded {
   view.attach(surface);
   // Attaching draws the state as it is; the tests watch what follows.
   drawn.length = 0;
-  return { view, surface, drawn, views, modes };
+  return { view, surface, drawn, views, modes, canvas };
+}
+
+function framingOf(view: ViewState): Framing {
+  return { ...DEFAULT_FRAMING, view };
+}
+
+/**
+ * Where across the lens tiles the canvas centre is, once zoomed to 1.1^7 and dragged far left.
+ */
+function lensesAcrossAfterMovingFar(lensCount: number): number {
+  const { view, drawn } = recordedView(lensCount);
+  view.setMode('raw-lenses');
+  view.zoom(7);
+  view.pan({ x: -900, y: 0 });
+  const last = drawn.at(-1);
+  return typeof last === 'object' ? last.lenses.centre.x : NaN;
 }
 
 describe('PlayerView', () => {
@@ -55,7 +84,7 @@ describe('PlayerView', () => {
     view.set({ ...DEFAULT_VIEW, yaw: degrees(190), fieldOfView: degrees(500) });
     const expected = { ...DEFAULT_VIEW, yaw: -170, fieldOfView: 120 };
     expect(view.current).toEqual(expected);
-    expect(drawn).toEqual([expected]);
+    expect(drawn).toEqual([{ ...DEFAULT_FRAMING, view: expected }]);
     expect(views).toEqual([expected]);
   });
 
@@ -82,8 +111,16 @@ describe('PlayerView', () => {
     expect(drawn).toEqual(['equirectangular']);
     expect(modes).toEqual(['equirectangular']);
     view.pan({ x: 90, y: 90 });
-    view.zoom(3);
     expect(view.current).toEqual({ ...DEFAULT_VIEW, yaw: -36 });
+  });
+
+  it('measures every gesture on the canvas as it is at the time', () => {
+    const { view, canvas } = recordedView();
+    view.pan({ x: 90, y: 0 });
+    expect(view.current.yaw).toBeCloseTo(-9, 9);
+    canvas.size = { width: 450, height: 450 };
+    view.pan({ x: 90, y: 0 });
+    expect(view.current.yaw).toBeCloseTo(-27, 9);
   });
 
   it('zooms toward a point of the canvas, and about the centre without one', () => {
@@ -95,10 +132,14 @@ describe('PlayerView', () => {
     expect(view.current.yaw).toBe(0);
   });
 
-  it('can be dragged in the stitched views, and not in the unzoomed raw lenses', () => {
+  it('can be dragged in the stitched views, and in the raw lenses once zoomed in', () => {
     const { view } = recordedView();
     expect(view.canPan).toBe(true);
     view.setMode('raw-lenses');
+    expect(view.canPan).toBe(false);
+    view.zoom(1);
+    expect(view.canPan).toBe(true);
+    view.reset();
     expect(view.canPan).toBe(false);
   });
 
@@ -125,27 +166,27 @@ describe('PlayerView', () => {
     const { view, drawn, views } = recordedView();
     view.setMode('equirectangular');
     view.zoom(2);
-    expect(drawn).toEqual(['equirectangular', DEFAULT_VIEW]);
+    expect(drawn).toEqual([
+      'equirectangular',
+      { ...DEFAULT_FRAMING, panorama: { scale: 1.1 ** 2, centre: { x: 0.5, y: 0.5 } } },
+    ]);
     expect(views).toEqual([]);
-    expect(view.canPan).toBe(true);
   });
 
-  it('lets the raw lenses be dragged once zoomed in', () => {
-    const { view } = recordedView();
-    view.setMode('raw-lenses');
-    view.zoom(1);
-    expect(view.canPan).toBe(true);
-    view.reset();
-    expect(view.canPan).toBe(false);
+  it('lays out the raw lenses for as many lenses as its renderer draws', () => {
+    // One square tile on a 2:1 canvas is half its width: nearly twice as large it is still no
+    // wider than the canvas and cannot move sideways; two tiles side by side can.
+    expect(lensesAcrossAfterMovingFar(1)).toBe(0.5);
+    expect(lensesAcrossAfterMovingFar(2)).toBeGreaterThan(0.5);
   });
 
-  it('draws its current view and mode on a renderer attached later', () => {
+  it('draws its current framing and mode on a renderer attached later', () => {
     const { view, surface, drawn } = recordedView();
     view.attach(undefined);
     view.setMode('equirectangular');
     view.lookAt(degrees(10), degrees(0));
     view.attach(surface);
-    expect(drawn).toEqual(['equirectangular', { ...DEFAULT_VIEW, yaw: 10 }]);
+    expect(drawn).toEqual(['equirectangular', framingOf({ ...DEFAULT_VIEW, yaw: degrees(10) })]);
   });
 
   it('still announces changes between loads, with no renderer to draw them', () => {

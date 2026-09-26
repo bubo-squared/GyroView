@@ -1,6 +1,7 @@
 import type { FrameSink } from './FrameSink';
 import type { SeamMeter } from './SeamMeter';
 import type { Framing } from '../domain/view/Framing';
+import type { ViewportSize } from '../domain/view/screenLayout';
 import type { ViewMode } from '../domain/view/ViewMode';
 import type { Matrix3 } from '../shared/math/Matrix3';
 import type { Vector3 } from '../shared/math/Vector3';
@@ -25,7 +26,11 @@ export interface PictureRenderer<Handle = unknown> extends FrameSink<Handle> {
   /**
    * Matches the drawing buffer to a new surface size, in device pixels.
    */
-  resize(width: number, height: number): void;
+  resize(size: ViewportSize): void;
+  /**
+   * The lenses it draws, which the raw lens tiles lay out one each.
+   */
+  readonly lensCount: number;
   /**
    * A meter over the seam of the pictures this renderer draws. Whoever creates it disposes it;
    * the renderer disposes any still live when it is disposed itself.

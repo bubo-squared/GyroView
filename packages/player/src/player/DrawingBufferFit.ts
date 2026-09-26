@@ -20,9 +20,18 @@ export function drawingBufferSizeFor(
 }
 
 /**
+ * The element's size in CSS pixels as laid out on the page, transforms included, so that it is
+ * measured as the pointer positions on it are.
+ */
+export function cssSizeOf(element: Element): ViewportSize {
+  const { width, height } = element.getBoundingClientRect();
+  return { width, height };
+}
+
+/**
  * Keeps the renderer's drawing buffer matched to the canvas's layout size.
  */
-export class Viewport {
+export class DrawingBufferFit {
   private readonly observer: ResizeObserver;
 
   public constructor(
@@ -41,9 +50,8 @@ export class Viewport {
   }
 
   private fit(): void {
-    const rectangle = this.canvas.getBoundingClientRect();
-    const size = drawingBufferSizeFor(rectangle, window.devicePixelRatio);
+    const size = drawingBufferSizeFor(cssSizeOf(this.canvas), window.devicePixelRatio);
     if (size.width === this.canvas.width && size.height === this.canvas.height) return;
-    this.renderer.resize(size.width, size.height);
+    this.renderer.resize(size);
   }
 }

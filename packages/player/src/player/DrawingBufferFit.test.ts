@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { drawingBufferSizeFor } from './Viewport';
+import { drawingBufferSizeFor } from './DrawingBufferFit';
 
 describe('drawingBufferSizeFor', () => {
   it('scales the CSS size by the device pixel ratio', () => {

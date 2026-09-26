@@ -213,7 +213,7 @@ The composition root and the user-facing element, in three layers.
 - **`player`**: `Player`, the headless facade over one loaded recording. It loads, unloads,
   relays the session's states as media-element events (`SessionRelay`, `transportEventsFor`),
   ticks the session
-  from a `FrameLoop`, keeps the canvas sized (`Viewport`), and owns the settings (view and view
+  from a `FrameLoop`, keeps the canvas sized (`DrawingBufferFit`), and owns the settings (view and view
   mode in `PlayerView`, stabilization and gain matching in `PictureSettings`, sound in
   `PlayerSound`, loop) across loads (ADR 0016). Its
   life with a recording is one `PlayerPhase`. The element drives it; the embed bridge drives the element.

@@ -490,7 +490,7 @@ describe('ThreeFrameRenderer', () => {
   it('resizes its drawing buffer and keeps the picture', () => {
     const renderer = open();
     presentRedAndBlue(renderer);
-    renderer.resize(128, 64);
+    renderer.resize({ width: 128, height: 64 });
     expect(renderer.readPixels()).toHaveLength(128 * 64 * RGBA);
     expect(
       pixelAt(renderer, { column: 64, row: 32 }, { width: 128, height: 64 }).r,

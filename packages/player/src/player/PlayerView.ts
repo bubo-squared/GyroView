@@ -23,12 +23,12 @@ import {
 import type { PlayerEvents } from './PlayerEvents';
 
 /**
- * The part of the renderer the view drives.
+ * The part of the renderer the view drives, and how many lenses it draws in the lens tiles.
  */
-export type ViewSurface = Pick<PictureRenderer, 'setFraming' | 'setViewMode'>;
+export type ViewSurface = Pick<PictureRenderer, 'setFraming' | 'setViewMode' | 'lensCount'>;
 
 /**
- * Every layout the player accepts has two lenses; a loaded recording says so itself.
+ * Every layout the player accepts has two lenses; a renderer attached says so itself.
  */
 const LENS_COUNT_BEFORE_A_LOAD = 2;
 
@@ -46,7 +46,7 @@ export class PlayerView {
 
   public constructor(
     private readonly events: TypedEmitter<PlayerEvents>,
-    private readonly viewportSize: () => ViewportSize,
+    private readonly measureViewport: () => ViewportSize,
   ) {}
 
   public get current(): ViewState {
@@ -65,12 +65,13 @@ export class PlayerView {
   }
 
   /**
-   * The renderer of the loaded recording and its lens count, or nothing between loads. A new
-   * renderer draws the framing as it is now, however it changed while the recording was loading.
+   * The renderer of the loaded recording, or nothing between loads. A new renderer draws the
+   * framing as it is now, however it changed while the recording was loading; the lens tiles are
+   * measured by the lenses it draws from then on.
    */
-  public attach(surface: ViewSurface | undefined, lensCount = this.lensCount): void {
+  public attach(surface: ViewSurface | undefined): void {
     this.surface = surface;
-    this.lensCount = lensCount;
+    if (surface) this.lensCount = surface.lensCount;
     surface?.setViewMode(this.mode);
     surface?.setFraming(this.framing);
   }
@@ -121,7 +122,7 @@ export class PlayerView {
   }
 
   private context(): ViewContext {
-    return { viewport: this.viewportSize(), lensCount: this.lensCount };
+    return { viewport: this.measureViewport(), lensCount: this.lensCount };
   }
 
   private rules(): ViewModeRules {

@@ -1,5 +1,5 @@
 import type { PlayerParts } from './PlayerOptions';
-import { Viewport } from './Viewport';
+import { DrawingBufferFit } from './DrawingBufferFit';
 import type { Pipeline } from '../composition/ports';
 import { Disposables } from '../composition/Disposables';
 import type { OpenedRecording } from '../composition/OpenedRecording';
@@ -43,9 +43,9 @@ export async function loadRecording(request: LoadRequest): Promise<LoadedRecordi
       pipeline.dispose();
     });
     signal.throwIfAborted();
-    const viewport = new Viewport(parts.host.canvas, pipeline.renderer);
+    const fit = new DrawingBufferFit(parts.host.canvas, pipeline.renderer);
     disposables.add(() => {
-      viewport.dispose();
+      fit.dispose();
     });
     return { opened, pipeline, dispose: disposables.toDisposer() };
   } catch (error) {

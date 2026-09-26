@@ -15,6 +15,7 @@ import {
   type ViewState,
 } from '@gyroview/core';
 
+import { cssSizeOf } from './DrawingBufferFit';
 import { FrameLoop } from './FrameLoop';
 import { loadRecording, type LoadedRecording } from './loadRecording';
 import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
@@ -59,10 +60,7 @@ export class Player {
     });
     this.sound = new PlayerSound(parts.host.audio, this.events);
     const { canvas } = parts.host;
-    this.viewing = new PlayerView(this.events, () => ({
-      width: canvas.clientWidth,
-      height: canvas.clientHeight,
-    }));
+    this.viewing = new PlayerView(this.events, () => cssSizeOf(canvas));
   }
 
   public get status(): PlayerStatus {
@@ -280,7 +278,7 @@ export class Player {
 
   private attach(loaded: LoadedRecording): void {
     this.phase = { kind: 'loaded', loaded };
-    this.viewing.attach(loaded.pipeline.renderer, loaded.opened.layout.sources.length);
+    this.viewing.attach(loaded.pipeline.renderer);
     const { session } = loaded.pipeline;
     this.picture.attach(loaded.pipeline);
     this.relay.attach(session);

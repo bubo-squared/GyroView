@@ -13,6 +13,7 @@ import {
   type Vector3 as CoreVector3,
   viewModeRulesFor,
   type ViewMode,
+  type ViewportSize,
 } from '@gyroview/core';
 import {
   Camera,
@@ -68,9 +69,10 @@ interface RendererParts {
 }
 
 /**
- * PictureRenderer over Three.js: uploads each lens frame to a texture and draws one fullscreen pass per
- * frame, laid out on the viewport as the view mode says: the stitched view of `stitch.frag.glsl`,
- * turned by the view and stabilization rotations, or the raw lens images side by side.
+ * PictureRenderer over Three.js: uploads each lens frame to a texture and draws one fullscreen pass
+ * per frame, laid out on the viewport as the view mode's picture for the framing says: the
+ * stitched sphere through `stitch.frag.glsl`, turned by the view and stabilization rotations, or
+ * each lens image in a tile of its own.
  */
 export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   private framing: Framing = DEFAULT_FRAMING;
@@ -87,7 +89,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     private readonly parts: RendererParts,
     private readonly canvas: HTMLCanvasElement,
   ) {
-    this.applyView();
+    this.applyFraming();
     canvas.addEventListener('webglcontextlost', this.onContextLost);
   }
 
@@ -111,17 +113,21 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     return new ThreeFrameRenderer(parts, canvas);
   }
 
+  public get lensCount(): number {
+    return this.parts.lensCount;
+  }
+
   public setFraming(framing: Framing): void {
     this.ensureLive();
     this.framing = framing;
-    this.applyView();
+    this.applyFraming();
     this.render();
   }
 
   public setViewMode(mode: ViewMode): void {
     this.ensureLive();
     this.viewMode = mode;
-    this.applyView();
+    this.applyFraming();
     this.render();
   }
 
@@ -178,10 +184,10 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   /**
    * Matches the drawing buffer to a new element size, in device pixels.
    */
-  public resize(width: number, height: number): void {
+  public resize(size: ViewportSize): void {
     this.ensureLive();
-    this.parts.renderer.setSize(width, height, false);
-    this.applyView();
+    this.parts.renderer.setSize(size.width, size.height, false);
+    this.applyFraming();
     this.render();
   }
 
@@ -220,7 +226,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
    * Asks the view mode what to draw for the framing on this canvas, and switches to that
    * picture's program.
    */
-  private applyView(): void {
+  private applyFraming(): void {
     const viewport = { width: this.canvas.width, height: this.canvas.height };
     const picture = viewModeRulesFor(this.viewMode).picture(this.framing, {
       viewport,

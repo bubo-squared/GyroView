@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { CaptureClock } from './CaptureClock';
 import type { FrameTimingContext } from './FrameTimeSource';
-import { resolveFrameTimes, type ResolvedFrameTimes } from './resolveFrameTimes';
+import {
+  requiresTrackTimestamps,
+  resolveFrameTimes,
+  type ResolvedFrameTimes,
+} from './resolveFrameTimes';
 import {
   microseconds,
   milliseconds,
@@ -158,5 +162,21 @@ describe('resolveFrameTimes fallbacks', () => {
     expect(
       resolveFrameTimes(context({ exposureRecord: undefined, frameRate: undefined }), undefined),
     ).toBeUndefined();
+  });
+});
+
+describe('requiresTrackTimestamps', () => {
+  it('does without them when the exposure record answers first', () => {
+    expect(requiresTrackTimestamps(context(), 'exposure-record')).toBe(false);
+    expect(requiresTrackTimestamps(context(), undefined)).toBe(false);
+  });
+
+  it('needs them when the camera trusts them first, even with an exposure record', () => {
+    expect(requiresTrackTimestamps(context(), 'track-timestamps')).toBe(true);
+  });
+
+  it('needs them when the exposure record cannot answer, rather than settle for nominal spacing', () => {
+    expect(requiresTrackTimestamps(context({ exposureRecord: undefined }), undefined)).toBe(true);
+    expect(requiresTrackTimestamps(context({ frameCount: 11 }), 'exposure-record')).toBe(true);
   });
 });

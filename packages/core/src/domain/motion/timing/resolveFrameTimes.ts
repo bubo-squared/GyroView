@@ -31,11 +31,29 @@ export function resolveFrameTimes(
   preferred: FrameTimeSourceName | undefined,
 ): ResolvedFrameTimes | undefined {
   const warnings: string[] = [];
-  const order = preferred === 'track-timestamps' ? TRACK_TIMESTAMPS_FIRST : EXPOSURE_FIRST;
-  for (const source of order) {
+  for (const source of orderFor(preferred)) {
     const frameTimes = source.resolve(context);
     if (frameTimes) return { frameTimes, source: source.name, warnings };
     warnings.push(`${source.name} unavailable`);
   }
   return undefined;
+}
+
+/**
+ * Whether the answer depends on the track's timestamps, which are costly to read: their source
+ * comes, in the camera's order, before any source that answers without them.
+ */
+export function requiresTrackTimestamps(
+  context: FrameTimingContext,
+  preferred: FrameTimeSourceName | undefined,
+): boolean {
+  const withoutTimestamps = { ...context, trackTimestamps: undefined };
+  const decisive = orderFor(preferred).find(
+    (source) => source.name === 'track-timestamps' || source.resolve(withoutTimestamps),
+  );
+  return decisive?.name === 'track-timestamps';
+}
+
+function orderFor(preferred: FrameTimeSourceName | undefined): readonly FrameTimeSource[] {
+  return preferred === 'track-timestamps' ? TRACK_TIMESTAMPS_FIRST : EXPOSURE_FIRST;
 }

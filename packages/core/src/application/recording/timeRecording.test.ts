@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { timeRecording } from './timeRecording';
+import { PtsType } from '../../domain/format/info/infoFields';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import { minimalInfoRecord } from '../../testing/minimalInfoRecord';
 import { seconds, type Seconds } from '../../shared/units/time';
@@ -17,6 +18,11 @@ class CountingTrack extends FakeVideoTrack {
     return super.sampleTimestamps();
   }
 }
+
+/**
+ * The office recording's first-frame stamp, as its info record writes it.
+ */
+const OFFICE_FIRST_FRAME_STAMP = 921_751_839;
 
 function trackOf(frameCount: number): CountingTrack {
   return new CountingTrack({ trackIndex: 0, frameRate: 10, frameCount, framesPerGop: 10 });
@@ -40,6 +46,24 @@ describe('timeRecording', () => {
     expect(timing.warnings).toEqual(['exposure-record unavailable']);
     expect(track.sampleTimestampCalls).toBe(1);
   });
+
+  it.each([
+    [PtsType.TrackTimestamps, 'track-timestamps', 1],
+    [PtsType.ExposureRecord, 'exposure-record', 0],
+  ] as const)(
+    'follows the camera on which source to trust first (pts_type %i)',
+    async (ptsType, expectedSource, expectedWalks) => {
+      const track = trackOf(10);
+      const info = minimalInfoRecord({
+        model: 'Insta360 X5',
+        firstFrameTimestamp: OFFICE_FIRST_FRAME_STAMP,
+        ptsType,
+      });
+      const timing = await timeRecording(await officeRecording({ info }), track);
+      expect(timing.frameTimeSource).toBe(expectedSource);
+      expect(track.sampleTimestampCalls).toBe(expectedWalks);
+    },
+  );
 
   it('keeps the first frame at video time zero whatever the track origin', async () => {
     const track = new CountingTrack({

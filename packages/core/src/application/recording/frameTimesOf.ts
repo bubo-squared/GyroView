@@ -4,15 +4,16 @@ import type { VideoTrackReader } from '../../ports/Demuxer';
 import type { FrameTimingContext } from '../../domain/motion/timing/FrameTimeSource';
 import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
 import {
+  requiresTrackTimestamps,
   resolveFrameTimes,
   type ResolvedFrameTimes,
 } from '../../domain/motion/timing/resolveFrameTimes';
 
 /**
- * Frame times for a frame source. The exposure record is tried first because it costs one small
- * read; the track's own timestamps are fetched only when the cheap sources leave nominal spacing
- * as the answer, since walking the sample table is the costly part. Undefined when even nominal
- * spacing is impossible (no frame rate).
+ * Frame times for a frame source. The exposure record costs one small read and is always at
+ * hand; the track's own timestamps are fetched only when the answer depends on them, since
+ * walking the sample table is the costly part. Undefined when even nominal spacing is
+ * impossible (no frame rate).
  */
 export async function frameTimesOf(
   recording: Recording,
@@ -33,8 +34,8 @@ export async function frameTimesOf(
     trackTimestamps: undefined,
   };
   const preferred = info.preferredFrameTimeSource;
-  const cheap = resolveFrameTimes(context, preferred);
-  if (cheap && cheap.source !== 'nominal') return cheap;
-  const trackTimestamps = await frameSource.sampleTimestamps();
-  return resolveFrameTimes({ ...context, trackTimestamps }, preferred) ?? cheap;
+  const trackTimestamps = requiresTrackTimestamps(context, preferred)
+    ? await frameSource.sampleTimestamps()
+    : undefined;
+  return resolveFrameTimes({ ...context, trackTimestamps }, preferred);
 }

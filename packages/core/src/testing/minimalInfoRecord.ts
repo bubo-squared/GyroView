@@ -14,6 +14,7 @@ export interface MinimalInfo {
   readonly model: string;
   readonly frameRate?: number;
   readonly firstFrameTimestamp?: number;
+  readonly ptsType?: number;
 }
 
 /**
@@ -28,6 +29,7 @@ export function minimalInfoRecord(info: MinimalInfo): Uint8Array {
     ...model,
     ...varintField(InfoField.FrameRate, info.frameRate),
     ...varintField(InfoField.FirstFrameTimestamp, info.firstFrameTimestamp),
+    ...varintField(InfoField.PtsType, info.ptsType),
   ]);
 }
 

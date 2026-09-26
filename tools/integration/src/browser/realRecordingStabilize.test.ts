@@ -26,7 +26,6 @@ import {
   openSample,
   PIPELINE_OPTIONS,
   port,
-  skipUnlessDecodable,
   skipUnlessServed,
   takePairs,
 } from './realRecordingSupport';
@@ -138,9 +137,10 @@ describe('stabilizing the real recordings', () => {
   ] as const) {
     it(`renders the ${sample.name} in every mode for inspection, checks lock is a rigid rotation of off and that the estimate follows gravity`, async (context) => {
       await skipUnlessServed(context, sample);
-      const opened = await openSample(sample);
-      cleanups.push(opened.dispose);
-      await skipUnlessDecodable(context, opened.frameSources);
+      const opened = await openSample(context, sample);
+      cleanups.push(() => {
+        opened.dispose();
+      });
       const { recording } = opened;
       const { calibration, gyro, clock } = await stabilizationInputsOf(recording, sample.name);
       const frame = imuFrameFor(recording.info);

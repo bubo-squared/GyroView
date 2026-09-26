@@ -1,6 +1,7 @@
 import { MediabunnyAudioSegmenter } from '@gyroview/adapter-mediabunny';
 import { MediaSourceAudioClock } from '@gyroview/adapter-mse-audio';
 import { DecodePipeline, PlaybackSession, seconds } from '@gyroview/core';
+import type { OpenedRecording } from '@gyroview/player';
 import { FakeFrameSink } from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -10,13 +11,11 @@ import {
   openSample,
   PIPELINE_OPTIONS,
   port,
-  PROBE_DEADLINE_MS,
+  DECODE_TIMEOUT_MS,
   QUEUE_CAPACITY,
-  skipUnlessDecodable,
   skipUnlessServed,
   takePairs,
   waitFor,
-  type OpenedRecording,
 } from './realRecordingSupport';
 import { OFFICE_5K7_60, SAILING_8K_30, type SampleRecording } from './sampleUrls';
 
@@ -30,8 +29,8 @@ async function openAudioClock(
   opened: OpenedRecording,
   cleanups: (() => void)[],
 ): Promise<MediaSourceAudioClock> {
-  const [audioTrack] = opened.input.audioTracks;
-  if (!audioTrack) throw new Error(`${opened.input.name ?? 'the recording'} has no audio track`);
+  const { audioTrack } = opened;
+  if (!audioTrack) throw new Error('the recording has no audio track');
   const element = document.createElement('audio');
   element.muted = true;
   document.body.append(element);
@@ -76,11 +75,12 @@ describe('the browser pipeline on the real X5 recordings', () => {
 
   it('reads the office recording over HTTP ranges and decodes both lenses in lockstep from a mid-file time', async (context) => {
     await skipUnlessServed(context, OFFICE_5K7_60);
-    const opened = await openSample(OFFICE_5K7_60);
-    cleanups.push(opened.dispose);
+    const opened = await openSample(context, OFFICE_5K7_60);
+    cleanups.push(() => {
+      opened.dispose();
+    });
     expect(opened.recording.info.model).toBe('Insta360 X5');
     expect(opened.frameSources).toHaveLength(2);
-    await skipUnlessDecodable(context, opened.frameSources);
 
     const pipeline = new DecodePipeline<VideoFrame>(opened.frameSources, port, PIPELINE_OPTIONS);
     const pairs = await takePairs(pipeline, MID_FILE_START, PAIRS_TO_TAKE);
@@ -96,9 +96,10 @@ describe('the browser pipeline on the real X5 recordings', () => {
 
   it('plays the office recording through the session in step with its own audio and follows a seek', async (context) => {
     await skipUnlessServed(context, OFFICE_5K7_60);
-    const opened = await openSample(OFFICE_5K7_60);
-    cleanups.push(opened.dispose);
-    await skipUnlessDecodable(context, opened.frameSources);
+    const opened = await openSample(context, OFFICE_5K7_60);
+    cleanups.push(() => {
+      opened.dispose();
+    });
     const clock = await openAudioClock(opened, cleanups);
     const sink = new FakeFrameSink<VideoFrame>();
     const session = new PlaybackSession<VideoFrame>({
@@ -106,7 +107,7 @@ describe('the browser pipeline on the real X5 recordings', () => {
       decoderPort: port,
       clock,
       sink,
-      duration: opened.input.duration,
+      duration: opened.duration,
       frameTimes: undefined,
       pipeline: PIPELINE_OPTIONS,
       queueCapacity: QUEUE_CAPACITY,
@@ -119,7 +120,7 @@ describe('the browser pipeline on the real X5 recordings', () => {
     await session.play();
     await waitFor(
       () => sink.presentations.length >= PRESENTATIONS_BEFORE_SEEK,
-      PROBE_DEADLINE_MS,
+      DECODE_TIMEOUT_MS,
       'the first presentations',
     );
     expectPictureFollowsSound(sink, OFFICE_5K7_60);
@@ -128,7 +129,7 @@ describe('the browser pipeline on the real X5 recordings', () => {
     session.seek(SEEK_TARGET);
     await waitFor(
       () => (sink.lastTimestamp ?? 0) >= SEEK_TARGET - 1 / OFFICE_5K7_60.frameRate,
-      PROBE_DEADLINE_MS,
+      DECODE_TIMEOUT_MS,
       'a frame at the seek target',
     );
     expect(session.state).toBe('playing');
@@ -138,9 +139,10 @@ describe('the browser pipeline on the real X5 recordings', () => {
 
   it('probes and decodes the first frames of the 8K sailing recording', async (context) => {
     await skipUnlessServed(context, SAILING_8K_30);
-    const opened = await openSample(SAILING_8K_30);
-    cleanups.push(opened.dispose);
-    await skipUnlessDecodable(context, opened.frameSources);
+    const opened = await openSample(context, SAILING_8K_30);
+    cleanups.push(() => {
+      opened.dispose();
+    });
 
     const pipeline = new DecodePipeline<VideoFrame>(opened.frameSources, port, PIPELINE_OPTIONS);
     const pairs = await takePairs(pipeline, 0, 5);

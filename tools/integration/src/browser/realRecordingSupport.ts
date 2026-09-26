@@ -1,71 +1,58 @@
-import { HttpRangeSource } from '@gyroview/adapter-fetch';
-import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
-import { WebCodecsVideoDecoderPort } from '@gyroview/adapter-webcodecs';
 import {
-  detectLensLayout,
   FramePairQueue,
-  lensFrameOrder,
-  probeDecoding,
-  readRecording,
+  hasErrorCode,
   seconds,
-  Signal,
-  type DemuxedInput,
-  type FramePair,
   type DecodePipeline,
-  type LensLayout,
-  type Recording,
-  type VideoTrackReader,
+  type FramePair,
 } from '@gyroview/core';
+import {
+  browserPorts,
+  DECODE_PIPELINE_OPTIONS,
+  openRecording,
+  PAIR_QUEUE_CAPACITY,
+  type OpenedRecording,
+} from '@gyroview/player';
 import { expect, type TestContext } from 'vitest';
 
 import { isServed, type SampleRecording } from './sampleUrls';
 
-const PAIR_TOLERANCE_SECONDS = 0.0005;
 const TIMESTAMP_DIGITS = 3;
-
-export const PIPELINE_OPTIONS = {
-  maxPendingPackets: 4,
-  pairTolerance: seconds(PAIR_TOLERANCE_SECONDS),
-};
-export const QUEUE_CAPACITY = 4;
-export const PROBE_DEADLINE_MS = 15_000;
+/**
+ * How long a test waits for decoded pairs before it gives up.
+ */
+export const DECODE_TIMEOUT_MS = 15_000;
 const POLL_INTERVAL_MS = 20;
 
-export const port = new WebCodecsVideoDecoderPort();
+export const PIPELINE_OPTIONS = DECODE_PIPELINE_OPTIONS;
+export const QUEUE_CAPACITY = PAIR_QUEUE_CAPACITY;
 
-export interface OpenedRecording {
-  readonly recording: Recording;
-  readonly input: DemuxedInput;
-  readonly layout: LensLayout;
-  /**
-   * One reader per distinct track the layout draws from, in the order pairs are presented.
-   */
-  readonly frameSources: readonly VideoTrackReader[];
-  readonly dispose: () => void;
-}
+const ports = browserPorts();
+export const port = ports.decoderPort;
 
-export async function openSample(sample: SampleRecording): Promise<OpenedRecording> {
-  const source = new HttpRangeSource(sample.url);
-  const recording = await readRecording(source);
-  const input = await new MediabunnyDemuxer().open(source, sample.url);
-  const layout = detectLensLayout(
-    [{ name: input.name, videoTracks: input.videoTracks.map((track) => track.description) }],
-    recording.layoutHints,
-  );
-  const frameSources = lensFrameOrder(layout).map((source) => {
-    const track = input.videoTracks[source.trackIndex];
-    if (!track) throw new Error(`layout points at missing track ${source.trackIndex}`);
-    return track;
-  });
-  return {
-    recording,
-    input,
-    layout,
-    frameSources,
-    dispose: (): void => {
-      input.dispose();
-    },
-  };
+/**
+ * Opens a sample as the player does, through its own use case, which also proves the recording
+ * decodes here. A browser build without an HEVC decoder (Playwright's Chromium) skips the test
+ * instead of failing it.
+ */
+export async function openSample(
+  context: TestContext,
+  sample: SampleRecording,
+): Promise<OpenedRecording> {
+  const source = {
+    main: { url: sample.url },
+    second: undefined,
+    proxy: undefined,
+    shouldDiscoverProxy: false,
+    quality: 'full',
+  } as const;
+  try {
+    return await openRecording(source, ports, new AbortController().signal);
+  } catch (error) {
+    if (hasErrorCode(error, 'codec-unsupported')) {
+      context.skip('this browser build cannot decode the recording (no HEVC decoder)');
+    }
+    throw error;
+  }
 }
 
 export async function skipUnlessServed(
@@ -73,33 +60,6 @@ export async function skipUnlessServed(
   sample: SampleRecording,
 ): Promise<void> {
   if (!(await isServed(sample.url))) context.skip(`${sample.name} is not available locally`);
-}
-
-/**
- * Probes the lens tracks; a browser build without an HEVC decoder (Playwright's Chromium) skips
- * the test instead of failing it, any other verdict fails with the probe's details.
- */
-export async function skipUnlessDecodable(
-  context: TestContext,
-  frameSources: readonly VideoTrackReader[],
-): Promise<void> {
-  const probe = await probeDecoding(frameSources, port, {
-    deadline: deadlineIn(PROBE_DEADLINE_MS),
-  });
-  if (probe.canDecode) return;
-  const verdicts = probe.sources.map((source) => source.verdict);
-  if (verdicts.every((verdict) => verdict === 'unsupported-configuration')) {
-    context.skip('this browser build cannot decode the recording (no HEVC decoder)');
-  }
-  throw new Error(`the recording does not decode here: ${JSON.stringify(probe.sources)}`);
-}
-
-function deadlineIn(ms: number): Signal {
-  const signal = new Signal();
-  setTimeout(() => {
-    signal.trigger();
-  }, ms);
-  return signal;
 }
 
 function wait(ms: number): Promise<void> {
@@ -138,7 +98,7 @@ export async function takePairs(
       if (pair) taken.push(pair);
       return taken.length >= count;
     },
-    PROBE_DEADLINE_MS,
+    DECODE_TIMEOUT_MS,
     `${count} decoded pairs`,
   );
   pipeline.abort();

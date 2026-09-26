@@ -19,13 +19,13 @@ and `dependency-cruiser` fails the build on a violation.
  tools/insv-inspect ──▶ adapters/node + core        tools/fixtures ──▶ core        tools/integration ──▶ everything
 ```
 
-| Layer               | Package(s)                                                                 | May import                          |
-| ------------------- | -------------------------------------------------------------------------- | ----------------------------------- |
-| Domain, application | `packages/core`                                                            | nothing outside itself              |
-| Infrastructure      | `packages/adapters/{node,fetch,blob,mediabunny,webcodecs,mse-audio,three}` | `core` and one library each         |
-| Composition, UI     | `packages/player`                                                          | `core`, every adapter               |
-| Sites               | `apps/embed`                                                               | `player` (and `core` types)         |
-| Tools               | `tools/*`                                                                  | `core`; `integration` also adapters |
+| Layer               | Package(s)                                                                 | May import                                         |
+| ------------------- | -------------------------------------------------------------------------- | -------------------------------------------------- |
+| Domain, application | `packages/core`                                                            | nothing outside itself                             |
+| Infrastructure      | `packages/adapters/{node,fetch,blob,mediabunny,webcodecs,mse-audio,three}` | `core` and one library each                        |
+| Composition, UI     | `packages/player`                                                          | `core`, every adapter                              |
+| Sites               | `apps/embed`                                                               | `player` (and `core` types)                        |
+| Tools               | `tools/*`                                                                  | `core`; `integration` also adapters and the player |
 
 Everything the core needs from the outside world is a **port**: a TypeScript interface it owns
 in `core/src/ports`. Adapters implement ports; the player chooses which adapters to use. The
@@ -218,7 +218,8 @@ The composition root and the user-facing element, in three layers.
 - `tools/fixtures`: assembles the synthetic recordings in `test/fixtures/synthetic` (tiny
   two-track MP4s with a real X5 trailer) that the browser tests play.
 - `tools/integration`: end-to-end tests over the real sample recordings, in Node and in real
-  browsers; they skip when the samples are absent.
+  browsers; they open the samples through the player's `openRecording` with its pipeline
+  settings, so they exercise the real composition, and skip when the samples are absent.
 
 Tests follow the layers: pure domain tests run in Node in milliseconds and are mutation-tested
 with Stryker; adapters have contract tests against their ports and run in Chromium and WebKit

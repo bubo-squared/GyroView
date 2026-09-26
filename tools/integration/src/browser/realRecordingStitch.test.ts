@@ -17,7 +17,6 @@ import {
   openSample,
   PIPELINE_OPTIONS,
   port,
-  skipUnlessDecodable,
   skipUnlessServed,
   takePairs,
 } from './realRecordingSupport';
@@ -73,9 +72,10 @@ async function stitchOneFrame(
   cleanups: (() => void)[],
 ): Promise<StitchedFrame> {
   await skipUnlessServed(context, sample);
-  const opened = await openSample(sample);
-  cleanups.push(opened.dispose);
-  await skipUnlessDecodable(context, opened.frameSources);
+  const opened = await openSample(context, sample);
+  cleanups.push(() => {
+    opened.dispose();
+  });
   const calibration = opened.recording.calibration.calibration;
   if (!calibration) throw new Error(`${sample.name} carries no calibration`);
   const pipeline = new DecodePipeline<VideoFrame>(opened.frameSources, port, PIPELINE_OPTIONS);

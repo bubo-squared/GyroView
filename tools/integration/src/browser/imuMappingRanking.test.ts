@@ -21,7 +21,6 @@ import {
   openSample,
   PIPELINE_OPTIONS,
   port,
-  skipUnlessDecodable,
   skipUnlessServed,
   takePairs,
 } from './realRecordingSupport';
@@ -164,9 +163,10 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
   ] as const) {
     it(`ranks the configured X5 frame first on the ${sample.name}`, async (context) => {
       await skipUnlessServed(context, sample);
-      const opened = await openSample(sample);
-      cleanups.push(opened.dispose);
-      await skipUnlessDecodable(context, opened.frameSources);
+      const opened = await openSample(context, sample);
+      cleanups.push(() => {
+        opened.dispose();
+      });
       const { recording } = opened;
       const calibration = recording.calibration.calibration;
       const gyro = await recording.readGyroRecord();

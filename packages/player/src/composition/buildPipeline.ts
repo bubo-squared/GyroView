@@ -73,8 +73,8 @@ const PAIR_TOLERANCE_SECONDS = 0.0005;
  * hardware decoder busy and absorb jitter, while a seek has little to discard.
  */
 const MAX_PENDING_PACKETS = 4;
-const QUEUE_CAPACITY = 4;
-const PIPELINE_OPTIONS: DecodePipelineOptions = {
+export const PAIR_QUEUE_CAPACITY = 4;
+export const DECODE_PIPELINE_OPTIONS: DecodePipelineOptions = {
   maxPendingPackets: MAX_PENDING_PACKETS,
   pairTolerance: seconds(PAIR_TOLERANCE_SECONDS),
 };
@@ -210,7 +210,7 @@ function sessionFor(
     sink,
     duration: parts.opened.duration,
     frameTimes: parts.opened.frameTimes,
-    pipeline: PIPELINE_OPTIONS,
-    queueCapacity: QUEUE_CAPACITY,
+    pipeline: DECODE_PIPELINE_OPTIONS,
+    queueCapacity: PAIR_QUEUE_CAPACITY,
   });
 }

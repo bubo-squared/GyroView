@@ -124,8 +124,9 @@ module.exports = {
     },
     {
       name: 'player-is-not-imported-by-libraries',
+      comment: 'The real-recording tests open samples through the player composition they test.',
       severity: 'error',
-      from: { path: '^(packages/core|packages/adapters|tools)/' },
+      from: { path: '^(packages/core|packages/adapters|tools/(?!integration/))' },
       to: { path: '^packages/player/' },
     },
     {

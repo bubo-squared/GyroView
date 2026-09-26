@@ -10,7 +10,12 @@ import {
   type CanvasSize,
   type LensCalibration,
 } from '../../../optics/LensCalibration';
-import { V2_LENS_TOKENS, V2Token, VERSIONED_TRAILING_TOKENS } from '../offsetTokens';
+import {
+  DeclaredVersion,
+  V2_LENS_TOKENS,
+  V2Token,
+  VERSIONED_TRAILING_TOKENS,
+} from '../offsetTokens';
 import { DEFAULT_HALF_FIELD_OF_VIEW } from '../../../optics/opticsConstants';
 import { PolynomialModel } from '../../../optics/PolynomialModel';
 
@@ -24,7 +29,7 @@ export class PolynomialCalibrationLayout implements CalibrationStringLayout {
   public readonly trailingTokens = VERSIONED_TRAILING_TOKENS;
 
   public versionWordProblem(versionWord: number): string | undefined {
-    return versionWordMismatch(versionWord, this.version);
+    return versionWordMismatch(versionWord, DeclaredVersion.Polynomial);
   }
 
   public parseLens(block: LensBlock, lensIndex: number): LensCalibration {
@@ -49,7 +54,6 @@ export class PolynomialCalibrationLayout implements CalibrationStringLayout {
         block(V2Token.TranslationY),
         block(V2Token.TranslationZ),
       ],
-      lensType: block(V2Token.LensType),
     };
   }
 

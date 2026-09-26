@@ -28,7 +28,6 @@ function rotationOf(pose: Pose): Matrix3 {
       roll: degrees(pose.roll ?? 0),
     },
     translation: [0, 0, 0],
-    lensType: undefined,
   };
   return lensRotation(lens);
 }

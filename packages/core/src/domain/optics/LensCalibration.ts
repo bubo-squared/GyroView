@@ -25,7 +25,6 @@ export interface LensCalibration {
    * the back lens of an X5. Unknown (zero) in the legacy format.
    */
   readonly translation: Vector3;
-  readonly lensType: number | undefined;
 }
 
 /**

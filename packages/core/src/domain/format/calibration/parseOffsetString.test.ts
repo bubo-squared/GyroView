@@ -21,7 +21,6 @@ describe('parseOffsetString with the X5 office strings', () => {
     expect(front?.model.principalPoint).toEqual({ x: 2689.89, y: 2681.94 });
     expect(back?.model.principalPoint).toEqual({ x: 8082.1, y: 2679.47 });
     expect(back?.orientation).toEqual({ yaw: 0.289, pitch: 0.043, roll: 89.987 });
-    expect(back?.lensType).toBe(113);
     expect(back?.translation).toEqual([0, 0, 0]);
   });
 
@@ -31,7 +30,6 @@ describe('parseOffsetString with the X5 office strings', () => {
     const back = set.lenses[1];
     expect(back?.model.kind).toBe('polynomial');
     expect(back?.translation).toEqual([-0.000907, -0.000055, -0.032061]);
-    expect(back?.lensType).toBe(113);
     expect(set.canvas).toEqual({ width: 10_752, height: 5376 });
   });
 
@@ -54,7 +52,6 @@ describe('parseOffsetString with the ONE R legacy string', () => {
     expect(set.canvas).toEqual({ width: 6080, height: 3040 });
     expect(set.lenses[1]?.model.principalPoint).toEqual({ x: 4553.12, y: 1526.43 });
     expect(set.lenses[0]?.orientation.roll).toBe(-179.227);
-    expect(set.lenses[0]?.lensType).toBe(33);
   });
 });
 

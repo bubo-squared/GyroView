@@ -88,7 +88,8 @@ by the info record's gyro offset (1.6 ms on X5). Stabilization samples the orien
 ## Calibration strings
 
 Underscore-separated numbers; token 0 is the lens count; the last token is a version word
-(v1: version above bit 10, lens type in the low 10 bits; v2/v3: version in the high 16 bits).
+(v1: lens type in the low 10 bits, upper bits that differ between cameras and carry no version;
+v2/v3: version 2 or 3 in the high 16 bits). The lens type is not used.
 
 | Version        | Tokens per lens | Per-lens fields                                                              | Model                                                                        |
 | -------------- | --------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |

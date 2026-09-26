@@ -11,7 +11,12 @@ import {
   type LensCalibration,
 } from '../../../optics/LensCalibration';
 import { MeiModel } from '../../../optics/MeiModel';
-import { V3_LENS_TOKENS, V3Token, VERSIONED_TRAILING_TOKENS } from '../offsetTokens';
+import {
+  DeclaredVersion,
+  V3_LENS_TOKENS,
+  V3Token,
+  VERSIONED_TRAILING_TOKENS,
+} from '../offsetTokens';
 import { DEFAULT_HALF_FIELD_OF_VIEW } from '../../../optics/opticsConstants';
 
 /**
@@ -24,7 +29,7 @@ export class MeiCalibrationLayout implements CalibrationStringLayout {
   public readonly trailingTokens = VERSIONED_TRAILING_TOKENS;
 
   public versionWordProblem(versionWord: number): string | undefined {
-    return versionWordMismatch(versionWord, this.version);
+    return versionWordMismatch(versionWord, DeclaredVersion.Mei);
   }
 
   public parseLens(block: LensBlock, lensIndex: number): LensCalibration {
@@ -46,7 +51,6 @@ export class MeiCalibrationLayout implements CalibrationStringLayout {
         block(V3Token.TranslationY),
         block(V3Token.TranslationZ),
       ],
-      lensType: block(V3Token.LensType),
     };
   }
 

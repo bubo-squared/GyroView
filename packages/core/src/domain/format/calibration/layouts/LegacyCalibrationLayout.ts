@@ -13,7 +13,6 @@ import {
   FIRST_LENS_TOKEN,
   LENS_COUNT_TOKEN,
   V1_LENS_TOKENS,
-  V1_LENS_TYPE_MASK,
   V1_TRAILING_TOKENS,
   V1Token,
   V1Trailing,
@@ -34,7 +33,7 @@ export class LegacyCalibrationLayout implements CalibrationStringLayout {
     return undefined;
   }
 
-  public parseLens(block: LensBlock, lensIndex: number, versionWord: number): LensCalibration {
+  public parseLens(block: LensBlock, lensIndex: number): LensCalibration {
     return {
       lensIndex,
       model: new EquidistantModel(
@@ -46,7 +45,6 @@ export class LegacyCalibrationLayout implements CalibrationStringLayout {
       ),
       orientation: eulerDegrees(block(V1Token.Yaw), block(V1Token.Pitch), block(V1Token.Roll)),
       translation: [0, 0, 0],
-      lensType: versionWord & V1_LENS_TYPE_MASK,
     };
   }
 

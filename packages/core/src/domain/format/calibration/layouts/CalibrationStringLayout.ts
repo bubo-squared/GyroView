@@ -5,7 +5,7 @@ import type {
   LensCalibration,
 } from '../../../optics/LensCalibration';
 import { degrees } from '../../../../shared/units/angle';
-import { VERSION_WORD_SHIFT } from '../offsetTokens';
+import { VERSION_WORD_SHIFT, type DeclaredVersion } from '../offsetTokens';
 
 /**
  * Reads one lens block by named token position.
@@ -24,7 +24,7 @@ export interface CalibrationStringLayout {
    * Returns a message when the version word contradicts this layout, undefined when it fits.
    */
   versionWordProblem(versionWord: number): string | undefined;
-  parseLens(block: LensBlock, lensIndex: number, versionWord: number): LensCalibration;
+  parseLens(block: LensBlock, lensIndex: number): LensCalibration;
   canvasOf(numbers: readonly number[], blocks: readonly LensBlock[]): CanvasSize;
 }
 
@@ -34,14 +34,14 @@ export function eulerDegrees(yaw: number, pitch: number, roll: number): EulerDeg
 
 /**
  * For the versioned strings (v2, v3): what is wrong with a version word that does not declare
- * `version` in its high bits, if anything.
+ * `expected` in its high bits, if anything.
  */
 export function versionWordMismatch(
   versionWord: number,
-  version: CalibrationVersion,
+  expected: DeclaredVersion,
 ): string | undefined {
   const declared = versionWord >>> VERSION_WORD_SHIFT;
-  return declared === version ? undefined : `declares version ${declared}`;
+  return declared === expected ? undefined : `declares version ${declared}`;
 }
 
 /**

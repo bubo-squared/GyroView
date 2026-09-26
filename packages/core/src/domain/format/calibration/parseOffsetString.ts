@@ -36,7 +36,7 @@ export function parseOffsetString(text: string): CalibrationSet {
   return {
     version: layout.version,
     canvas: layout.canvasOf(numbers, blocks),
-    lenses: blocks.map((block, lensIndex) => layout.parseLens(block, lensIndex, versionWord)),
+    lenses: blocks.map((block, lensIndex) => layout.parseLens(block, lensIndex)),
   };
 }
 

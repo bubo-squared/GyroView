@@ -28,7 +28,6 @@ export function syntheticCalibration(): CalibrationSet {
     ),
     orientation: { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) },
     translation: [0, 0, 0],
-    lensType: undefined,
   });
   return {
     version: CalibrationVersion.Legacy,

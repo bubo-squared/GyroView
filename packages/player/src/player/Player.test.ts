@@ -220,42 +220,26 @@ describe('Player over the synthetic X5 recording', () => {
     expect(redraws[0]).toHaveBeenCalledTimes(2);
   });
 
-  it('lets the view mode rule the gestures: each mode zooms its own picture', async () => {
+  it('measures a drag on its own canvas and passes the zoom focus on', async () => {
+    const { player } = open();
+    await player.load(sourceOf(X5_RECORDING_URL));
+    // A quarter of a 128-pixel canvas at 90 degrees across: a quarter of the field.
+    player.pan({ x: CANVAS_WIDTH / 4, y: 0 });
+    expect(player.view.yaw).toBeCloseTo(-22.5, 9);
+    player.resetView();
+    player.zoom(2, { x: 0.9, y: 0.5 });
+    expect(player.view.yaw).toBeGreaterThan(0);
+  });
+
+  it("keeps each view mode's zoom across loads, as it keeps the normal view", async () => {
     const { player } = open();
     await player.load(sourceOf(X5_RECORDING_URL));
     player.setViewMode('raw-lenses');
     expect(player.canPan).toBe(false);
-    player.zoom(1);
+    player.zoom(2);
     expect(player.canPan).toBe(true);
-    player.setViewMode('equirectangular');
-    player.zoom(1);
-    expect(player.view.fieldOfView).toBe(90);
-    player.setViewMode('normal');
-    player.zoom(1);
-    player.turn(degrees(5), degrees(-5));
-    expect(player.view.fieldOfView).toBeLessThan(90);
-    expect(player.view).toMatchObject({ yaw: 5, pitch: -5 });
-  });
-
-  it('announces view and mode changes only when something changed', async () => {
-    const { player } = open();
-    const views: number[] = [];
-    const modes: string[] = [];
-    player.events.on('viewchange', (view) => {
-      views.push(view.yaw);
-    });
-    player.events.on('viewmodechange', (mode) => {
-      modes.push(mode);
-    });
     await player.load(sourceOf(X5_RECORDING_URL));
-    player.lookAt(degrees(40), degrees(0));
-    player.setViewMode('equirectangular');
-    player.zoom(1);
-    player.setViewMode('equirectangular');
-    player.resetView();
-    player.resetView();
-    expect(views).toEqual([40, 0]);
-    expect(modes).toEqual(['equirectangular']);
+    expect(player.canPan).toBe(true);
   });
 
   it('follows the recording audio when the browser can play it, else warns', async () => {

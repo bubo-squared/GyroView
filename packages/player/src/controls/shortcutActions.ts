@@ -4,7 +4,10 @@ import type { ShortcutCommand } from './keyboardShortcuts';
 import type { Player } from '../player/Player';
 
 export interface ShortcutTarget {
-  readonly player: Player;
+  readonly player: Pick<
+    Player,
+    'currentTime' | 'seek' | 'stop' | 'turn' | 'zoom' | 'resetView' | 'isMuted' | 'setMuted'
+  >;
   togglePlay(): void;
   toggleFullscreen(): void;
 }

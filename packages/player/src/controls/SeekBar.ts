@@ -8,6 +8,13 @@ import type { Player } from '../player/Player';
 export type SeekParts = Pick<ControlParts, 'seek' | 'time'>;
 
 /**
+ * What the seek bar follows and moves, and where it reports a failed scrub.
+ */
+export interface SeekHost extends Pick<ControlsHost, 'warn'> {
+  readonly player: Pick<Player, 'events' | 'currentTime' | 'duration' | 'seek' | 'scrub'>;
+}
+
+/**
  * The seek bar and the time beside it: dragging scrubs to key frames, releasing seeks exactly,
  * and the bar follows playback while it is not held.
  */
@@ -18,7 +25,7 @@ export class SeekBar {
 
   public constructor(
     private readonly parts: SeekParts,
-    private readonly host: ControlsHost,
+    private readonly host: SeekHost,
   ) {
     this.bindInput();
     const { events } = this.player;
@@ -35,7 +42,7 @@ export class SeekBar {
     this.showTime(this.player.currentTime);
   }
 
-  private get player(): Player {
+  private get player(): SeekHost['player'] {
     return this.host.player;
   }
 

@@ -7,12 +7,17 @@ const MUTED_GLYPH = '🔇';
 export type SoundParts = Pick<ControlParts, 'mute' | 'volume'>;
 
 /**
+ * The sound the controls show and change.
+ */
+export type SoundPlayer = Pick<Player, 'events' | 'volume' | 'isMuted' | 'setVolume' | 'setMuted'>;
+
+/**
  * The mute button and the volume slider, showing the sound however it was last changed.
  */
 export class SoundControls {
   public constructor(
     private readonly parts: SoundParts,
-    private readonly player: Player,
+    private readonly player: SoundPlayer,
   ) {
     parts.mute.addEventListener('click', () => {
       player.setMuted(!player.isMuted);

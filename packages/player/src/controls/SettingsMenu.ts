@@ -10,6 +10,16 @@ export type MenuParts = Pick<
 >;
 
 /**
+ * What the menu shows and changes.
+ */
+export interface MenuHost extends Pick<ControlsHost, 'changeQuality'> {
+  readonly player: Pick<
+    Player,
+    'events' | 'stabilization' | 'viewMode' | 'setStabilization' | 'setViewMode'
+  >;
+}
+
+/**
  * The settings button and its menu: stabilization, view mode and, when the recording has a
  * proxy, quality. Opens on the button, closes on Escape or a press outside, and shows each
  * setting as it is now.
@@ -18,7 +28,7 @@ export class SettingsMenu {
   public constructor(
     root: ParentNode,
     private readonly parts: MenuParts,
-    private readonly host: ControlsHost,
+    private readonly host: MenuHost,
   ) {
     this.bindOpening(root);
     this.bindChoices();
@@ -36,7 +46,7 @@ export class SettingsMenu {
     parts.viewMode.value = this.player.viewMode;
   }
 
-  private get player(): Player {
+  private get player(): MenuHost['player'] {
     return this.host.player;
   }
 

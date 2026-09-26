@@ -1,5 +1,6 @@
 import type { ControlParts } from './controlParts';
 import type { ControlsHost } from './ControlsHost';
+import type { Player } from '../player/Player';
 
 const PLAY_GLYPH = '▶';
 const PAUSE_GLYPH = '⏸';
@@ -10,12 +11,19 @@ export type TransportParts = Pick<
 >;
 
 /**
+ * What the buttons command, and the paused state they show.
+ */
+export interface TransportHost extends Pick<ControlsHost, 'togglePlay' | 'toggleFullscreen'> {
+  readonly player: Pick<Player, 'events' | 'isPaused' | 'stop' | 'resetView'>;
+}
+
+/**
  * Play and pause, stop, reset the view and fullscreen; the play buttons say what a press does.
  */
 export class TransportButtons {
   public constructor(
     private readonly parts: TransportParts,
-    host: ControlsHost,
+    host: TransportHost,
   ) {
     const { player } = host;
     for (const button of [parts.play, parts.bigPlay]) {

@@ -27,7 +27,8 @@ import { browserPorts } from '../composition/browserPorts';
 import { buildPipeline, type PipelineHost } from '../composition/buildPipeline';
 import { queryShadow } from '../controls/controlParts';
 import { ControlsBar } from '../controls/ControlsBar';
-import { KeyboardBinding } from '../controls/KeyboardBinding';
+import type { ControlsHost } from '../controls/ControlsHost';
+import { KeyboardBinding, type KeyboardHost } from '../controls/KeyboardBinding';
 import { ViewGestures } from '../controls/ViewGestures';
 import { Player } from '../player/Player';
 import type { PlayerStatus } from '../player/PlayerEvents';
@@ -93,17 +94,10 @@ export class GyroViewElement extends HTMLElement {
     this.errorCode = queryShadow(shadow, '.error-code', HTMLElement);
     this.player = browserPlayer({ canvas, audio });
     defineLiveSettings(this, this.player);
-    this.controlsBar = new ControlsBar(shadow, {
-      player: this.player,
-      togglePlay: this.togglePlayLater,
-      toggleFullscreen: this.toggleFullscreenLater,
-      changeQuality: (quality): void => {
-        this.quality = quality;
-      },
-      warn: this.warnLater,
-    });
+    const host = this.controlsHost();
+    this.controlsBar = new ControlsBar(shadow, host);
     new ViewGestures(canvas, this.player, this.togglePlayLater);
-    this.bindKeyboard();
+    new KeyboardBinding(this, host);
     this.idle = new IdleWatcher(this, () => this.player.status === 'playing');
     this.observePlayer();
   }
@@ -229,19 +223,23 @@ export class GyroViewElement extends HTMLElement {
   }
 
   /**
-   * The controls, gestures and keyboard live as long as the element: their listeners sit on its
-   * own shadow tree, canvas and host, and on its player.
+   * What the controls and the keyboard ask of the element. They live as long as the element:
+   * their listeners sit on its own shadow tree and host, and on its player.
    */
-  private bindKeyboard(): void {
-    new KeyboardBinding(this, {
+  private controlsHost(): ControlsHost & KeyboardHost {
+    return {
       player: this.player,
       togglePlay: this.togglePlayLater,
       toggleFullscreen: this.toggleFullscreenLater,
+      changeQuality: (quality): void => {
+        this.quality = quality;
+      },
+      warn: this.warnLater,
       isFullscreen: (): boolean => this.fullscreen.isActive,
       exitFullscreen: (): void => {
         void this.fullscreen.exit();
       },
-    });
+    };
   }
 
   private readonly warnLater = (message: string): void => {

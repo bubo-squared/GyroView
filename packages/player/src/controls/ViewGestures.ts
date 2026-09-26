@@ -2,6 +2,11 @@ import { distanceBetween, zoomStepsForPinch, type Point } from './pinch';
 import type { Player } from '../player/Player';
 
 /**
+ * What the gestures move.
+ */
+export type GestureTarget = Pick<Player, 'pan' | 'zoom'>;
+
+/**
  * A wheel notch on most mice reports about 100 pixels; one notch is one zoom step.
  */
 const WHEEL_PIXELS_PER_STEP = 100;
@@ -20,7 +25,7 @@ export class ViewGestures {
 
   public constructor(
     private readonly surface: HTMLElement,
-    private readonly player: Player,
+    private readonly player: GestureTarget,
     private readonly onTap: () => void,
   ) {
     surface.addEventListener('pointerdown', this.onPointerDown);

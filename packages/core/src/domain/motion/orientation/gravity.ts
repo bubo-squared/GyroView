@@ -6,7 +6,13 @@ import {
   rotateVector,
   type Quaternion,
 } from '../../../shared/math/Quaternion';
-import { crossProduct, dotProduct, magnitudeOf, type Vector3 } from '../../../shared/math/Vector3';
+import {
+  crossProduct,
+  dotProduct,
+  magnitudeOf,
+  scaleVector,
+  type Vector3,
+} from '../../../shared/math/Vector3';
 import { radians } from '../../../shared/units/angle';
 import { secondsToMicroseconds, type Seconds } from '../../../shared/units/time';
 import type { GyroTrack } from '../gyro/GyroTrack';
@@ -32,13 +38,7 @@ const MAX_RESTING_G = 1.1;
 function measuredGravity(accelerationInBody: Vector3): Vector3 | undefined {
   const magnitude = magnitudeOf(accelerationInBody);
   const isResting = magnitude >= MIN_RESTING_G && magnitude <= MAX_RESTING_G;
-  return isResting
-    ? [
-        -accelerationInBody[0] / magnitude,
-        -accelerationInBody[1] / magnitude,
-        -accelerationInBody[2] / magnitude,
-      ]
-    : undefined;
+  return isResting ? scaleVector(accelerationInBody, -1 / magnitude) : undefined;
 }
 
 /**

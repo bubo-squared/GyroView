@@ -1,4 +1,10 @@
-import { magnitudeOf, type Vector3 } from '../../../shared/math/Vector3';
+import {
+  addVectors,
+  magnitudeOf,
+  scaleVector,
+  ZERO_VECTOR3,
+  type Vector3,
+} from '../../../shared/math/Vector3';
 import {
   microsecondsToSeconds,
   seconds,
@@ -62,15 +68,12 @@ export function meanOverWindow(
   window: SampleWindow,
   quantity: (sample: GyroSample) => Vector3,
 ): Vector3 {
-  const sum: [number, number, number] = [0, 0, 0];
+  let sum = ZERO_VECTOR3;
   for (let index = window.start; index < window.end; index += 1) {
-    const vector = toBodyFrame(frame, quantity(gyro.sampleAt(index)));
-    sum[0] += vector[0];
-    sum[1] += vector[1];
-    sum[2] += vector[2];
+    const measured = quantity(gyro.sampleAt(index));
+    sum = addVectors(sum, toBodyFrame(frame, measured));
   }
-  const count = Math.max(window.end - window.start, 1);
-  return [sum[0] / count, sum[1] / count, sum[2] / count];
+  return scaleVector(sum, 1 / Math.max(window.end - window.start, 1));
 }
 
 /**
@@ -80,5 +83,5 @@ export function meanOverWindow(
  */
 export function estimateGyroBias(gyro: GyroTrack, frame: ImuFrame, window: SampleWindow): Vector3 {
   const mean = meanOverWindow({ gyro, frame }, window, (sample) => sample.angularVelocity);
-  return magnitudeOf(mean) <= MAX_BIAS_RATE ? mean : [0, 0, 0];
+  return magnitudeOf(mean) <= MAX_BIAS_RATE ? mean : ZERO_VECTOR3;
 }

@@ -1,4 +1,4 @@
-import type { Vector3 } from '../../shared/math/Vector3';
+import { interpolateVectors, type Vector3 } from '../../shared/math/Vector3';
 import { seconds, type Seconds } from '../../shared/units/time';
 
 export interface GainMatchOptions {
@@ -78,16 +78,8 @@ export class GainMatcher {
     const weight = this.current ? 1 - Math.exp(-elapsed / this.options.timeConstant) : 1;
     const previous = this.current;
     this.current = target.map((gain, lensIndex) =>
-      blend(previous?.[lensIndex] ?? UNIT_GAIN, gain, weight),
+      interpolateVectors(previous?.[lensIndex] ?? UNIT_GAIN, gain, weight),
     );
     return this.current;
   }
-}
-
-function blend(from: Vector3, to: Vector3, weight: number): Vector3 {
-  return [
-    from[0] + (to[0] - from[0]) * weight,
-    from[1] + (to[1] - from[1]) * weight,
-    from[2] + (to[2] - from[2]) * weight,
-  ];
 }

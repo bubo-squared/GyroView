@@ -8,7 +8,12 @@
     "src/domain/**/*.ts",
     "src/application/**/*.ts",
     "src/shared/async/**/*.ts",
+    "src/shared/binary/**/*.ts",
     "src/shared/events/**/*.ts",
+    "src/shared/math/**/*.ts",
+    "src/shared/protobuf/**/*.ts",
+    "src/shared/text/**/*.ts",
+    "src/shared/units/**/*.ts",
     "!src/**/*.test.ts",
     "!src/**/*.contract.ts"
   ],

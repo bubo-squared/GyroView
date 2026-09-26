@@ -1,6 +1,6 @@
-import { locateOtherLensFile, locateProxy, messageOf } from '@gyroview/core';
+import { hasErrorCode, locateOtherLensFile, locateProxy, messageOf } from '@gyroview/core';
 
-import { hasErrorCode, isAbortError } from './errorCodes';
+import { isAbortError } from './errorCodes';
 import type { OpenedRecording } from './OpenedRecording';
 import { openInputs, type OpenAttempt } from './openInputs';
 import type { RecordingPorts } from './ports';

@@ -1,14 +1,12 @@
 import {
-  DEFAULT_STABILIZATION_MODE,
   Deferred,
   GyroViewError,
+  hasErrorCode,
   messageOf,
   seconds,
-  stabilizerFor,
   TypedEmitter,
   type Degrees,
   type DragDelta,
-  type PictureRenderer,
   type PlayerState,
   type Presentation,
   type Seconds,
@@ -22,9 +20,10 @@ import { loadRecording, type LoadedRecording } from './loadRecording';
 import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
 import type { LoadOptions, PlayerParts } from './PlayerOptions';
 import { IDLE, statusOf, type LoadingPhase, type PlayerPhase } from './PlayerPhase';
+import { PictureSettings } from './PictureSettings';
 import { PlayerView } from './PlayerView';
 import { transportEventsFor } from './transportEvents';
-import { hasErrorCode, isAbortError } from '../composition/errorCodes';
+import { isAbortError } from '../composition/errorCodes';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
 
@@ -39,8 +38,7 @@ export class Player {
   private readonly loop: FrameLoop;
   private phase: PlayerPhase = IDLE;
   private readonly viewing = new PlayerView(this.events);
-  private stabilizationMode: StabilizationMode = DEFAULT_STABILIZATION_MODE;
-  private isGainMatching = true;
+  private readonly picture = new PictureSettings(this.events);
   private isLoopingValue = false;
   private lastStatus: PlayerStatus = 'idle';
   private lastSessionState: PlayerState | undefined;
@@ -86,7 +84,7 @@ export class Player {
   }
 
   public get stabilization(): StabilizationMode {
-    return this.stabilizationMode;
+    return this.picture.stabilization;
   }
 
   public get isLooping(): boolean {
@@ -94,7 +92,7 @@ export class Player {
   }
 
   public get isMatchingGains(): boolean {
-    return this.isGainMatching;
+    return this.picture.isMatchingGains;
   }
 
   public get volume(): number {
@@ -137,6 +135,7 @@ export class Player {
     this.lastPresentation = undefined;
     this.lastSessionState = undefined;
     this.viewing.attach(undefined);
+    this.picture.attach(undefined);
     if (previous.kind === 'loaded') previous.loaded.dispose();
     this.setStatus('idle');
   }
@@ -206,10 +205,8 @@ export class Player {
   }
 
   public setStabilization(mode: StabilizationMode): void {
-    this.stabilizationMode = mode;
-    this.loaded?.pipeline.stabilizing?.setStabilizer(stabilizerFor(mode));
+    this.picture.setStabilization(mode);
     this.refreshPicture();
-    this.events.emit('stabilizationchange', mode);
   }
 
   public setLooping(isLooping: boolean): void {
@@ -220,8 +217,7 @@ export class Player {
    * Whether the lenses' exposure is matched along the seam; kept across loads.
    */
   public setGainMatching(isEnabled: boolean): void {
-    this.isGainMatching = isEnabled;
-    if (this.loaded) matchGainsOn(this.loaded.pipeline.renderer, isEnabled);
+    this.picture.setGainMatching(isEnabled);
   }
 
   public setVolume(volume: number): void {
@@ -284,8 +280,7 @@ export class Player {
     this.phase = { kind: 'loaded', loaded };
     this.viewing.attach(loaded.pipeline.renderer);
     const { session } = loaded.pipeline;
-    loaded.pipeline.stabilizing?.setStabilizer(stabilizerFor(this.stabilizationMode));
-    matchGainsOn(loaded.pipeline.renderer, this.isGainMatching);
+    this.picture.attach(loaded.pipeline);
     session.events.on('statechange', (state) => {
       this.onSessionState(state);
     });
@@ -383,9 +378,4 @@ export class Player {
     this.lastStatus = status;
     this.events.emit('statuschange', status);
   }
-}
-
-function matchGainsOn(renderer: PictureRenderer, isMatching: boolean): void {
-  if (isMatching) renderer.enableGainMatching();
-  else renderer.disableGainMatching();
 }

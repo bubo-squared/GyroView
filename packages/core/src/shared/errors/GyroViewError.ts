@@ -49,6 +49,10 @@ export class GyroViewError extends Error {
   }
 }
 
+export function hasErrorCode(error: unknown, code: GyroViewErrorCode): boolean {
+  return error instanceof GyroViewError && error.code === code;
+}
+
 /**
  * The human-readable part of anything thrown: an error's message, or the value as text.
  */

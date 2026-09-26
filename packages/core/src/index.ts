@@ -170,6 +170,7 @@ export {
   ensureInvariant,
   GYRO_VIEW_ERROR_CODES,
   GyroViewError,
+  hasErrorCode,
   isGyroViewErrorCode,
   messageOf,
   type GyroViewErrorCode,

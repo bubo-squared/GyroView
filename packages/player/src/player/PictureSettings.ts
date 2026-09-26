@@ -2,6 +2,7 @@ import {
   DEFAULT_STABILIZATION_MODE,
   stabilizerFor,
   type GainMatchingFrameSink,
+  type PlaybackSession,
   type StabilizationMode,
   type StabilizingFrameSink,
   type TypedEmitter,
@@ -18,6 +19,10 @@ export interface PictureTargets {
    * Absent when the recording has no gyro to stabilize with.
    */
   readonly stabilizing: Pick<StabilizingFrameSink<VideoFrame>, 'setStabilizer'> | undefined;
+  /**
+   * Draws the frame on screen again, so a change shows while the picture stands still.
+   */
+  readonly session: Pick<PlaybackSession<VideoFrame>, 'redraw'>;
 }
 
 /**
@@ -47,12 +52,15 @@ export class PictureSettings {
   public setStabilization(mode: StabilizationMode): void {
     this.mode = mode;
     this.targets?.stabilizing?.setStabilizer(stabilizerFor(mode));
+    this.targets?.session.redraw();
     this.events.emit('stabilizationchange', mode);
   }
 
   public setGainMatching(isEnabled: boolean): void {
     this.isMatching = isEnabled;
-    if (this.targets) matchGains(this.targets, isEnabled);
+    if (!this.targets) return;
+    matchGains(this.targets, isEnabled);
+    this.targets.session.redraw();
   }
 }
 

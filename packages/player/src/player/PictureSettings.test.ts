@@ -32,6 +32,11 @@ function recordedSettings(): Recorded {
         calls.push(`stabilize ${stabilizer.constructor.name}`);
       },
     },
+    session: {
+      redraw: () => {
+        calls.push('redraw');
+      },
+    },
   };
   return { settings: new PictureSettings(events), targets, calls, announced };
 }
@@ -52,13 +57,13 @@ describe('PictureSettings', () => {
     expect(calls).toEqual(['stabilize OffStabilization', 'leave gains']);
   });
 
-  it('applies and announces a change to the attached pipeline', () => {
+  it('applies and announces a change to the attached pipeline and shows it at once', () => {
     const { settings, targets, calls, announced } = recordedSettings();
     settings.attach(targets);
     calls.length = 0;
     settings.setStabilization('horizon');
     settings.setGainMatching(false);
-    expect(calls).toEqual(['stabilize HorizonStabilization', 'leave gains']);
+    expect(calls).toEqual(['stabilize HorizonStabilization', 'redraw', 'leave gains', 'redraw']);
     expect(announced).toEqual(['horizon']);
   });
 

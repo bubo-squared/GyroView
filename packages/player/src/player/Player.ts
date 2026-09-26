@@ -208,8 +208,6 @@ export class Player {
 
   public setStabilization(mode: StabilizationMode): void {
     this.picture.setStabilization(mode);
-    // Paused, the frame on screen shows the new mode at once.
-    this.loaded?.pipeline.session.redraw();
   }
 
   public setLooping(isLooping: boolean): void {

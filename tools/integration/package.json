@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "measure": "vitest run --config vitest.measure.config.ts"
   },
   "devDependencies": {
     "@gyroview/adapter-mediabunny": "workspace:*",

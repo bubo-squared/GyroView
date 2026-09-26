@@ -16,10 +16,10 @@ import {
   type WindowCrop,
 } from '@gyroview/core';
 import { equirectangularPixelOf } from '@gyroview/core/testing';
-import { commands } from '@vitest/browser/context';
 import type { OpenedRecording } from '@gyroview/player/composition';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
+import { saveMeasurement, saveRender } from './artifacts';
 import { imageCircleOf, type PixelPoint } from './imageCircle';
 import { SharedSample } from './SharedSample';
 import { OFFICE_5K7_60, OFFICE_PROXY, SAILING_8K_30 } from './sampleUrls';
@@ -77,10 +77,6 @@ function coverageOf(pixels: Uint8ClampedArray): number {
     if (r + g + b > BLACK_THRESHOLD) lit += 1;
   }
   return lit / (pixels.length / RGBA);
-}
-
-function jsonDataUrl(value: unknown): string {
-  return `data:application/json;base64,${btoa(JSON.stringify(value, undefined, 2))}`;
 }
 
 function calibrationOf(opened: OpenedRecording): CalibrationSet {
@@ -260,12 +256,12 @@ describe('rendering the real recordings', () => {
       const { first } = await shared.momentAt(context, MOMENT);
       const { canvas, renderer } = equirectangularRenderer(opened);
       renderer.present({ pair: first, mediaTime: first.timestamp });
-      await commands.saveArtifact(`${slug}-${MOMENT}s-equirect.png`, canvas.toDataURL('image/png'));
+      await saveRender(`${slug}-${MOMENT}s-equirect`, canvas);
       expect(coverageOf(renderer.readPixels())).toBeGreaterThan(MIN_COVERAGE);
       renderer.setLensGains([UNITY_GAIN, SILENCED]);
-      await commands.saveArtifact(`${slug}-${MOMENT}s-lens0.png`, canvas.toDataURL('image/png'));
+      await saveRender(`${slug}-${MOMENT}s-lens0`, canvas);
       renderer.setLensGains([SILENCED, UNITY_GAIN]);
-      await commands.saveArtifact(`${slug}-${MOMENT}s-lens1.png`, canvas.toDataURL('image/png'));
+      await saveRender(`${slug}-${MOMENT}s-lens1`, canvas);
     });
 
     it(`finds the image circle of each ${name} frame where the core's canvas window puts the principal point, not the sensor window (ADR 0014)`, async (context) => {
@@ -276,10 +272,7 @@ describe('rendering the real recordings', () => {
         layout: opened.layout,
       });
       const measurements = setup.lenses.map((lens) => measureCentre(opened, lens, first));
-      await commands.saveArtifact(
-        `${slug}-${MOMENT}s-image-circle.json`,
-        jsonDataUrl(measurements),
-      );
+      await saveMeasurement(`${slug}-${MOMENT}s-image-circle`, measurements);
       for (const measured of measurements) {
         expect(measured.distanceToCanvasWindow).toBeLessThan(
           MAX_CENTRE_OFFSET_FRACTION * measured.frameWidth,
@@ -311,10 +304,7 @@ describe('rendering the real recordings', () => {
         sink.setStabilizer(stabilizerFor(mode));
         sink.present({ pair: first, mediaTime: first.timestamp });
         rendered.set(mode, renderer.readPixels());
-        await commands.saveArtifact(
-          `${slug}-${MOMENT}s-${mode}.png`,
-          canvas.toDataURL('image/png'),
-        );
+        await saveRender(`${slug}-${MOMENT}s-${mode}`, canvas);
       }
       const off = rendered.get('off') ?? new Uint8ClampedArray();
       const lock = rendered.get('lock') ?? new Uint8ClampedArray();

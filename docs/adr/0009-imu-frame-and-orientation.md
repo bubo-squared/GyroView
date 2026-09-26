@@ -42,11 +42,12 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
   (two wrong frames each looked level on some frames).
 - The lock render is the rigid rotation of the unstabilized render by the estimated orientation
   (mean colour difference 5.6 of 255 over 400 probe directions), so rendering is faithful.
-- The deciding test is `imuMappingRanking.test.ts`: in lock mode the world must stand still, so
-  for each of the 24 axis arrangements it integrates the orientation, renders pairs half a second
-  apart under lock and measures how much the picture moved. The `x, z, -y` frame wins on both
-  recordings (sailing 25.5 against 32.8 unstabilized and 32.4 for the runner-up; office 14.0
-  against 16.0 and 15.6); every other arrangement is no better than leaving the picture alone.
+- The deciding measurement is `imuFrameRanking.test.ts` (`pnpm measure`): in lock mode the world
+  must stand still, so for each of the 24 axis arrangements it integrates the orientation,
+  renders pairs half a second apart under lock and measures how much the picture moved. The
+  `x, z, -y` frame wins on both recordings (sailing 25.5 against 32.8 unstabilized and 32.4 for
+  the runner-up; office 14.0 against 16.0 and 15.6); every other arrangement is no better than
+  leaving the picture alone.
 
 ## Alternatives considered
 
@@ -60,6 +61,7 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
 
 Cameras other than the X5 stabilize with an unverified frame until a recording is measured; the
 player must surface `ImuFrame.isVerified` as a warning and offer `off`. A new camera is measured
-by adding its recording to the ranking test. The residual motion in lock mode on the sailing
+by adding its recording to the ranking and running `pnpm measure`; every test run keeps a
+cheaper guard, that lock keeps the sailing recording's world stiller than no stabilization. The residual motion in lock mode on the sailing
 recording comes from the boat and people moving and from the accelerometer sensing the boat's
 acceleration; the horizon itself stays level.

@@ -1,3 +1,12 @@
+declare module 'vitest' {
+  interface ProvidedContext {
+    /**
+     * Whether the run writes renders and measurements to `.artifacts/` (`pnpm measure`).
+     */
+    savesArtifacts: boolean;
+  }
+}
+
 declare module 'vitest/browser' {
   interface BrowserCommands {
     /**

@@ -4,5 +4,11 @@
     "lib": ["ES2024", "ESNext.Array", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "vitest.config.ts", "vitest.browser.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "browserProject.ts",
+    "vitest.config.ts",
+    "vitest.browser.config.ts",
+    "vitest.measure.config.ts"
+  ]
 }

@@ -138,6 +138,7 @@ pnpm --filter @gyroview/embed dev     # developer page at http://localhost:5180 
 pnpm --filter @gyroview/embed build   # static site, embed.js and gyro-view.js in apps/embed/dist
 pnpm inspect <file.insv>              # print what the core understands about a recording
 pnpm fixtures:build                   # regenerate the synthetic recordings in test/fixtures
+pnpm measure                          # renders of the local samples in .artifacts, IMU frame ranking
 pnpm --filter @gyroview/core run test:mutation   # Stryker over the core
 ```
 
@@ -145,6 +146,8 @@ Browser adapters, the player and the embed site are tested in headless Chromium 
 through Playwright. The end-to-end tests in `tools/integration/src/browser` play the local
 sample recordings; they skip when the samples are absent (as in CI) and drive the installed
 Google Chrome when there is one, because Playwright's own Chromium build has no HEVC decoder.
+`pnpm measure` runs them again writing their renders to `.artifacts/` for inspection, with the
+measurements too slow for every run, such as the IMU frame ranking of ADR 0009.
 
 ### Local samples
 

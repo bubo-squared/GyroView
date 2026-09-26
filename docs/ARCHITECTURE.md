@@ -257,7 +257,8 @@ The composition root and the user-facing element, in three layers.
 Tests follow the layers: pure domain tests run in Node in milliseconds and are mutation-tested
 with Stryker; adapters have contract tests against their ports and run in Chromium and WebKit
 where they need a browser; the player and the site are tested in browsers over the synthetic
-recordings; the integration suite adds the real files and writes renders to `.artifacts/`.
+recordings; the integration suite adds the real files. `pnpm measure` also writes its renders
+to `.artifacts/` and runs the measurements behind a camera's constants (the IMU frame ranking).
 
 ## Two flows
 

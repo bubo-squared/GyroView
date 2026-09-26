@@ -38,8 +38,8 @@ shows as an upside-down lens, a swapped side or a double edge at the seam.
 ## Evidence kept
 
 `tools/integration/src/browser/realRecordingRender.test.ts` renders one frame of each sample
-(full recording, packed LRV proxy, 8K sailing) to `.artifacts/` for inspection and records the
-image-circle extents. A seam-difference figure measured at the time (mean absolute difference
+(full recording, packed LRV proxy, 8K sailing), to `.artifacts/` for inspection under
+`pnpm measure`, and records the image-circle extents. A seam-difference figure measured at the time (mean absolute difference
 of the two lenses in the overlap band: 60 on the office frame, 73 on the sailing frame) was
 dominated by parallax of near subjects and by the exposure difference between the lenses, and
 did not separate the two window interpretations; the image-circle extents do.

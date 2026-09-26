@@ -87,7 +87,7 @@ export function toBodyFrame(frame: ImuFrame, imuVector: Vector3): Vector3 {
  * Measured on two X5 recordings (firmware 1.7 and 1.11, ADR 0009): the IMU sits rotated a quarter
  * turn about the camera's lateral axis, so the body's down is the IMU's z and the body's forward
  * is the IMU's minus y. Chosen by the world-stillness ranking in
- * `tools/integration/src/browser/imuMappingRanking.test.ts`, which every other arrangement loses.
+ * `tools/integration/src/measure/imuFrameRanking.test.ts`, which every other arrangement loses.
  */
 export const X5_IMU_FRAME = measuredImuFrame('X5', ['x', 'z', '-y']);
 

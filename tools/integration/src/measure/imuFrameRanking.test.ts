@@ -12,13 +12,13 @@ import {
   type ImuFrame,
   type SignedAxis,
 } from '@gyroview/core';
-import { commands } from '@vitest/browser/context';
 import { DECODE_PIPELINE_OPTIONS } from '@gyroview/player/composition';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { closeAll, openSample, port, takePairs } from './realRecordingSupport';
-import { OFFICE_5K7_60, SAILING_8K_30 } from './sampleUrls';
-import { worldMovement } from './worldMovement';
+import { saveMeasurement } from '../browser/artifacts';
+import { closeAll, openSample, port, takePairs } from '../browser/realRecordingSupport';
+import { OFFICE_5K7_60, SAILING_8K_30 } from '../browser/sampleUrls';
+import { worldMovement } from '../browser/worldMovement';
 
 const WIDTH = 384;
 const HEIGHT = 192;
@@ -46,11 +46,6 @@ function properFrameOf(x: SignedAxis, y: SignedAxis, z: SignedAxis): ImuFrame[] 
   return isProperRotation(axes) ? [assumedImuFrame(axes.join(','), axes)] : [];
 }
 
-/**
- * In lock mode the world must stand still, so the IMU frame whose orientation keeps consecutive
- * renders most alike is the frame the camera really has. This is the data-driven check ADR 0009
- * rests on; it runs on the real recordings only.
- */
 interface Candidate {
   readonly frame: ImuFrame;
   readonly orientations: OrientationTrack;
@@ -106,6 +101,11 @@ function nameOf(frame: ImuFrame): string | undefined {
     ?.name;
 }
 
+/**
+ * In lock mode the world must stand still, so the IMU frame whose orientation keeps consecutive
+ * renders most alike is the frame the camera really has. This is the measurement ADR 0009 rests
+ * on, and how a new camera's frame is found: add its recording here and run `pnpm measure`.
+ */
 describe('IMU frame ranking by world stillness under lock stabilization', () => {
   const cleanups: (() => void)[] = [];
 
@@ -148,10 +148,7 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
         total: 0,
       }));
       const measured = await measureStillness({ opened, renderer, candidates, times });
-      await commands.saveArtifact(
-        `${slug}-imu-frame-ranking.json`,
-        `data:application/json;base64,${btoa(JSON.stringify(measured, undefined, 2))}`,
-      );
+      await saveMeasurement(`${slug}-imu-frame-ranking`, measured);
       expect(measured.ranking[0]?.name).toBe(nameOf(imuFrameFor(recording.info)));
       expect(measured.ranking[0]?.stillness).toBeLessThan(measured.unstabilized);
     });

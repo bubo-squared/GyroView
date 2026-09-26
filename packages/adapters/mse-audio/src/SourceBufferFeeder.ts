@@ -1,12 +1,7 @@
-import {
-  GyroViewError,
-  Signal,
-  seconds,
-  type AudioSegmentSource,
-  type Seconds,
-} from '@gyroview/core';
+import { GyroViewError, seconds, type AudioSegmentSource, type Seconds } from '@gyroview/core';
 
 import { nextOfEvents } from './events';
+import { RunStop, STOPPED } from './RunStop';
 
 interface SourceBufferFeederParts {
   readonly element: HTMLMediaElement;
@@ -32,7 +27,6 @@ const EVICT_BEHIND_SECONDS = 60;
  * Events on which the feeder re-checks whether the buffer needs more data.
  */
 const WAKE_EVENTS = ['timeupdate', 'seeking', 'waiting', 'play'] as const;
-const STOPPED = Symbol('stopped');
 
 type Segments = AsyncIterator<Uint8Array<ArrayBuffer>>;
 
@@ -42,7 +36,7 @@ type Segments = AsyncIterator<Uint8Array<ArrayBuffer>>;
  * stream when the track ends. A seek restarts it from the new time; disposal stops it.
  */
 export class SourceBufferFeeder {
-  private stop = new Signal();
+  private stop = new RunStop();
   private run: Promise<void> = Promise.resolve();
   private failureValue: GyroViewError | undefined;
 
@@ -56,26 +50,26 @@ export class SourceBufferFeeder {
   }
 
   public restartFrom(time: Seconds): void {
-    this.stop.trigger();
-    const stop = new Signal();
+    this.stop.stop();
+    const stop = new RunStop();
     this.stop = stop;
     this.run = this.feedAfter(this.run, time, stop);
   }
 
   public dispose(): void {
-    this.stop.trigger();
+    this.stop.stop();
     this.abortPendingAppend();
   }
 
   /**
    * Runs are serialised so a restart never appends while the previous run is mid-append.
    */
-  private async feedAfter(previous: Promise<void>, from: Seconds, stop: Signal): Promise<void> {
+  private async feedAfter(previous: Promise<void>, from: Seconds, stop: RunStop): Promise<void> {
     await previous;
     await this.feed(from, stop);
   }
 
-  private async feed(from: Seconds, stop: Signal): Promise<void> {
+  private async feed(from: Seconds, stop: RunStop): Promise<void> {
     const segments = this.parts.source.segmentsFrom(from)[Symbol.asyncIterator]();
     try {
       await this.settlePendingAppend();
@@ -94,7 +88,7 @@ export class SourceBufferFeeder {
   /**
    * Appends segments as the playhead needs them. True when the track ended, false when stopped.
    */
-  private async pump(segments: Segments, stop: Signal): Promise<boolean> {
+  private async pump(segments: Segments, stop: RunStop): Promise<boolean> {
     let next = await this.nextWhenNeeded(segments, stop);
     while (next !== STOPPED) {
       if (next.done === true) return true;
@@ -110,18 +104,17 @@ export class SourceBufferFeeder {
    */
   private async nextWhenNeeded(
     segments: Segments,
-    stop: Signal,
+    stop: RunStop,
   ): Promise<IteratorResult<Uint8Array<ArrayBuffer>> | typeof STOPPED> {
     await this.waitUntilNeeded(stop);
-    return stop.wasTriggered ? STOPPED : Promise.race([segments.next(), afterStop(stop)]);
+    return stop.race(segments.next());
   }
 
-  private async waitUntilNeeded(stop: Signal): Promise<void> {
-    while (!stop.wasTriggered && this.bufferedAhead() >= BUFFER_AHEAD_SECONDS) {
-      await Promise.race([
-        nextOfEvents(this.parts.element, WAKE_EVENTS, stop.promise),
-        stop.promise,
-      ]);
+  private async waitUntilNeeded(stop: RunStop): Promise<void> {
+    while (!stop.wasStopped && this.bufferedAhead() >= BUFFER_AHEAD_SECONDS) {
+      const woken = new AbortController();
+      await stop.race(nextOfEvents(this.parts.element, WAKE_EVENTS, woken.signal));
+      woken.abort();
     }
   }
 
@@ -173,9 +166,4 @@ export class SourceBufferFeeder {
     const { mediaSource, sourceBuffer } = this.parts;
     if (mediaSource.readyState === 'open' && !sourceBuffer.updating) mediaSource.endOfStream();
   }
-}
-
-async function afterStop(stop: Signal): Promise<typeof STOPPED> {
-  await stop.promise;
-  return STOPPED;
 }

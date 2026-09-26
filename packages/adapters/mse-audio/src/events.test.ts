@@ -1,4 +1,3 @@
-import { Signal } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
 import { nextOfEvents } from './events';
@@ -31,13 +30,12 @@ describe('nextOfEvents', () => {
     expect(target.listeners).toBe(0);
   });
 
-  it('stops listening once told to, when another wait won the race', async () => {
+  it('stops listening once cancelled, when another wait won the race', () => {
     const target = new CountingTarget();
-    const settled = new Signal();
-    void nextOfEvents(target, ['a', 'b'], settled.promise);
+    const cancel = new AbortController();
+    void nextOfEvents(target, ['a', 'b'], cancel.signal);
     expect(target.listeners).toBe(2);
-    settled.trigger();
-    await settled.promise;
+    cancel.abort();
     expect(target.listeners).toBe(0);
   });
 });

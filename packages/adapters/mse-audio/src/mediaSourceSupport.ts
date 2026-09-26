@@ -1,4 +1,4 @@
-import { GyroViewError, Signal } from '@gyroview/core';
+import { GyroViewError } from '@gyroview/core';
 
 import { nextOfEvents } from './events';
 
@@ -94,25 +94,29 @@ async function sourceOpenOutcome(
   element: HTMLMediaElement,
   mediaSource: MediaSource,
 ): Promise<'sourceopen' | 'error' | 'timeout'> {
-  const settled = new Signal();
+  const settled = new AbortController();
   try {
     return await Promise.race([
-      nextOfEvents(mediaSource, ['sourceopen'] as const, settled.promise),
-      nextOfEvents(element, ['error'] as const, settled.promise),
-      timeoutAfter(SOURCE_OPEN_TIMEOUT_MS, settled.promise),
+      nextOfEvents(mediaSource, ['sourceopen'] as const, settled.signal),
+      nextOfEvents(element, ['error'] as const, settled.signal),
+      timeoutAfter(SOURCE_OPEN_TIMEOUT_MS, settled.signal),
     ]);
   } finally {
-    settled.trigger();
+    settled.abort();
   }
 }
 
-function timeoutAfter(ms: number, until: Promise<void>): Promise<'timeout'> {
+function timeoutAfter(ms: number, cancel: AbortSignal): Promise<'timeout'> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       resolve('timeout');
     }, ms);
-    void until.then(() => {
-      clearTimeout(timer);
-    });
+    cancel.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+      },
+      { once: true },
+    );
   });
 }

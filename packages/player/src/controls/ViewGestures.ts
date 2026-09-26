@@ -3,7 +3,7 @@ import { zoomStepsForPinch, type ScreenPoint } from '@gyroview/core';
 import type { Player } from '../player/Player';
 
 /**
- * A pointer's position on the page, in CSS pixels.
+ * A pointer's position in the browser's viewport, in CSS pixels, as `clientX` gives it.
  */
 interface Point {
   readonly x: number;
@@ -19,6 +19,10 @@ type GestureTarget = Pick<Player, 'pan' | 'zoom' | 'canPan'>;
  * A wheel notch on most mice reports about 100 pixels; one notch is one zoom step.
  */
 const WHEEL_PIXELS_PER_STEP = 100;
+/**
+ * On the surface while a drag would move the picture; `controls.css` shows the grab hand for it.
+ */
+const DRAGGABLE_ATTRIBUTE = 'data-draggable';
 /**
  * `PointerEvent.button` of the main mouse button.
  */
@@ -43,7 +47,7 @@ export class ViewGestures {
     private readonly player: GestureTarget,
     private readonly onTap: () => void,
   ) {
-    surface.addEventListener('pointerenter', this.showDraggable);
+    surface.addEventListener('pointerenter', this.reflectDraggable);
     surface.addEventListener('pointerdown', this.onPointerDown);
     surface.addEventListener('pointermove', this.onPointerMove);
     surface.addEventListener('pointerup', this.onPointerUp);
@@ -60,7 +64,7 @@ export class ViewGestures {
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
-    this.showDraggable();
+    this.reflectDraggable();
     const previous = this.pointers.get(event.pointerId);
     if (!previous) return;
     const current = { x: event.clientX, y: event.clientY };
@@ -87,16 +91,11 @@ export class ViewGestures {
     event.preventDefault();
     const pointer = { x: event.clientX, y: event.clientY };
     this.player.zoom(-event.deltaY / WHEEL_PIXELS_PER_STEP, this.focusAt(pointer));
-    this.showDraggable();
+    this.reflectDraggable();
   };
 
-  /**
-   * `data-draggable` on the surface while a drag would move the picture: the stylesheet shows the
-   * grab hand for it.
-   */
-  private readonly showDraggable = (): void => {
-    if (this.player.canPan) this.surface.dataset['draggable'] = '';
-    else delete this.surface.dataset['draggable'];
+  private readonly reflectDraggable = (): void => {
+    this.surface.toggleAttribute(DRAGGABLE_ATTRIBUTE, this.player.canPan);
   };
 
   private pan(previous: Point, current: Point): void {
@@ -119,7 +118,7 @@ export class ViewGestures {
   }
 
   /**
-   * A point of the page as fractions of the surface, from its top-left corner.
+   * A point of the browser's viewport as fractions of the surface, from its top-left corner.
    */
   private focusAt(point: Point): ScreenPoint {
     const bounds = this.surface.getBoundingClientRect();

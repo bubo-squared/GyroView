@@ -5,6 +5,7 @@ import {
   type ViewMode,
 } from '@gyroview/core';
 
+import controlsStyles from './controls.css?raw';
 import { ICONS } from './icons';
 
 /**
@@ -73,11 +74,12 @@ function choiceMenuOf(menu: ChoiceMenuMarkup): string {
 }
 
 /**
- * The big play button and the control bar, for the element's stage. Class names are the contract
- * with `queryControlParts` and the stylesheet; the controls give the play and mute buttons their
- * state-dependent labels and icons when they are bound.
+ * The big play button and the control bar with their own styles, for the element's stage. Class
+ * names are the contract with `queryControlParts` and `controls.css`; the controls give the play
+ * and mute buttons their state-dependent labels and icons when they are bound.
  */
 export const CONTROLS_MARKUP = `
+  <style>${controlsStyles}</style>
   <button class="big-play" type="button">${ICONS.play}</button>
   <div class="controls" part="controls">
     <input class="seek" type="range" min="0" max="0" step="0.01" value="0" aria-label="Seek" />

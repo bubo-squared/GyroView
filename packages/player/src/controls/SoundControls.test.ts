@@ -38,14 +38,26 @@ function soundControls(): { parts: SoundParts; sound: FakeSound } {
   return { parts, sound };
 }
 
+/**
+ * The button draws its state as one icon, never as a text glyph a font could colour.
+ */
+function expectIconOnly(button: HTMLButtonElement): void {
+  expect(button.querySelectorAll('svg.icon')).toHaveLength(1);
+  expect(button.textContent).toBe('');
+}
+
 describe('SoundControls', () => {
   it('mutes and unmutes on the button, and says which a press does', () => {
     const { parts, sound } = soundControls();
     expect(parts.mute.getAttribute('aria-label')).toBe('Mute');
+    expectIconOnly(parts.mute);
+    const soundIcon = parts.mute.getHTML();
     parts.mute.click();
     expect(sound.isMuted).toBe(true);
     expect(parts.mute.getAttribute('aria-pressed')).toBe('true');
     expect(parts.mute.getAttribute('aria-label')).toBe('Unmute');
+    expectIconOnly(parts.mute);
+    expect(parts.mute.getHTML()).not.toBe(soundIcon);
     expect(parts.volume.value).toBe('0');
   });
 

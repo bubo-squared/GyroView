@@ -6,6 +6,7 @@ import {
 } from '@gyroview/core';
 
 import styles from './styles.css?raw';
+import { ICONS } from '../controls/icons';
 
 /**
  * The menu's words for each choice; a record, so a new mode cannot be left without a label.
@@ -44,19 +45,19 @@ export const ELEMENT_TEMPLATE = `
     <p class="error-message"></p>
     <p class="error-code"></p>
   </div>
-  <button class="big-play" type="button" aria-label="Play">&#9654;</button>
+  <button class="big-play" type="button" aria-label="Play">${ICONS.play}</button>
   <div class="controls" part="controls">
     <input class="seek" type="range" min="0" max="0" step="0.01" value="0" aria-label="Seek" />
     <div class="row">
-      <button class="play" type="button" aria-label="Play">&#9654;</button>
-      <button class="stop" type="button" aria-label="Stop">&#9632;</button>
+      <button class="play" type="button" aria-label="Play">${ICONS.play}</button>
+      <button class="stop" type="button" aria-label="Stop">${ICONS.stop}</button>
       <span class="time">0:00 / 0:00</span>
       <span class="spacer"></span>
-      <button class="mute" type="button" aria-label="Mute" aria-pressed="false">&#128266;</button>
+      <button class="mute" type="button" aria-label="Mute" aria-pressed="false">${ICONS.sound}</button>
       <input class="volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume" />
-      <button class="reset-view" type="button" aria-label="Reset view">&#8634;</button>
-      <button class="settings" type="button" aria-label="Settings" aria-haspopup="true" aria-expanded="false">&#9881;</button>
-      <button class="fullscreen" type="button" aria-label="Fullscreen">&#9974;</button>
+      <button class="reset-view" type="button" aria-label="Reset view">${ICONS.resetView}</button>
+      <button class="settings" type="button" aria-label="Settings" aria-haspopup="true" aria-expanded="false">${ICONS.settings}</button>
+      <button class="fullscreen" type="button" aria-label="Fullscreen">${ICONS.fullscreen}</button>
     </div>
     <div class="menu" hidden>
       <label>Stabilization

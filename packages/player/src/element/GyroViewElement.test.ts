@@ -123,6 +123,12 @@ describe('<gyro-view>', () => {
     const controls = control(element, '.controls', HTMLElement);
     expect(play.getAttribute('aria-label')).toBe('Play');
     expect(getComputedStyle(controls).display).not.toBe('none');
+    const stage = control(element, '.stage', HTMLElement);
+    for (const button of stage.querySelectorAll(':scope .big-play, :scope .row button')) {
+      expect(button.getAttribute('aria-label')).not.toBeNull();
+      expect(button.querySelectorAll('svg.icon')).toHaveLength(1);
+      expect(button.textContent).toBe('');
+    }
 
     const playing = nextEvent(element, 'play');
     play.click();

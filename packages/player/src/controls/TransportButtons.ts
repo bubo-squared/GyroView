@@ -1,9 +1,7 @@
 import type { ControlParts } from './controlParts';
 import type { ControlsHost } from './ControlsHost';
+import { ICONS } from './icons';
 import type { Player } from '../player/Player';
-
-const PLAY_GLYPH = '▶';
-const PAUSE_GLYPH = '⏸';
 
 type TransportParts = Pick<ControlParts, 'play' | 'bigPlay' | 'stop' | 'resetView' | 'fullscreen'>;
 
@@ -48,6 +46,6 @@ export class TransportButtons {
     for (const button of [this.parts.play, this.parts.bigPlay]) {
       button.setAttribute('aria-label', label);
     }
-    this.parts.play.textContent = isPaused ? PLAY_GLYPH : PAUSE_GLYPH;
+    this.parts.play.innerHTML = isPaused ? ICONS.play : ICONS.pause;
   }
 }

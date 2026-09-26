@@ -20,10 +20,16 @@ const FOCUS_STEPS: ReadonlyMap<string, FocusStep> = new Map<string, FocusStep>([
 ]);
 
 /**
+ * Presses are seen on their way in, before the control they land on.
+ */
+const ON_THE_WAY_IN = { capture: true } as const;
+
+/**
  * A button opening a popup of choices with the current one checked. The button toggles it; a
- * choice, a press outside or Escape closes it; the arrow keys move between the choices. Keys
- * pressed while it is open stay with it, so one Escape does not also leave fullscreen and the
- * arrows do not turn the view.
+ * choice, Escape, a press outside it or the focus moving elsewhere closes it; the arrow keys
+ * move between the choices. A press outside only closes it, so a tap on the picture does not
+ * also toggle play, and keys pressed while it is open stay with it, so one Escape does not also
+ * leave fullscreen and the arrows do not turn the view.
  */
 export class ChoiceMenu {
   private readonly items: readonly HTMLElement[];
@@ -68,9 +74,21 @@ export class ChoiceMenu {
       this.setOpen(!this.isOpen);
       if (this.isOpen) this.focusItem(this.items.findIndex((item) => isChecked(item)));
     });
-    root.addEventListener('pointerdown', (event) => {
-      const isInside = event.composedPath().some((node) => node === popup || node === button);
-      if (!isInside) this.setOpen(false);
+    root.addEventListener(
+      'pointerdown',
+      (event) => {
+        if (!this.isOpen) return;
+        const isInside = event.composedPath().some((node) => node === popup || node === button);
+        if (isInside) return;
+        this.setOpen(false);
+        event.stopPropagation();
+      },
+      ON_THE_WAY_IN,
+    );
+    root.addEventListener('focusout', (event) => {
+      const next = event instanceof FocusEvent ? event.relatedTarget : null;
+      const isLeaving = next !== button && next instanceof Node && !popup.contains(next);
+      if (isLeaving) this.setOpen(false);
     });
     root.addEventListener('keydown', (event) => {
       if (this.isOpen && event instanceof KeyboardEvent) this.onKey(event);

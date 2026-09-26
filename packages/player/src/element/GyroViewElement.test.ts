@@ -394,6 +394,21 @@ describe('<gyro-view>', () => {
     expect(error.code).toBe('source-unreadable');
   });
 
+  it('closes an open menu on a tap on the picture without also toggling play', async () => {
+    const element = await createReady();
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    control(element, '.view-mode-button', HTMLButtonElement).click();
+
+    canvas.dispatchEvent(pointer('pointerdown', { x: 10, y: 10 }));
+    canvas.dispatchEvent(pointer('pointerup', { x: 10, y: 10 }));
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
+
+    expect(control(element, '.view-mode-menu', HTMLElement).hidden).toBe(true);
+    expect(element.status).toBe('ready');
+  });
+
   it('keeps the controls up while a menu is open, and wakes them for keys the menu keeps', async () => {
     const element = await createReady();
     const controls = control(element, '.controls', HTMLElement);

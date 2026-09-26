@@ -98,11 +98,34 @@ describe('ChoiceMenu', () => {
     expect(escapedKeys).toEqual(['Escape']);
   });
 
-  it('closes on a press outside it', () => {
+  it('takes a press outside it only to close, and lets presses through once closed', () => {
     const { root, parts } = world();
+    const pressed: string[] = [];
+    const outside = root.querySelector('output');
+    outside?.addEventListener('pointerdown', () => {
+      pressed.push('outside');
+    });
+    const pressOutside = (): void => {
+      outside?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    };
     parts.button.click();
-    root.querySelector('output')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    pressOutside();
     expect(parts.popup.hidden).toBe(true);
+    expect(pressed).toEqual([]);
+    pressOutside();
+    expect(pressed).toEqual(['outside']);
+  });
+
+  it('closes when the focus moves elsewhere, not within it', () => {
+    const { parts, item } = world();
+    const elsewhere = document.createElement('button');
+    document.body.append(elsewhere);
+    parts.button.click();
+    item('far').focus();
+    expect(parts.popup.hidden).toBe(false);
+    elsewhere.focus();
+    expect(parts.popup.hidden).toBe(true);
+    elsewhere.remove();
   });
 
   it('moves between the choices with the arrows, Home and End, keeping the keys', () => {

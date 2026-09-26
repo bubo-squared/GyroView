@@ -276,10 +276,6 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   }
 
   /**
-   * What the controls and the keyboard ask of the element. They live as long as the element:
-   * their listeners sit on its own shadow tree and host, and on its player.
-   */
-  /**
    * The element takes focus and keys, so assistive technology needs to know what it is: a named
    * region, unless the page gave it a role, a name or a tab order of its own.
    */
@@ -290,6 +286,10 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     if (!isNamed) this.setAttribute('aria-label', ACCESSIBLE_NAME);
   }
 
+  /**
+   * What the controls and the keyboard ask of the element. They live as long as the element:
+   * their listeners sit on its own shadow tree and host, and on its player.
+   */
   private controlsHost(): ControlsHost & KeyboardHost {
     return {
       player: this.player,

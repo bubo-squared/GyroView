@@ -31,6 +31,11 @@ describe('sourceFromAttributes', () => {
   it('has no source without src, and no second input without src2', () => {
     expect(sourceFromAttributes(readerOf({}), BASE)).toBeUndefined();
     expect(sourceFromAttributes(readerOf({ src: '  ' }), BASE)).toBeUndefined();
+  });
+
+  it('passes a src that is no URL on as written, for the load to fail on and report', () => {
+    const source = sourceFromAttributes(readerOf({ src: 'http://[::1/x.insv' }), BASE);
+    expect(source?.main).toEqual({ url: 'http://[::1/x.insv' });
     expect(
       sourceFromAttributes(readerOf({ src: 'a.insv', src2: ' ' }), BASE)?.second,
     ).toBeUndefined();

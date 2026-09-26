@@ -22,7 +22,19 @@ export function sourceFromAttributes(
 
 function urlInputOf(value: string | null, baseUrl: string): MediaInput | undefined {
   const trimmed = value?.trim() ?? '';
-  return trimmed === '' ? undefined : { url: new URL(trimmed, baseUrl).href };
+  return trimmed === '' ? undefined : { url: resolvedOrAsWritten(trimmed, baseUrl) };
+}
+
+/**
+ * The URL resolved against the document; one that does not parse goes on as written, so the
+ * load fails on it and reports it as an `error`, like any source it cannot reach.
+ */
+function resolvedOrAsWritten(url: string, baseUrl: string): string {
+  try {
+    return new URL(url, baseUrl).href;
+  } catch {
+    return url;
+  }
 }
 
 const VIEW_ANGLES: Readonly<Record<string, keyof ViewState>> = {

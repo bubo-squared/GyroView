@@ -483,6 +483,16 @@ describe('<gyro-view>', () => {
     await waitFor(() => element.status === 'idle', 'unloading');
   });
 
+  it('reports a src that is no URL as an error, like any source it cannot read', async () => {
+    const element = create({ controls: '' });
+    const failed = nextEvent<{ code: string }>(element, 'error');
+    // An IPv6 host left unclosed: no browser parses it.
+    element.src = 'http://[::1/x.insv';
+    const error = await failed;
+    expect(error.code).toBe('source-unreadable');
+    expect(element.dataset['status']).toBe('error');
+  });
+
   it('plays local files handed to it, reloads them, and plays src again once it changes', async () => {
     const element = create({ controls: '', src: `${X5_RECORDING_URL}.missing` });
     const bytes = await fetchBytes(X5_RECORDING_URL);

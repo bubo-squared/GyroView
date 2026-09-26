@@ -21,7 +21,6 @@ import { IdleWatcher } from './IdleWatcher';
 import { applyPlaybackAttribute } from './playbackAttributes';
 import { defineLiveSettings } from './liveSettings';
 import { defineBooleanProperties, defineStringProperties } from './reflectedProperties';
-import { relayPlayerEvents } from './relayPlayerEvents';
 import { ELEMENT_TEMPLATE } from './template';
 import { browserPorts } from '../composition/browserPorts';
 import { buildPipeline, type PipelineHost } from '../composition/buildPipeline';
@@ -31,7 +30,7 @@ import type { ControlsHost } from '../controls/ControlsHost';
 import { bindKeyboard, type KeyboardHost } from '../controls/keyboard';
 import { ViewGestures } from '../controls/ViewGestures';
 import { Player } from '../player/Player';
-import type { PlayerStatus } from '../player/PlayerEvents';
+import { PLAYER_EVENT_NAMES, type PlayerStatus } from '../player/PlayerEvents';
 import type { PlayerMetadata } from '../PlayerMetadata';
 /**
  * Attributes whose properties mirror them, as `img.src` does: what to play and how to present
@@ -295,7 +294,8 @@ export class GyroViewElement extends HTMLElement {
 
   /**
    * The element's own bookkeeping runs before the events reach page listeners, so a listener
-   * sees the attributes already matching the event it hears.
+   * sees the attributes already matching the event it hears. Every player event is then
+   * dispatched as a composed `CustomEvent` of the same name, the payload in `detail`.
    */
   private observePlayer(): void {
     this.player.events.on('statuschange', (status) => {
@@ -308,7 +308,11 @@ export class GyroViewElement extends HTMLElement {
     this.player.events.on('error', (error) => {
       this.showError(error);
     });
-    relayPlayerEvents(this.player, this);
+    for (const name of PLAYER_EVENT_NAMES) {
+      this.player.events.on(name, (detail) => {
+        this.dispatchEvent(new CustomEvent(name, { detail, composed: true }));
+      });
+    }
   }
 
   private showError(error: GyroViewError): void {

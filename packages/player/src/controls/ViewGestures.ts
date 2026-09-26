@@ -1,12 +1,19 @@
 import { zoomStepsForPinch } from '@gyroview/core';
 
-import { distanceBetween, type Point } from './pointerGeometry';
 import type { Player } from '../player/Player';
+
+/**
+ * A pointer's position on the viewport, in CSS pixels.
+ */
+interface Point {
+  readonly x: number;
+  readonly y: number;
+}
 
 /**
  * What the gestures move.
  */
-export type GestureTarget = Pick<Player, 'pan' | 'zoom'>;
+type GestureTarget = Pick<Player, 'pan' | 'zoom'>;
 
 /**
  * A wheel notch on most mice reports about 100 pixels; one notch is one zoom step.
@@ -80,4 +87,8 @@ export class ViewGestures {
     );
     this.player.zoom(steps);
   }
+}
+
+function distanceBetween(a: Point, b: Point): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }

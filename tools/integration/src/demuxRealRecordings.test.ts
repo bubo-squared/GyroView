@@ -18,9 +18,7 @@ describe.skipIf(!hasSamples())(
           { trackIndex: 1, codedWidth: 2880, codedHeight: 2880 },
         ]);
         expect(input.videoTracks[0]!.description.codec).toMatch(/^hev1|^hvc1/);
-        expect(input.audioTracks.map((track) => track.description.codec)).toEqual([
-          expect.stringMatching(/^mp4a/),
-        ]);
+        expect(input.audioTracks).toHaveLength(1);
         const segments = await input.audioTracks[0]?.openSegments();
         expect(segments?.mimeType).toMatch(/^audio\/mp4; codecs="mp4a/);
         expect(segments?.duration).toBeCloseTo(262, 0);

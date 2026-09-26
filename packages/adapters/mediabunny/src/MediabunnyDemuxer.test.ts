@@ -135,8 +135,9 @@ describe('MediabunnyDemuxer on the synthetic fixture with an AAC track', () => {
     input.dispose();
   });
 
-  it('describes the audio track', () => {
+  it('offers the audio track as AAC in fragmented MP4', async () => {
     const [audio] = input.audioTracks;
-    expect(audio?.description).toEqual({ trackIndex: 0, codec: 'mp4a.40.2' });
+    const segments = await audio?.openSegments();
+    expect(segments?.mimeType).toBe('audio/mp4; codecs="mp4a.40.2"');
   });
 });

@@ -8,7 +8,7 @@ import {
 } from '@gyroview/core';
 import { ALL_FORMATS, CustomSource, Input } from 'mediabunny';
 
-import { MediabunnyAudioTrackReader } from './MediabunnyAudioTrackReader';
+import { MediabunnyAudioSegments } from './MediabunnyAudioSegments';
 import { MediabunnyVideoTrackReader } from './MediabunnyVideoTrackReader';
 
 /**
@@ -52,9 +52,10 @@ async function describeInput(input: Input, name: string | undefined): Promise<De
     videoTracks: await Promise.all(
       videoTracks.map((track, trackIndex) => MediabunnyVideoTrackReader.open(track, trackIndex)),
     ),
-    audioTracks: await Promise.all(
-      audioTracks.map((track, trackIndex) => MediabunnyAudioTrackReader.open(track, trackIndex)),
-    ),
+    audioTracks: audioTracks.map((track, trackIndex) => ({
+      openSegments: (): Promise<MediabunnyAudioSegments> =>
+        MediabunnyAudioSegments.open(track, trackIndex),
+    })),
     dispose: (): void => {
       input.dispose();
     },

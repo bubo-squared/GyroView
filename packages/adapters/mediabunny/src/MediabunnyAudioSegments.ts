@@ -1,10 +1,4 @@
-import {
-  GyroViewError,
-  seconds,
-  type AudioSegmentSource,
-  type AudioTrackDescription,
-  type Seconds,
-} from '@gyroview/core';
+import { GyroViewError, seconds, type AudioSegmentSource, type Seconds } from '@gyroview/core';
 import {
   EncodedAudioPacketSource,
   EncodedPacketSink,
@@ -55,9 +49,13 @@ export class MediabunnyAudioSegments implements AudioSegmentSource {
     public readonly duration: Seconds,
   ) {}
 
+  /**
+   * Rejects with `codec-unsupported`, naming the track, when mediabunny cannot re-package it: the
+   * picture then plays without sound rather than not at all.
+   */
   public static async open(
     track: InputAudioTrack,
-    description: AudioTrackDescription,
+    trackIndex: number,
   ): Promise<MediabunnyAudioSegments> {
     const [codec, decoderConfig, duration] = await Promise.all([
       track.getCodec(),
@@ -65,9 +63,10 @@ export class MediabunnyAudioSegments implements AudioSegmentSource {
       track.computeDuration(),
     ]);
     if (codec === null || decoderConfig === null) {
+      const named = (await track.getCodecParameterString()) ?? 'an unknown codec';
       throw new GyroViewError(
         'codec-unsupported',
-        `audio track ${description.trackIndex} (${description.codec}) cannot be re-packaged for playback`,
+        `audio track ${trackIndex} (${named}) cannot be re-packaged for playback`,
       );
     }
     return new MediabunnyAudioSegments({ track, codec, decoderConfig }, seconds(duration));

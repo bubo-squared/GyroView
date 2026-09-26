@@ -7,20 +7,11 @@ import type {
 } from './VideoTrack';
 import type { Seconds } from '../shared/units/time';
 
-export interface AudioTrackDescription {
-  readonly trackIndex: number;
-  /**
-   * WebCodecs codec string, for example `mp4a.40.2`; `unknown` when the container does not say.
-   */
-  readonly codec: string;
-}
-
 /**
  * One audio track of an opened container. The core never reads audio samples: the track goes,
  * re-packaged, to the platform's media pipeline, which plays it as the master clock.
  */
 export interface AudioTrackReader {
-  readonly description: AudioTrackDescription;
   /**
    * The track as fragmented MP4; rejects with `codec-unsupported` when it cannot be re-packaged.
    */

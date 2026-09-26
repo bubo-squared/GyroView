@@ -5,15 +5,12 @@ import type { Player } from '../player/Player';
 const PLAY_GLYPH = '▶';
 const PAUSE_GLYPH = '⏸';
 
-export type TransportParts = Pick<
-  ControlParts,
-  'play' | 'bigPlay' | 'stop' | 'resetView' | 'fullscreen'
->;
+type TransportParts = Pick<ControlParts, 'play' | 'bigPlay' | 'stop' | 'resetView' | 'fullscreen'>;
 
 /**
  * What the buttons command, and the paused state they show.
  */
-export interface TransportHost extends Pick<ControlsHost, 'togglePlay' | 'toggleFullscreen'> {
+interface TransportHost extends Pick<ControlsHost, 'togglePlay' | 'toggleFullscreen'> {
   readonly player: Pick<Player, 'events' | 'isPaused' | 'stop' | 'resetView'>;
 }
 

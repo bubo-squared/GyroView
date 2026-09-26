@@ -5,12 +5,12 @@ import type { ControlsHost } from './ControlsHost';
 import { formatTime } from './formatTime';
 import type { Player } from '../player/Player';
 
-export type SeekParts = Pick<ControlParts, 'seek' | 'time'>;
+type SeekParts = Pick<ControlParts, 'seek' | 'time'>;
 
 /**
  * What the seek bar follows and moves, and where it reports a failed scrub.
  */
-export interface SeekHost extends Pick<ControlsHost, 'warn'> {
+interface SeekHost extends Pick<ControlsHost, 'warn'> {
   readonly player: Pick<Player, 'events' | 'currentTime' | 'duration' | 'seek' | 'scrub'>;
 }
 
@@ -28,22 +28,18 @@ export class SeekBar {
     private readonly host: SeekHost,
   ) {
     this.bindInput();
-    const { events } = this.player;
+    const { events } = this.host.player;
     events.on('ready', (metadata) => {
       parts.seek.max = String(metadata.duration);
-      this.showTime(this.player.currentTime);
+      this.showTime(this.host.player.currentTime);
     });
     events.on('statuschange', () => {
-      this.showTime(this.player.currentTime);
+      this.showTime(this.host.player.currentTime);
     });
     events.on('timeupdate', (time) => {
       this.follow(time);
     });
-    this.showTime(this.player.currentTime);
-  }
-
-  private get player(): SeekHost['player'] {
-    return this.host.player;
+    this.showTime(this.host.player.currentTime);
   }
 
   private bindInput(): void {
@@ -80,7 +76,7 @@ export class SeekBar {
       while (this.scrubTarget !== undefined) {
         const target = this.scrubTarget;
         this.scrubTarget = undefined;
-        await this.player.scrub(seconds(target));
+        await this.host.player.scrub(seconds(target));
       }
     } catch (error) {
       this.host.warn(`the seek bar could not show that moment: ${messageOf(error)}`);
@@ -95,10 +91,10 @@ export class SeekBar {
   private async seekExactly(time: number): Promise<void> {
     this.scrubTarget = undefined;
     await this.scrubbing;
-    this.player.seek(seconds(time));
+    this.host.player.seek(seconds(time));
   }
 
   private showTime(time: number): void {
-    this.parts.time.textContent = `${formatTime(time)} / ${formatTime(this.player.duration)}`;
+    this.parts.time.textContent = `${formatTime(time)} / ${formatTime(this.host.player.duration)}`;
   }
 }

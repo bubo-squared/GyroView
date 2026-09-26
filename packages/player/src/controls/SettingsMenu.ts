@@ -4,7 +4,7 @@ import { qualityOf, stabilizationModeOf, viewModeOf } from '../choices';
 import type { Player } from '../player/Player';
 import type { Quality } from '../PlayerSource';
 
-export type MenuParts = Pick<
+type MenuParts = Pick<
   ControlParts,
   'settings' | 'menu' | 'stabilization' | 'viewMode' | 'qualityRow' | 'quality'
 >;
@@ -12,7 +12,7 @@ export type MenuParts = Pick<
 /**
  * What the menu shows and changes.
  */
-export interface MenuHost extends Pick<ControlsHost, 'changeQuality'> {
+interface MenuHost extends Pick<ControlsHost, 'changeQuality'> {
   readonly player: Pick<
     Player,
     'events' | 'stabilization' | 'viewMode' | 'setStabilization' | 'setViewMode'
@@ -32,7 +32,7 @@ export class SettingsMenu {
   ) {
     this.bindOpening(root);
     this.bindChoices();
-    const { events } = this.player;
+    const { events } = this.host.player;
     events.on('stabilizationchange', (mode) => {
       parts.stabilization.value = mode;
     });
@@ -42,12 +42,8 @@ export class SettingsMenu {
     events.on('ready', (metadata) => {
       parts.qualityRow.hidden = metadata.proxyName === undefined;
     });
-    parts.stabilization.value = this.player.stabilization;
-    parts.viewMode.value = this.player.viewMode;
-  }
-
-  private get player(): MenuHost['player'] {
-    return this.host.player;
+    parts.stabilization.value = this.host.player.stabilization;
+    parts.viewMode.value = this.host.player.viewMode;
   }
 
   public setQuality(quality: Quality): void {
@@ -72,11 +68,11 @@ export class SettingsMenu {
     const { stabilization, viewMode, quality } = this.parts;
     stabilization.addEventListener('change', () => {
       const mode = stabilizationModeOf(stabilization.value);
-      if (mode) this.player.setStabilization(mode);
+      if (mode) this.host.player.setStabilization(mode);
     });
     viewMode.addEventListener('change', () => {
       const mode = viewModeOf(viewMode.value);
-      if (mode) this.player.setViewMode(mode);
+      if (mode) this.host.player.setViewMode(mode);
     });
     quality.addEventListener('change', () => {
       const chosen = qualityOf(quality.value);

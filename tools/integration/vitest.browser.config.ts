@@ -1,4 +1,4 @@
-import { browserProject } from './browserProject';
+import { browserProject } from './browserProject.ts';
 
 /**
  * The end-to-end regression tests over the real recordings, part of every test run.

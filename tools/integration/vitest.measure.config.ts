@@ -1,4 +1,4 @@
-import { browserProject } from './browserProject';
+import { browserProject } from './browserProject.ts';
 
 /**
  * On request only (`pnpm measure`): the end-to-end tests writing their renders to `.artifacts/`

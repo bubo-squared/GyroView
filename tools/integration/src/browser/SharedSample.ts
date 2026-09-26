@@ -13,17 +13,39 @@ import {
 import type { SampleRecording } from './sampleUrls';
 
 /**
- * Pairs decoded from one moment: the first and the last are far enough apart for the camera to
- * turn visibly, close enough for the scene to stay put.
+ * Consecutive pairs decoded from one moment: the first and the last are far enough apart for the
+ * camera to turn visibly (half a second at 30 fps), close enough for the scene to stay put.
  */
 const PAIRS_PER_MOMENT = 16;
 
 /**
- * Two pairs of one moment of a sample, `PAIRS_PER_MOMENT` pairs apart.
+ * Two pairs of one moment of a sample: the first and the last of `PAIRS_PER_MOMENT` consecutive
+ * pairs. Their owner closes them.
  */
 export interface Moment {
   readonly first: FramePair<VideoFrame>;
   readonly later: FramePair<VideoFrame>;
+}
+
+/**
+ * Decodes the moment at `time`, closing every pair but the two it keeps.
+ */
+export async function decodeMoment(opened: OpenedRecording, time: number): Promise<Moment> {
+  const pipeline = new DecodePipeline<VideoFrame>(
+    opened.frameSources,
+    port,
+    DECODE_PIPELINE_OPTIONS,
+  );
+  const pairs = await takePairs(pipeline, time, PAIRS_PER_MOMENT);
+  const [first] = pairs;
+  const later = pairs.at(-1);
+  closeAll(pairs.slice(1, -1));
+  if (!first || !later) throw new Error(`no pairs decoded at ${time} s`);
+  return { first, later };
+}
+
+export function closeMoment(moment: Moment): void {
+  closeAll([moment.first, moment.later]);
 }
 
 /**
@@ -68,19 +90,10 @@ export class SharedSample {
   }
 
   private async decodeOnce(opened: OpenedRecording, time: number): Promise<Moment> {
-    const pipeline = new DecodePipeline<VideoFrame>(
-      opened.frameSources,
-      port,
-      DECODE_PIPELINE_OPTIONS,
-    );
-    const pairs = await takePairs(pipeline, time, PAIRS_PER_MOMENT);
-    const [first] = pairs;
-    const later = pairs.at(-1);
-    closeAll(pairs.slice(1, -1));
-    if (!first || !later) throw new Error(`no pairs decoded at ${time} s`);
+    const moment = await decodeMoment(opened, time);
     this.cleanups.push(() => {
-      closeAll([first, later]);
+      closeMoment(moment);
     });
-    return { first, later };
+    return moment;
   }
 }

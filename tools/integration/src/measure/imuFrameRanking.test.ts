@@ -1,32 +1,29 @@
-import { ThreeFrameRenderer } from '@gyroview/adapter-three';
+import type { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   isProperRotation,
-  buildStitchingSetup,
   IDENTITY_MATRIX3,
   assumedImuFrame,
   imuFrameFor,
-  DecodePipeline,
   stabilizerFor,
   OrientationTrack,
   type BodyAxes,
   type ImuFrame,
   type SignedAxis,
 } from '@gyroview/core';
-import { DECODE_PIPELINE_OPTIONS } from '@gyroview/player/composition';
+import type { OpenedRecording } from '@gyroview/player/composition';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { saveMeasurement } from '../browser/artifacts';
-import { closeAll, openSample, port, takePairs } from '../browser/realRecordingSupport';
+import { openSample } from '../browser/realRecordingSupport';
+import { equirectangularRendering } from '../browser/rendering';
 import { OFFICE_5K7_60, SAILING_8K_30 } from '../browser/sampleUrls';
+import { closeMoment, decodeMoment } from '../browser/SharedSample';
 import { worldMovement } from '../browser/worldMovement';
 
-const WIDTH = 384;
-const HEIGHT = 192;
 /**
- * Consecutive pairs this far apart: enough camera motion to tell mappings apart, little scene
- * motion.
+ * Small panoramas: 24 candidates render each moment twice, and the ranking needs no detail.
  */
-const PAIRS_APART = 16;
+const RANKING_SIZE = { width: 384, height: 192 };
 const AXES: readonly SignedAxis[] = ['x', 'y', 'z', '-x', '-y', '-z'];
 
 interface Ranked {
@@ -58,7 +55,7 @@ interface Measured {
 }
 
 interface MeasurementParts {
-  readonly opened: Awaited<ReturnType<typeof openSample>>;
+  readonly opened: OpenedRecording;
   readonly renderer: ThreeFrameRenderer;
   readonly candidates: Candidate[];
   readonly times: readonly number[];
@@ -72,23 +69,15 @@ async function measureStillness(parts: MeasurementParts): Promise<Measured> {
   const lock = stabilizerFor('lock');
   let unstabilized = 0;
   for (const time of parts.times) {
-    const pipeline = new DecodePipeline<VideoFrame>(
-      parts.opened.frameSources,
-      port,
-      DECODE_PIPELINE_OPTIONS,
-    );
-    const pairs = await takePairs(pipeline, time, PAIRS_APART);
-    const [first] = pairs;
-    const later = pairs.at(-1);
-    if (!first || !later) throw new Error('no pairs decoded');
-    const renderable = { renderer: parts.renderer, first, later };
+    const moment = await decodeMoment(parts.opened, time);
+    const renderable = { renderer: parts.renderer, ...moment };
     unstabilized += worldMovement(renderable, () => IDENTITY_MATRIX3);
     for (const candidate of parts.candidates) {
       candidate.total += worldMovement(renderable, (pair) =>
         lock.nextRotation(candidate.orientations.orientationAt(pair.timestamp), pair.timestamp),
       );
     }
-    closeAll(pairs);
+    closeMoment(moment);
   }
   const ranking = parts.candidates
     .map(({ frame, total }) => ({ name: frame.name, stillness: total / parts.times.length }))
@@ -123,25 +112,13 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
         opened.dispose();
       });
       const { recording } = opened;
-      const calibration = recording.calibration.calibration;
-      const gyro = await recording.readGyroRecord();
-      if (!calibration || !gyro) throw new Error(`${sample.name} lacks calibration or gyro`);
-      const clock = await recording.captureClock();
-      if (!clock) throw new Error('the recording has no first-frame timestamp');
-      const canvas = document.createElement('canvas');
-      canvas.width = WIDTH;
-      canvas.height = HEIGHT;
-      const setup = buildStitchingSetup({
-        calibration,
-        layout: opened.layout,
-      });
-      const renderer = ThreeFrameRenderer.create(canvas, setup, {
-        preserveDrawingBuffer: true,
-      });
-      renderer.setViewMode('equirectangular');
-      cleanups.push(() => {
-        renderer.dispose();
-      });
+      const [gyro, clock] = await Promise.all([
+        recording.readGyroRecord(),
+        recording.captureClock(),
+      ]);
+      if (!gyro || !clock) throw new Error(`${sample.name} lacks a gyro record or a clock`);
+      const { renderer, dispose } = equirectangularRendering(opened, RANKING_SIZE);
+      cleanups.push(dispose);
       const candidates = allImuFrames().map((frame) => ({
         frame,
         orientations: OrientationTrack.integrate({ gyro: gyro.track, clock, frame }),

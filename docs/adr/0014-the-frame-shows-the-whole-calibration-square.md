@@ -28,7 +28,7 @@ The fisheye image circle, the rim where the black corners of a frame begin, is a
 the lens, not of the scene, and its centre is the optical axis. `imageCircleOf` in
 `tools/integration/src/browser/imageCircle.ts` fits it to the corners of a decoded frame,
 walking each ray inwards from the black corner and trimming outliers; the render test in
-`realRecordingRender.test.ts` keeps the measurement as a regression check of the core's canvas
+`realRecordings.test.ts` keeps the measurement as a regression check of the core's canvas
 window. Distance from the fitted centre to where the principal point lands under each reading,
 in frame pixels:
 

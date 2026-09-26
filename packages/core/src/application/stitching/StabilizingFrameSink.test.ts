@@ -42,12 +42,15 @@ const orientations = OrientationTrack.integrate({
   frame: ALIGNED_IMU_FRAME,
 });
 
-function presentationAt(timestamp: number, frameIndex: number | undefined): Presentation<string> {
-  return {
-    pair: { timestamp: seconds(timestamp), frames: [] },
-    mediaTime: seconds(timestamp),
-    frameIndex,
-  };
+function presentationAt(timestamp: number): Presentation<string> {
+  return { pair: { timestamp: seconds(timestamp), frames: [] }, mediaTime: seconds(timestamp) };
+}
+
+function frameTimesAt(times: readonly number[], readoutTime: number): FrameTimes {
+  const captureTimes = Float64Array.from(
+    times.map((time) => SYNTHETIC_CLOCK.captureTimeOf(seconds(time))),
+  );
+  return FrameTimes.withoutShutterTimes(SYNTHETIC_CLOCK, captureTimes, seconds(readoutTime));
 }
 
 function forwardThrough(sink: RecordingSink): Vector3 {
@@ -58,7 +61,7 @@ describe('StabilizingFrameSink', () => {
   it('passes the picture through unturned in the default off mode', () => {
     const inner = new RecordingSink();
     const sink = new StabilizingFrameSink({ sink: inner, orientations, frameTimes: undefined });
-    sink.present(presentationAt(1, undefined));
+    sink.present(presentationAt(1));
     expect(inner.rotations).toEqual([IDENTITY_MATRIX3]);
     expect(inner.presented).toHaveLength(1);
   });
@@ -67,33 +70,28 @@ describe('StabilizingFrameSink', () => {
     const inner = new RecordingSink();
     const sink = new StabilizingFrameSink({ sink: inner, orientations, frameTimes: undefined });
     sink.setStabilizer(new LockStabilization());
-    sink.present(presentationAt(1, undefined));
+    sink.present(presentationAt(1));
     const forwardInBody = forwardThrough(inner);
     expect(forwardInBody[0]).toBeCloseTo(-1, 2);
     expect(forwardInBody[2]).toBeCloseTo(0, 2);
   });
 
-  it('falls back to the pair timestamp when the frame index lies beyond the frame times', () => {
+  it('falls back to the pair timestamp when the frame times hold no frames', () => {
     const inner = new RecordingSink();
-    const captureTimes = Float64Array.from(
-      [0, 1].map((time) => SYNTHETIC_CLOCK.captureTimeOf(seconds(time))),
-    );
-    const frameTimes = FrameTimes.withoutShutterTimes(SYNTHETIC_CLOCK, captureTimes, seconds(0));
+    const frameTimes = frameTimesAt([], 0);
     const sink = new StabilizingFrameSink({ sink: inner, orientations, frameTimes });
     sink.setStabilizer(new LockStabilization());
-    sink.present(presentationAt(1, 7));
+    sink.present(presentationAt(1));
     expect(forwardThrough(inner)[0]).toBeCloseTo(-1, 2);
   });
 
-  it('samples the orientation at the frame mid-exposure when frame times are known', () => {
+  it('samples the orientation at the mid-exposure of the frame the pair shows', () => {
     const inner = new RecordingSink();
-    const captureTimes = Float64Array.from(
-      [0, 1, 2].map((time) => SYNTHETIC_CLOCK.captureTimeOf(seconds(time))),
-    );
-    const frameTimes = FrameTimes.withoutShutterTimes(SYNTHETIC_CLOCK, captureTimes, seconds(0));
+    // A two-second readout puts the first frame's mid-exposure a second after its capture.
+    const frameTimes = frameTimesAt([0, 3, 6], 2);
     const sink = new StabilizingFrameSink({ sink: inner, orientations, frameTimes });
     sink.setStabilizer(new LockStabilization());
-    sink.present(presentationAt(0.5, 2));
-    expect(forwardThrough(inner)[2]).toBeCloseTo(-1, 2);
+    sink.present(presentationAt(0.5));
+    expect(forwardThrough(inner)[0]).toBeCloseTo(-1, 2);
   });
 });

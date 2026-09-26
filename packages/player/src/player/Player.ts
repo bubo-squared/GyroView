@@ -8,7 +8,6 @@ import {
   type Degrees,
   type DragDelta,
   type PlayerState,
-  type Presentation,
   type Seconds,
   type StabilizationMode,
   type ViewMode,
@@ -42,7 +41,6 @@ export class Player {
   private isLoopingValue = false;
   private lastStatus: PlayerStatus = 'idle';
   private lastSessionState: PlayerState | undefined;
-  private lastPresentation: Presentation<VideoFrame> | undefined;
 
   public constructor(private readonly parts: PlayerParts) {
     this.loop = new FrameLoop(() => {
@@ -132,7 +130,6 @@ export class Player {
     this.phase = IDLE;
     if (previous.kind === 'loading') previous.controller.abort();
     this.loop.stop();
-    this.lastPresentation = undefined;
     this.lastSessionState = undefined;
     this.viewing.attach(undefined);
     this.picture.attach(undefined);
@@ -206,7 +203,8 @@ export class Player {
 
   public setStabilization(mode: StabilizationMode): void {
     this.picture.setStabilization(mode);
-    this.refreshPicture();
+    // Paused, the frame on screen shows the new mode at once.
+    this.loaded?.pipeline.session.redraw();
   }
 
   public setLooping(isLooping: boolean): void {
@@ -264,14 +262,7 @@ export class Player {
   }
 
   private async open(source: PlayerSource, signal: AbortSignal): Promise<LoadedRecording> {
-    return loadRecording({
-      source,
-      parts: this.parts,
-      onPresent: (presentation): void => {
-        this.onPresent(presentation);
-      },
-      signal,
-    });
+    return loadRecording({ source, parts: this.parts, signal });
   }
 
   private attach(loaded: LoadedRecording): void {
@@ -284,6 +275,9 @@ export class Player {
     });
     session.events.on('timeupdate', (time) => {
       this.events.emit('timeupdate', time);
+    });
+    session.events.on('present', (time) => {
+      this.events.emit('frame', time);
     });
     session.events.on('ended', () => {
       this.onEnded();
@@ -341,21 +335,6 @@ export class Player {
     } catch (error) {
       this.events.emit('warning', `the loop could not restart playback: ${messageOf(error)}`);
     }
-  }
-
-  private onPresent(presentation: Presentation<VideoFrame>): void {
-    this.lastPresentation = presentation;
-    this.events.emit('frame', presentation.mediaTime);
-  }
-
-  /**
-   * Draws the frame on screen again with the current stabilization, so a mode change is visible
-   * while paused. The pair belongs to the session, which keeps it until the next one is shown.
-   */
-  private refreshPicture(): void {
-    const { loaded, lastPresentation } = this;
-    if (!loaded || !lastPresentation || loaded.pipeline.session.state === 'playing') return;
-    (loaded.pipeline.stabilizing ?? loaded.pipeline.renderer).present(lastPresentation);
   }
 
   private failWith(error: unknown): GyroViewError {

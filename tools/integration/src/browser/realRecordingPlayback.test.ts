@@ -108,7 +108,6 @@ describe('the browser pipeline on the real X5 recordings', () => {
       clock,
       sink,
       duration: opened.duration,
-      frameTimes: undefined,
       pipeline: PIPELINE_OPTIONS,
       queueCapacity: QUEUE_CAPACITY,
     });

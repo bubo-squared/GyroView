@@ -7,7 +7,6 @@ import type { Seconds } from '../shared/units/time';
  */
 export interface Presentation<Handle = unknown> {
   readonly pair: FramePair<Handle>;
-  readonly frameIndex: number | undefined;
   readonly mediaTime: Seconds;
 }
 

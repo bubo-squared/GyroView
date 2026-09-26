@@ -183,7 +183,7 @@ describe('stabilizing the real recordings', () => {
         const rendered: Partial<Record<StabilizationMode, Uint8ClampedArray>> = {};
         for (const mode of MODES) {
           sink.setStabilizer(stabilizerFor(mode));
-          sink.present({ pair, mediaTime: pair.timestamp, frameIndex: undefined });
+          sink.present({ pair, mediaTime: pair.timestamp });
           rendered[mode] = renderer.readPixels();
           await commands.saveArtifact(
             `${slug}-${time}s-${mode}.png`,

@@ -12,7 +12,6 @@ import {
   type FrameSink,
   type PictureRenderer,
   type PlaybackClock,
-  type Presentation,
   type VideoDecoderPort,
   messageOf,
 } from '@gyroview/core';
@@ -32,10 +31,6 @@ export interface PipelineParts {
   readonly opened: OpenedRecording;
   readonly host: PipelineHost;
   readonly decoderPort: VideoDecoderPort<VideoFrame>;
-  /**
-   * Told about every presented pair, after the renderer drew it.
-   */
-  readonly onPresent: (presentation: Presentation<VideoFrame>) => void;
 }
 
 export type ClockKind = 'audio' | 'wall';
@@ -93,7 +88,7 @@ export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
       clock.clock.dispose();
     });
     const drawing = drawingFor(parts, disposables);
-    const session = sessionFor(parts, clock.clock, observed(drawing.sink, parts.onPresent));
+    const session = sessionFor(parts, clock.clock, drawing.sink);
     disposables.add(() => {
       session.dispose();
     });
@@ -176,21 +171,6 @@ function sinkOver(renderer: ThreeFrameRenderer, opened: OpenedRecording): SinkCh
   return { sink: stabilizing, stabilizing };
 }
 
-/**
- * Lets the player know when a picture has actually been drawn (to hide a poster, count frames).
- */
-function observed(
-  sink: FrameSink<VideoFrame>,
-  onPresent: PipelineParts['onPresent'],
-): FrameSink<VideoFrame> {
-  return {
-    present: (presentation): void => {
-      sink.present(presentation);
-      onPresent(presentation);
-    },
-  };
-}
-
 function sessionFor(
   parts: PipelineParts,
   clock: PlaybackClock,
@@ -202,7 +182,6 @@ function sessionFor(
     clock,
     sink,
     duration: parts.opened.duration,
-    frameTimes: parts.opened.frameTimes,
     pipeline: DECODE_PIPELINE_OPTIONS,
     queueCapacity: PAIR_QUEUE_CAPACITY,
   });

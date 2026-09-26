@@ -100,7 +100,7 @@ async function stitchOneFrame(
   cleanups.push(() => {
     renderer.dispose();
   });
-  renderer.present({ pair, mediaTime: pair.timestamp, frameIndex: undefined });
+  renderer.present({ pair, mediaTime: pair.timestamp });
   return {
     canvas,
     renderer,

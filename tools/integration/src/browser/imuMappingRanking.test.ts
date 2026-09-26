@@ -83,10 +83,10 @@ function movement(
 ): number {
   const { renderer, first, second } = renderable;
   renderer.setStabilization(rotationFor(first));
-  renderer.present({ pair: first, mediaTime: first.timestamp, frameIndex: undefined });
+  renderer.present({ pair: first, mediaTime: first.timestamp });
   const before = renderer.readPixels();
   renderer.setStabilization(rotationFor(second));
-  renderer.present({ pair: second, mediaTime: second.timestamp, frameIndex: undefined });
+  renderer.present({ pair: second, mediaTime: second.timestamp });
   return difference(before, renderer.readPixels());
 }
 

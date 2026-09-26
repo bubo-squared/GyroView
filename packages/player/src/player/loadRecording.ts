@@ -1,5 +1,3 @@
-import type { Presentation } from '@gyroview/core';
-
 import type { PlayerParts } from './PlayerOptions';
 import { Viewport } from './Viewport';
 import type { Pipeline } from '../composition/buildPipeline';
@@ -21,10 +19,6 @@ export interface LoadedRecording {
 export interface LoadRequest {
   readonly source: PlayerSource;
   readonly parts: PlayerParts;
-  /**
-   * Told about every presented pair, after the renderer drew it.
-   */
-  readonly onPresent: (presentation: Presentation<VideoFrame>) => void;
   readonly signal: AbortSignal;
 }
 
@@ -44,7 +38,6 @@ export async function loadRecording(request: LoadRequest): Promise<LoadedRecordi
       opened,
       host: parts.host,
       decoderPort: parts.ports.decoderPort,
-      onPresent: request.onPresent,
     });
     disposables.add(() => {
       pipeline.dispose();

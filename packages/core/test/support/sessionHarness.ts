@@ -72,7 +72,6 @@ export function sessionHarness(options: SessionHarnessOptions = {}): SessionHarn
     clock,
     sink,
     duration: DURATION,
-    frameTimes: undefined,
     pipeline: { maxPendingPackets: 3, pairTolerance: seconds(0.0001) },
     queueCapacity: 4,
     ...options.parts,

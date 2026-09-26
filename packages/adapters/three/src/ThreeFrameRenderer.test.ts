@@ -163,7 +163,6 @@ describe('ThreeFrameRenderer', () => {
     const presentation: Presentation<VideoFrame> = {
       pair: { timestamp: seconds(0), frames: pair },
       mediaTime: seconds(0),
-      frameIndex: undefined,
     };
     renderer.present(presentation);
   }

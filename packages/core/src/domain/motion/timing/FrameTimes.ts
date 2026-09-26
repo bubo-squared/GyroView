@@ -75,6 +75,15 @@ export class FrameTimes {
   }
 
   /**
+   * When to sample the orientation for the frame shown at `videoTime`; undefined when there are
+   * no frames.
+   */
+  public midExposureAt(videoTime: Seconds): Seconds | undefined {
+    const index = this.frameIndexAt(videoTime);
+    return index === undefined ? undefined : this.frameAt(index).midExposureVideoTime;
+  }
+
+  /**
    * Index of the frame shown at `videoTime`: the last frame captured at or before it, clamped
    * to the first and last frame. Undefined when there are no frames.
    */

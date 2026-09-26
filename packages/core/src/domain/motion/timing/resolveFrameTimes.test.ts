@@ -83,6 +83,9 @@ describe('resolveFrameTimes with the office exposure record', () => {
     expect(frameTimes.frameIndexAt(justAfterFrame3)).toBe(3);
     expect(frameTimes.frameIndexAt(seconds(-1))).toBe(0);
     expect(frameTimes.frameIndexAt(seconds(100))).toBe(9);
+    expect(frameTimes.midExposureAt(justAfterFrame3)).toBe(
+      frameTimes.frameAt(3).midExposureVideoTime,
+    );
   });
 });
 

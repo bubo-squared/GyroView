@@ -21,6 +21,35 @@ describe('PlaybackSession transport', () => {
     session.dispose();
   });
 
+  it('announces every pair it presents, at the media time it was presented', async () => {
+    const { session, sink, advance } = sessionHarness();
+    const announced: number[] = [];
+    session.events.on('present', (time) => {
+      announced.push(time);
+    });
+    await session.play();
+    await advance(0);
+    await advance(250);
+    expect(announced).toEqual(sink.presentations.map((presentation) => presentation.mediaTime));
+    expect(announced).toHaveLength(2);
+    session.dispose();
+  });
+
+  it('draws the pair on screen again on request while the picture stands still', async () => {
+    const { session, sink, advance } = sessionHarness();
+    session.redraw();
+    expect(sink.presentations).toEqual([]);
+    await session.play();
+    await advance(0);
+    session.redraw();
+    expect(sink.presentations).toHaveLength(1);
+    session.pause();
+    session.redraw();
+    expect(sink.presentations).toHaveLength(2);
+    expect(sink.presentations[1]).toBe(sink.presentations[0]);
+    session.dispose();
+  });
+
   it('closes superseded pairs and keeps only the presented one open', async () => {
     const { session, decoderPort, advance } = sessionHarness();
     await session.play();

@@ -1,10 +1,9 @@
 import { closeFramePair, type FramePair } from '../../ports/FramePair';
 import { FramePairQueue } from './FramePairQueue';
 import { DecodePipeline, type DecodePipelineOptions, type DecodeRunReport } from './DecodePipeline';
-import type { FrameTimes } from '../../domain/motion/timing/FrameTimes';
 import { PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
 import type { VideoTrackReader } from '../../ports/Demuxer';
-import type { FrameSink } from '../../ports/FrameSink';
+import type { FrameSink, Presentation } from '../../ports/FrameSink';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
 import type { VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';
@@ -15,6 +14,10 @@ import { seconds, type Seconds } from '../../shared/units/time';
 export interface PlaybackSessionEvents {
   readonly statechange: PlayerState;
   readonly timeupdate: Seconds;
+  /**
+   * The sink has drawn a new pair; the media time it was drawn at.
+   */
+  readonly present: Seconds;
   readonly ended: undefined;
   readonly error: GyroViewError;
 }
@@ -32,10 +35,6 @@ export interface PlaybackSessionParts<Handle> {
   readonly clock: PlaybackClock;
   readonly sink: FrameSink<Handle>;
   readonly duration: Seconds;
-  /**
-   * Known when the recording carries timing records; lets the sink know which frame it shows.
-   */
-  readonly frameTimes: FrameTimes | undefined;
   readonly pipeline: DecodePipelineOptions;
   /**
    * Decoded pairs kept ahead of the playhead; default 4.
@@ -70,7 +69,10 @@ export class PlaybackSession<Handle = unknown> {
    */
   private queue: FramePairQueue<Handle>;
   private pipeline: DecodePipeline<Handle> | undefined;
-  private presented: FramePair<Handle> | undefined;
+  /**
+   * The pair on screen, kept open until the next one replaces it.
+   */
+  private presented: Presentation<Handle> | undefined;
   private hasDecodedToEnd = false;
   /**
    * The `play` call waiting for the clock to start once frames are ready.
@@ -190,10 +192,19 @@ export class PlaybackSession<Handle = unknown> {
     if (this.machine.state === 'playing') this.followClock(now, hasShown);
   }
 
+  /**
+   * Hands the pair on screen to the sink again, so a change in how it is drawn shows while the
+   * picture stands still; while playing, the next pair shows it soon enough.
+   */
+  public redraw(): void {
+    if (!this.presented || this.machine.state === 'playing') return;
+    this.parts.sink.present(this.presented);
+  }
+
   public dispose(): void {
     if (this.machine.state === 'disposed') return;
     this.stopPipeline();
-    if (this.presented) closeFramePair(this.presented);
+    if (this.presented) closeFramePair(this.presented.pair);
     this.presented = undefined;
     this.parts.clock.pause();
     this.setState('disposed');
@@ -231,7 +242,7 @@ export class PlaybackSession<Handle = unknown> {
    */
   private isStarved(now: Seconds): boolean {
     const isWaitingOnDecoders = this.queue.length === 0 && !this.hasDecodedToEnd;
-    const lag = now - (this.presented?.timestamp ?? -Infinity);
+    const lag = now - (this.presented?.pair.timestamp ?? -Infinity);
     return isWaitingOnDecoders && lag > STARVATION_LAG_SECONDS;
   }
 
@@ -281,13 +292,10 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   private present(pair: FramePair<Handle>, mediaTime: Seconds): void {
-    if (this.presented) closeFramePair(this.presented);
-    this.presented = pair;
-    this.parts.sink.present({
-      pair,
-      mediaTime,
-      frameIndex: this.parts.frameTimes?.frameIndexAt(pair.timestamp),
-    });
+    if (this.presented) closeFramePair(this.presented.pair);
+    this.presented = { pair, mediaTime };
+    this.parts.sink.present(this.presented);
+    this.events.emit('present', mediaTime);
   }
 
   private startPipeline(from: Seconds): void {

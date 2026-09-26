@@ -11,7 +11,7 @@ export interface FakeVideoTrackOptions {
   readonly framesPerGop: number;
   readonly codedSize?: number;
   /**
-   * Width and height when the frame is not square (a packed dual-fisheye proxy); default the
+   * Width and height when the frame is not square (a packed dual-fisheye track); default the
    * coded size both ways.
    */
   readonly codedWidth?: number;

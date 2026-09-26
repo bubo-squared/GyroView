@@ -55,16 +55,16 @@ export class RecordingFileName {
    */
   public otherLensName(): string {
     const lensDigit = this.isBackLens ? SCREEN_LENS_DIGIT : BACK_LENS_DIGIT;
-    return this.withParts({ lensDigit, proxyDigit: RECORDING_DIGIT }).toString();
+    return new RecordingFileName({
+      ...this.parts,
+      lensDigit,
+      proxyDigit: RECORDING_DIGIT,
+    }).toString();
   }
 
   public toString(): string {
     const { prefix, captureStamp, lensDigit, proxyDigit, sequence, extension } = this.parts;
     return `${prefix}_${captureStamp}_${lensDigit}${proxyDigit}_${sequence}.${extension}`;
-  }
-
-  private withParts(changes: Partial<RecordingFileNameParts>): RecordingFileName {
-    return new RecordingFileName({ ...this.parts, ...changes });
   }
 }
 

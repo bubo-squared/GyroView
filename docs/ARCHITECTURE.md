@@ -56,7 +56,8 @@ sizes; every constant is named and cites its source.
   from the tracks the demuxer port describes: multi-track (one file, two tracks), split files
   (`_00_` and `_10_`) or packed (both circles in one frame). The info record is only a hint.
 - `naming/RecordingFileName` understands `VID_<date>_<time>_<lens><proxy>_<seq>.insv` to guess
-  where companion files live; the guess is always verified against the file.
+  where the other lens file of a split-file pair lives; the guess is always verified against the
+  file.
 - `calibration/parseOffsetString` turns the three generations of calibration strings
   (`offset`, `offset_v2`, `offset_v3`, one layout class each) into the optics `CalibrationSet`;
   `calibration/selectCalibration` picks the newest usable one.
@@ -255,7 +256,7 @@ recordings; the integration suite adds the real files and writes renders to `.ar
 **Opening and playing a recording.** `<gyro-view src>` → `Player.load` → `openRecording`
 (bytes through `SourceOpener`, `readRecording`, demux, layout, calibration, probe, timing,
 motion) → `buildPipeline` (clock, `ThreeFrameRenderer`, `StabilizingFrameSink`,
-`PlaybackSession`) → `ready` event → `preload` shows the first frame → `play` → the session
+`GainMatchingFrameSink`, `PlaybackSession`) → `ready` event → `preload` shows the first frame → `play` → the session
 starts a `DecodePipeline`, waits in `buffering` for two pairs, starts the clock → on each
 animation frame `tick` takes the pair due, the stabilizing sink sets the rotation for its
 mid-exposure orientation, the renderer uploads the frames and draws one stitched pass; every

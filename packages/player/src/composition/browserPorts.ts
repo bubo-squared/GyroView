@@ -13,7 +13,7 @@ import { isUrlInput } from '../PlayerSource';
 
 export interface BrowserPortsOptions {
   /**
-   * Shared by every request the player makes for the recording and its companions.
+   * Shared by every request the player makes for the recording and its other lens file.
    */
   readonly http?: HttpRequestOptions;
   /**

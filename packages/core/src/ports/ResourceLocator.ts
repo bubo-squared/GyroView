@@ -1,6 +1,6 @@
 /**
- * Port: tells whether a URL can be fetched, used to look for the files a camera writes beside a
- * recording. A failure of any kind counts as "not there"; companion files are optional.
+ * Port: tells whether a URL can be fetched, used to look for the other lens file beside a
+ * recording. A failure of any kind counts as "not there": the file is optional.
  */
 export interface ResourceLocator {
   exists(url: string): Promise<boolean>;

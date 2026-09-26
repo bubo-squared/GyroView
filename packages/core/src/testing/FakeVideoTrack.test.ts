@@ -13,7 +13,7 @@ describeVideoTrackReaderContract(
 );
 
 describe('FakeVideoTrack shape options', () => {
-  it('describes a packed proxy track with its own width, height and codec', async () => {
+  it('describes a packed dual-fisheye track with its own width, height and codec', async () => {
     const track = new FakeVideoTrack({
       trackIndex: 0,
       frameRate: 30,

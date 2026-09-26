@@ -12,8 +12,8 @@ export interface LocatorUnderTest {
 }
 
 /**
- * Behaviour every ResourceLocator must exhibit, the fake and the real adapter alike: companion
- * files are optional, so a missing one is an answer, never a failure.
+ * Behaviour every ResourceLocator must exhibit, the fake and the real adapter alike: the file
+ * looked for is optional, so a missing one is an answer, never a failure.
  */
 export function describeResourceLocatorContract(setup: () => Promise<LocatorUnderTest>): void {
   describe('ResourceLocator contract', () => {

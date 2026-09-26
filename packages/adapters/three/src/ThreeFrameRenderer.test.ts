@@ -3,6 +3,7 @@ import {
   DEFAULT_VIEW,
   degrees,
   equirectangularPixelOf,
+  GainMatchingFrameSink,
   lensRotation,
   LockStabilization,
   parseOffsetString,
@@ -11,6 +12,7 @@ import {
   seconds,
   transformVector,
   type DecodedFrame,
+  type FrameSink,
   type Presentation,
   type StitchingSetup,
   type Vector3,
@@ -143,6 +145,7 @@ function pixelTowards(renderer: ThreeFrameRenderer, direction: Vector3, size = S
 describe('ThreeFrameRenderer', () => {
   const canvases: HTMLCanvasElement[] = [];
   const renderers: ThreeFrameRenderer[] = [];
+  const gainMatchers: GainMatchingFrameSink<VideoFrame>[] = [];
   const frames: DecodedFrame<VideoFrame>[] = [];
 
   function open(setup?: StitchingSetup, size = SIZE): ThreeFrameRenderer {
@@ -158,13 +161,22 @@ describe('ThreeFrameRenderer', () => {
     return renderer;
   }
 
-  function present(renderer: ThreeFrameRenderer, pair: DecodedFrame<VideoFrame>[]): void {
+  /**
+   * Gain matching composed over the renderer as the player composes it, measuring its seam.
+   */
+  function gainMatchingOver(renderer: ThreeFrameRenderer): GainMatchingFrameSink<VideoFrame> {
+    const matching = new GainMatchingFrameSink({ sink: renderer, renderer });
+    gainMatchers.push(matching);
+    return matching;
+  }
+
+  function present(sink: FrameSink<VideoFrame>, pair: DecodedFrame<VideoFrame>[]): void {
     frames.push(...pair);
     const presentation: Presentation<VideoFrame> = {
       pair: { timestamp: seconds(0), frames: pair },
       mediaTime: seconds(0),
     };
-    renderer.present(presentation);
+    sink.present(presentation);
   }
 
   function presentRedAndBlue(renderer: ThreeFrameRenderer): void {
@@ -172,6 +184,7 @@ describe('ThreeFrameRenderer', () => {
   }
 
   afterEach(() => {
+    for (const matching of gainMatchers.splice(0)) matching.dispose();
     for (const renderer of renderers.splice(0)) renderer.dispose();
     for (const frame of frames.splice(0)) frame.close();
     for (const canvas of canvases.splice(0)) canvas.remove();
@@ -257,7 +270,10 @@ describe('ThreeFrameRenderer', () => {
     renderer.setViewMode('raw-lenses');
     const turnedAround = quaternionFromAxisAngle([0, 1, 0], radians(Math.PI));
     renderer.setStabilization(new LockStabilization().nextRotation(turnedAround));
-    renderer.setLensGain(0, [0, 0, 0]);
+    renderer.setLensGains([
+      [0, 0, 0],
+      [1, 1, 1],
+    ]);
     presentRedAndBlue(renderer);
     expect(pixelAt(renderer, { column: 16, row: 16 }).r).toBeGreaterThan(BRIGHT);
     expect(pixelAt(renderer, { column: 48, row: 16 }).b).toBeGreaterThan(BRIGHT);
@@ -314,7 +330,10 @@ describe('ThreeFrameRenderer', () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');
     presentRedAndBlue(renderer);
-    renderer.setLensGain(0, [0, 0, 0]);
+    renderer.setLensGains([
+      [0, 0, 0],
+      [1, 1, 1],
+    ]);
     const seam = equirectangularPixelOf([1, 0, 0], SIZE);
     const beforeSeam = pixelAt(renderer, { column: seam.column - 1, row: seam.row });
     expect(beforeSeam.r).toBeLessThan(DIM);
@@ -324,18 +343,23 @@ describe('ThreeFrameRenderer', () => {
   it('refuses a gain for a lens the setup does not have', () => {
     const renderer = open();
     expect(() => {
-      renderer.setLensGain(2, [1, 1, 1]);
+      renderer.setLensGains([
+        [1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1],
+      ]);
     }).toThrow(expect.objectContaining({ code: 'index-out-of-range' }));
   });
 
   it('matches the darker lens to the brighter one along the seam when gain matching is on', async () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');
-    renderer.enableGainMatching();
-    present(renderer, [solidFrame('rgb(200, 200, 200)'), solidFrame('rgb(100, 100, 100)')]);
+    const matching = gainMatchingOver(renderer);
+    matching.enable();
+    present(matching, [solidFrame('rgb(200, 200, 200)'), solidFrame('rgb(100, 100, 100)')]);
     expect(pixelTowards(renderer, [0, 0, -1]).g).toBeLessThan(110);
 
-    await renderer.matchGainsNow();
+    await matching.matchNow();
 
     expect(pixelTowards(renderer, [0, 0, -1]).g).toBeGreaterThan(190);
     expect(pixelTowards(renderer, [0, 0, 1]).g).toBeGreaterThan(190);
@@ -347,18 +371,11 @@ describe('ThreeFrameRenderer', () => {
       buildStitchingSetup({ calibration: syntheticCalibration(), layout: PACKED }),
     );
     renderer.setViewMode('equirectangular');
-    renderer.enableGainMatching();
-    present(renderer, [halvesFrame('rgb(200, 200, 200)', 'rgb(100, 100, 100)')]);
-    await renderer.matchGainsNow();
+    const matching = gainMatchingOver(renderer);
+    matching.enable();
+    present(matching, [halvesFrame('rgb(200, 200, 200)', 'rgb(100, 100, 100)')]);
+    await matching.matchNow();
     expect(pixelTowards(renderer, [0, 0, -1]).g).toBeGreaterThan(190);
-  });
-
-  it('leaves the lenses as recorded while gain matching is off', async () => {
-    const renderer = open();
-    renderer.setViewMode('equirectangular');
-    present(renderer, [solidFrame('rgb(200, 200, 200)'), solidFrame('rgb(100, 100, 100)')]);
-    await renderer.matchGainsNow();
-    expect(pixelTowards(renderer, [0, 0, -1]).g).toBeLessThan(110);
   });
 
   it('applies a lock stabilization: a camera turned around shows lens 1 ahead', () => {

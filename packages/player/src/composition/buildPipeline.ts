@@ -3,6 +3,7 @@ import { MediaSourceAudioClock } from '@gyroview/adapter-mse-audio';
 import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
+  GainMatchingFrameSink,
   PlaybackSession,
   seconds,
   StabilizingFrameSink,
@@ -43,6 +44,7 @@ export interface Pipeline {
   readonly session: PlaybackSession<VideoFrame>;
   readonly renderer: PictureRenderer<VideoFrame>;
   readonly stabilizing: StabilizingFrameSink<VideoFrame> | undefined;
+  readonly gainMatching: GainMatchingFrameSink<VideoFrame>;
   readonly clock: PlaybackClock;
   readonly clockKind: ClockKind;
   readonly warnings: readonly string[];
@@ -88,7 +90,7 @@ export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
       clock.clock.dispose();
     });
     const drawing = drawingFor(parts, disposables);
-    const session = sessionFor(parts, clock.clock, drawing.sink);
+    const session = sessionFor(parts, clock.clock, drawing.gainMatching);
     disposables.add(() => {
       session.dispose();
     });
@@ -96,6 +98,7 @@ export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
       session,
       renderer: drawing.renderer,
       stabilizing: drawing.stabilizing,
+      gainMatching: drawing.gainMatching,
       clock: clock.clock,
       clockKind: clock.kind,
       warnings: clock.warnings,
@@ -107,19 +110,30 @@ export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
   }
 }
 
-interface Drawing extends SinkChoice {
+interface Drawing {
   readonly renderer: ThreeFrameRenderer;
+  readonly stabilizing: StabilizingFrameSink<VideoFrame> | undefined;
+  /**
+   * The front of the chain the session presents to.
+   */
+  readonly gainMatching: GainMatchingFrameSink<VideoFrame>;
 }
 
 /**
- * The GPU stitcher on the host canvas, behind the stabilizing sink when there is a gyro.
+ * The GPU stitcher on the host canvas, behind the stabilizing sink when there is a gyro, behind
+ * gain matching, which measures what the stitcher drew.
  */
 function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
   const renderer = ThreeFrameRenderer.create(parts.host.canvas, stitchingSetupOf(parts.opened));
   disposables.add(() => {
     renderer.dispose();
   });
-  return { renderer, ...sinkOver(renderer, parts.opened) };
+  const { sink, stabilizing } = sinkOver(renderer, parts.opened);
+  const gainMatching = new GainMatchingFrameSink({ sink, renderer });
+  disposables.add(() => {
+    gainMatching.dispose();
+  });
+  return { renderer, stabilizing, gainMatching };
 }
 
 interface ChosenClock {

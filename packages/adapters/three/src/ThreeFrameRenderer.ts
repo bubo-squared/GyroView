@@ -2,13 +2,11 @@ import {
   DEFAULT_VIEW,
   DEFAULT_VIEW_MODE,
   ensureInvariant,
-  GainMatching,
   GyroViewError,
   type Matrix3 as CoreMatrix3,
-  seconds,
   type PictureRenderer,
   type Presentation,
-  type Seconds,
+  type SeamMeter,
   type StitchingSetup,
   type Vector3 as CoreVector3,
   viewModeRulesFor,
@@ -81,8 +79,6 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
    */
   private hasFrames = false;
   private isDisposed = false;
-  private gainMatching: GainMatching | undefined;
-  private lastMediaTime: Seconds = seconds(0);
 
   private constructor(
     private readonly parts: RendererParts,
@@ -131,45 +127,17 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     this.render();
   }
 
-  /**
-   * Per-channel multiplier for one lens: the hook for exposure matching and for inspecting a
-   * single lens (gain zero on the other).
-   */
-  public setLensGain(lensIndex: number, gain: CoreVector3): void {
+  public setLensGains(gains: readonly CoreVector3[]): void {
     this.ensureLive();
-    applyLensGain(this.parts.uniforms, lensIndex, gain);
+    for (const [lensIndex, gain] of gains.entries()) {
+      applyLensGain(this.parts.uniforms, lensIndex, gain);
+    }
     this.render();
   }
 
-  /**
-   * Matches the lenses' exposure along the seam automatically, measuring every half second of
-   * presented frames. Off until enabled.
-   */
-  public enableGainMatching(): void {
+  public createSeamMeter(): SeamMeter {
     this.ensureLive();
-    this.gainMatching ??= new GainMatching(
-      new GainMatchPass(this.parts.renderer, this.parts.uniforms, this.parts.lensCount),
-      (gains) => {
-        this.applyGains(gains);
-      },
-    );
-  }
-
-  /**
-   * Stops measuring; the last gains stay in place.
-   */
-  public disableGainMatching(): void {
-    this.ensureLive();
-    this.gainMatching?.dispose();
-    this.gainMatching = undefined;
-  }
-
-  /**
-   * One measurement and adjustment right now, for tests and for a still frame.
-   */
-  public async matchGainsNow(): Promise<void> {
-    this.ensureLive();
-    await this.gainMatching?.matchNow(this.lastMediaTime);
+    return new GainMatchPass(this.parts.renderer, this.parts.uniforms, this.parts.lensCount);
   }
 
   /**
@@ -193,9 +161,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
       if (frame) texture.setFrame(frame.handle);
     }
     this.hasFrames = true;
-    this.lastMediaTime = presentation.mediaTime;
     this.render();
-    this.gainMatching?.afterPresent(presentation.mediaTime);
   }
 
   /**
@@ -223,7 +189,6 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     if (this.isDisposed) return;
     this.isDisposed = true;
     this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
-    this.gainMatching?.dispose();
     for (const texture of this.parts.textures) texture.dispose();
     disposePictureMaterials(this.parts.materials);
     this.parts.pass.geometry.dispose();
@@ -237,14 +202,6 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   private render(): void {
     if (!this.hasFrames) return;
     this.parts.renderer.render(this.parts.scene, this.parts.camera);
-  }
-
-  private applyGains(gains: readonly CoreVector3[]): void {
-    if (this.isDisposed) return;
-    for (const [lensIndex, gain] of gains.entries()) {
-      applyLensGain(this.parts.uniforms, lensIndex, gain);
-    }
-    this.render();
   }
 
   /**

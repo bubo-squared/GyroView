@@ -6,6 +6,7 @@ import {
   type FramePair,
   type LensStitch,
   type StitchingSetup,
+  type Vector3,
   type WindowCrop,
 } from '@gyroview/core';
 import { commands } from '@vitest/browser/context';
@@ -32,6 +33,8 @@ const BLACK_THRESHOLD = 8;
  * image circles' corners and dark scene content, not stitching holes.
  */
 const MIN_COVERAGE = 0.97;
+const UNITY_GAIN: Vector3 = [1, 1, 1];
+const SILENCED: Vector3 = [0, 0, 0];
 /**
  * How far, as a fraction of the lens frame's width, the image circle's centre may lie from
  * where the calibration's principal point lands on the frame. Lens decentring and the halo
@@ -211,13 +214,12 @@ describe('stitching one frame of the real recordings', () => {
       );
       expect(blended).toContain('.artifacts');
       expect(coverageOf(renderer.readPixels())).toBeGreaterThan(MIN_COVERAGE);
-      renderer.setLensGain(1, [0, 0, 0]);
+      renderer.setLensGains([UNITY_GAIN, SILENCED]);
       await commands.saveArtifact(
         `${slug}-${RENDER_TIME}s-lens0.png`,
         canvas.toDataURL('image/png'),
       );
-      renderer.setLensGain(1, [1, 1, 1]);
-      renderer.setLensGain(0, [0, 0, 0]);
+      renderer.setLensGains([SILENCED, UNITY_GAIN]);
       await commands.saveArtifact(
         `${slug}-${RENDER_TIME}s-lens1.png`,
         canvas.toDataURL('image/png'),

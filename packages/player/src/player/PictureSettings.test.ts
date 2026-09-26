@@ -19,11 +19,11 @@ function recordedSettings(): Recorded {
     announced.push(mode);
   });
   const targets: PictureTargets = {
-    renderer: {
-      enableGainMatching: () => {
+    gainMatching: {
+      enable: () => {
         calls.push('match gains');
       },
-      disableGainMatching: () => {
+      disable: () => {
         calls.push('leave gains');
       },
     },

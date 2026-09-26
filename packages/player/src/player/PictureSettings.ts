@@ -1,7 +1,7 @@
 import {
   DEFAULT_STABILIZATION_MODE,
   stabilizerFor,
-  type PictureRenderer,
+  type GainMatchingFrameSink,
   type StabilizationMode,
   type StabilizingFrameSink,
   type TypedEmitter,
@@ -13,7 +13,7 @@ import type { PlayerEvents } from './PlayerEvents';
  * What the settings act on in a loaded pipeline.
  */
 export interface PictureTargets {
-  readonly renderer: Pick<PictureRenderer, 'enableGainMatching' | 'disableGainMatching'>;
+  readonly gainMatching: Pick<GainMatchingFrameSink, 'enable' | 'disable'>;
   /**
    * Absent when the recording has no gyro to stabilize with.
    */
@@ -61,6 +61,6 @@ export class PictureSettings {
 }
 
 function matchGains(targets: PictureTargets, isMatching: boolean): void {
-  if (isMatching) targets.renderer.enableGainMatching();
-  else targets.renderer.disableGainMatching();
+  if (isMatching) targets.gainMatching.enable();
+  else targets.gainMatching.disable();
 }

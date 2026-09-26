@@ -77,8 +77,6 @@ describe('readRecording on synthetic X5 files', () => {
     );
     const exposure = await recording.readExposureRecord();
     expect(exposure?.length).toBe(16);
-    const layout = await recording.gyroSampleLayout();
-    expect(layout?.name).toBe('raw');
     const clock = await recording.captureClock();
     expect(clock?.firstFrameCaptureTime).toBe(921_751_839);
     expect(clock?.gyroOffset).toBe(1.6);
@@ -135,8 +133,6 @@ describe('readRecording on synthetic X5 files', () => {
       .addRecord({ id: RecordType.Gyro, payload: floatSamples })
       .buildContiguous();
     const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
-    const layout = await recording.gyroSampleLayout();
-    expect(layout?.name).toBe('float');
     const clock = await recording.captureClock();
     expect(clock?.firstFrameCaptureTime).toBe(2_000_000);
     const gyro = await recording.readGyroRecord();

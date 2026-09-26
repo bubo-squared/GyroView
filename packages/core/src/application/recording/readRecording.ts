@@ -2,11 +2,10 @@ import { Recording } from './Recording';
 import type { RandomAccessSource } from '../../ports/RandomAccessSource';
 import { trailerWrapperOf } from '../../domain/format/boxes/BoxLayout';
 import { scanBoxes } from '../../domain/format/boxes/scanBoxes';
-import { RecordType } from '../../domain/format/constants';
-import { parseInfoRecord } from '../../domain/format/info/parseInfoRecord';
-import { readTrailer } from '../../domain/format/trailer/readTrailer';
 import { selectCalibration } from '../../domain/format/calibration/selectCalibration';
-import { GyroViewError } from '../../shared/errors/GyroViewError';
+import { readInfoRecord } from '../../domain/format/info/readInfoRecord';
+import { TrailerRecords } from '../../domain/format/records/TrailerRecords';
+import { readTrailer } from '../../domain/format/trailer/readTrailer';
 
 /**
  * Use case: open a source and read everything needed to describe the recording, with the
@@ -19,21 +18,14 @@ export async function readRecording(source: RandomAccessSource): Promise<Recordi
     scanBoxes(source, fileSize),
     readTrailer(source, fileSize),
   ]);
-  const infoLocation = trailer.locationOf(RecordType.Info);
-  if (!infoLocation) {
-    throw new GyroViewError(
-      'no-info-record',
-      'the trailer has no info record; the file is not a camera recording',
-    );
-  }
-  const info = parseInfoRecord(await source.read(infoLocation.payload), infoLocation.format);
+  const info = await readInfoRecord(source, trailer);
   return new Recording({
-    source,
     fileSize,
     boxes: boxLayout.boxes,
     trailerWrapper: trailerWrapperOf(boxLayout),
     trailer,
     info,
     calibration: selectCalibration(info.calibration),
+    records: new TrailerRecords({ source, trailer, info }),
   });
 }

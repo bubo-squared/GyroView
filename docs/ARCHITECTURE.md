@@ -46,10 +46,12 @@ sizes; every constant is named and cites its source.
 - `trailer/readTrailer` reads the 72-byte footer and the records' table of contents, either
   through the index record or by walking record headers backwards (`locateRecords`), two
   strategies chosen by what the file contains.
-- `info/parseInfoRecord` decodes the protobuf info record into `RecordingInfo`: camera, firmware,
+- `info/readInfoRecord` finds the info record through the trailer, and `info/parseInfoRecord`
+  decodes it from protobuf into `RecordingInfo`: camera, firmware,
   calibration strings, timing fields, layout hints. Absent fields are `undefined`.
 - `records/gyro` parses IMU samples in the raw (20-byte) or float (56-byte) layout, selected by
   the info record or inferred from the bytes; `records/exposure` parses per-frame shutter times.
+  `records/TrailerRecords` reads both on demand through the source.
 - `layout/detectLensLayout` decides how the lens images are stored (a stitching `LensLayout`)
   from the tracks the demuxer port describes: multi-track (one file, two tracks), split files
   (`_00_` and `_10_`) or packed (both circles in one frame). The info record is only a hint.
@@ -103,8 +105,8 @@ Use cases that orchestrate the domain through ports.
   needed) and the orientation for stabilization (`motionOf`: gyro integration with the camera's
   IMU frame), each optional with a warning for what is missing.
 - `recording/readRecording` opens a `RandomAccessSource` and reads everything cheap: boxes,
-  trailer, info record, calibration choice. The result, `Recording`, reads the large gyro and
-  exposure records on demand. `locateCompanions` looks for the proxy and the other lens file.
+  trailer, info record, calibration choice. The result, `Recording`, hands out the large gyro
+  and exposure records on demand, read by the format's `TrailerRecords`. `locateCompanions` looks for the proxy and the other lens file.
 - `playback/DecodePipeline` runs one lockstep decode of all frame sources from a time: one
   decoder per source, packets fed under backpressure, frames paired by timestamp
   (`FramePairer`), pairs before the start dropped by the `StartGate`, output into a

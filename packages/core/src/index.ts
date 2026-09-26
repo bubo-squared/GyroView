@@ -68,7 +68,6 @@ export {
 } from './domain/motion/stabilization/stabilizers';
 export { ExposureRecord, type ExposureEntry } from './domain/motion/exposure/ExposureRecord';
 export { CaptureClock } from './domain/motion/timing/CaptureClock';
-export { firstFrameCaptureTime } from './domain/format/captureOrigin';
 export { FrameTimes, type FrameTime } from './domain/motion/timing/FrameTimes';
 export type { FrameTimeSourceName } from './domain/motion/timing/FrameTimeSource';
 export {

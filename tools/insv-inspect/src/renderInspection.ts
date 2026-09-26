@@ -89,6 +89,7 @@ function renderLens(lens: LensSummary): string {
 function renderGyro(inspection: Inspection): string {
   const { gyro } = inspection;
   if (gyro === undefined) return 'Gyro: none';
+  if ('unreadable' in gyro) return `Gyro: unreadable (${gyro.unreadable})`;
   const stray = gyro.strayBytes > 0 ? `, ${gyro.strayBytes} stray byte(s)` : '';
   return (
     `Gyro: ${gyro.layout} layout, ${gyro.samples.toLocaleString('en-US')} samples over ${fixed(gyro.spanSeconds)} s, ` +

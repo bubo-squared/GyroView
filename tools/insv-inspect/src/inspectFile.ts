@@ -1,6 +1,8 @@
 import { FileRandomAccessSource } from '@gyroview/adapter-node';
 import {
+  hasErrorCode,
   magnitudeOf,
+  messageOf,
   microseconds,
   microsecondsToSeconds,
   inspectLayout,
@@ -11,7 +13,13 @@ import {
   type RecordingLayout,
 } from '@gyroview/core';
 
-import type { CalibrationSummary, ExposureSummary, GyroSummary, Inspection } from './Inspection';
+import type {
+  CalibrationSummary,
+  ExposureSummary,
+  GyroSummary,
+  Inspection,
+  UnreadableGyro,
+} from './Inspection';
 
 const GRAVITY_SAMPLE_COUNT = 1000;
 
@@ -22,16 +30,13 @@ export async function inspectFile(file: string): Promise<Inspection> {
   const source = await FileRandomAccessSource.open(file);
   try {
     const [layout, recording] = await Promise.all([inspectLayout(source), readRecording(source)]);
-    const [gyro, exposure] = await Promise.all([
-      recording.readGyroRecord(),
-      recording.readExposureRecord(),
-    ]);
+    const [gyro, exposure] = await Promise.all([gyroOf(recording), recording.readExposureRecord()]);
     return {
       ...summarizeStructure(file, layout),
       info: recording.info,
       calibration: summarizeCalibration(recording),
       calibrationWarnings: recording.calibration.warnings,
-      gyro: gyro === undefined ? undefined : summarizeGyro(gyro),
+      gyro,
       exposure:
         exposure === undefined
           ? undefined
@@ -121,10 +126,33 @@ function summarizeExposure(
   };
 }
 
+/**
+ * The gyro summary, or why the record cannot be read: a camera the inspector has not seen is the
+ * case it exists for, so an undecidable layout is reported, not fatal.
+ */
+async function gyroOf(recording: Recording): Promise<GyroSummary | UnreadableGyro | undefined> {
+  try {
+    const gyro = await recording.readGyroRecord();
+    return gyro === undefined ? undefined : summarizeGyro(gyro);
+  } catch (error) {
+    if (!hasErrorCode(error, 'unsupported-gyro-record')) throw error;
+    return { unreadable: messageOf(error) };
+  }
+}
+
+/**
+ * The exposure entry of the first encoded frame; unknown without a capture clock, which an
+ * unreadable gyro layout leaves undated.
+ */
 async function firstEncodedFrameEntry(
   exposure: ExposureRecord,
   recording: Recording,
 ): Promise<number | undefined> {
-  const clock = await recording.captureClock();
-  return clock === undefined ? undefined : exposure.indexAtOrAfter(clock.firstFrameCaptureTime);
+  try {
+    const clock = await recording.captureClock();
+    return clock === undefined ? undefined : exposure.indexAtOrAfter(clock.firstFrameCaptureTime);
+  } catch (error) {
+    if (hasErrorCode(error, 'unsupported-gyro-record')) return undefined;
+    throw error;
+  }
 }

@@ -43,6 +43,13 @@ export interface GyroSummary {
   readonly meanAccelerationMagnitudeG: number;
 }
 
+/**
+ * A gyro record whose sample layout could not be told, and why.
+ */
+export interface UnreadableGyro {
+  readonly unreadable: string;
+}
+
 export interface ExposureSummary {
   readonly entries: number;
   readonly firstCaptureTimeUs: number;
@@ -71,6 +78,6 @@ export interface Inspection {
    * Why calibration strings were skipped, whether or not one was usable.
    */
   readonly calibrationWarnings: readonly string[];
-  readonly gyro: GyroSummary | undefined;
+  readonly gyro: GyroSummary | UnreadableGyro | undefined;
   readonly exposure: ExposureSummary | undefined;
 }

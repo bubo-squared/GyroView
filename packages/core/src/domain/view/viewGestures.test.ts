@@ -72,11 +72,12 @@ describe('view gestures', () => {
     expect(zoomViewAt(widest, { steps: -1, focus: { x: 0.9, y: 0.2 } }, ASPECT)).toEqual(widest);
   });
 
-  it('keeps the pitch within the poles near the zenith', () => {
-    const view = viewOf(0, 85, 60);
-    const zoomed = zoomViewAt(view, { steps: -3, focus: { x: 0.5, y: 0.02 } }, ASPECT);
-    expect(zoomed.pitch).toBeLessThanOrEqual(90);
-    expect(Number.isFinite(zoomed.yaw)).toBe(true);
+  it('zooms about the centre when no turn near the zenith keeps the pointed direction', () => {
+    const view = viewOf(0, 60, 90);
+    const zoomed = zoomViewAt(view, { steps: -1, focus: { x: 0.05, y: 0.02 } }, ASPECT);
+    expect(zoomed.yaw).toBe(0);
+    expect(zoomed.pitch).toBe(60);
+    expect(zoomed.fieldOfView).toBeCloseTo(99, 9);
   });
 
   it('looks at a direction with the same clamping as every change', () => {

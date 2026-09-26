@@ -32,9 +32,13 @@ class FakePicturePlayer implements PicturePlayer {
   }
 
   public becomeReady(hasGyro: boolean): void {
-    const metadata = metadataWith(hasGyro);
-    this.metadata = metadata;
-    this.events.emit('ready', metadata);
+    this.metadata = metadataWith(hasGyro);
+    this.events.emit('statuschange', 'ready');
+  }
+
+  public fail(): void {
+    this.metadata = undefined;
+    this.events.emit('statuschange', 'error');
   }
 }
 
@@ -121,6 +125,13 @@ describe('PictureMenus', () => {
   it('never offers stabilization for a recording without a gyro', () => {
     const { parts, player } = pictureMenus();
     player.becomeReady(false);
+    expect(parts.stabilization.button.hidden).toBe(true);
+  });
+
+  it('withdraws stabilization when the next load fails', () => {
+    const { parts, player } = pictureMenus();
+    player.becomeReady(true);
+    player.fail();
     expect(parts.stabilization.button.hidden).toBe(true);
   });
 });

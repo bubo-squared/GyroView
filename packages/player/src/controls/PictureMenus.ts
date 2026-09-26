@@ -18,8 +18,8 @@ export type PicturePlayer = Pick<
 /**
  * The view mode and stabilization menus, each behind a button of its own. A choice sets the
  * player's mode, and each menu checks the mode in effect however it was last changed.
- * Stabilization is offered only where it changes the picture: a recording with a gyro, shown in
- * a stitched view mode.
+ * Stabilization is offered only where it changes the picture: a loaded recording with a gyro,
+ * shown in a stitched view mode.
  */
 export class PictureMenus {
   private readonly viewMode: ChoiceMenu;
@@ -45,7 +45,7 @@ export class PictureMenus {
     player.events.on('stabilizationchange', (mode) => {
       this.stabilization.markChosen(mode);
     });
-    player.events.on('ready', () => {
+    player.events.on('statuschange', () => {
       this.offerStabilization();
     });
     this.viewMode.markChosen(player.viewMode);

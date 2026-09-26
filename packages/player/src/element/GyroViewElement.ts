@@ -93,7 +93,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     defineLiveSettings(this, this.player);
     const host = this.controlsHost();
     bindControlsBar(shadow, host);
-    new ViewGestures(canvas, this.player, this.togglePlayLater);
+    new ViewGestures(canvas, this.player, this.togglePlayback);
     bindKeyboard(this, host);
     this.idle = new IdleWatcher(this, () => this.player.status === 'playing');
     this.observePlayer();
@@ -150,7 +150,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     } else if (VIEW_ATTRIBUTES.includes(name)) {
       this.player.setView(viewAfterAttribute(this.player.view, name, value));
     } else {
-      const targets = { player: this.player, posterImage: this.posterImage, warn: this.warnLater };
+      const targets = { player: this.player, posterImage: this.posterImage, warn: this.warn };
       applyPlaybackAttribute(targets, name, value);
     }
   }
@@ -226,9 +226,11 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   private controlsHost(): ControlsHost & KeyboardHost {
     return {
       player: this.player,
-      togglePlay: this.togglePlayLater,
-      toggleFullscreen: this.toggleFullscreenLater,
-      warn: this.warnLater,
+      togglePlay: this.togglePlayback,
+      toggleFullscreen: (): void => {
+        void this.toggleFullscreen();
+      },
+      warn: this.warn,
       isFullscreen: (): boolean => this.fullscreen.isActive,
       exitFullscreen: (): void => {
         void this.fullscreen.exit();
@@ -236,11 +238,10 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     };
   }
 
-  private readonly warnLater = (message: string): void => {
-    this.warn(message);
-  };
-
-  private readonly togglePlayLater = (): void => {
+  /**
+   * Pauses, or starts playing and reports a refused start as a warning.
+   */
+  private readonly togglePlayback = (): void => {
     if (!this.player.isPaused) {
       this.player.pause();
       return;
@@ -248,10 +249,6 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     void this.player.play().catch((error: unknown) => {
       this.warn(`playback could not start: ${messageOf(error)}`);
     });
-  };
-
-  private readonly toggleFullscreenLater = (): void => {
-    void this.toggleFullscreen();
   };
 
   private scheduleLoad(): void {
@@ -313,9 +310,9 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     this.errorCode.textContent = error.code;
   }
 
-  private warn(message: string): void {
+  private readonly warn = (message: string): void => {
     this.dispatchEvent(new CustomEvent('warning', { detail: message, composed: true }));
-  }
+  };
 }
 
 /**

@@ -36,6 +36,7 @@ export class SeamMeterPass implements SeamMeter {
   private readonly scene = new Scene();
   private readonly material: RawShaderMaterial;
   private readonly geometry: BufferGeometry = createFullscreenTriangle();
+  private isDisposed = false;
 
   public constructor(
     private readonly renderer: WebGLRenderer,
@@ -51,21 +52,31 @@ export class SeamMeterPass implements SeamMeter {
    * Mean colour (0..1) each lens shows along the seam, or undefined when a lens images none of it.
    */
   public async measure(): Promise<readonly Vector3[] | undefined> {
+    if (this.isDisposed) return undefined;
     try {
       await this.readSeam();
     } catch (error) {
-      // A lost context fails the read-back; the picture comes back with the context and a later
-      // frame measures again. Anything else is a defect.
-      if (this.renderer.getContext().isContextLost()) return undefined;
+      // A lost context, or a disposal while reading back, fails the read-back; the picture comes
+      // back with the context and a later frame measures again. Anything else is a defect.
+      if (this.isGone() || this.renderer.getContext().isContextLost()) return undefined;
       throw error;
     }
-    return rowMeansOf(this.pixels, SEAM_SAMPLES, this.lensCount);
+    return this.isGone() ? undefined : rowMeansOf(this.pixels, SEAM_SAMPLES, this.lensCount);
   }
 
   public dispose(): void {
+    if (this.isDisposed) return;
+    this.isDisposed = true;
     this.target.dispose();
     this.material.dispose();
     this.geometry.dispose();
+  }
+
+  /**
+   * Asked again after the read-back, which a disposal may overtake.
+   */
+  private isGone(): boolean {
+    return this.isDisposed;
   }
 
   private async readSeam(): Promise<void> {

@@ -480,6 +480,13 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
   });
 
+  it('takes the seam meters still in use with it when disposed; they measure nothing after', async () => {
+    const renderer = open();
+    const meter = renderer.createSeamMeter();
+    renderer.dispose();
+    await expect(meter.measure()).resolves.toBeUndefined();
+  });
+
   it('refuses to work once disposed', () => {
     const renderer = open();
     renderer.dispose();

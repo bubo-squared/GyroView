@@ -79,6 +79,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
    */
   private hasFrames = false;
   private isDisposed = false;
+  private readonly meters = new Set<SeamMeter>();
 
   private constructor(
     private readonly parts: RendererParts,
@@ -135,9 +136,22 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     this.render();
   }
 
+  /**
+   * The meter leaves this renderer's list when disposed; the renderer disposes those still live
+   * when it goes, since they share its context and uniforms.
+   */
   public createSeamMeter(): SeamMeter {
     this.ensureLive();
-    return new SeamMeterPass(this.parts.renderer, this.parts.uniforms, this.parts.lensCount);
+    const pass = new SeamMeterPass(this.parts.renderer, this.parts.uniforms, this.parts.lensCount);
+    const meter: SeamMeter = {
+      measure: () => pass.measure(),
+      dispose: (): void => {
+        this.meters.delete(meter);
+        pass.dispose();
+      },
+    };
+    this.meters.add(meter);
+    return meter;
   }
 
   /**
@@ -189,6 +203,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     if (this.isDisposed) return;
     this.isDisposed = true;
     this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
+    for (const meter of this.meters) meter.dispose();
     for (const texture of this.parts.textures) texture.dispose();
     disposePictureMaterials(this.parts.materials);
     this.parts.pass.geometry.dispose();

@@ -24,8 +24,8 @@ export interface PictureRenderer<Handle = unknown> extends FrameSink<Handle> {
    */
   resize(width: number, height: number): void;
   /**
-   * A meter over the seam of the pictures this renderer draws; whoever creates it disposes it,
-   * before the renderer.
+   * A meter over the seam of the pictures this renderer draws. Whoever creates it disposes it;
+   * the renderer disposes any still live when it is disposed itself.
    */
   createSeamMeter(): SeamMeter;
   /**

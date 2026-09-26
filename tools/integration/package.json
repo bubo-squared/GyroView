@@ -9,12 +9,10 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@gyroview/adapter-fetch": "workspace:*",
     "@gyroview/adapter-mediabunny": "workspace:*",
     "@gyroview/adapter-mse-audio": "workspace:*",
     "@gyroview/adapter-node": "workspace:*",
     "@gyroview/adapter-three": "workspace:*",
-    "@gyroview/adapter-webcodecs": "workspace:*",
     "@gyroview/core": "workspace:*",
     "@types/node": "26.6.1",
     "@vitest/browser": "4.1.11",

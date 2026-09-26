@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -108,20 +108,17 @@ describeDemuxerContract(() =>
   }),
 );
 
-describe('MediabunnyDemuxer on files it cannot read', () => {
-  it.skipIf(!existsSync(ONE_R_TRAILER_ONLY))(
-    'still lists the tracks of a trailer-only file whose media data was stripped',
-    async () => {
-      const input = await new MediabunnyDemuxer().open(
-        new InMemoryRandomAccessSource(readFileSync(ONE_R_TRAILER_ONLY)),
-      );
-      try {
-        expect(input.videoTracks.length).toBeGreaterThan(0);
-      } finally {
-        input.dispose();
-      }
-    },
-  );
+describe('MediabunnyDemuxer on a trailer-only file', () => {
+  it('still lists the tracks when the media data was stripped', async () => {
+    const input = await new MediabunnyDemuxer().open(
+      new InMemoryRandomAccessSource(readFileSync(ONE_R_TRAILER_ONLY)),
+    );
+    try {
+      expect(input.videoTracks.length).toBeGreaterThan(0);
+    } finally {
+      input.dispose();
+    }
+  });
 });
 
 describe('MediabunnyDemuxer on the synthetic fixture with an AAC track', () => {

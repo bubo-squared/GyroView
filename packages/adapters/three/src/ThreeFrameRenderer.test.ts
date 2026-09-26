@@ -509,6 +509,14 @@ describe('ThreeFrameRenderer', () => {
     const restored = eventOnce(canvas, 'webglcontextrestored');
     loser.restoreContext();
     await restored;
+    // The frames it drew before the loss may be closed by now; whatever asks for a redraw before
+    // fresh ones arrive draws nothing rather than reach for them.
+    renderer.setLensGains([
+      [1, 1, 1],
+      [1, 1, 1],
+    ]);
+    const blank = pixelAt(renderer, CENTRE);
+    expect(Math.max(blank.r, blank.g, blank.b)).toBeLessThan(DIM);
     presentRedAndBlue(renderer);
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
   });

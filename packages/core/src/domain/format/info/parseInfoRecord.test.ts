@@ -33,9 +33,9 @@ describe('parseInfoRecord on the office X5 recording (5.7K60)', () => {
     expect(info.dimension).toEqual({ width: 2880, height: 2880 });
     expect(info.frameRate).toBe(60);
     expect(info.firstFrameTimestamp).toBe(921_751_839);
-    expect(info.readoutTimeMs).toBeCloseTo(8.4075, 3);
-    expect(info.gyroOffsetMs).toBe(1.6);
-    expect(info.ptsType).toBe(2);
+    expect(info.readoutTime).toBeCloseTo(0.0084075, 6);
+    expect(info.gyroOffset).toBe(1.6);
+    expect(info.preferredFrameTimeSource).toBe('exposure-record');
   });
 
   it('reads the gyro configuration', () => {
@@ -77,7 +77,7 @@ describe('parseInfoRecord on the sailing X5 recording (8K30)', () => {
       dimension: { width: 3840, height: 3840 },
       frameRate: 30,
       firstFrameTimestamp: 393_534_973,
-      gyroOffsetMs: 1.6,
+      gyroOffset: 1.6,
       gyroType: 1,
     });
     expect(info.calibration.offsetV3).toMatch(

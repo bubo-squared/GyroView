@@ -1,15 +1,12 @@
 import {
-  milliseconds,
-  millisecondsToSeconds,
   resolveFrameTimes,
+  seconds,
   type CaptureClock,
   type FrameTimingContext,
   type Recording,
   type ResolvedFrameTimes,
   type VideoTrackReader,
 } from '@gyroview/core';
-
-import { hasErrorCode } from './errorCodes';
 
 /**
  * Frame times for the recording's lens track. The exposure record is tried first because it
@@ -31,24 +28,13 @@ export async function frameTimesFor(
     clock,
     frameCount,
     frameRate: info.frameRate,
-    readoutTime: millisecondsToSeconds(milliseconds(info.readoutTimeMs ?? 0)),
+    readoutTime: info.readoutTime ?? seconds(0),
     exposureRecord,
     trackTimestamps: undefined,
   };
-  const cheap = tryResolve(context, info.ptsType);
+  const preferred = info.preferredFrameTimeSource;
+  const cheap = resolveFrameTimes(context, preferred);
   if (cheap && cheap.source !== 'nominal') return cheap;
   const trackTimestamps = await track.sampleTimestamps();
-  return tryResolve({ ...context, trackTimestamps }, info.ptsType) ?? cheap;
-}
-
-function tryResolve(
-  context: FrameTimingContext,
-  ptsType: number | undefined,
-): ResolvedFrameTimes | undefined {
-  try {
-    return resolveFrameTimes(context, ptsType);
-  } catch (error) {
-    if (hasErrorCode(error, 'no-frame-times')) return undefined;
-    throw error;
-  }
+  return resolveFrameTimes({ ...context, trackTimestamps }, preferred) ?? cheap;
 }

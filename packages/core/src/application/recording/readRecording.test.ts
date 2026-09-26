@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { microseconds } from '../../shared/units/time';
 import { readRecording } from './readRecording';
 import { RecordType } from '../../domain/format/constants';
 import { CalibrationVersion } from '../../domain/optics/LensCalibration';
@@ -78,12 +79,12 @@ describe('readRecording on synthetic X5 files', () => {
     );
     const exposure = await recording.readExposureRecord();
     expect(exposure?.length).toBe(16);
-    await expect(recording.captureClockUnit()).resolves.toBe('microseconds');
-    await expect(recording.gyroLayout()).resolves.toBe('raw');
+    const layout = await recording.gyroSampleLayout();
+    expect(layout?.name).toBe('raw');
     const clock = await recording.captureClock();
-    expect(clock.firstFrameCaptureTime).toBe(921_751_839);
-    expect(clock.gyroOffset).toBe(1.6);
-    expect(exposure?.indexAtOrAfter(clock.firstFrameCaptureTime)).toBe(6);
+    expect(clock?.firstFrameCaptureTime).toBe(921_751_839);
+    expect(clock?.gyroOffset).toBe(1.6);
+    expect(exposure?.indexAtOrAfter(clock?.firstFrameCaptureTime ?? microseconds(0))).toBe(6);
   });
 
   it('reports missing gyro and exposure records as undefined rather than failing', async () => {
@@ -132,10 +133,10 @@ describe('readRecording on synthetic X5 files', () => {
       .addRecord({ id: RecordType.Gyro, payload: floatSamples })
       .buildContiguous();
     const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
-    await expect(recording.gyroLayout()).resolves.toBe('float');
-    await expect(recording.captureClockUnit()).resolves.toBe('milliseconds');
+    const layout = await recording.gyroSampleLayout();
+    expect(layout?.name).toBe('float');
     const clock = await recording.captureClock();
-    expect(clock.firstFrameCaptureTime).toBe(2_000_000);
+    expect(clock?.firstFrameCaptureTime).toBe(2_000_000);
     const gyro = await recording.readGyroRecord();
     expect(gyro?.layout).toBe('float');
   });
@@ -168,7 +169,7 @@ describe('readRecording on real trailers from other cameras (insta360py fixtures
       model: 'Insta360 OneR',
       frameRate: 30,
       isRawGyro: true,
-      ptsType: 2,
+      preferredFrameTimeSource: 'exposure-record',
     });
     expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Legacy);
     expect(recording.calibration.calibration?.canvas).toEqual({ width: 6080, height: 3040 });
@@ -185,7 +186,9 @@ describe('readRecording on real trailers from other cameras (insta360py fixtures
     const exposure = await recording.readExposureRecord();
     expect(exposure?.length).toBe(40);
     const clock = await recording.captureClock();
-    expect(exposure?.indexAtOrAfter(clock.firstFrameCaptureTime)).toBeLessThan(40);
+    expect(exposure?.indexAtOrAfter(clock?.firstFrameCaptureTime ?? microseconds(0))).toBeLessThan(
+      40,
+    );
   });
 
   it('reads the X5 file: inst-wrapped indexed trailer without layout hints', async () => {

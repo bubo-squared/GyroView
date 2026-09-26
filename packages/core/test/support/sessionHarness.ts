@@ -5,7 +5,7 @@ import {
 import type { PlayerState } from '../../src/domain/playback/PlayerState';
 import { WallClock } from '../../src/domain/playback/WallClock';
 import type { PlaybackClock } from '../../src/ports/PlaybackClock';
-import { seconds } from '../../src/shared/units/time';
+import { milliseconds, seconds } from '../../src/shared/units/time';
 import { FakeFrameSink } from '../../src/testing/FakeFrameSink';
 import { FakePlaybackClock } from '../../src/testing/FakePlaybackClock';
 import {
@@ -63,7 +63,7 @@ export function settle(): Promise<void> {
 
 export function sessionHarness(options: SessionHarnessOptions = {}): SessionHarness {
   let nowMs = 0;
-  const clock: PlaybackClock = options.clock ?? new WallClock(() => nowMs);
+  const clock: PlaybackClock = options.clock ?? new WallClock(() => milliseconds(nowMs));
   const sink = new FakeFrameSink<FakeFrameHandle>();
   const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 1, ...options.decoder });
   const session = new PlaybackSession<FakeFrameHandle>({

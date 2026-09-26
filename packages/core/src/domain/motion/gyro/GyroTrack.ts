@@ -4,7 +4,7 @@ import type {
 } from '../../../shared/binary/ReadonlyTypedArray';
 import { ensureIndexInRange, ensureInvariant } from '../../../shared/errors/GyroViewError';
 import { VECTOR3_COMPONENTS, type Vector3 } from '../../../shared/math/Vector3';
-import type { Microseconds } from '../../../shared/units/time';
+import { type Microseconds, microseconds } from '../../../shared/units/time';
 
 export interface GyroSample {
   /**
@@ -70,14 +70,14 @@ export class GyroTrack {
   public get meanSampleInterval(): Microseconds | undefined {
     if (this.length < 2) return undefined;
     const span = (this.captureTimeStore[this.length - 1] ?? 0) - (this.captureTimeStore[0] ?? 0);
-    return (span / (this.length - 1)) as Microseconds;
+    return microseconds(span / (this.length - 1));
   }
 
   public sampleAt(index: number): GyroSample {
     ensureIndexInRange(index, this.length, 'gyro sample');
     const base = index * VECTOR3_COMPONENTS;
     return {
-      captureTime: this.captureTimeStore[index] as Microseconds,
+      captureTime: microseconds(this.captureTimeStore[index] ?? 0),
       acceleration: this.vectorAt(this.accelerationStore, base),
       angularVelocity: this.vectorAt(this.angularVelocityStore, base),
     };

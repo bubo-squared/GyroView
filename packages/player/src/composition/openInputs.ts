@@ -6,7 +6,6 @@ import {
   probeDecoding,
   readRecording,
   seconds,
-  type CaptureClock,
   type DecodeProbeReport,
   type DemuxedInput,
   type FrameSourceKey,
@@ -16,7 +15,6 @@ import {
 } from '@gyroview/core';
 
 import { Disposables } from './Disposables';
-import { hasErrorCode } from './errorCodes';
 import { frameTimesFor } from './frameTimesFor';
 import { motionSetupFor, type MotionSetup } from './motionSetupFor';
 import type { OpenedRecording } from './OpenedRecording';
@@ -157,7 +155,7 @@ async function timingOf(
   recording: Recording,
   frameSources: readonly VideoTrackReader[],
 ): Promise<Timing> {
-  const clock = await captureClockOf(recording);
+  const clock = await recording.captureClock();
   const [track] = frameSources;
   if (!clock || !track) return withoutTiming([NO_CLOCK_WARNING]);
   const [frames, motion] = await Promise.all([
@@ -174,19 +172,6 @@ async function timingOf(
 
 function withoutTiming(warnings: readonly string[]): Timing {
   return { frameTimes: undefined, frameTimeSource: undefined, motion: undefined, warnings };
-}
-
-/**
- * Undefined when the info record has no first-frame timestamp, the one field everything
- * time-related hangs on.
- */
-async function captureClockOf(recording: Recording): Promise<CaptureClock | undefined> {
-  try {
-    return await recording.captureClock();
-  } catch (error) {
-    if (hasErrorCode(error, 'no-frame-times')) return undefined;
-    throw error;
-  }
 }
 
 interface AssemblyParts {

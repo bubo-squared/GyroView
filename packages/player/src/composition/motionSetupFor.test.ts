@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { motionSetupFor } from './motionSetupFor';
 import {
+  clockOf,
   minimalInfoRecord,
   officeRecords,
   recordingOf,
@@ -19,7 +20,7 @@ describe('motionSetupFor', () => {
   it('integrates the gyro under the verified X5 frame without warnings', async () => {
     const recording = await recordingOf(syntheticRecordingBytes(fixture.records));
 
-    const motion = await motionSetupFor(recording, await recording.captureClock());
+    const motion = await motionSetupFor(recording, await clockOf(recording));
 
     expect(motion.setup?.imuFrame.name).toBe('X5');
     expect(motion.setup?.orientations.length).toBe(2000);
@@ -32,7 +33,7 @@ describe('motionSetupFor', () => {
       syntheticRecordingBytes({ info, gyro: fixture.records.gyro }),
     );
 
-    const motion = await motionSetupFor(recording, await recording.captureClock());
+    const motion = await motionSetupFor(recording, await clockOf(recording));
 
     expect(motion.setup?.imuFrame.isVerified).toBe(false);
     expect(motion.warnings).toEqual([
@@ -43,7 +44,7 @@ describe('motionSetupFor', () => {
   it('reports a recording without a gyro record as unstabilizable', async () => {
     const recording = await recordingOf(syntheticRecordingBytes({ info: fixture.records.info }));
 
-    const motion = await motionSetupFor(recording, await recording.captureClock());
+    const motion = await motionSetupFor(recording, await clockOf(recording));
 
     expect(motion.setup).toBeUndefined();
     expect(motion.warnings).toEqual([

@@ -3,6 +3,7 @@ import {
   FileGroupField,
   GyroConfigField,
   InfoField,
+  PtsType,
   WindowCropField,
 } from './infoFields';
 import type {
@@ -16,6 +17,14 @@ import type {
 import { InfoRecordFormat } from '../constants';
 import { GyroViewError } from '../../../shared/errors/GyroViewError';
 import { ProtobufMessage } from '../../../shared/protobuf/ProtobufMessage';
+
+import {
+  milliseconds,
+  millisecondsToSeconds,
+  type Milliseconds,
+  type Seconds,
+} from '../../../shared/units/time';
+import type { FrameTimeSourceName } from '../../motion/timing/FrameTimeSource';
 
 /**
  * Turns the info record into a {@link RecordingInfo}. Only the protobuf encoding (format 1) is
@@ -38,18 +47,34 @@ export function parseInfoRecord(payload: Uint8Array, format: number): RecordingI
     frameRate: message.varint(InfoField.FrameRate),
     captureMode: message.string(InfoField.CaptureMode),
     firstFrameTimestamp: message.varint(InfoField.FirstFrameTimestamp),
-    readoutTimeMs: message.double(InfoField.RollingShutterTimeMs),
+    readoutTime: secondsFromMilliseconds(message.double(InfoField.RollingShutterTimeMs)),
     fileGroup: fileGroupOf(message.message(InfoField.FileGroupInfo)),
     windowCrop: windowCropOf(message.message(InfoField.WindowCropInfo)),
-    gyroOffsetMs: message.double(InfoField.GyroTimestampMs),
+    gyroOffset: optionalMilliseconds(message.double(InfoField.GyroTimestampMs)),
     totalFrames: message.varint(InfoField.TotalFrames),
     gyroType: message.varint(InfoField.GyroType),
     isRawGyro: message.boolean(InfoField.IsRawGyro),
-    ptsType: message.varint(InfoField.PtsType),
+    preferredFrameTimeSource: frameTimeSourceOf(message.varint(InfoField.PtsType)),
     sensorRanges: sensorRangesOf(message.message(InfoField.GyroConfig)),
     fileLayout: message.varint(InfoField.FileLayout),
     trackOrder: message.varint(InfoField.TrackOrder),
   };
+}
+
+function secondsFromMilliseconds(value: number | undefined): Seconds | undefined {
+  return value === undefined ? undefined : millisecondsToSeconds(milliseconds(value));
+}
+
+function optionalMilliseconds(value: number | undefined): Milliseconds | undefined {
+  return value === undefined ? undefined : milliseconds(value);
+}
+
+/**
+ * Other `pts_type` values have never been observed and say nothing to rely on.
+ */
+function frameTimeSourceOf(ptsType: number | undefined): FrameTimeSourceName | undefined {
+  if (ptsType === PtsType.TrackTimestamps) return 'track-timestamps';
+  return ptsType === PtsType.ExposureRecord ? 'exposure-record' : undefined;
 }
 
 function calibrationStringsOf(message: ProtobufMessage): CalibrationStrings {

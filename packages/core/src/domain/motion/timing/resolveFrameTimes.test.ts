@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CaptureClock } from './CaptureClock';
 import type { FrameTimingContext } from './FrameTimeSource';
-import { PtsType, resolveFrameTimes } from './resolveFrameTimes';
+import { resolveFrameTimes, type ResolvedFrameTimes } from './resolveFrameTimes';
 import {
   microseconds,
   milliseconds,
@@ -10,7 +10,6 @@ import {
   seconds,
 } from '../../../shared/units/time';
 import { parseExposureRecord } from '../../format/records/exposure/parseExposureRecord';
-import { captureError } from '../../../../test/support/errors';
 import { loadFixture } from '../../../../test/support/fixtures';
 
 const OFFICE_FIRST_FRAME = microseconds(921_751_839);
@@ -19,6 +18,18 @@ const OFFICE_FPS = 60_000 / 1001;
 const exposureHead = parseExposureRecord(
   loadFixture('x5/office/record-04-exposure-first16.bin'),
 ).record;
+
+/**
+ * Resolves where the test expects a source to succeed.
+ */
+function resolveOrFail(
+  timing: FrameTimingContext,
+  preferred: Parameters<typeof resolveFrameTimes>[1],
+): ResolvedFrameTimes {
+  const resolved = resolveFrameTimes(timing, preferred);
+  if (!resolved) throw new Error('no frame time source succeeded');
+  return resolved;
+}
 
 function context(overrides: Partial<FrameTimingContext> = {}): FrameTimingContext {
   return {
@@ -33,7 +44,7 @@ function context(overrides: Partial<FrameTimingContext> = {}): FrameTimingContex
 }
 
 describe('resolveFrameTimes with the office exposure record', () => {
-  const resolved = resolveFrameTimes(context(), PtsType.ExposureRecord);
+  const resolved = resolveOrFail(context(), 'exposure-record');
 
   it('uses the exposure record and skips the six pre-roll entries', () => {
     expect(resolved.source).toBe('exposure-record');
@@ -45,7 +56,7 @@ describe('resolveFrameTimes with the office exposure record', () => {
   });
 
   it('takes exactly the requested number of frames from the record', () => {
-    const four = resolveFrameTimes(context({ frameCount: 4 }), PtsType.ExposureRecord).frameTimes;
+    const four = resolveOrFail(context({ frameCount: 4 }), 'exposure-record').frameTimes;
     expect(four.frameCount).toBe(4);
     expect(four.frameAt(3).captureTime).toBe(exposureHead.entryAt(9).captureTime);
   });
@@ -73,9 +84,13 @@ describe('resolveFrameTimes with the office exposure record', () => {
 
 describe('resolveFrameTimes fallbacks', () => {
   it('falls back to track timestamps when the exposure record is missing', () => {
-    const resolved = resolveFrameTimes(
-      context({ frameCount: 3, exposureRecord: undefined, trackTimestamps: [0, 0.5, 1] }),
-      PtsType.ExposureRecord,
+    const resolved = resolveOrFail(
+      context({
+        frameCount: 3,
+        exposureRecord: undefined,
+        trackTimestamps: [seconds(0), seconds(0.5), seconds(1)],
+      }),
+      'exposure-record',
     );
     expect(resolved.source).toBe('track-timestamps');
     expect(resolved.warnings).toEqual(['exposure-record unavailable']);
@@ -85,24 +100,28 @@ describe('resolveFrameTimes fallbacks', () => {
   });
 
   it('rebases track timestamps that do not start at zero onto the first frame', () => {
-    const resolved = resolveFrameTimes(
-      context({ frameCount: 3, exposureRecord: undefined, trackTimestamps: [0.5, 1, 1.5] }),
-      PtsType.TrackTimestamps,
+    const resolved = resolveOrFail(
+      context({
+        frameCount: 3,
+        exposureRecord: undefined,
+        trackTimestamps: [seconds(0.5), seconds(1), seconds(1.5)],
+      }),
+      'track-timestamps',
     );
     expect(resolved.frameTimes.frameAt(0).videoTime).toBe(0);
     expect(resolved.frameTimes.frameAt(2).videoTime).toBe(1);
   });
 
   it('prefers track timestamps when the camera says so, even with an exposure record present', () => {
-    const resolved = resolveFrameTimes(
-      context({ frameCount: 2, trackTimestamps: [0, 0.25] }),
-      PtsType.TrackTimestamps,
+    const resolved = resolveOrFail(
+      context({ frameCount: 2, trackTimestamps: [seconds(0), seconds(0.25)] }),
+      'track-timestamps',
     );
     expect(resolved.source).toBe('track-timestamps');
   });
 
   it('spaces frames nominally when nothing else exists', () => {
-    const resolved = resolveFrameTimes(
+    const resolved = resolveOrFail(
       context({ frameCount: 4, exposureRecord: undefined }),
       undefined,
     );
@@ -115,21 +134,19 @@ describe('resolveFrameTimes fallbacks', () => {
   });
 
   it('declines an exposure record with fewer entries than frames', () => {
-    expect(resolveFrameTimes(context({ frameCount: 11 }), PtsType.ExposureRecord).source).toBe(
-      'nominal',
-    );
+    expect(resolveOrFail(context({ frameCount: 11 }), 'exposure-record').source).toBe('nominal');
   });
 
   it('declines a track timestamp list shorter than the frame count', () => {
-    const resolved = resolveFrameTimes(
-      context({ frameCount: 3, exposureRecord: undefined, trackTimestamps: [0] }),
+    const resolved = resolveOrFail(
+      context({ frameCount: 3, exposureRecord: undefined, trackTimestamps: [seconds(0)] }),
       undefined,
     );
     expect(resolved.source).toBe('nominal');
   });
 
   it('handles a recording with no frames', () => {
-    const resolved = resolveFrameTimes(
+    const resolved = resolveOrFail(
       context({ frameCount: 0, exposureRecord: undefined }),
       undefined,
     );
@@ -137,13 +154,9 @@ describe('resolveFrameTimes fallbacks', () => {
     expect(resolved.frameTimes.frameIndexAt(seconds(1))).toBeUndefined();
   });
 
-  it('fails with a typed error when no source works', () => {
+  it('knows no frame times when no source can say, not even a nominal rate', () => {
     expect(
-      captureError(() =>
-        resolveFrameTimes(context({ exposureRecord: undefined, frameRate: undefined }), undefined),
-      ),
-    ).toMatchObject({
-      code: 'no-frame-times',
-    });
+      resolveFrameTimes(context({ exposureRecord: undefined, frameRate: undefined }), undefined),
+    ).toBeUndefined();
   });
 });

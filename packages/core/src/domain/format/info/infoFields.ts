@@ -49,7 +49,7 @@ export const InfoField = {
   OffsetV3: 54,
   IsRawGyro: 62,
   /**
-  1 = frame times from MP4 PTS, 2 = from the exposure record.
+  1 = frame times from MP4 PTS, 2 = from the exposure record (`PtsType`).
   */
   PtsType: 64,
   /**
@@ -77,3 +77,8 @@ export const WindowCropField = {
   CropOffsetX: 5,
   CropOffsetY: 6,
 } as const;
+
+/**
+ * Values of the `pts_type` field: where the camera says frame times come from.
+ */
+export const PtsType = { TrackTimestamps: 1, ExposureRecord: 2 } as const;

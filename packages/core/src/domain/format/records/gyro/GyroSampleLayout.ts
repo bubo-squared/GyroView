@@ -7,8 +7,16 @@ import type { Microseconds } from '../../../../shared/units/time';
  * SI-ish units (g, radians per second, microseconds).
  */
 export interface GyroSampleLayout {
-  readonly name: 'raw' | 'float';
+  /**
+   * How reports name the layout.
+   */
+  readonly name: string;
   readonly sampleSize: number;
+  /**
+   * The info record stamps its capture-clock fields in the unit this layout stamps its samples;
+   * this turns one such value into microseconds.
+   */
+  captureTimeOf(stamp: number): Microseconds;
   timestampAt(reader: ByteReader, offset: number): Microseconds;
   accelerationAt(reader: ByteReader, offset: number): Vector3;
   angularVelocityAt(reader: ByteReader, offset: number): Vector3;

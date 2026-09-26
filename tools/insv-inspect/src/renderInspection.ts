@@ -1,3 +1,5 @@
+import { secondsToMilliseconds, type Seconds } from '@gyroview/core';
+
 import type { Inspection, LensSummary } from './Inspection';
 
 const DECIMALS = 3;
@@ -54,8 +56,9 @@ function renderInfo(inspection: Inspection): string[] {
   return [
     `Camera: ${show(info.model)}, firmware ${show(info.firmware)}, serial ${show(info.serialNumber)}`,
     `Video: ${dimension} per lens track, ${show(info.frameRate)} fps, mode ${show(info.captureMode)}`,
-    `Timing: first frame ${show(info.firstFrameTimestamp)}, gyro offset ${show(info.gyroOffsetMs)} ms, ` +
-      `readout ${showFixed(info.readoutTimeMs)} ms, pts type ${show(info.ptsType)}`,
+    `Timing: first frame ${show(info.firstFrameTimestamp)}, gyro offset ${show(info.gyroOffset)} ms, ` +
+      `readout ${showFixed(millisecondsOf(info.readoutTime))} ms, ` +
+      `frame times from ${show(info.preferredFrameTimeSource)}`,
     `Gyro config: type ${show(info.gyroType)}, raw ${show(info.isRawGyro)}, ` +
       `ranges ${show(info.sensorRanges?.accelerometerG)} g / ${show(info.sensorRanges?.gyroscopeDps)} dps`,
     `Layout hints: file layout ${show(info.fileLayout)}, track order ${show(info.trackOrder)}`,
@@ -120,4 +123,8 @@ function hexId(id: number): string {
 
 function pad(value: number): string {
   return String(value).padStart(NUMBER_WIDTH);
+}
+
+function millisecondsOf(duration: Seconds | undefined): number | undefined {
+  return duration === undefined ? undefined : secondsToMilliseconds(duration);
 }

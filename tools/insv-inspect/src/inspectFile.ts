@@ -124,7 +124,6 @@ async function firstEncodedFrameEntry(
   exposure: ExposureRecord,
   recording: Recording,
 ): Promise<number | undefined> {
-  if (recording.info.firstFrameTimestamp === undefined) return undefined;
   const clock = await recording.captureClock();
-  return exposure.indexAtOrAfter(clock.firstFrameCaptureTime);
+  return clock === undefined ? undefined : exposure.indexAtOrAfter(clock.firstFrameCaptureTime);
 }

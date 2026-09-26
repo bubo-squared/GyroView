@@ -11,8 +11,11 @@ import {
   StabilizingFrameSink,
   stabilizerFor,
   toBodyFrame,
+  type CalibrationSet,
   type CaptureClock,
+  type ParsedGyroRecord,
   type Quaternion,
+  type Recording,
   type StabilizationMode,
 } from '@gyroview/core';
 import { commands } from '@vitest/browser/context';
@@ -107,6 +110,21 @@ function nearestGyroSample(
   return best;
 }
 
+/**
+ * What the stabilization checks need from a sample; each is present in the real recordings.
+ */
+async function stabilizationInputsOf(
+  recording: Recording,
+  name: string,
+): Promise<{ calibration: CalibrationSet; gyro: ParsedGyroRecord; clock: CaptureClock }> {
+  const calibration = recording.calibration.calibration;
+  const [gyro, clock] = await Promise.all([recording.readGyroRecord(), recording.captureClock()]);
+  if (!calibration || !gyro || !clock) {
+    throw new Error(`${name} lacks a calibration, a gyro record or a first-frame time`);
+  }
+  return { calibration, gyro, clock };
+}
+
 describe('stabilizing the real recordings', () => {
   const cleanups: (() => void)[] = [];
 
@@ -124,10 +142,7 @@ describe('stabilizing the real recordings', () => {
       cleanups.push(opened.dispose);
       await skipUnlessDecodable(context, opened.frameSources);
       const { recording } = opened;
-      const calibration = recording.calibration.calibration;
-      const gyro = await recording.readGyroRecord();
-      if (!calibration || !gyro) throw new Error(`${sample.name} lacks calibration or gyro`);
-      const clock = await recording.captureClock();
+      const { calibration, gyro, clock } = await stabilizationInputsOf(recording, sample.name);
       const frame = imuFrameFor(recording.info);
       expect(frame.isVerified).toBe(true);
       const orientations = OrientationTrack.integrate({ gyro: gyro.track, clock, frame });

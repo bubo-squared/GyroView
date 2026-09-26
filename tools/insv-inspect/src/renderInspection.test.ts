@@ -1,3 +1,4 @@
+import { milliseconds, seconds } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
 import type { Inspection } from './Inspection';
@@ -23,14 +24,14 @@ const inspection: Inspection = {
     frameRate: 60,
     captureMode: 'standard',
     firstFrameTimestamp: 921_751_839,
-    readoutTimeMs: 8.4075,
+    readoutTime: seconds(0.0084075),
     fileGroup: undefined,
     windowCrop: undefined,
-    gyroOffsetMs: 1.6,
+    gyroOffset: milliseconds(1.6),
     totalFrames: undefined,
     gyroType: 1,
     isRawGyro: true,
-    ptsType: 2,
+    preferredFrameTimeSource: 'exposure-record',
     sensorRanges: { accelerometerG: 32, gyroscopeDps: 2000 },
     fileLayout: 2,
     trackOrder: 1,

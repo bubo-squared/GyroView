@@ -4,19 +4,22 @@ import { RecordType } from '../../domain/format/constants';
 import type { RecordingInfo } from '../../domain/format/info/RecordingInfo';
 import type { LayoutHints } from '../../domain/format/layout/detectLensLayout';
 import { parseExposureRecord } from '../../domain/format/records/exposure/parseExposureRecord';
+import { firstFrameCaptureTime } from '../../domain/format/captureOrigin';
+import type { GyroSampleLayout } from '../../domain/format/records/gyro/GyroSampleLayout';
 import {
   GYRO_LAYOUT_PROBE_SIZE,
-  inferGyroLayout,
   parseGyroRecord,
-  type GyroLayoutName,
+  selectGyroSampleLayout,
+  type GyroLayoutHints,
   type ParsedGyroRecord,
 } from '../../domain/format/records/gyro/parseGyroRecord';
 import type { RecordLocation } from '../../domain/format/trailer/RecordLocation';
 import type { Trailer } from '../../domain/format/trailer/Trailer';
 import type { ExposureRecord } from '../../domain/motion/exposure/ExposureRecord';
-import { CaptureClock, type CaptureClockUnit } from '../../domain/motion/timing/CaptureClock';
+import { CaptureClock } from '../../domain/motion/timing/CaptureClock';
 import type { CalibrationChoice } from '../../domain/optics/selectCalibration';
 import { ByteRange } from '../../shared/binary/ByteRange';
+import { ensureInvariant } from '../../shared/errors/GyroViewError';
 
 export interface RecordingParts {
   readonly source: RandomAccessSource;
@@ -33,7 +36,7 @@ export interface RecordingParts {
  * the large records. Video track details arrive later from the demuxer port.
  */
 export class Recording {
-  private gyroLayoutPromise: Promise<GyroLayoutName | undefined> | undefined;
+  private gyroLayoutPromise: Promise<GyroSampleLayout | undefined> | undefined;
 
   public constructor(private readonly parts: RecordingParts) {}
 
@@ -74,21 +77,19 @@ export class Recording {
    * otherwise inferred from the first bytes of the gyro record. Undefined without a gyro record
    * and without the flag.
    */
-  public gyroLayout(): Promise<GyroLayoutName | undefined> {
-    this.gyroLayoutPromise ??= this.resolveGyroLayout();
+  public gyroSampleLayout(): Promise<GyroSampleLayout | undefined> {
+    this.gyroLayoutPromise ??= this.selectGyroLayout();
     return this.gyroLayoutPromise;
   }
 
   /**
-   * Unit of the info record's capture-clock fields, which follows the gyro layout: the float
-   * layout stamps in milliseconds, the raw layout (and cameras without gyro) in microseconds.
+   * The camera's capture clock related to video time; undefined when the info record does not
+   * say when the first frame was captured, the one field everything time-related hangs on.
    */
-  public async captureClockUnit(): Promise<CaptureClockUnit> {
-    return (await this.gyroLayout()) === 'float' ? 'milliseconds' : 'microseconds';
-  }
-
-  public async captureClock(): Promise<CaptureClock> {
-    return CaptureClock.fromInfo(this.parts.info, await this.captureClockUnit());
+  public async captureClock(): Promise<CaptureClock | undefined> {
+    const { info } = this.parts;
+    const origin = firstFrameCaptureTime(info, await this.gyroSampleLayout());
+    return origin === undefined ? undefined : new CaptureClock(origin, info.gyroOffset);
   }
 
   /**
@@ -104,11 +105,9 @@ export class Recording {
   public async readGyroRecord(): Promise<ParsedGyroRecord | undefined> {
     const location = this.parts.trailer.locationOf(RecordType.Gyro);
     if (location === undefined) return undefined;
-    const layout = await this.gyroLayout();
-    return parseGyroRecord(await this.parts.source.read(location.payload), {
-      isRawGyro: layout === undefined ? undefined : layout === 'raw',
-      ranges: this.parts.info.sensorRanges,
-    });
+    const payload = await this.parts.source.read(location.payload);
+    const layout = await this.gyroSampleLayout();
+    return parseGyroRecord(payload, layout ?? this.layoutHintedBy(payload));
   }
 
   /**
@@ -121,13 +120,25 @@ export class Recording {
       : parseExposureRecord(await this.parts.source.read(location.payload)).record;
   }
 
-  private async resolveGyroLayout(): Promise<GyroLayoutName | undefined> {
-    const { isRawGyro } = this.parts.info;
-    if (isRawGyro !== undefined) return isRawGyro ? 'raw' : 'float';
+  private async selectGyroLayout(): Promise<GyroSampleLayout | undefined> {
+    const hints = this.gyroLayoutHints();
+    if (hints.isRawGyro !== undefined) return selectGyroSampleLayout(hints, undefined);
     const location = this.parts.trailer.locationOf(RecordType.Gyro);
-    return location === undefined
-      ? undefined
-      : inferGyroLayout(await this.readHeadOf(location), undefined);
+    const head = location === undefined ? undefined : await this.readHeadOf(location);
+    return selectGyroSampleLayout(hints, head);
+  }
+
+  /**
+   * A record the layout could not be selected for before reading it names its own layout.
+   */
+  private layoutHintedBy(payload: Uint8Array): GyroSampleLayout {
+    const layout = selectGyroSampleLayout(this.gyroLayoutHints(), payload);
+    ensureInvariant(layout !== undefined, 'a gyro record always yields a sample layout');
+    return layout;
+  }
+
+  private gyroLayoutHints(): GyroLayoutHints {
+    return { isRawGyro: this.parts.info.isRawGyro, ranges: this.parts.info.sensorRanges };
   }
 
   private readHeadOf(location: RecordLocation): Promise<Uint8Array> {

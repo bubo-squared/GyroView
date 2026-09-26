@@ -3,12 +3,6 @@ import type { FrameTimeSource, FrameTimeSourceName, FrameTimingContext } from '.
 import type { FrameTimes } from './FrameTimes';
 import { NominalFrameTimeSource } from './NominalFrameTimeSource';
 import { TrackTimestampFrameTimeSource } from './TrackTimestampFrameTimeSource';
-import { GyroViewError } from '../../../shared/errors/GyroViewError';
-
-/**
- * Values of the info record's `pts_type` field: where the camera says frame times come from.
- */
-export const PtsType = { TrackTimestamps: 1, ExposureRecord: 2 } as const;
 
 export interface ResolvedFrameTimes {
   readonly frameTimes: FrameTimes;
@@ -29,21 +23,19 @@ const TRACK_TIMESTAMPS_FIRST: readonly FrameTimeSource[] = [
 
 /**
  * Tries the frame time sources in the order the camera suggests, falling back gracefully and
- * saying which source won.
+ * saying which source won. Undefined when none can say (not even a nominal frame rate):
+ * frame times are optional, the picture still plays at the track's pace.
  */
 export function resolveFrameTimes(
   context: FrameTimingContext,
-  ptsType: number | undefined,
-): ResolvedFrameTimes {
+  preferred: FrameTimeSourceName | undefined,
+): ResolvedFrameTimes | undefined {
   const warnings: string[] = [];
-  const order = ptsType === PtsType.TrackTimestamps ? TRACK_TIMESTAMPS_FIRST : EXPOSURE_FIRST;
+  const order = preferred === 'track-timestamps' ? TRACK_TIMESTAMPS_FIRST : EXPOSURE_FIRST;
   for (const source of order) {
     const frameTimes = source.resolve(context);
     if (frameTimes) return { frameTimes, source: source.name, warnings };
     warnings.push(`${source.name} unavailable`);
   }
-  throw new GyroViewError(
-    'no-frame-times',
-    `no frame timing source is usable (${warnings.join('; ')})`,
-  );
+  return undefined;
 }

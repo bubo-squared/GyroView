@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { FLOAT_SAMPLE_SIZE, RAW_SAMPLE_SIZE } from './gyroLayouts';
-import { parseGyroRecord } from './parseGyroRecord';
+import { parseGyroRecord, selectGyroSampleLayout, type GyroLayoutHints } from './parseGyroRecord';
 import { degrees, degreesToRadians } from '../../../../shared/units/angle';
 import { captureError } from '../../../../../test/support/errors';
 import { loadFixture } from '../../../../../test/support/fixtures';
@@ -34,12 +34,21 @@ function encodeRawSample(timestampUs: number): Uint8Array {
   return bytes;
 }
 
+/**
+ * Selects the layout the hints (or the payload) name, then reads the record with it.
+ */
+function read(payload: Uint8Array, hints: GyroLayoutHints): ReturnType<typeof parseGyroRecord> {
+  const layout = selectGyroSampleLayout(hints, payload);
+  if (!layout) throw new Error('no layout selected');
+  return parseGyroRecord(payload, layout);
+}
+
 function scaledRaw(raw: number, range: number): number {
   return ((raw - RAW_ZERO_POINT) * range) / RAW_FULL_SCALE;
 }
 
 describe('parseGyroRecord with the raw X5 layout', () => {
-  const parsed = parseGyroRecord(loadFixture('x5/office/record-03-gyro-first2000.bin'), RAW_X5);
+  const parsed = read(loadFixture('x5/office/record-03-gyro-first2000.bin'), RAW_X5);
   const { track } = parsed;
 
   it('decodes one sample per 20 bytes and reports the layout', () => {
@@ -73,13 +82,13 @@ describe('parseGyroRecord with the raw X5 layout', () => {
   });
 
   it('reads the last samples of the recording', () => {
-    const tail = parseGyroRecord(loadFixture('x5/office/record-03-gyro-last16.bin'), RAW_X5).track;
+    const tail = read(loadFixture('x5/office/record-03-gyro-last16.bin'), RAW_X5).track;
     expect(tail.length).toBe(16);
     expect(tail.sampleAt(15).captureTime).toBe(1_183_880_765);
   });
 
   it('falls back to the default 16 g / 2000 dps ranges when none are given', () => {
-    const withDefaults = parseGyroRecord(loadFixture('x5/office/record-03-gyro-first2000.bin'), {
+    const withDefaults = read(loadFixture('x5/office/record-03-gyro-first2000.bin'), {
       isRawGyro: true,
       ranges: undefined,
     }).track;
@@ -94,7 +103,7 @@ describe('parseGyroRecord with the raw X5 layout', () => {
     payload.set(encodeRawSample(1000), 0);
     payload.set(encodeRawSample(2000), RAW_SAMPLE_SIZE);
     payload.set(encodeRawSample(3000), 2 * RAW_SAMPLE_SIZE);
-    const parsed = parseGyroRecord(payload, { isRawGyro: true, ranges: undefined });
+    const parsed = read(payload, { isRawGyro: true, ranges: undefined });
     expect(parsed.track.length).toBe(3);
     expect(parsed.strayBytes).toBe(1);
   });
@@ -107,7 +116,7 @@ describe('parseGyroRecord with the float layout', () => {
   ]);
 
   it('reads millisecond timestamps as microseconds and float components verbatim', () => {
-    const { track, layout } = parseGyroRecord(payload, { isRawGyro: false, ranges: undefined });
+    const { track, layout } = read(payload, { isRawGyro: false, ranges: undefined });
     expect(layout).toBe('float');
     expect(track.length).toBe(2);
     expect(track.sampleAt(0).captureTime).toBe(1_000_000);
@@ -117,10 +126,10 @@ describe('parseGyroRecord with the float layout', () => {
   });
 });
 
-describe('parseGyroRecord layout inference without the info record', () => {
+describe('selectGyroSampleLayout', () => {
   it('recognises raw samples by their microsecond spacing', () => {
     const payload = new Uint8Array([...encodeRawSample(5_000_000), ...encodeRawSample(5_001_000)]);
-    expect(parseGyroRecord(payload, NO_HINTS).layout).toBe('raw');
+    expect(selectGyroSampleLayout(NO_HINTS, payload)?.name).toBe('raw');
   });
 
   it('recognises float samples by their millisecond spacing', () => {
@@ -128,27 +137,31 @@ describe('parseGyroRecord layout inference without the info record', () => {
       ...encodeFloatSample(5000, [0, 0, 1], [0, 0, 0]),
       ...encodeFloatSample(5001, [0, 0, 1], [0, 0, 0]),
     ]);
-    expect(parseGyroRecord(payload, NO_HINTS).layout).toBe('float');
+    expect(selectGyroSampleLayout(NO_HINTS, payload)?.name).toBe('float');
   });
 
   it('refuses to guess from a single sample or implausible timestamps', () => {
-    expect(captureError(() => parseGyroRecord(encodeRawSample(1000), NO_HINTS))).toMatchObject({
-      code: 'unsupported-gyro-record',
-    });
+    expect(
+      captureError(() => selectGyroSampleLayout(NO_HINTS, encodeRawSample(1000))),
+    ).toMatchObject({ code: 'unsupported-gyro-record' });
     const garbage = new Uint8Array(FLOAT_SAMPLE_SIZE * 2).fill(0xff);
-    expect(captureError(() => parseGyroRecord(garbage, NO_HINTS))).toMatchObject({
+    expect(captureError(() => selectGyroSampleLayout(NO_HINTS, garbage))).toMatchObject({
       code: 'unsupported-gyro-record',
     });
   });
 
   it('trusts the info record hint over the payload contents', () => {
     const payload = new Uint8Array(RAW_SAMPLE_SIZE * FLOAT_SAMPLE_SIZE);
-    expect(parseGyroRecord(payload, { isRawGyro: false, ranges: undefined }).layout).toBe('float');
+    expect(selectGyroSampleLayout({ isRawGyro: false, ranges: undefined }, payload)?.name).toBe(
+      'float',
+    );
+  });
+
+  it('selects nothing with neither a hint nor a record to look at', () => {
+    expect(selectGyroSampleLayout(NO_HINTS, undefined)).toBeUndefined();
   });
 
   it('decodes an empty payload to an empty track when the layout is known', () => {
-    expect(
-      parseGyroRecord(new Uint8Array(), { isRawGyro: true, ranges: undefined }).track.isEmpty,
-    ).toBe(true);
+    expect(read(new Uint8Array(), { isRawGyro: true, ranges: undefined }).track.isEmpty).toBe(true);
   });
 });

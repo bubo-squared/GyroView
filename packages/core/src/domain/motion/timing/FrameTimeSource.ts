@@ -19,7 +19,7 @@ export interface FrameTimingContext {
    * Presentation timestamps of the video track's samples, in seconds from the track start, in
    * frame order. Supplied by the demuxer.
    */
-  readonly trackTimestamps: readonly number[] | undefined;
+  readonly trackTimestamps: readonly Seconds[] | undefined;
 }
 
 export interface FrameTimeSource {

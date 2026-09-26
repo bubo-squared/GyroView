@@ -1,6 +1,6 @@
 import type { Matrix3 } from './Matrix3';
 import { magnitudeOf, type Vector3 } from './Vector3';
-import type { Radians } from '../units/angle';
+import { radians, type Radians } from '../units/angle';
 
 /**
  * A unit quaternion `[x, y, z, w]` representing a rotation; the same handedness and axis
@@ -35,7 +35,7 @@ export function quaternionFromRotationVector(omega: Vector3): Quaternion {
   const angle = magnitudeOf(omega);
   return angle < NEGLIGIBLE_ANGLE
     ? IDENTITY_QUATERNION
-    : quaternionFromAxisAngle(omega, angle as Radians);
+    : quaternionFromAxisAngle(omega, radians(angle));
 }
 
 /**

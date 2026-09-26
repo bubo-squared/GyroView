@@ -13,7 +13,7 @@ import {
 import type { ByteReader } from '../../../../shared/binary/ByteReader';
 import type { Vector3 } from '../../../../shared/math/Vector3';
 import { degrees, degreesToRadians } from '../../../../shared/units/angle';
-import type { Microseconds } from '../../../../shared/units/time';
+import { microseconds, type Microseconds } from '../../../../shared/units/time';
 import type { SensorRanges } from '../../info/RecordingInfo';
 
 /**
@@ -32,8 +32,12 @@ export class RawGyroSampleLayout implements GyroSampleLayout {
     this.angularVelocityScale = degreesToRadians(degrees(gyroscopeDps)) / RAW_FULL_SCALE;
   }
 
+  public captureTimeOf(stamp: number): Microseconds {
+    return microseconds(stamp);
+  }
+
   public timestampAt(reader: ByteReader, offset: number): Microseconds {
-    return reader.uint64LeAt(offset + RAW_TIMESTAMP_OFFSET) as Microseconds;
+    return this.captureTimeOf(reader.uint64LeAt(offset + RAW_TIMESTAMP_OFFSET));
   }
 
   public accelerationAt(reader: ByteReader, offset: number): Vector3 {

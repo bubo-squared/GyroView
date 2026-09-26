@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { WallClock } from './WallClock';
 import { describePlaybackClockContract } from '../../testing/PlaybackClock.contract';
-import { seconds, secondsToMilliseconds } from '../../shared/units/time';
+import { milliseconds, seconds, secondsToMilliseconds } from '../../shared/units/time';
 
 function clockAt(): { clock: WallClock; advance: (ms: number) => void } {
   let nowMs = 1000;
-  const clock = new WallClock(() => nowMs);
+  const clock = new WallClock(() => milliseconds(nowMs));
   return {
     clock,
     advance: (ms: number): void => {
@@ -69,7 +69,7 @@ describe('WallClock', () => {
 
   it('ignores a second start and a pause while already paused', async () => {
     let nowMs = 0;
-    const clock = new WallClock(() => nowMs);
+    const clock = new WallClock(() => milliseconds(nowMs));
     await clock.start();
     nowMs = 1000;
     await clock.start();
@@ -81,7 +81,7 @@ describe('WallClock', () => {
   });
 
   it('never ends or fails by itself', () => {
-    const clock = new WallClock(() => 0);
+    const clock = new WallClock(() => milliseconds(0));
     expect(clock.hasEnded).toBe(false);
     expect(clock.failure).toBeUndefined();
   });

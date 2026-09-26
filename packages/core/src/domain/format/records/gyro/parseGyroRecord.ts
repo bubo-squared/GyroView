@@ -15,7 +15,7 @@ const MIN_PLAUSIBLE_INTERVAL_US = 100;
 const MAX_PLAUSIBLE_INTERVAL_US = 10_000;
 const SAMPLES_NEEDED_TO_GUESS = 2;
 
-export interface GyroRecordHints {
+export interface GyroLayoutHints {
   /**
    * `is_raw_gyro` from the info record when present; otherwise the layout is inferred from the
    * timestamps the candidate layouts decode.
@@ -26,14 +26,15 @@ export interface GyroRecordHints {
 
 export interface ParsedGyroRecord {
   readonly track: GyroTrack;
-  readonly layout: GyroSampleLayout['name'];
+  /**
+   * The name of the sample layout the record was read with.
+   */
+  readonly layout: string;
   /**
    * Bytes after the last whole sample. Real ONE R recordings carry one; they are ignored.
    */
   readonly strayBytes: number;
 }
-
-export type GyroLayoutName = GyroSampleLayout['name'];
 
 /**
  * Enough leading bytes of a gyro record to tell its layout: two samples of the larger layout.
@@ -41,22 +42,32 @@ export type GyroLayoutName = GyroSampleLayout['name'];
 export const GYRO_LAYOUT_PROBE_SIZE = FLOAT_SAMPLE_SIZE * SAMPLES_NEEDED_TO_GUESS;
 
 /**
- * Decides the sample layout from the info record hint or, failing that, from the timestamps the
- * candidate layouts decode in the first bytes of the record.
+ * The sample layout of the gyro record: from the info record's flag when present, otherwise from
+ * the timestamps the candidates decode in the record's first bytes (`head`). Undefined when
+ * there is neither a flag nor a record to look at.
  */
-export function inferGyroLayout(
-  payloadHead: Uint8Array,
-  isRawGyro: boolean | undefined,
-): GyroLayoutName {
-  return chooseLayout(payloadHead, { isRawGyro, ranges: undefined }).name;
+export function selectGyroSampleLayout(
+  hints: GyroLayoutHints,
+  head: Uint8Array | undefined,
+): GyroSampleLayout | undefined {
+  const raw = new RawGyroSampleLayout(hints.ranges);
+  const float = new FloatGyroSampleLayout();
+  if (hints.isRawGyro !== undefined) return hints.isRawGyro ? raw : float;
+  if (head === undefined) return undefined;
+  const plausible = [raw, float].filter((layout) => hasPlausibleTimestamps(head, layout));
+  const [winner] = plausible;
+  if (winner && plausible.length === 1) return winner;
+  throw new GyroViewError(
+    'unsupported-gyro-record',
+    `cannot tell the gyro sample layout from the first ${head.byteLength} bytes without the info record`,
+  );
 }
 
 /**
- * Decodes the gyro record payload into a {@link GyroTrack}. Whole samples only: a partial
- * sample at the end is tolerated and reported, never rejected.
+ * Decodes the gyro record payload into a {@link GyroTrack} with the given layout. Whole samples
+ * only: a partial sample at the end is tolerated and reported, never rejected.
  */
-export function parseGyroRecord(payload: Uint8Array, hints: GyroRecordHints): ParsedGyroRecord {
-  const layout = chooseLayout(payload, hints);
+export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): ParsedGyroRecord {
   const count = Math.floor(payload.byteLength / layout.sampleSize);
   const reader = new ByteReader(payload);
   const captureTimes = new Float64Array(count);
@@ -73,19 +84,6 @@ export function parseGyroRecord(payload: Uint8Array, hints: GyroRecordHints): Pa
     layout: layout.name,
     strayBytes: payload.byteLength % layout.sampleSize,
   };
-}
-
-function chooseLayout(payload: Uint8Array, hints: GyroRecordHints): GyroSampleLayout {
-  const raw = new RawGyroSampleLayout(hints.ranges);
-  const float = new FloatGyroSampleLayout();
-  if (hints.isRawGyro !== undefined) return hints.isRawGyro ? raw : float;
-  const plausible = [raw, float].filter((layout) => hasPlausibleTimestamps(payload, layout));
-  const [winner] = plausible;
-  if (winner && plausible.length === 1) return winner;
-  throw new GyroViewError(
-    'unsupported-gyro-record',
-    `cannot tell the gyro sample layout of a ${payload.byteLength}-byte record without the info record`,
-  );
 }
 
 /**

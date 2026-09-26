@@ -18,10 +18,12 @@ export class FloatGyroSampleLayout implements GyroSampleLayout {
   public readonly name = 'float';
   public readonly sampleSize = FLOAT_SAMPLE_SIZE;
 
+  public captureTimeOf(stamp: number): Microseconds {
+    return millisecondsToMicroseconds(milliseconds(stamp));
+  }
+
   public timestampAt(reader: ByteReader, offset: number): Microseconds {
-    return millisecondsToMicroseconds(
-      milliseconds(reader.uint64LeAt(offset + FLOAT_TIMESTAMP_OFFSET)),
-    );
+    return this.captureTimeOf(reader.uint64LeAt(offset + FLOAT_TIMESTAMP_OFFSET));
   }
 
   public accelerationAt(reader: ByteReader, offset: number): Vector3 {

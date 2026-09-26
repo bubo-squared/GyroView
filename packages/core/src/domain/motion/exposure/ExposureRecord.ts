@@ -1,6 +1,6 @@
 import type { ReadonlyFloat64Array } from '../../../shared/binary/ReadonlyTypedArray';
 import { ensureIndexInRange, ensureInvariant } from '../../../shared/errors/GyroViewError';
-import type { Microseconds, Seconds } from '../../../shared/units/time';
+import { type Microseconds, microseconds, seconds, type Seconds } from '../../../shared/units/time';
 
 export interface ExposureEntry {
   readonly captureTime: Microseconds;
@@ -36,8 +36,8 @@ export class ExposureRecord {
   public entryAt(index: number): ExposureEntry {
     ensureIndexInRange(index, this.length, 'exposure entry');
     return {
-      captureTime: this.captureTimeStore[index] as Microseconds,
-      shutterTime: this.shutterTimeStore[index] as Seconds,
+      captureTime: microseconds(this.captureTimeStore[index] ?? 0),
+      shutterTime: seconds(this.shutterTimeStore[index] ?? 0),
     };
   }
 

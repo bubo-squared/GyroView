@@ -172,6 +172,7 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
       const gyro = await recording.readGyroRecord();
       if (!calibration || !gyro) throw new Error(`${sample.name} lacks calibration or gyro`);
       const clock = await recording.captureClock();
+      if (!clock) throw new Error('the recording has no first-frame timestamp');
       const canvas = document.createElement('canvas');
       canvas.width = WIDTH;
       canvas.height = HEIGHT;

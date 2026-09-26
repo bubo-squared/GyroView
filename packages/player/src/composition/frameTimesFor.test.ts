@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { frameTimesFor } from './frameTimesFor';
 import {
+  clockOf,
   officeRecords,
   recordingOf,
   syntheticRecordingBytes,
@@ -37,7 +38,7 @@ describe('frameTimesFor', () => {
     const recording = await recordingOf(syntheticRecordingBytes(fixture.records));
     const track = trackOf(10);
 
-    const resolved = await frameTimesFor(recording, track, await recording.captureClock());
+    const resolved = await frameTimesFor(recording, track, await clockOf(recording));
 
     expect(resolved?.source).toBe('exposure-record');
     expect(resolved?.frameTimes.frameCount).toBe(10);
@@ -49,7 +50,7 @@ describe('frameTimesFor', () => {
     const recording = await recordingOf(syntheticRecordingBytes(fixture.records));
     const track = trackOf(30);
 
-    const resolved = await frameTimesFor(recording, track, await recording.captureClock());
+    const resolved = await frameTimesFor(recording, track, await clockOf(recording));
 
     expect(resolved?.source).toBe('track-timestamps');
     expect(resolved?.frameTimes.frameCount).toBe(30);
@@ -67,7 +68,7 @@ describe('frameTimesFor', () => {
       firstTimestamp: seconds(0.7),
     });
 
-    const resolved = await frameTimesFor(recording, track, await recording.captureClock());
+    const resolved = await frameTimesFor(recording, track, await clockOf(recording));
 
     expect(resolved?.frameTimes.frameAt(0).videoTime).toBeCloseTo(0, 6);
     expect(resolved?.frameTimes.frameAt(10).videoTime).toBeCloseTo(1, 6);

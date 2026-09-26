@@ -31,7 +31,8 @@ describe.skipIf(!hasSamples())('reading the real X5 recordings', () => {
         const exposure = await recording.readExposureRecord();
         expect(exposure?.length).toBe(15_720);
         const clock = await recording.captureClock();
-        expect(exposure?.indexAtOrAfter(clock.firstFrameCaptureTime)).toBe(6);
+        expect(clock).toBeDefined();
+        if (clock) expect(exposure?.indexAtOrAfter(clock.firstFrameCaptureTime)).toBe(6);
       } finally {
         await source.close();
       }

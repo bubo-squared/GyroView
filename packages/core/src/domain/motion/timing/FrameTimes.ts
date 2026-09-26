@@ -1,6 +1,6 @@
 import type { CaptureClock } from './CaptureClock';
 import { ensureIndexInRange, ensureInvariant } from '../../../shared/errors/GyroViewError';
-import { seconds, type Microseconds, type Seconds } from '../../../shared/units/time';
+import { type Microseconds, microseconds, seconds, type Seconds } from '../../../shared/units/time';
 
 export interface FrameTime {
   readonly index: number;
@@ -61,8 +61,9 @@ export class FrameTimes {
 
   public frameAt(index: number): FrameTime {
     ensureIndexInRange(index, this.frameCount, 'frame');
-    const captureTime = this.captureTimes[index] as Microseconds;
-    const shutterTime = this.shutterTimes?.[index] as Seconds | undefined;
+    const captureTime = microseconds(this.captureTimes[index] ?? 0);
+    const shutter = this.shutterTimes?.[index];
+    const shutterTime = shutter === undefined ? undefined : seconds(shutter);
     const videoTime = this.clock.videoTimeOf(captureTime);
     return {
       index,

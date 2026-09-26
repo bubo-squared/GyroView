@@ -2,6 +2,7 @@ import {
   readRecording,
   RecordType,
   Signal,
+  type CaptureClock,
   type Demuxer,
   type Recording,
   type ResourceLocator,
@@ -124,6 +125,15 @@ export function syntheticRecordingBytes(trailer: SyntheticTrailer): Uint8Array {
 
 export function recordingOf(bytes: Uint8Array): Promise<Recording> {
   return readRecording(new InMemoryRandomAccessSource(bytes));
+}
+
+/**
+ * The recording's capture clock, which the fixture always has.
+ */
+export async function clockOf(recording: Recording): Promise<CaptureClock> {
+  const clock = await recording.captureClock();
+  if (!clock) throw new Error('the fixture has no first-frame timestamp');
+  return clock;
 }
 
 /**

@@ -1,3 +1,6 @@
+import type { Milliseconds, Seconds } from '../../../shared/units/time';
+import type { FrameTimeSourceName } from '../../motion/timing/FrameTimeSource';
+
 /**
  * Everything the player learns from the info record. Absent fields are `undefined`; nothing here
  * is assumed present except on cameras where a field has been observed.
@@ -47,24 +50,27 @@ export interface RecordingInfo {
   readonly captureMode: string | undefined;
   /**
    * Capture-clock time of the first encoded frame, in the unit the gyro record uses
-   * (microseconds for the raw layout, milliseconds for the float layout). Convert through
-   * `CaptureClock.fromInfo`, never by hand.
+   * (microseconds for the raw layout, milliseconds for the float layout). Resolve it through
+   * `firstFrameCaptureTime`, never by hand.
    */
   readonly firstFrameTimestamp: number | undefined;
   /**
-   * Rolling-shutter readout duration of one frame, in milliseconds.
+   * Rolling-shutter readout duration of one frame.
    */
-  readonly readoutTimeMs: number | undefined;
+  readonly readoutTime: Seconds | undefined;
   readonly fileGroup: FileGroup | undefined;
   readonly windowCrop: WindowCrop | undefined;
   /**
-   * How much later than the frames the gyro samples are stamped, in milliseconds.
+   * How much later than the frames the gyro samples are stamped.
    */
-  readonly gyroOffsetMs: number | undefined;
+  readonly gyroOffset: Milliseconds | undefined;
   readonly totalFrames: number | undefined;
   readonly gyroType: number | undefined;
   readonly isRawGyro: boolean | undefined;
-  readonly ptsType: number | undefined;
+  /**
+   * The frame time source the camera says to trust first (`pts_type`).
+   */
+  readonly preferredFrameTimeSource: FrameTimeSourceName | undefined;
   readonly sensorRanges: SensorRanges | undefined;
   readonly fileLayout: number | undefined;
   readonly trackOrder: number | undefined;

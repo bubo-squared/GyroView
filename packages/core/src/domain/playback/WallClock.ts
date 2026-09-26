@@ -1,6 +1,7 @@
 import type { PlaybackClock } from '../../ports/PlaybackClock';
 import {
   milliseconds,
+  type Milliseconds,
   millisecondsToSeconds,
   seconds,
   type Seconds,
@@ -17,7 +18,7 @@ export class WallClock implements PlaybackClock {
   private positionAtAnchor: Seconds = seconds(0);
   private anchorMs = 0;
 
-  public constructor(private readonly now: () => number = () => Date.now()) {}
+  public constructor(private readonly now: () => Milliseconds = () => milliseconds(Date.now())) {}
 
   public get currentTime(): Seconds {
     if (!this.isRunningNow) return this.positionAtAnchor;

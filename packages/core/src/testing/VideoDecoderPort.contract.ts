@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import type { VideoTrackReader } from '../ports/Demuxer';
 import type { EncodedVideoPacket } from '../ports/VideoTrack';
 import type { DecodedFrame, VideoDecoderHandle, VideoDecoderPort } from '../ports/VideoDecoderPort';
-import { seconds } from '../shared/units/time';
 
 /**
  * Whatever a decoder refuses, fake or real, crosses the port as a typed `decode` failure.
@@ -29,7 +28,7 @@ interface OpenedDecoder<Handle> {
 async function firstTwoPackets(
   track: VideoTrackReader,
 ): Promise<[key: EncodedVideoPacket, delta: EncodedVideoPacket]> {
-  const key = await track.keyPacketAt(seconds(0));
+  const key = await track.firstKeyPacket();
   if (!key) throw new Error('the contract track has no key packet');
   const packets: EncodedVideoPacket[] = [];
   for await (const packet of track.packetsFrom(key)) {

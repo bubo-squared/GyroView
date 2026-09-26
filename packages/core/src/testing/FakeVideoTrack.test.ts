@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { FakeVideoTrack } from './FakeVideoTrack';
+import { seconds } from '../shared/units/time';
 import { describeVideoTrackReaderContract } from './VideoTrackReader.contract';
 
 describeVideoTrackReaderContract(
@@ -10,6 +11,21 @@ describeVideoTrackReaderContract(
       new FakeVideoTrack({ trackIndex: 0, frameRate: 10, frameCount: 30, framesPerGop: 10 }),
     ),
   { frameCount: 30, frameRate: 10, framesPerGop: 10 },
+);
+
+describeVideoTrackReaderContract(
+  'FakeVideoTrack starting at 0.7 s',
+  () =>
+    Promise.resolve(
+      new FakeVideoTrack({
+        trackIndex: 0,
+        frameRate: 10,
+        frameCount: 30,
+        framesPerGop: 10,
+        firstTimestamp: seconds(0.7),
+      }),
+    ),
+  { frameCount: 30, frameRate: 10, framesPerGop: 10, firstTimestamp: 0.7 },
 );
 
 describe('FakeVideoTrack shape options', () => {

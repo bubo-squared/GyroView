@@ -23,6 +23,16 @@ ffmpeg -f lavfi -i "testsrc=size=64x64:rate=10" -f lavfi -i "testsrc2=size=64x64
   test/fixtures/synthetic/dual-track-aac-64px-10fps-3s.mp4
 ```
 
+`late-start-64px-10fps-3s.mp4`: one 64x64 H.264 track like the above whose edit list starts it
+at 0.7 s, for the track reader contract on a track that does not start at zero. No real
+recording is known to start later; verify on real file. Regenerate with:
+
+```sh
+ffmpeg -f lavfi -i "testsrc=size=64x64:rate=10" -t 3 -c:v libx264 -preset ultrafast -g 10 -bf 0 \
+  -pix_fmt yuv420p -tag:v avc1 -output_ts_offset 0.7 -movflags +faststart \
+  test/fixtures/synthetic/late-start-64px-10fps-3s.mp4
+```
+
 `x5-trailer-dual-track-64px-10fps-3s.mp4` and `x5-trailer-dual-track-aac-64px-10fps-3s.mp4`:
 the two files above followed by an `inst`-wrapped, indexed Insta360 trailer assembled from the
 office X5 byte slices in `test/fixtures/x5/office` (the info record with its calibration, the

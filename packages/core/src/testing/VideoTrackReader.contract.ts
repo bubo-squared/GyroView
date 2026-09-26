@@ -8,6 +8,10 @@ export interface VideoTrackReaderExpectations {
   readonly frameCount: number;
   readonly frameRate: number;
   readonly framesPerGop: number;
+  /**
+   * When the track's first frame is, in seconds; zero unless an edit list shifts it.
+   */
+  readonly firstTimestamp?: number;
 }
 
 function collect(packets: AsyncIterable<EncodedVideoPacket>): Promise<EncodedVideoPacket[]> {
@@ -16,27 +20,29 @@ function collect(packets: AsyncIterable<EncodedVideoPacket>): Promise<EncodedVid
 
 /**
  * The VideoTrackReader port contract, run against the fake and against every real adapter over
- * a track of `frameCount` frames at `frameRate` with a key frame every `framesPerGop`.
+ * a track of `frameCount` frames at `frameRate` with a key frame every `framesPerGop`, its first
+ * frame at `firstTimestamp`.
  */
 export function describeVideoTrackReaderContract(
   name: string,
   open: () => Promise<VideoTrackReader>,
   expected: VideoTrackReaderExpectations,
 ): void {
+  const start = expected.firstTimestamp ?? 0;
   const frameDuration = 1 / expected.frameRate;
-  const secondGopStart = expected.framesPerGop * frameDuration;
+  const secondGopStart = start + expected.framesPerGop * frameDuration;
   const insideSecondGop = seconds(secondGopStart + 2 * frameDuration);
 
   describe(`VideoTrackReader contract (${name})`, () => {
     it('finds the key packet at or before a time and none before the first packet', async () => {
       const track = await open();
-      const first = await track.keyPacketAt(seconds(0));
+      const first = await track.keyPacketAt(seconds(start));
       expect(first?.isKeyFrame).toBe(true);
-      expect(first?.timestamp).toBeCloseTo(0, 6);
+      expect(first?.timestamp).toBeCloseTo(start, 6);
       const key = await track.keyPacketAt(insideSecondGop);
       expect(key?.isKeyFrame).toBe(true);
       expect(key?.timestamp).toBeCloseTo(secondGopStart, 6);
-      await expect(track.keyPacketAt(seconds(-1))).resolves.toBeUndefined();
+      await expect(track.keyPacketAt(seconds(start - frameDuration))).resolves.toBeUndefined();
     });
 
     it('hands out its first key packet, from which the whole track iterates', async () => {
@@ -44,7 +50,7 @@ export function describeVideoTrackReaderContract(
       const first = await track.firstKeyPacket();
       if (!first) throw new Error('no first key packet');
       expect(first.isKeyFrame).toBe(true);
-      expect(first.timestamp).toBeCloseTo(0, 6);
+      expect(first.timestamp).toBeCloseTo(start, 6);
       await expect(collect(track.packetsFrom(first))).resolves.toHaveLength(expected.frameCount);
     });
 
@@ -57,12 +63,12 @@ export function describeVideoTrackReaderContract(
       expect(packets[0]?.timestamp).toBeCloseTo(key.timestamp, 6);
       const timestamps = packets.map((packet) => packet.timestamp);
       expect(timestamps).toEqual(timestamps.toSorted((left, right) => left - right));
-      expect(timestamps.at(-1)).toBeCloseTo((expected.frameCount - 1) * frameDuration, 4);
+      expect(timestamps.at(-1)).toBeCloseTo(start + (expected.frameCount - 1) * frameDuration, 4);
     });
 
     it('refuses to iterate from a packet it did not hand out', async () => {
       const track = await open();
-      const key = await track.keyPacketAt(seconds(0));
+      const key = await track.firstKeyPacket();
       if (!key) throw new Error('no key packet');
       await expect(collect(track.packetsFrom({ ...key }))).rejects.toMatchObject({
         code: 'invariant-violation',

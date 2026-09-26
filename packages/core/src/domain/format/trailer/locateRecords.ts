@@ -1,5 +1,5 @@
 import { RecordHeader } from './RecordHeader';
-import { RecordIndex } from './RecordIndex';
+import { parseRecordIndex } from './parseRecordIndex';
 import type { RecordLocation } from './RecordLocation';
 import type { TrailerLayout } from './TrailerLayout';
 import { RECORD_HEADER_SIZE, RecordType, TRAILER_FOOTER_SIZE } from '../constants';
@@ -30,7 +30,7 @@ async function locateThroughIndex(
     indexEnd - layout.lastHeader.payloadSize,
     layout.lastHeader.payloadSize,
   );
-  const records = RecordIndex.parse(await source.read(indexRange), layout.payloadStart).records;
+  const records = parseRecordIndex(await source.read(indexRange), layout.payloadStart);
   for (const record of records) ensureInsideTrailer(record, layout.payloadStart, indexRange.offset);
   return records;
 }

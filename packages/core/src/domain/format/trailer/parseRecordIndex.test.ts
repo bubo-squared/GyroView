@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { RecordIndex } from './RecordIndex';
+import { parseRecordIndex } from './parseRecordIndex';
 import { captureError } from '../../../../test/support/errors';
 import { loadFixture, loadManifest } from '../../../../test/support/fixtures';
 
 const manifest = loadManifest();
 
-describe('RecordIndex', () => {
+describe('parseRecordIndex', () => {
   it.each(['office', 'sailing'] as const)('locates every record of the %s recording', (sample) => {
     const entry = manifest[sample];
     const indexBytes = loadFixture(`x5/${sample}/footer-with-index.bin`).subarray(
@@ -14,10 +14,10 @@ describe('RecordIndex', () => {
       entry.indexSize,
     );
 
-    const index = RecordIndex.parse(indexBytes, entry.payloadStart);
+    const records = parseRecordIndex(indexBytes, entry.payloadStart);
 
     const located = Object.fromEntries(
-      index.records.map((record) => [
+      records.map((record) => [
         String(record.id),
         { format: record.format, size: record.payload.length, offset: record.payload.offset },
       ]),
@@ -32,12 +32,11 @@ describe('RecordIndex', () => {
   });
 
   it('skips empty slots', () => {
-    const index = RecordIndex.parse(new Uint8Array(30), 1000);
-    expect(index.records).toEqual([]);
+    expect(parseRecordIndex(new Uint8Array(30), 1000)).toEqual([]);
   });
 
   it('rejects an index whose size is not a whole number of slots', () => {
-    expect(captureError(() => RecordIndex.parse(new Uint8Array(25), 0))).toMatchObject({
+    expect(captureError(() => parseRecordIndex(new Uint8Array(25), 0))).toMatchObject({
       code: 'invalid-trailer',
     });
   });

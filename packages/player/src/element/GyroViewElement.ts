@@ -99,14 +99,23 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     this.observePlayer();
   }
 
+  /**
+   * Where the player is: `idle` or `loading`, then the loaded recording's playback state.
+   */
   public get status(): PlayerStatus {
     return this.player.status;
   }
 
+  /**
+   * What the player learned about the loaded recording; undefined until it is ready.
+   */
   public get metadata(): PlayerMetadata | undefined {
     return this.player.metadata;
   }
 
+  /**
+   * The media time shown, in seconds; setting it seeks there exactly.
+   */
   public get currentTime(): number {
     return this.player.currentTime;
   }
@@ -115,14 +124,23 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     this.player.seek(seconds(time));
   }
 
+  /**
+   * The loaded recording's length in seconds; 0 without one.
+   */
   public get duration(): number {
     return this.player.duration;
   }
 
+  /**
+   * True unless playback is under way or waiting for data to go on, as a media element's.
+   */
   public get paused(): boolean {
     return this.player.isPaused;
   }
 
+  /**
+   * Where the normal view looks: yaw and pitch in degrees, and the horizontal field of view.
+   */
   public get view(): ViewState {
     return this.player.view;
   }
@@ -155,18 +173,30 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     }
   }
 
+  /**
+   * Starts playing, waiting for a load in progress; rejects when the browser refuses to start.
+   */
   public play(): Promise<void> {
     return this.player.play();
   }
 
+  /**
+   * Pauses, keeping the frame on screen.
+   */
   public pause(): void {
     this.player.pause();
   }
 
+  /**
+   * Pauses and goes back to the start.
+   */
   public stop(): void {
     this.player.stop();
   }
 
+  /**
+   * Seeks exactly to `time` seconds.
+   */
   public seek(time: number): void {
     this.player.seek(seconds(time));
   }
@@ -178,26 +208,47 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     return this.player.scrub(seconds(time));
   }
 
+  /**
+   * Points the normal view at `yaw` and `pitch`, in degrees: yaw positive to the right, pitch
+   * positive up.
+   */
   public lookAt(yaw: number, pitch: number): void {
     this.player.lookAt(degrees(yaw), degrees(pitch));
   }
 
+  /**
+   * Brings the current view mode back to how it starts, the others keeping their framing.
+   */
   public resetView(): void {
     this.player.resetView();
   }
 
+  /**
+   * Zooms by `steps` about the centre: positive zooms in, each step by a factor of 1.1, within
+   * each view mode's limits.
+   */
   public zoom(steps: number): void {
     this.player.zoom(steps);
   }
 
+  /**
+   * Stabilizes the picture in `mode` (`off`, `lock`, `horizon`, `follow`).
+   */
   public setStabilization(mode: StabilizationMode): void {
     this.stabilization = mode;
   }
 
+  /**
+   * Shows the picture in `mode` (`normal`, `equirectangular`, `raw-lenses`).
+   */
   public setViewMode(mode: ViewMode): void {
     this.viewMode = mode;
   }
 
+  /**
+   * Fills the screen with the player, through the Fullscreen API or pinned over the page, or
+   * leaves it.
+   */
   public toggleFullscreen(): Promise<void> {
     return this.fullscreen.toggle();
   }
@@ -316,8 +367,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
 }
 
 /**
- * A failed load or a refused play has already been dispatched as an `error` event or handled
- * by the session; the promise adds nothing.
+ * A failed load has already been dispatched as an `error` event; the promise adds nothing.
  */
 function ignoreReportedFailure(): void {
   // Intentionally empty.

@@ -3,7 +3,7 @@
 What the player does today, what is verified on real material, what is waiting on something
 external, and what a next step could be. Dated so a reader can tell how current it is.
 
-## Done (as of 2026-09-25)
+## Done (as of 2026-09-26)
 
 **Playback of raw recordings.** Opens `.insv` files over HTTP byte ranges or from local
 files; reads the Insta360 trailer (indexed or bare, `inst`-wrapped or not), the protobuf info
@@ -17,7 +17,9 @@ ahead; the first frame shows before play; the seek bar scrubs to key frames.
 equidistant lens model), with a feathered blend across the overlap and per-channel exposure
 matching measured along the seam. A normal rectilinear view of 30 to 120 degrees with drag,
 pinch, wheel and keyboard look-around; the whole sphere as a level, letterboxed
-equirectangular panorama; and the raw lens images side by side, unstitched (ADR 0015).
+equirectangular panorama; and the raw lens images side by side or stacked, unstitched
+(ADR 0015). Every view zooms toward the pointer, the flat ones up to four times, and moves
+once zoomed (ADR 0018).
 
 **Stabilization.** Gyro and accelerometer integrated into the camera's orientation, sampled at
 each frame's mid-exposure; lock, horizon and follow modes, or off.

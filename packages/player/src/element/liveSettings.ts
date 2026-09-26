@@ -61,13 +61,17 @@ export function defineLiveSettings(element: HTMLElement, player: Player): void {
 }
 
 function viewAccessors(player: Player): Pick<Accessors, 'fov' | 'yaw' | 'pitch'> {
-  const angle = (key: keyof ViewState): Accessor => ({
+  const angle = (key: keyof ViewState, property: string): Accessor => ({
     get: (): unknown => player.view[key],
     set: (value): void => {
-      player.setView({ ...player.view, [key]: angleOf(value, key) });
+      player.setView({ ...player.view, [key]: angleOf(value, property) });
     },
   });
-  return { fov: angle('fieldOfView'), yaw: angle('yaw'), pitch: angle('pitch') };
+  return {
+    fov: angle('fieldOfView', 'fov'),
+    yaw: angle('yaw', 'yaw'),
+    pitch: angle('pitch', 'pitch'),
+  };
 }
 
 function soundAccessors(player: Player): Pick<Accessors, 'muted' | 'loop' | 'volume'> {

@@ -63,13 +63,15 @@ version, frame time source, gyro and IMU frame, audio), `statuschange` (`idle`,
 `loading`, `ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`), `play`,
 `waiting`, `playing`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `frame`,
 `viewchange`, `viewmodechange`, `stabilizationchange`, `volumechange` (`{ volume, isMuted }`),
-`warning` (a feature degraded: no gyro,
-unverified IMU frame, silent clock) and `error` (`code` and `message`; the codes
-are listed in `docs/DEPLOYMENT.md`).
+`warning` (something the player worked around: a degraded feature such as no gyro, an
+unverified IMU frame or a silent clock, an attribute value it ignored, a refused start, a seek
+bar position it could not show, a loop that could not restart) and `error` (`code` and
+`message`; the codes are listed in `docs/DEPLOYMENT.md`).
 
 Keyboard: space or K play/pause, J and L seek, S stops, arrows look around (Shift + arrows
 seek), plus and minus zoom, 0 resets the view, M mutes, F fills the screen, Escape closes an
-open menu and then leaves fullscreen. A focused slider keeps its arrows and a focused button
+open menu first and then leaves fullscreen (in the browser's own fullscreen, the browser takes
+the first Escape itself). A focused slider keeps its arrows and a focused button
 its Space. Mouse and touch: drag to look, wheel or pinch to zoom toward the pointer or the
 fingers (the keys zoom about the centre), tap to play or pause. The equirectangular panorama and
 the raw lenses zoom up to four times; a zoomed panorama moves up and down as well as turning,

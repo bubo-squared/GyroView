@@ -24,8 +24,9 @@ between the fingers) where it is. The keys and `zoom(steps)` zoom about the cent
   a scale and the point of the picture at the centre of the viewport. The picture never shows a
   bar it could fill, and stays centred along an axis where it is smaller than the viewport.
   - The panorama keeps its centre in the middle across: it wraps, so sideways the zoom's anchor
-    becomes a turn of the yaw. Up and down it moves within its top and bottom, by drags and the
-    up and down arrows; it stays level.
+    becomes a turn of the yaw, and a drag turns it a whole turn per width of the picture as
+    shown (ADR 0015's "per viewport width" is the fitted case). Up and down it moves within its
+    top and bottom, by drags and the up and down arrows; it stays level.
   - The raw lens tiles are enlarged together and, once zoomed, move in every direction by drags
     and arrows within their edges.
 - **One framing** holds the view and both magnifications (`Framing`). Each mode changes its own

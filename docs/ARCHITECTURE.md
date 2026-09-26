@@ -197,7 +197,7 @@ The composition root and the user-facing element, in three layers.
 
 - **`composition`**: `openRecording` is the use case that opens what a `PlayerSource` names,
   following the data: `readRecording`, demux every input, `detectLensLayout` (fetching the
-  sibling of a lone split file when the server has it), calibration required, the decode probe
+  other lens file of a lone split file when the server has it), calibration required, the decode probe
   (an undecodable recording is an error; nothing plays in its place, ADR 0017), then the core's
   `timeRecording`.
   It depends on `RecordingPorts` (`SourceOpener`, `Demuxer`, `VideoDecoderPort`,
@@ -227,7 +227,7 @@ The composition root and the user-facing element, in three layers.
   `ChoiceMenu` behind an icon button; stabilization is offered only for a recording with a gyro
   in a stitched view mode). The bar's markup and styles come from `controlsMarkup` and
   `controls.css`, which the element's
-  template interpolates, and every button draws an SVG from `icons`. `ViewGestures` turns drags,
+  template interpolates, and every icon button draws an SVG from `icons`. `ViewGestures` turns drags,
   pinches and wheel turns into view changes; `keyboard` maps keys to commands;
   `FullscreenToggle` and `IdleWatcher` handle filling the screen and fading the controls.
 

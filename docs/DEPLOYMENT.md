@@ -75,7 +75,7 @@ Every failure is a `GyroViewError` with a stable `code`; the `error` event carri
 | `source-truncated`      | Fewer bytes came back than asked: the file changed or the server misbehaves. |
 | `codec-unsupported`     | This browser cannot decode the tracks (no HEVC hardware, or not a secure     |
 |                         | context).                                                                    |
-| `missing-second-file`   | A split-file recording without its `_10_` sibling: set `src2`.               |
+| `missing-second-file`   | A split-file recording without its `_10_` other lens file: set `src2`.       |
 | `no-calibration`        | The file carries no lens calibration; it cannot be stitched.                 |
 | `no-info-record`        | Not an Insta360 recording (or a truncated one).                              |
 | `no-key-frame`          | A video track has no key frame to start decoding from.                       |
@@ -86,6 +86,7 @@ Every failure is a `GyroViewError` with a stable `code`; the `error` event carri
 | `render-unavailable`    | No WebGL2 context, or the stitching shader did not compile.                  |
 | `invalid-argument`      | A property, method or embed command got a value it does not accept.          |
 | `embed-destroyed`       | A command reached an embed handle after `destroy()`.                         |
+| `invariant-violation`   | A failure the player did not expect, the original error as its cause.        |
 
-Other codes (`invalid-*`, `unsupported-*`) come from a
+Other codes (`invalid-*`, `unsupported-*`, `binary-*`, `index-out-of-range`) come from a
 damaged or unusual file and name the record concerned.

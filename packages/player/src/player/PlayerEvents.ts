@@ -51,7 +51,8 @@ export interface PlayerEvents {
    */
   readonly volumechange: SoundLevel;
   /**
-   * A feature degraded gracefully (no gyro, unverified IMU frame, silent clock).
+   * Something the player worked around: a degraded feature (no gyro, an unverified IMU frame, a
+   * silent clock), a refused autoplay, a loop that could not restart.
    */
   readonly warning: string;
   readonly error: GyroViewError;

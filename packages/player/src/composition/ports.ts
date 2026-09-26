@@ -1,12 +1,11 @@
 import type {
   Demuxer,
-  GainMatchingFrameSink,
   PictureRenderer,
   PlaybackSession,
   RandomAccessSource,
   ResourceLocator,
   Signal,
-  StabilizingFrameSink,
+  StabilizationMode,
   VideoDecoderPort,
 } from '@gyroview/core';
 
@@ -51,14 +50,19 @@ export interface PipelineParts {
 
 /**
  * Everything running for one loaded recording, as the player drives it: the session, the view
- * and size of the picture, and the picture settings. The stabilizing sink is present only when
- * the recording had a gyro to integrate.
+ * and size of the picture, and the picture settings, each shown at once, even while paused.
  */
 export interface Pipeline {
   readonly session: PlaybackSession<VideoFrame>;
   readonly renderer: Pick<PictureRenderer<VideoFrame>, 'setView' | 'setViewMode' | 'resize'>;
-  readonly stabilizing: Pick<StabilizingFrameSink<VideoFrame>, 'setStabilizer'> | undefined;
-  readonly gainMatching: Pick<GainMatchingFrameSink<VideoFrame>, 'enable' | 'disable'>;
+  /**
+   * A recording without a gyro stays as recorded, whatever the mode.
+   */
+  setStabilization(mode: StabilizationMode): void;
+  /**
+   * Matches the lenses' exposure along the seam, or shows it as recorded.
+   */
+  setGainMatching(isEnabled: boolean): void;
   readonly warnings: readonly string[];
   dispose(): void;
 }

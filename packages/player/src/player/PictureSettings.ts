@@ -1,29 +1,16 @@
 import {
   DEFAULT_STABILIZATION_MODE,
-  stabilizerFor,
-  type GainMatchingFrameSink,
-  type PlaybackSession,
   type StabilizationMode,
-  type StabilizingFrameSink,
   type TypedEmitter,
 } from '@gyroview/core';
 
 import type { PlayerEvents } from './PlayerEvents';
+import type { Pipeline } from '../composition/ports';
 
 /**
  * What the settings act on in a loaded pipeline.
  */
-export interface PictureTargets {
-  readonly gainMatching: Pick<GainMatchingFrameSink, 'enable' | 'disable'>;
-  /**
-   * Absent when the recording has no gyro to stabilize with.
-   */
-  readonly stabilizing: Pick<StabilizingFrameSink<VideoFrame>, 'setStabilizer'> | undefined;
-  /**
-   * Draws the frame on screen again, so a change shows while the picture stands still.
-   */
-  readonly session: Pick<PlaybackSession<VideoFrame>, 'redraw'>;
-}
+export type PictureTarget = Pick<Pipeline, 'setStabilization' | 'setGainMatching'>;
 
 /**
  * The settings that shape the picture beyond the view, stabilization and exposure matching:
@@ -32,7 +19,7 @@ export interface PictureTargets {
 export class PictureSettings {
   private mode: StabilizationMode = DEFAULT_STABILIZATION_MODE;
   private isMatching = true;
-  private targets: PictureTargets | undefined;
+  private target: PictureTarget | undefined;
 
   public constructor(private readonly events: TypedEmitter<PlayerEvents>) {}
 
@@ -43,28 +30,20 @@ export class PictureSettings {
   /**
    * The pipeline of the loaded recording, or nothing between loads.
    */
-  public attach(targets: PictureTargets | undefined): void {
-    this.targets = targets;
-    targets?.stabilizing?.setStabilizer(stabilizerFor(this.mode));
-    if (targets) matchGains(targets, this.isMatching);
+  public attach(target: PictureTarget | undefined): void {
+    this.target = target;
+    target?.setStabilization(this.mode);
+    target?.setGainMatching(this.isMatching);
   }
 
   public setStabilization(mode: StabilizationMode): void {
     this.mode = mode;
-    this.targets?.stabilizing?.setStabilizer(stabilizerFor(mode));
-    this.targets?.session.redraw();
+    this.target?.setStabilization(mode);
     this.events.emit('stabilizationchange', mode);
   }
 
   public setGainMatching(isEnabled: boolean): void {
     this.isMatching = isEnabled;
-    if (!this.targets) return;
-    matchGains(this.targets, isEnabled);
-    this.targets.session.redraw();
+    this.target?.setGainMatching(isEnabled);
   }
-}
-
-function matchGains(targets: PictureTargets, isMatching: boolean): void {
-  if (isMatching) targets.gainMatching.enable();
-  else targets.gainMatching.disable();
 }

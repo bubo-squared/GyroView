@@ -196,7 +196,8 @@ The composition root and the user-facing element, in three layers.
   the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
   the renderer, the stabilizing and gain-matching sinks, the session. The player receives it as a
   `PipelineFactory` and drives the `Pipeline` contract in `composition/ports`, never the
-  adapters; `createBrowserPlayer` joins the browser's ports and `buildPipeline` into a `Player`,
+  adapters or the sinks: it sets the stabilization mode and gain matching as commands, which
+  the pipeline routes to its sinks and shows at once; `createBrowserPlayer` joins the browser's ports and `buildPipeline` into a `Player`,
   for the element and for pages that want the player alone. Dependency rules keep the adapters
   inside the composition and the composition below the player, and the player below the
   element and the controls.

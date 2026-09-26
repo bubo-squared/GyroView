@@ -3,6 +3,7 @@ import {
   GyroViewError,
   seconds,
   type PictureRenderer,
+  type PlaybackSession,
   type Seconds,
 } from '@gyroview/core';
 import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
@@ -215,6 +216,20 @@ describe('Player over the synthetic X5 recording', () => {
     player.setViewMode('raw-lenses');
     await loading;
     expect(modeChanges[0]).toHaveBeenLastCalledWith('raw-lenses');
+  });
+
+  it('shows a changed picture setting at once while paused', async () => {
+    const redraws: MockInstance<PlaybackSession<VideoFrame>['redraw']>[] = [];
+    const { player } = open(async (parts) => {
+      const pipeline = await buildPipeline(parts);
+      redraws.push(vi.spyOn(pipeline.session, 'redraw'));
+      return pipeline;
+    });
+    await player.load(sourceOf(X5_RECORDING_URL));
+    redraws[0]?.mockClear();
+    player.setStabilization('off');
+    player.setGainMatching(false);
+    expect(redraws[0]).toHaveBeenCalledTimes(2);
   });
 
   it('lets the view mode rule the gestures: the panorama ignores zoom, the normal view zooms and turns', async () => {

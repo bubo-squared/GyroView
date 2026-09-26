@@ -1,12 +1,12 @@
 import { TypedEmitter, type StabilizationMode } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
-import { PictureSettings, type PictureTargets } from './PictureSettings';
+import { PictureSettings, type PictureTarget } from './PictureSettings';
 import type { PlayerEvents } from './PlayerEvents';
 
 interface Recorded {
   readonly settings: PictureSettings;
-  readonly targets: PictureTargets;
+  readonly target: PictureTarget;
   readonly calls: string[];
   readonly announced: StabilizationMode[];
 }
@@ -18,58 +18,46 @@ function recordedSettings(): Recorded {
   events.on('stabilizationchange', (mode) => {
     announced.push(mode);
   });
-  const targets: PictureTargets = {
-    gainMatching: {
-      enable: () => {
-        calls.push('match gains');
-      },
-      disable: () => {
-        calls.push('leave gains');
-      },
+  const target: PictureTarget = {
+    setStabilization: (mode) => {
+      calls.push(`stabilize ${mode}`);
     },
-    stabilizing: {
-      setStabilizer: (stabilizer) => {
-        calls.push(`stabilize ${stabilizer.constructor.name}`);
-      },
-    },
-    session: {
-      redraw: () => {
-        calls.push('redraw');
-      },
+    setGainMatching: (isEnabled) => {
+      calls.push(isEnabled ? 'match gains' : 'leave gains');
     },
   };
-  return { settings: new PictureSettings(events), targets, calls, announced };
+  return { settings: new PictureSettings(events), target, calls, announced };
 }
 
 describe('PictureSettings', () => {
   it('starts with lock stabilization and gain matching on', () => {
-    const { settings, targets, calls } = recordedSettings();
+    const { settings, target, calls } = recordedSettings();
     expect(settings.stabilization).toBe('lock');
-    settings.attach(targets);
-    expect(calls).toContain('match gains');
+    settings.attach(target);
+    expect(calls).toEqual(['stabilize lock', 'match gains']);
   });
 
   it('applies what it holds to a pipeline as soon as it is attached', () => {
-    const { settings, targets, calls } = recordedSettings();
+    const { settings, target, calls } = recordedSettings();
     settings.setStabilization('off');
     settings.setGainMatching(false);
-    settings.attach(targets);
-    expect(calls).toEqual(['stabilize OffStabilization', 'leave gains']);
+    settings.attach(target);
+    expect(calls).toEqual(['stabilize off', 'leave gains']);
   });
 
-  it('applies and announces a change to the attached pipeline and shows it at once', () => {
-    const { settings, targets, calls, announced } = recordedSettings();
-    settings.attach(targets);
+  it('applies and announces a change to the attached pipeline', () => {
+    const { settings, target, calls, announced } = recordedSettings();
+    settings.attach(target);
     calls.length = 0;
     settings.setStabilization('horizon');
     settings.setGainMatching(false);
-    expect(calls).toEqual(['stabilize HorizonStabilization', 'redraw', 'leave gains', 'redraw']);
+    expect(calls).toEqual(['stabilize horizon', 'leave gains']);
     expect(announced).toEqual(['horizon']);
   });
 
   it('keeps changes made between loads for the next one', () => {
-    const { settings, targets, calls } = recordedSettings();
-    settings.attach(targets);
+    const { settings, target, calls } = recordedSettings();
+    settings.attach(target);
     settings.attach(undefined);
     calls.length = 0;
     settings.setStabilization('follow');

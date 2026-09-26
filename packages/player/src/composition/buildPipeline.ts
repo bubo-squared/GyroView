@@ -5,6 +5,7 @@ import {
   GainMatchingFrameSink,
   PlaybackSession,
   seconds,
+  stabilizerFor,
   StabilizingFrameSink,
   WallClock,
   type AudioTrackReader,
@@ -39,9 +40,9 @@ const AUDIO_FAILED_WARNING =
   'the audio track could not be prepared for playback; playback follows a silent clock';
 
 /**
- * Assembles the playing parts for an opened recording: the clock the picture follows, the
- * GPU stitcher, the stabilizing sink in front of it and the session driving them. Nothing here
- * decides anything about the file; every choice was made while opening it.
+ * Assembles the playing parts for an opened recording: the clock the picture follows, the GPU
+ * stitcher, the stabilizing and gain-matching sinks in front of it and the session driving them.
+ * Nothing here decides anything about the file; every choice was made while opening it.
  */
 export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
   const disposables = new Disposables();
@@ -58,8 +59,7 @@ export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
     return {
       session,
       renderer: drawing.renderer,
-      stabilizing: drawing.stabilizing,
-      gainMatching: drawing.gainMatching,
+      ...pictureSettingsOf(drawing, session),
       warnings: clock.warnings,
       dispose: disposables.toDisposer(),
     };
@@ -98,6 +98,27 @@ function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
     gainMatching.dispose();
   });
   return { renderer, stabilizing, gainMatching };
+}
+
+/**
+ * Each setting goes to the sink it concerns, and the frame standing on screen is drawn again, so
+ * the change shows while paused.
+ */
+function pictureSettingsOf(
+  drawing: Drawing,
+  session: PlaybackSession<VideoFrame>,
+): Pick<Pipeline, 'setStabilization' | 'setGainMatching'> {
+  return {
+    setStabilization: (mode): void => {
+      drawing.stabilizing?.setStabilizer(stabilizerFor(mode));
+      session.redraw();
+    },
+    setGainMatching: (isEnabled): void => {
+      if (isEnabled) drawing.gainMatching.enable();
+      else drawing.gainMatching.disable();
+      session.redraw();
+    },
+  };
 }
 
 interface ChosenClock {

@@ -21,6 +21,7 @@ import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
 import type { LoadOptions, PlayerParts } from './PlayerOptions';
 import { IDLE, statusOf, type LoadingPhase, type PlayerPhase } from './PlayerPhase';
 import { PictureSettings } from './PictureSettings';
+import { PlayerSound } from './PlayerSound';
 import { PlayerView } from './PlayerView';
 import { transportEventsFor } from './transportEvents';
 import { isAbortError } from '../composition/errorCodes';
@@ -39,6 +40,7 @@ export class Player {
   private phase: PlayerPhase = IDLE;
   private readonly viewing = new PlayerView(this.events);
   private readonly picture = new PictureSettings(this.events);
+  private readonly sound: PlayerSound;
   private isLoopingValue = false;
   private lastStatus: PlayerStatus = 'idle';
   private lastSessionState: PlayerState | undefined;
@@ -47,7 +49,7 @@ export class Player {
     this.loop = new FrameLoop(() => {
       this.loaded?.pipeline.session.tick();
     }, parts.scheduler);
-    parts.host.audio.addEventListener('volumechange', this.onVolumeChange);
+    this.sound = new PlayerSound(parts.host.audio, this.events);
   }
 
   public get status(): PlayerStatus {
@@ -94,11 +96,11 @@ export class Player {
   }
 
   public get volume(): number {
-    return this.parts.host.audio.volume;
+    return this.sound.volume;
   }
 
   public get isMuted(): boolean {
-    return this.parts.host.audio.muted;
+    return this.sound.isMuted;
   }
 
   /**
@@ -219,22 +221,18 @@ export class Player {
   }
 
   public setVolume(volume: number): void {
-    this.parts.host.audio.volume = Math.min(Math.max(volume, 0), 1);
+    this.sound.setVolume(volume);
   }
 
   public setMuted(isMuted: boolean): void {
-    this.parts.host.audio.muted = isMuted;
+    this.sound.setMuted(isMuted);
   }
 
   public dispose(): void {
     this.unload();
-    this.parts.host.audio.removeEventListener('volumechange', this.onVolumeChange);
+    this.sound.dispose();
     this.events.removeAll();
   }
-
-  private readonly onVolumeChange = (): void => {
-    this.events.emit('volumechange', { volume: this.volume, isMuted: this.isMuted });
-  };
 
   private get loaded(): LoadedRecording | undefined {
     return this.phase.kind === 'loaded' ? this.phase.loaded : undefined;

@@ -184,12 +184,13 @@ The composition root and the user-facing element, in three layers.
   It depends on `RecordingPorts` (`SourceOpener`, `Demuxer`, `VideoDecoderPort`,
   `ResourceLocator`, a deadline factory), so it is tested against fakes; `browserPorts` supplies
   the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
-  the renderer, the stabilizing sink, the session. The player receives it as a
+  the renderer, the stabilizing and gain-matching sinks, the session. The player receives it as a
   `PipelineFactory` and knows the renderer only as a `PictureRenderer`.
 - **`player`**: `Player`, the headless facade over one loaded recording. It loads, unloads,
   relays the session's states as media-element events (`transportEventsFor`), ticks the session
   from a `FrameLoop`, keeps the canvas sized (`Viewport`), and owns the settings (view and view
-  mode in `PlayerView`, stabilization, gain matching, sound, loop) across loads (ADR 0016). Its
+  mode in `PlayerView`, stabilization and gain matching in `PictureSettings`, sound in
+  `PlayerSound`, loop) across loads (ADR 0016). Its
   life with a recording is one `PlayerPhase`. The element and the embed bridge both drive it.
 - **`element`** and **`controls`**: `GyroViewElement` is `<gyro-view>`: attributes parsed by
   pure functions in `attributes.ts` (names in `attributeNames.ts`, published as

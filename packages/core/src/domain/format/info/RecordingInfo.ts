@@ -1,10 +1,12 @@
 import type { Milliseconds, Seconds } from '../../../shared/units/time';
 import type { FrameTimeSourceName } from '../../motion/timing/FrameTimeSource';
+import type { LensLayoutKind } from '../../stitching/LensLayout';
 
 /**
- * How the camera says it stored the lens images: a hint, verified against the tracks found.
+ * How the camera says it stored the lens images, one of the layouts with a lens per track: a
+ * hint, verified against the tracks found.
  */
-export type FileLayoutHint = 'split-files' | 'multi-track';
+export type FileLayoutHint = Exclude<LensLayoutKind, 'packed'>;
 
 /**
  * Which stream the camera says a multi-track file's first track is: stream `00` is the back lens

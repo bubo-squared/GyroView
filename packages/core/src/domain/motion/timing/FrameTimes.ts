@@ -21,7 +21,10 @@ export interface FrameTimesParts {
   readonly clock: CaptureClock;
   readonly captureTimes: Float64Array;
   readonly shutterTimes: Float64Array | undefined;
-  readonly readoutTime: Seconds;
+  /**
+   * Undefined when unknown: the frame is then taken as read out at once.
+   */
+  readonly readoutTime: Seconds | undefined;
 }
 
 /**
@@ -41,7 +44,7 @@ export class FrameTimes {
     this.clock = parts.clock;
     this.captureTimes = parts.captureTimes;
     this.shutterTimes = parts.shutterTimes;
-    this.readoutTime = parts.readoutTime;
+    this.readoutTime = parts.readoutTime ?? seconds(0);
   }
 
   /**
@@ -50,7 +53,7 @@ export class FrameTimes {
   public static withoutShutterTimes(
     clock: CaptureClock,
     captureTimes: Float64Array,
-    readoutTime: Seconds,
+    readoutTime: Seconds | undefined,
   ): FrameTimes {
     return new FrameTimes({ clock, captureTimes, shutterTimes: undefined, readoutTime });
   }

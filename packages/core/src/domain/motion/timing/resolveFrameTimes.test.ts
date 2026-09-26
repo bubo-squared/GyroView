@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CaptureClock } from './CaptureClock';
 import type { FrameTimingContext } from './FrameTimeSource';
-import {
-  requiresTrackTimestamps,
-  resolveFrameTimes,
-  type ResolvedFrameTimes,
-} from './resolveFrameTimes';
+import { planFrameTimes, resolveFrameTimes, type ResolvedFrameTimes } from './resolveFrameTimes';
 import {
   microseconds,
   milliseconds,
@@ -166,18 +162,23 @@ describe('resolveFrameTimes fallbacks', () => {
   });
 });
 
-describe('requiresTrackTimestamps', () => {
-  it('does without them when the exposure record answers first', () => {
-    expect(requiresTrackTimestamps(context(), 'exposure-record')).toBe(false);
-    expect(requiresTrackTimestamps(context(), undefined)).toBe(false);
+describe('planFrameTimes', () => {
+  it('answers from the exposure record without asking for the track timestamps', () => {
+    const plan = planFrameTimes(context(), 'exposure-record');
+    expect(plan.needsTrackTimestamps).toBe(false);
+    if (!plan.needsTrackTimestamps) expect(plan.resolved?.source).toBe('exposure-record');
+    expect(planFrameTimes(context(), undefined).needsTrackTimestamps).toBe(false);
   });
 
-  it('needs them when the camera trusts them first, even with an exposure record', () => {
-    expect(requiresTrackTimestamps(context(), 'track-timestamps')).toBe(true);
+  it('asks for the track timestamps when the camera trusts them first, even with an exposure record', () => {
+    const plan = planFrameTimes(context({ frameCount: 2 }), 'track-timestamps');
+    if (!plan.needsTrackTimestamps) throw new Error('the plan should ask for the timestamps');
+    expect(plan.resolveWith([seconds(0), seconds(0.25)])?.source).toBe('track-timestamps');
   });
 
-  it('needs them when the exposure record cannot answer, rather than settle for nominal spacing', () => {
-    expect(requiresTrackTimestamps(context({ exposureRecord: undefined }), undefined)).toBe(true);
-    expect(requiresTrackTimestamps(context({ frameCount: 11 }), 'exposure-record')).toBe(true);
+  it('asks for them when the exposure record cannot answer, and falls back from what they give', () => {
+    const plan = planFrameTimes(context({ frameCount: 11 }), 'exposure-record');
+    if (!plan.needsTrackTimestamps) throw new Error('the plan should ask for the timestamps');
+    expect(plan.resolveWith([seconds(0)])?.source).toBe('nominal');
   });
 });

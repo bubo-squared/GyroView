@@ -40,4 +40,24 @@ describe('TypedEmitter', () => {
     emitter.emit('counted', 3);
     expect(calls).toBe(1);
   });
+
+  it('reports a listener that throws and still reaches the others, the emitter unharmed', () => {
+    const failures: unknown[] = [];
+    const emitter = new TypedEmitter<Events>((error) => {
+      failures.push(error);
+    });
+    const counts: number[] = [];
+    const broken = new Error('a page listener broke');
+    emitter.on('counted', () => {
+      throw broken;
+    });
+    emitter.on('counted', (count) => {
+      counts.push(count);
+    });
+    expect(() => {
+      emitter.emit('counted', 1);
+    }).not.toThrow();
+    expect(counts).toEqual([1]);
+    expect(failures).toEqual([broken]);
+  });
 });

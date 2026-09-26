@@ -110,6 +110,31 @@ describe('DecodePipeline', () => {
     expect(decoderPort.openFrames).toBe(0);
   });
 
+  it('starts at the first key frame for a time before it, on tracks that do not start at zero', async () => {
+    const lateTracks = [0, 1].map(
+      (trackIndex) =>
+        new FakeVideoTrack({
+          trackIndex,
+          frameRate: FRAME_RATE,
+          frameCount: FRAMES,
+          framesPerGop: GOP,
+          firstTimestamp: seconds(0.7),
+        }),
+    );
+    const pipeline = new DecodePipeline(
+      lateTracks,
+      new FakeVideoDecoderPort(DECODER_LATENCY),
+      OPTIONS,
+    );
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    const run = pipeline.run(seconds(0), queue);
+    const pairs = await drain(queue, run);
+
+    expect(pairs[0]?.timestamp).toBeCloseTo(0.7, 9);
+    expect(pairs).toHaveLength(FRAMES);
+  });
+
   it('never lets a decoder hold more than the configured pending packets', async () => {
     const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 4 });
     const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);

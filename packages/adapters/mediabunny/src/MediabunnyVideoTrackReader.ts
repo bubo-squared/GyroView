@@ -12,6 +12,11 @@ import { EncodedPacketSink, type EncodedPacket, type InputVideoTrack } from 'med
 import { copyOfBytes } from './bufferSources';
 
 /**
+ * Container metadata may mark a packet as a key packet that is not one; the bitstream decides.
+ */
+const VERIFIED = { verifyKeyPackets: true };
+
+/**
  * VideoTrackReader over one mediabunny video track. Packets handed out are plain data; the
  * mediabunny packet behind each is remembered so iteration can resume from it.
  */
@@ -62,8 +67,17 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
   }
 
   public async keyPacketAt(time: Seconds): Promise<EncodedVideoPacket | undefined> {
-    const packet = await this.sink.getKeyPacket(time, { verifyKeyPackets: true });
+    const packet = await this.sink.getKeyPacket(time, VERIFIED);
     return packet === null ? undefined : this.wrap(packet);
+  }
+
+  public async firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
+    const first = await this.sink.getFirstPacket(VERIFIED);
+    const key =
+      first === null || first.type === 'key'
+        ? first
+        : await this.sink.getNextKeyPacket(first, VERIFIED);
+    return key === null ? undefined : this.wrap(key);
   }
 
   public async *packetsFrom(start: EncodedVideoPacket): AsyncIterable<EncodedVideoPacket> {

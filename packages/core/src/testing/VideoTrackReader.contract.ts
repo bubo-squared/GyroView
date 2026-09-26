@@ -39,6 +39,15 @@ export function describeVideoTrackReaderContract(
       await expect(track.keyPacketAt(seconds(-1))).resolves.toBeUndefined();
     });
 
+    it('hands out its first key packet, from which the whole track iterates', async () => {
+      const track = await open();
+      const first = await track.firstKeyPacket();
+      if (!first) throw new Error('no first key packet');
+      expect(first.isKeyFrame).toBe(true);
+      expect(first.timestamp).toBeCloseTo(0, 6);
+      await expect(collect(track.packetsFrom(first))).resolves.toHaveLength(expected.frameCount);
+    });
+
     it('iterates packets in decode order from a packet it handed out to the end of the track', async () => {
       const track = await open();
       const key = await track.keyPacketAt(insideSecondGop);

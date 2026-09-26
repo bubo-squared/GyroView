@@ -7,7 +7,7 @@ import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDeco
 import { Deferred } from '../../shared/async/Deferred';
 import { Signal } from '../../shared/async/Signal';
 import { ensureInvariant, GyroViewError } from '../../shared/errors/GyroViewError';
-import { seconds, type Seconds } from '../../shared/units/time';
+import type { Seconds } from '../../shared/units/time';
 
 export interface DecodePipelineOptions {
   /**
@@ -202,7 +202,7 @@ export class DecodePipeline<Handle = unknown> {
   private packetIteratorsFrom(from: Seconds): Promise<PacketIterator[]> {
     return Promise.all(
       this.frameSources.map(async (track) => {
-        const start = (await track.keyPacketAt(from)) ?? (await track.keyPacketAt(seconds(0)));
+        const start = (await track.keyPacketAt(from)) ?? (await track.firstKeyPacket());
         if (!start) {
           throw new GyroViewError(
             'no-key-frame',

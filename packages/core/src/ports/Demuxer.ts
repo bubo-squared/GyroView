@@ -29,6 +29,11 @@ export interface VideoTrackReader {
    */
   keyPacketAt(time: Seconds): Promise<EncodedVideoPacket | undefined>;
   /**
+   * The track's first key packet, where decoding starts for a time before any key packet, as on
+   * a track whose timestamps do not start at zero. Undefined for a track without one.
+   */
+  firstKeyPacket(): Promise<EncodedVideoPacket | undefined>;
+  /**
    * Packets in decode order starting with `start`, until the track ends. `start` must be a
    * packet this reader handed out; anything else is an `invariant-violation`.
    */

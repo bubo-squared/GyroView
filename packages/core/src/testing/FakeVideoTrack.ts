@@ -58,6 +58,10 @@ export class FakeVideoTrack implements VideoTrackReader {
     return Promise.resolve(candidates.at(-1));
   }
 
+  public firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
+    return Promise.resolve(this.packets.find((packet) => packet.isKeyFrame));
+  }
+
   public async *packetsFrom(start: EncodedVideoPacket): AsyncIterable<EncodedVideoPacket> {
     const index = this.packets.indexOf(start);
     if (index === -1) {

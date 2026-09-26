@@ -10,6 +10,7 @@ import type {
 import { Deferred } from '../../shared/async/Deferred';
 import { Signal } from '../../shared/async/Signal';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
+import { seconds } from '../../shared/units/time';
 import { FakeVideoDecoderPort } from '../../testing/FakeVideoDecoderPort';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import { settle } from '../../../test/support/settle';
@@ -118,6 +119,18 @@ describe('probeDecoding', () => {
     expect(report.sources[0]?.track.trackIndex).toBe(0);
     expect(port.openFrames).toBe(0);
     expect(port.decodersCreated.every((decoder) => decoder.isClosed)).toBe(true);
+  });
+
+  it('probes a track that does not start at zero from its first key frame', async () => {
+    const late = new FakeVideoTrack({
+      trackIndex: 0,
+      frameRate: 30,
+      frameCount: 30,
+      framesPerGop: 30,
+      firstTimestamp: seconds(0.7),
+    });
+    const report = await probeDecoding([late], new FakeVideoDecoderPort(), new Signal());
+    expect(report.sources[0]?.verdict).toBe('decodes');
   });
 
   it('reports an unsupported configuration without opening a decoder', async () => {

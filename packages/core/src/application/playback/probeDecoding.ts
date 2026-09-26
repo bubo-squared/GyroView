@@ -5,7 +5,6 @@ import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDeco
 import { Deferred } from '../../shared/async/Deferred';
 import type { Signal } from '../../shared/async/Signal';
 import { GyroViewError, messageOf } from '../../shared/errors/GyroViewError';
-import { seconds } from '../../shared/units/time';
 
 export type ProbeVerdict =
   'decodes' | 'unsupported-configuration' | 'no-key-frame' | 'decode-failed' | 'timed-out';
@@ -94,7 +93,7 @@ class SourceProbe<Handle> {
     try {
       const configuration = await this.track.decoderConfiguration();
       if (!(await this.decoderPort.isSupported(configuration))) return unsupported(configuration);
-      const keyPacket = await this.track.keyPacketAt(seconds(0));
+      const keyPacket = await this.track.firstKeyPacket();
       return keyPacket ? await this.decodeFirst(configuration, keyPacket) : NO_KEY_FRAME;
     } catch (error) {
       return failedWith(error);

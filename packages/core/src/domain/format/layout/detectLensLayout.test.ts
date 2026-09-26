@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { detectLensLayout, type LayoutHints } from './detectLensLayout';
+import { detectLensLayout, type InputDescription, type LayoutHints } from './detectLensLayout';
 import { FULL_FRAME, LEFT_HALF, RIGHT_HALF } from '../../stitching/LensLayout';
-import type { InputDescription, VideoTrackDescription } from '../../../ports/VideoTrack';
+import type { VideoTrackDescription } from '../../../ports/VideoTrack';
 import { captureError } from '../../../../test/support/errors';
 
 const HEVC = 'hvc1.1.6.L153.B0';
@@ -16,7 +16,7 @@ function input(
   name: string | undefined,
   ...videoTracks: VideoTrackDescription[]
 ): InputDescription {
-  return { name, videoTracks };
+  return { name, videoTracks: videoTracks.map((description) => ({ description })) };
 }
 
 describe('detectLensLayout', () => {

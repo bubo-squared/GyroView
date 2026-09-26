@@ -46,7 +46,7 @@ export async function openInputs(
   const disposables = new Disposables();
   try {
     const demuxed = await demuxInputs(inputs, attempt, disposables);
-    const layout = detectLensLayout(descriptionsOf(demuxed.inputs), demuxed.recording.info);
+    const layout = detectLensLayout(demuxed.inputs, demuxed.recording.info);
     const frameSources = lensFrameOrder(layout).map((key) => trackAt(demuxed.inputs, key));
     const calibration = calibrationOf(demuxed.recording);
     await ensureDecodable(frameSources, attempt);
@@ -83,13 +83,6 @@ async function demuxInputs(
   if (failure) throw failure.reason;
   signal.throwIfAborted();
   return { recording, inputs: opened };
-}
-
-function descriptionsOf(inputs: readonly DemuxedInput[]): Parameters<typeof detectLensLayout>[0] {
-  return inputs.map((input) => ({
-    name: input.name,
-    videoTracks: input.videoTracks.map((track) => track.description),
-  }));
 }
 
 function trackAt(inputs: readonly DemuxedInput[], key: FrameSourceKey): VideoTrackReader {

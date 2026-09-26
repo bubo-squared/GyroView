@@ -5,7 +5,7 @@ import {
   type LensLayout,
   type LensSource,
 } from '../../stitching/LensLayout';
-import type { InputDescription, VideoTrackDescription } from '../../../ports/VideoTrack';
+import type { VideoTrackDescription } from '../../../ports/VideoTrack';
 import type { RecordingInfo } from '../info/RecordingInfo';
 import { RecordingFileName } from '../naming/RecordingFileName';
 import { GyroViewError } from '../../../shared/errors/GyroViewError';
@@ -22,6 +22,17 @@ const SCREEN_LENS_RANK = 2;
  */
 export type LayoutHints = Pick<RecordingInfo, 'fileLayout' | 'trackOrder'>;
 
+/**
+ * One opened file as the detector reads it; a demuxed input is one as it is.
+ */
+export interface InputDescription {
+  /**
+   * File name or URL path, used only as a hint (`_00_` / `_10_`) and for messages.
+   */
+  readonly name: string | undefined;
+  readonly videoTracks: readonly { readonly description: VideoTrackDescription }[];
+}
+
 interface Candidate {
   readonly input: InputDescription;
   readonly inputIndex: number;
@@ -37,7 +48,7 @@ export function detectLensLayout(
   hints: LayoutHints,
 ): LensLayout {
   const candidates = inputs.flatMap((input, inputIndex) =>
-    input.videoTracks.map((track) => ({ input, inputIndex, track })),
+    input.videoTracks.map(({ description }) => ({ input, inputIndex, track: description })),
   );
   if (inputs.length === 1 && areTwoMatchingSquareTracks(candidates)) {
     return multiTrack(candidates, hints);

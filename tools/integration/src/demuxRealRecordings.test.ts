@@ -43,10 +43,7 @@ describe.skipIf(!hasSamples())(
       const input = await new MediabunnyDemuxer().open(source, SAILING_RECORDING);
       try {
         const recording = await readRecording(source);
-        const layout = detectLensLayout(
-          [{ name: input.name, videoTracks: input.videoTracks.map((track) => track.description) }],
-          recording.info,
-        );
+        const layout = detectLensLayout([input], recording.info);
         expect(layout.kind).toBe('multi-track');
         const isSwapped = recording.info.trackOrder === 'stream-10-first';
         const expectedMapping = isSwapped

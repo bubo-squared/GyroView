@@ -15,17 +15,6 @@ export interface VideoTrackDescription {
 }
 
 /**
- * One opened file and the video tracks found in it.
- */
-export interface InputDescription {
-  /**
-   * File name or URL path, used only as a hint (`_00_` / `_10_`) and for messages.
-   */
-  readonly name: string | undefined;
-  readonly videoTracks: readonly VideoTrackDescription[];
-}
-
-/**
  * One compressed video sample as the container stores it. Timestamps are track time in seconds;
  * `data` holds length-prefixed NAL units when `configuration.description` is present.
  */

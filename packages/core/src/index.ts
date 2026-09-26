@@ -166,7 +166,6 @@ export type {
 } from './ports/Demuxer';
 export type {
   EncodedVideoPacket,
-  InputDescription,
   VideoDecoderConfiguration,
   VideoTrackDescription,
 } from './ports/VideoTrack';

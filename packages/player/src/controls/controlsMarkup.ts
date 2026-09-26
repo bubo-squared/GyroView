@@ -46,7 +46,7 @@ function menuItemsOf<Choice extends string>(
   return choices
     .map(
       (choice) =>
-        `<button type="button" role="menuitemradio" aria-checked="false" data-choice="${choice}">${labels[choice]}</button>`,
+        `<button type="button" role="menuitemradio" aria-checked="false" tabindex="-1" data-choice="${choice}">${labels[choice]}</button>`,
     )
     .join('');
 }

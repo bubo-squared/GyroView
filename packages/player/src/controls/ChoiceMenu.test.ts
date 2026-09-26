@@ -145,6 +145,15 @@ describe('ChoiceMenu', () => {
     expect(escapedKeys).toEqual([]);
   });
 
+  it('closes on Tab either way, so the keys go back to the page with the menu shut', () => {
+    const { parts, item } = world();
+    parts.button.click();
+    item('middle').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, composed: true }),
+    );
+    expect(parts.popup.hidden).toBe(true);
+  });
+
   it('hides its button and closes when it is not available', () => {
     const { parts, menu } = world();
     parts.button.click();

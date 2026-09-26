@@ -25,11 +25,12 @@ const FOCUS_STEPS: ReadonlyMap<string, FocusStep> = new Map<string, FocusStep>([
 const ON_THE_WAY_IN = { capture: true } as const;
 
 /**
- * A button opening a popup of choices with the current one checked. The button toggles it; a
- * choice, Escape, a press outside it or the focus moving elsewhere closes it; the arrow keys
- * move between the choices. A press outside only closes it, so a tap on the picture does not
- * also toggle play, and keys pressed while it is open stay with it, so one Escape does not also
- * leave fullscreen and the arrows do not turn the view.
+ * A button opening a popup of choices with the current one checked, as the ARIA menu pattern
+ * has it. The button toggles it; a choice, Escape, Tab, a press outside it or the focus moving
+ * elsewhere closes it; the arrow keys move between the choices, which are out of the tab order.
+ * A press outside only closes it, so a tap on the picture does not also toggle play, and keys
+ * pressed in it stay with it, so one Escape does not also leave fullscreen and the arrows do not
+ * turn the view.
  */
 export class ChoiceMenu {
   private readonly items: readonly HTMLElement[];
@@ -104,7 +105,9 @@ export class ChoiceMenu {
     }
     if (!path.includes(this.parts.popup)) return;
     event.stopPropagation();
-    this.moveFocus(event, path);
+    // The choices are not in the tab order: Tab leaves the menu, which closes behind it.
+    if (event.key === 'Tab') this.setOpen(false);
+    else this.moveFocus(event, path);
   }
 
   private moveFocus(event: KeyboardEvent, path: readonly EventTarget[]): void {

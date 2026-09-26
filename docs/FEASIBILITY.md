@@ -21,8 +21,8 @@ findings, kept because the design rests on them. Measured on an Apple M4 Pro, ma
 | Sustained: 60 s of 5.7K60 media, dual-track                                 | 3597 pairs in 19.9 s = 180 pairs/s, 0 unpaired                                           | not run                                             |
 
 The exit criteria (5.7K60 at 50 pairs/s or better, 8K30 at 25 pairs/s or better on the Mac)
-were met about three times over. Both tracks carry identical timestamps, so pairing by
-timestamp needs no tolerance logic.
+were met about three times over. Both tracks carry identical timestamps on these files; the
+pairer still allows half a millisecond, for tracks whose timestamps round differently.
 
 Consequences for the design:
 

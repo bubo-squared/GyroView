@@ -106,8 +106,8 @@ Styling: the host element sizes the player (a block with a 16:9 aspect ratio by 
 `GyroView.embed` puts an `<iframe allow="fullscreen; autoplay">` pointing at `embed.html`
 in the container and returns the same API as the element, as promises over `postMessage`
 (`play`, `pause`, `stop`, `seek`, `scrub`, `lookAt`, `resetView`, `zoom`, `setViewMode`,
-`setStabilization`, `setVolume`, `setMuted`, `setLoop`, `load`, `getState`), the player's events on
-`handle.events`, and a `state` mirror. The frame talks only to the page that embedded it and
+`setStabilization`, `setVolume`, `setMuted`, `setLoop`, `load`, `getState`), the player's events
+but `frame` on `handle.events`, and a `state` mirror. The frame talks only to the page that embedded it and
 the page only to the frame. Without the snippet, an iframe of
 `embed.html?src=...&stabilization=lock&muted=1` plays on its own; every attribute above is a
 query parameter (`controls=0` hides the controls; the snippet's `viewMode` option is the

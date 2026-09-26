@@ -107,8 +107,8 @@ point.
 Use cases that orchestrate the domain through ports.
 
 - `recording/timeRecording` relates a recording to video time: the capture clock, frame times
-  for its first frame source (`frameTimesOf`: exposure record first, the sample table only if
-  needed) and the orientation for stabilization (`motionOf`: gyro integration with the camera's
+  for its first frame source (`frameTimesOf`: the sources in the order the info record's pts
+  type prefers, the sample table only if needed) and the orientation for stabilization (`motionOf`: gyro integration with the camera's
   IMU frame), each optional with a warning for what is missing.
 - `recording/readRecording` opens a `RandomAccessSource` and reads everything cheap: the
   trailer's table of contents, the info record, the calibration choice. `inspectLayout` maps the
@@ -171,7 +171,7 @@ One package per external technology; none imports another.
 - **`fetch`**: `HttpRangeSource` reads byte ranges over HTTP, past the browser's own cache
   (ADR 0013), and reports the server's shortcomings with distinct codes
   (`range-unsupported`, `cors`, `source-unreadable`); `HttpResourceLocator` answers "does it
-  exist" with one HEAD.
+  exist" with a HEAD, and a one-byte GET where a server refuses HEAD.
 - **`blob`**: `BlobRandomAccessSource` slices a `File` from a picker or a drop.
 - **`mediabunny`**: the demuxer and track readers over the mediabunny library; an audio track
   opens as `MediabunnyAudioSegments`, its packets re-packaged into fragmented MP4 without

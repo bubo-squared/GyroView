@@ -20,7 +20,9 @@ playback, so the fault showed on every seek and occasionally without one.
 
 ## Decision
 
-Every request the fetch adapter makes carries `cache: 'no-store'`: the browser neither
+Every request the fetch adapter makes for a recording or a companion file carries
+`cache: 'no-store'` (only the probe that tells a CORS refusal from a network failure does not,
+since it reads nothing): the browser neither
 consults nor fills its cache for them. Nothing is lost, because the demuxer keeps its own
 cache of the bytes it needs (mediabunny, 8 MiB with network prefetching) and a
 multi-gigabyte recording would not fit a browser cache anyway. Embedders who know their
@@ -38,6 +40,6 @@ server can choose another mode through the shared `requestInit`.
 ## Consequences
 
 A reloaded page fetches the recording's bytes again instead of taking them from the browser
-cache, which for these files it never did in practice. Companion-file probes (`HEAD`) are
-uncached too, one request each. The player bundle itself is served and cached as before; only
+cache, which for these files it never did in practice. Companion-file probes are uncached
+too: a `HEAD` each, and a one-byte `GET` where a server refuses `HEAD`. The player bundle itself is served and cached as before; only
 the fetch adapter's requests are affected.

@@ -11,7 +11,7 @@ frame accurate and each element buffers independently.
 ## Decision
 
 Demux with mediabunny, decode every lens track with its own `VideoDecoder`, pair output frames by
-capture timestamp, and upload `VideoFrame`s to WebGL textures. A hidden `<audio>` element fed by
+presentation timestamp, and upload `VideoFrame`s to WebGL textures. A hidden `<audio>` element fed by
 MSE is the master clock.
 
 ## Evidence

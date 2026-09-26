@@ -30,8 +30,9 @@ between the fingers) where it is. The keys and `zoom(steps)` zoom about the cent
   - The raw lens tiles are enlarged together and, once zoomed, move in every direction by drags
     and arrows within their edges.
 - **One framing** holds the view and both magnifications (`Framing`). Each mode changes its own
-  part, so each keeps its zoom across mode switches and loads, and Reset view resets only the
-  current mode. The renderer takes the framing (`setFraming`) and asks the mode for the picture;
+  part, so each keeps its zoom across mode switches and loads, and Reset view resets the
+  current mode's part: the whole normal view, the panorama's zoom and the yaw it shares with
+  the normal view, or the lens tiles' zoom. The renderer takes the framing (`setFraming`) and asks the mode for the picture;
   its shaders already drew any screen rectangle, so they did not change.
 - **The cursor** is the grab hand only where a drag moves the picture (`canPan`): always in the
   stitched views, in the raw lenses once zoomed in.

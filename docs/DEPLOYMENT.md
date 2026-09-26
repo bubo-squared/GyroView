@@ -59,9 +59,12 @@ The iframe needs `allow="fullscreen; autoplay"` to fill the screen and to start 
 playback; `GyroView.embed` sets it. The frame trusts one embedding origin: the one the snippet
 puts in the URL (`origin=`), or the referrer's. Frames opened directly play standalone.
 
-A page with a Content Security Policy needs `frame-src` for the frame's origin, `script-src`
-for `embed.js` and, for the element form, `connect-src` for the media host and
-`worker-src`/`child-src` nothing (the player uses no workers).
+A page with a Content Security Policy needs, for the iframe form, `frame-src` for the frame's
+origin and `script-src` for `embed.js`. The element form runs in the page itself, so it needs
+`script-src` for `gyro-view.js`, `connect-src` for the media host, `style-src 'unsafe-inline'`
+(the element's styles are `<style>` elements in its shadow root), `media-src blob:` (the sound
+plays through a Media Source object URL; without it the player falls back to a silent clock
+with a warning), `img-src` for a poster, and no `worker-src` (the player uses no workers).
 
 ## Error codes
 

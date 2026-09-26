@@ -39,9 +39,12 @@ export class TrailerRecords {
   public async readGyro(): Promise<ParsedGyroRecord | undefined> {
     const location = this.parts.trailer.locationOf(RecordType.Gyro);
     if (location === undefined) return undefined;
-    const payload = await this.parts.source.read(location.payload);
-    const layout = await this.gyroSampleLayout();
-    return parseGyroRecord(payload, layout ?? this.layoutHintedBy(payload));
+    const [payload, layout] = await Promise.all([
+      this.parts.source.read(location.payload),
+      this.gyroSampleLayout(),
+    ]);
+    ensureInvariant(layout !== undefined, 'a gyro record always yields or refuses a layout');
+    return parseGyroRecord(payload, layout);
   }
 
   /**
@@ -64,8 +67,8 @@ export class TrailerRecords {
 
   /**
    * The gyro sample layout the file actually uses: from the info record's flag when present,
-   * otherwise inferred from the first bytes of the gyro record. Undefined without a gyro record
-   * and without the flag.
+   * otherwise inferred from the first bytes of the gyro record, which may refuse to tell.
+   * Undefined without a gyro record and without the flag.
    */
   private gyroSampleLayout(): Promise<GyroSampleLayout | undefined> {
     this.gyroLayoutPromise ??= this.selectGyroLayout();
@@ -78,15 +81,6 @@ export class TrailerRecords {
     const location = this.parts.trailer.locationOf(RecordType.Gyro);
     const head = location === undefined ? undefined : await this.readHeadOf(location);
     return selectGyroSampleLayout(hints, head);
-  }
-
-  /**
-   * A record the layout could not be selected for before reading it names its own layout.
-   */
-  private layoutHintedBy(payload: Uint8Array): GyroSampleLayout {
-    const layout = selectGyroSampleLayout(this.gyroLayoutHints(), payload);
-    ensureInvariant(layout !== undefined, 'a gyro record always yields a sample layout');
-    return layout;
   }
 
   private gyroLayoutHints(): GyroLayoutHints {

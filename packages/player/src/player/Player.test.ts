@@ -302,6 +302,17 @@ describe('Player over the synthetic X5 recording', () => {
     expect(player.metadata).toBeUndefined();
   });
 
+  it('fails a load on an abort it did not cause instead of waiting for ever', async () => {
+    const foreignAbort = new DOMException('the page aborted its requests', 'AbortError');
+    const { player, errors } = open(() => Promise.reject(foreignAbort));
+    await expect(player.load(sourceOf(X5_RECORDING_URL))).rejects.toMatchObject({
+      code: 'invariant-violation',
+      cause: foreignAbort,
+    });
+    expect(player.status).toBe('error');
+    expect(errors).toHaveLength(1);
+  });
+
   it('refuses to play after a failed load with that failure', async () => {
     const { player } = open();
     await expect(player.load(sourceOf(`${X5_RECORDING_URL}.missing`))).rejects.toThrow();

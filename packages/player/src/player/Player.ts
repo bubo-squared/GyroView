@@ -23,7 +23,7 @@ import { PictureSettings } from './PictureSettings';
 import { PlayerSound } from './PlayerSound';
 import { PlayerView } from './PlayerView';
 import { SessionRelay } from './SessionRelay';
-import { isAbortError } from '../composition/abortError';
+
 import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
 
@@ -123,7 +123,7 @@ export class Player {
     try {
       await this.complete(loading, source, options);
     } catch (error) {
-      if (loading.controller.signal.aborted || isAbortError(error)) return;
+      if (loading.controller.signal.aborted) return;
       throw this.failWith(error);
     } finally {
       loading.settled.resolve();

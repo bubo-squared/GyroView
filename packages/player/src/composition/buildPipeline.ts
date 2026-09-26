@@ -10,47 +10,13 @@ import {
   type AudioTrackReader,
   type DecodePipelineOptions,
   type FrameSink,
-  type PictureRenderer,
   type PlaybackClock,
-  type VideoDecoderPort,
   messageOf,
 } from '@gyroview/core';
 
 import { Disposables } from './Disposables';
 import type { OpenedRecording } from './OpenedRecording';
-
-/**
- * The DOM the pipeline draws on and plays sound through; both borrowed from the element.
- */
-export interface PipelineHost {
-  readonly canvas: HTMLCanvasElement;
-  readonly audio: HTMLMediaElement;
-}
-
-export interface PipelineParts {
-  readonly opened: OpenedRecording;
-  readonly host: PipelineHost;
-  readonly decoderPort: VideoDecoderPort<VideoFrame>;
-}
-
-/**
- * Everything running for one loaded recording. The stabilizing sink is present only when the
- * recording had a gyro to integrate.
- */
-export interface Pipeline {
-  readonly session: PlaybackSession<VideoFrame>;
-  readonly renderer: PictureRenderer<VideoFrame>;
-  readonly stabilizing: StabilizingFrameSink<VideoFrame> | undefined;
-  readonly gainMatching: GainMatchingFrameSink<VideoFrame>;
-  readonly warnings: readonly string[];
-  dispose(): void;
-}
-
-/**
- * Builds what plays an opened recording; `buildPipeline` in a browser. Injected, so the player's
- * own logic can be exercised with any pipeline.
- */
-export type PipelineFactory = (parts: PipelineParts) => Promise<Pipeline>;
+import type { Pipeline, PipelineParts } from './ports';
 
 /**
  * Half a millisecond: two lens tracks stamp the same instant within rounding of the timescale.

@@ -22,14 +22,13 @@ import { applyPlaybackAttribute } from './playbackAttributes';
 import { defineLiveSettings } from './liveSettings';
 import { defineBooleanProperties, defineStringProperties } from './reflectedProperties';
 import { ELEMENT_TEMPLATE } from './template';
-import { browserPorts } from '../composition/browserPorts';
-import { buildPipeline, type PipelineHost } from '../composition/buildPipeline';
+import { createBrowserPlayer } from '../browserPlayer';
 import { queryShadow } from '../controls/controlParts';
 import { ControlsBar } from '../controls/ControlsBar';
 import type { ControlsHost } from '../controls/ControlsHost';
 import { bindKeyboard, type KeyboardHost } from '../controls/keyboard';
 import { ViewGestures } from '../controls/ViewGestures';
-import { Player } from '../player/Player';
+import type { Player } from '../player/Player';
 import { PLAYER_EVENT_NAMES, type PlayerStatus } from '../player/PlayerEvents';
 import type { PlayerMetadata } from '../PlayerMetadata';
 /**
@@ -100,7 +99,7 @@ export class GyroViewElement extends HTMLElement {
     this.posterImage = queryShadow(shadow, '.poster', HTMLImageElement);
     this.errorMessage = queryShadow(shadow, '.error-message', HTMLElement);
     this.errorCode = queryShadow(shadow, '.error-code', HTMLElement);
-    this.player = browserPlayer({ canvas, audio });
+    this.player = createBrowserPlayer({ canvas, audio });
     defineLiveSettings(this, this.player);
     const host = this.controlsHost();
     this.controlsBar = new ControlsBar(shadow, host);
@@ -333,13 +332,6 @@ export class GyroViewElement extends HTMLElement {
   private warn(message: string): void {
     this.dispatchEvent(new CustomEvent('warning', { detail: message, composed: true }));
   }
-}
-
-/**
- * The player composed for a browser: HTTP, blob and WebCodecs ports, the GPU pipeline.
- */
-function browserPlayer(host: PipelineHost): Player {
-  return new Player({ host, ports: browserPorts(), pipelines: buildPipeline });
 }
 
 /**

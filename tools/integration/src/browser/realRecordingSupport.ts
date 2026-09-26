@@ -5,8 +5,8 @@ import {
   type DecodePipeline,
   type FramePair,
 } from '@gyroview/core';
-import { browserPorts } from '@gyroview/player';
 import {
+  browserPorts,
   DECODE_PIPELINE_OPTIONS,
   openRecording,
   PAIR_QUEUE_CAPACITY,

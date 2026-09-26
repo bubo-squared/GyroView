@@ -119,6 +119,32 @@ module.exports = {
       to: { path: '^packages/adapters/(?!node/)' },
     },
     {
+      name: 'only-the-composition-imports-adapters',
+      comment:
+        'Inside the player, the composition chooses and wires the adapters; the player, the element and the controls never touch WebCodecs, Three.js or MSE themselves.',
+      severity: 'error',
+      from: {
+        path: '^packages/player/src/(?!composition/)',
+        pathNot: '\\.test\\.ts$',
+      },
+      to: { path: '^packages/adapters/' },
+    },
+    {
+      name: 'the-composition-does-not-know-the-player',
+      comment:
+        'The composition sits below the player: it opens recordings and builds pipelines for whoever drives them.',
+      severity: 'error',
+      from: { path: '^packages/player/src/composition/', pathNot: '\\.test\\.ts$' },
+      to: { path: '^packages/player/src/(player/|element/|controls/|browserPlayer\\.ts)' },
+    },
+    {
+      name: 'the-player-does-not-know-the-element',
+      comment: 'The headless player is driven by the element, never the other way round.',
+      severity: 'error',
+      from: { path: '^packages/player/src/player/', pathNot: '\\.test\\.ts$' },
+      to: { path: '^packages/player/src/(element|controls)/' },
+    },
+    {
       name: 'controls-do-not-know-the-element',
       comment:
         'The element composes the controls and hands them a host; the controls never reach back.',

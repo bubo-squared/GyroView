@@ -1,12 +1,11 @@
 import { defineGyroView } from '@gyroview/player';
 
 /**
- * What a page may import from gyro-view.js: the element, and the headless player with the
- * browser parts it is built from.
+ * What a page may import from gyro-view.js: the element, and the player without the element as
+ * `createBrowserPlayer` composes it.
  */
 export {
-  browserPorts,
-  buildPipeline,
+  createBrowserPlayer,
   defineGyroView,
   GYRO_VIEW_TAG,
   GyroViewElement,

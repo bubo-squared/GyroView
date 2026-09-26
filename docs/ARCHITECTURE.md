@@ -192,9 +192,14 @@ The composition root and the user-facing element, in three layers.
   `ResourceLocator`, a deadline factory), so it is tested against fakes; `browserPorts` supplies
   the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
   the renderer, the stabilizing and gain-matching sinks, the session. The player receives it as a
-  `PipelineFactory` and knows the renderer only as a `PictureRenderer`.
+  `PipelineFactory` and drives the `Pipeline` contract in `composition/ports`, never the
+  adapters; `createBrowserPlayer` joins the browser's ports and `buildPipeline` into a `Player`,
+  for the element and for pages that want the player alone. Dependency rules keep the adapters
+  inside the composition and the composition below the player, and the player below the
+  element and the controls.
 - **`player`**: `Player`, the headless facade over one loaded recording. It loads, unloads,
-  relays the session's states as media-element events (`transportEventsFor`), ticks the session
+  relays the session's states as media-element events (`SessionRelay`, `transportEventsFor`),
+  ticks the session
   from a `FrameLoop`, keeps the canvas sized (`Viewport`), and owns the settings (view and view
   mode in `PlayerView`, stabilization and gain matching in `PictureSettings`, sound in
   `PlayerSound`, loop) across loads (ADR 0016). Its

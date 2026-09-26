@@ -10,7 +10,8 @@ import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { Player } from './Player';
 import type { PlayerStatus } from './PlayerEvents';
 import { browserPorts } from '../composition/browserPorts';
-import { buildPipeline, type PipelineFactory } from '../composition/buildPipeline';
+import { buildPipeline } from '../composition/buildPipeline';
+import type { PipelineFactory } from '../composition/ports';
 import type { PlayerSource } from '../PlayerSource';
 import { X5_RECORDING_URL, X5_RECORDING_WITH_AUDIO_URL } from '../test/recordings';
 

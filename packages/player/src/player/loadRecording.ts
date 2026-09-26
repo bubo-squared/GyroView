@@ -1,6 +1,6 @@
 import type { PlayerParts } from './PlayerOptions';
 import { Viewport } from './Viewport';
-import type { Pipeline } from '../composition/buildPipeline';
+import type { Pipeline } from '../composition/ports';
 import { Disposables } from '../composition/Disposables';
 import type { OpenedRecording } from '../composition/OpenedRecording';
 import { openRecording } from '../composition/openRecording';

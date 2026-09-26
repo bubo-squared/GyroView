@@ -1,5 +1,4 @@
-import type { PipelineFactory, PipelineHost } from '../composition/buildPipeline';
-import type { RecordingPorts } from '../composition/ports';
+import type { PipelineFactory, PipelineHost, RecordingPorts } from '../composition/ports';
 
 export interface PlayerParts {
   readonly host: PipelineHost;

@@ -2,7 +2,7 @@ import { GyroViewError, STABILIZATION_MODES, VIEW_MODES } from '@gyroview/core';
 import { choiceOf, type GyroViewElement } from '@gyroview/player';
 import { SourceAttribute } from '@gyroview/player/attributes';
 
-import type { EmbedState, LoadRequest } from './EmbedState';
+import type { EmbedState, LoadRequest } from '../bridge/EmbedState';
 import type { CommandName } from '../protocol/messages';
 
 type Handler = (element: GyroViewElement, parameters: readonly unknown[]) => unknown;

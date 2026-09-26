@@ -236,10 +236,11 @@ The composition root and the user-facing element, in three layers.
 - `embed.html` (`pages/embedPage`) puts a full-viewport `<gyro-view>` up from its query string
   and, when embedded, bridges to the embedding page.
 - `protocol/` is the versioned `postMessage` vocabulary (`hello`, `command`, `result`, `event`),
-  validated on receipt, with the origin rules. `bridge/EmbedHost` runs commands on the element
+  validated on receipt, with the origin rules. `frame/EmbedHost` runs commands on the element
   and forwards its events; `bridge/EmbedHandle` is the embedding page's side, the player API as
   promises with a state mirror; both talk through an `Endpoint` (a window pair in production, a
-  `MessagePort` in tests). ADR 0010.
+  `MessagePort` in tests). What `embed.js` bundles (`snippet/`, `protocol/`, `bridge/`) never
+  imports the player's code or the frame side (dependency-cruiser). ADR 0010.
 - `snippet/embedSnippet` builds `embed.js`: `GyroView.embed(container, options)` creates the
   iframe and returns a handle. `component.ts` builds `gyro-view.js`, the element as one module.
 - `index.html` (`pages/developmentPage`) is the developer page; `dev/samplesPlugin` lists the

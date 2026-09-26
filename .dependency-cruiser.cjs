@@ -208,12 +208,9 @@ module.exports = {
     {
       name: 'the-embed-snippet-carries-no-player-code',
       comment:
-        'embed.js only talks to the frame: the snippet, the protocol and the bridge but for the frame side (EmbedHost, commandHandlers) take types and attribute names from the player, never its code.',
+        'embed.js only talks to the frame: the snippet, the protocol and the page side of the bridge take types and attribute names from the player, never its code.',
       severity: 'error',
-      from: {
-        path: '^apps/embed/src/(snippet|protocol|bridge)/',
-        pathNot: ['\\.test\\.ts$', '^apps/embed/src/bridge/(EmbedHost|commandHandlers)\\.ts$'],
-      },
+      from: { path: '^apps/embed/src/(snippet|protocol|bridge)/', pathNot: '\\.test\\.ts$' },
       to: {
         path: '^packages/player/',
         pathNot: '^packages/player/src/element/attributeNames\\.ts$',
@@ -223,14 +220,11 @@ module.exports = {
     {
       name: 'the-embed-snippet-does-not-reach-the-frame-side',
       comment:
-        'The frame side of the bridge imports the player, so a value import of it from the snippet side would bundle the player into embed.js through it.',
+        'The frame side imports the player, so a value import of it from the snippet side would bundle the player into embed.js through it.',
       severity: 'error',
-      from: {
-        path: '^apps/embed/src/(snippet|protocol|bridge)/',
-        pathNot: ['\\.test\\.ts$', '^apps/embed/src/bridge/(EmbedHost|commandHandlers)\\.ts$'],
-      },
+      from: { path: '^apps/embed/src/(snippet|protocol|bridge)/', pathNot: '\\.test\\.ts$' },
       to: {
-        path: '^apps/embed/src/(bridge/(EmbedHost|commandHandlers)\\.ts$|pages/|component\\.ts$)',
+        path: '^apps/embed/src/(frame/|pages/|component\\.ts$)',
         dependencyTypesNot: ['type-only'],
       },
     },

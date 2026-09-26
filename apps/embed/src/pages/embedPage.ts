@@ -2,7 +2,7 @@ import { defineGyroView, GYRO_VIEW_TAG, type GyroViewElement } from '@gyroview/p
 
 import { embedderOriginOf } from './embedderOrigin';
 import { windowEndpoint } from '../bridge/Endpoint';
-import { EmbedHost } from '../bridge/EmbedHost';
+import { EmbedHost } from '../frame/EmbedHost';
 import { embedAttributesOf } from '../bridge/embedUrl';
 
 /**

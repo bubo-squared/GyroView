@@ -2,7 +2,7 @@ import { GyroViewError, messageOf } from '@gyroview/core';
 import type { GyroViewElement } from '@gyroview/player';
 
 import { COMMAND_HANDLERS, stateOf } from './commandHandlers';
-import type { Endpoint } from './Endpoint';
+import type { Endpoint } from '../bridge/Endpoint';
 import {
   eventMessage,
   failedResult,

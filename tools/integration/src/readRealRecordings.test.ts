@@ -19,7 +19,7 @@ describe.skipIf(!hasSamples())('reading the real X5 recordings', () => {
         const recording = await readRecording(source);
         expect(recording.trailerWrapper).toBe('inst-box');
         expect(recording.boxes.map((box) => box.type)).toEqual(['ftyp', 'mdat', 'moov', 'inst']);
-        expect(recording.recordSummaries()).toHaveLength(10);
+        expect(recording.recordLocations()).toHaveLength(10);
         expect(recording.info).toMatchObject({ model: 'Insta360 X5', frameRate: 60 });
         expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
 

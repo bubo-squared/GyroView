@@ -18,13 +18,6 @@ import { CaptureClock, type CaptureClockUnit } from '../../domain/motion/timing/
 import type { CalibrationChoice } from '../../domain/optics/selectCalibration';
 import { ByteRange } from '../../shared/binary/ByteRange';
 
-export interface RecordSummary {
-  readonly id: number;
-  readonly format: number;
-  readonly offset: number;
-  readonly size: number;
-}
-
 export interface RecordingParts {
   readonly source: RandomAccessSource;
   readonly fileSize: number;
@@ -98,15 +91,11 @@ export class Recording {
     return CaptureClock.fromInfo(this.parts.info, await this.captureClockUnit());
   }
 
-  public recordSummaries(): readonly RecordSummary[] {
-    return this.parts.trailer.records
-      .map((record) => ({
-        id: record.id,
-        format: record.format,
-        offset: record.payload.offset,
-        size: record.payload.length,
-      }))
-      .toSorted((left, right) => left.id - right.id);
+  /**
+   * Every record the trailer lists, by id.
+   */
+  public recordLocations(): readonly RecordLocation[] {
+    return this.parts.trailer.records.toSorted((left, right) => left.id - right.id);
   }
 
   /**

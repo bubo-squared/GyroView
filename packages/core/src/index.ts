@@ -1,6 +1,6 @@
 // Application API
 export { readRecording } from './application/recording/readRecording';
-export { Recording, type RecordSummary } from './application/recording/Recording';
+export { Recording } from './application/recording/Recording';
 export { locateOtherLensFile, locateProxy } from './application/recording/locateCompanions';
 
 // Ports and the values they exchange

@@ -57,7 +57,12 @@ function summarizeStructure(file: string, recording: Recording): StructureSummar
     trailerWrapper: recording.trailerWrapper,
     trailerVersion: recording.trailerVersion,
     payloadStart: recording.trailerPayloadStart,
-    records: recording.recordSummaries(),
+    records: recording.recordLocations().map((record) => ({
+      id: record.id,
+      format: record.format,
+      offset: record.payload.offset,
+      size: record.payload.length,
+    })),
   };
 }
 

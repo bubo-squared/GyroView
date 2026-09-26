@@ -42,7 +42,7 @@ describe('readRecording on synthetic X5 files', () => {
     expect(recording.trailerWrapper).toBe('inst-box');
     expect(recording.trailerVersion).toBe(3);
     expect(recording.trailerPayloadStart).toBe(file.payloadStart);
-    expect(recording.recordSummaries().map((record) => record.id)).toEqual([
+    expect(recording.recordLocations().map((record) => record.id)).toEqual([
       RecordType.Info,
       RecordType.Gyro,
       RecordType.Exposure,
@@ -172,7 +172,7 @@ describe('readRecording on real trailers from other cameras (insta360py fixtures
     });
     expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Legacy);
     expect(recording.calibration.calibration?.canvas).toEqual({ width: 6080, height: 3040 });
-    expect(recording.recordSummaries().map((record) => record.id)).toEqual([
+    expect(recording.recordLocations().map((record) => record.id)).toEqual([
       1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12,
     ]);
 
@@ -199,7 +199,7 @@ describe('readRecording on real trailers from other cameras (insta360py fixtures
       fileLayout: undefined,
     });
     expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
-    expect(recording.recordSummaries()).toHaveLength(13);
+    expect(recording.recordLocations()).toHaveLength(13);
     const gyro = await recording.readGyroRecord();
     expect(gyro?.track.length).toBe(12);
   });

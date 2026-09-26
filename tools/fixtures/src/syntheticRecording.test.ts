@@ -25,7 +25,7 @@ describe('assembleSyntheticRecording', () => {
     ]);
     expect(recording.trailerWrapper).toBe('inst-box');
     expect(recording.info.model).toBe('Insta360 X5');
-    expect(recording.recordSummaries().map((record) => record.id)).toEqual([
+    expect(recording.recordLocations().map((record) => record.id)).toEqual([
       RecordType.Info,
       RecordType.Gyro,
       RecordType.Exposure,

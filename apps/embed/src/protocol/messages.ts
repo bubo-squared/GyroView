@@ -129,15 +129,23 @@ function isResultBody(message: Record<string, unknown>): boolean {
     : message['isOk'] === false && isSerializedError(message['error']);
 }
 
-const BODY_CHECKS: Readonly<Record<string, (message: Record<string, unknown>) => boolean>> = {
-  hello: (): boolean => true,
-  command: (message): boolean =>
-    typeof message['id'] === 'number' &&
-    isCommandName(message['name']) &&
-    Array.isArray(message['parameters']),
-  result: isResultBody,
-  event: (message): boolean => isForwardedEventName(message['name']) && 'detail' in message,
-};
+type BodyCheck = (message: Record<string, unknown>) => boolean;
+
+/**
+ * A map, not an object: a `kind` of `constructor` or `__proto__` must find nothing.
+ */
+const BODY_CHECKS: ReadonlyMap<string, BodyCheck> = new Map<string, BodyCheck>([
+  ['hello', (): boolean => true],
+  [
+    'command',
+    (message): boolean =>
+      typeof message['id'] === 'number' &&
+      isCommandName(message['name']) &&
+      Array.isArray(message['parameters']),
+  ],
+  ['result', isResultBody],
+  ['event', (message): boolean => isForwardedEventName(message['name']) && 'detail' in message],
+]);
 
 /**
  * Whether unknown data from `postMessage` is one of ours, well-formed. Anything else on the
@@ -145,7 +153,7 @@ const BODY_CHECKS: Readonly<Record<string, (message: Record<string, unknown>) =>
  */
 export function isProtocolMessage(data: unknown): data is ProtocolMessage {
   if (!isRecord(data) || data['protocol'] !== PROTOCOL) return false;
-  const check = typeof data['kind'] === 'string' ? BODY_CHECKS[data['kind']] : undefined;
+  const check = typeof data['kind'] === 'string' ? BODY_CHECKS.get(data['kind']) : undefined;
   return check?.(data) ?? false;
 }
 

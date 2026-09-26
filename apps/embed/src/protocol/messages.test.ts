@@ -28,6 +28,9 @@ describe('isProtocolMessage', () => {
     expect(isProtocolMessage('gyro-view/1')).toBe(false);
     expect(isProtocolMessage({ protocol: 'other/1', kind: 'hello' })).toBe(false);
     expect(isProtocolMessage({ protocol: PROTOCOL, kind: 'dance' })).toBe(false);
+    for (const kind of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) {
+      expect(isProtocolMessage({ protocol: PROTOCOL, kind })).toBe(false);
+    }
     expect(
       isProtocolMessage({ protocol: PROTOCOL, kind: 'command', id: 1, name: 'rm', parameters: [] }),
     ).toBe(false);

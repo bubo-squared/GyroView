@@ -78,13 +78,13 @@ describe('GainMatching', () => {
     expect(applied).toEqual([]);
   });
 
-  it('ignores a measurement that lands after disposal, and disposes the meter', async () => {
+  it('ignores a measurement that lands after it stopped, and leaves the meter to its owner', async () => {
     const { meter, applied, subject } = matching();
     const measured = subject.matchNow(seconds(0));
-    subject.dispose();
+    subject.stop();
     meter.pending[0]?.resolve(BRIGHT_AND_DARK);
     await measured;
     expect(applied).toEqual([]);
-    expect(meter.isDisposed).toBe(true);
+    expect(meter.isDisposed).toBe(false);
   });
 });

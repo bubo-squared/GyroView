@@ -117,12 +117,17 @@ interface Drawing {
  * gain matching, which measures what the stitcher drew.
  */
 function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
-  const renderer = ThreeFrameRenderer.create(parts.host.canvas, stitchingSetupOf(parts.opened));
+  const setup = stitchingSetupOf(parts.opened);
+  const renderer = ThreeFrameRenderer.create(parts.host.canvas, setup);
   disposables.add(() => {
     renderer.dispose();
   });
   const { sink, stabilizing } = sinkOver(renderer, parts.opened);
-  const gainMatching = new GainMatchingFrameSink({ sink, renderer });
+  const gainMatching = new GainMatchingFrameSink({
+    sink,
+    renderer,
+    lensCount: setup.lenses.length,
+  });
   disposables.add(() => {
     gainMatching.dispose();
   });

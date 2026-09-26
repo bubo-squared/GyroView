@@ -119,6 +119,11 @@ function pixelAt(renderer: ThreeFrameRenderer, position: Position, size = SIZE):
   return { r: pixels[offset] ?? -1, g: pixels[offset + 1] ?? -1, b: pixels[offset + 2] ?? -1 };
 }
 
+/**
+ * Both synthetic layouts, like every X-series camera, have two lenses.
+ */
+const LENS_COUNT = 2;
+
 function eventOnce(target: EventTarget, name: string): Promise<void> {
   return new Promise((resolve) => {
     target.addEventListener(
@@ -164,7 +169,7 @@ describe('ThreeFrameRenderer', () => {
    * Gain matching composed over the renderer as the player composes it, measuring its seam.
    */
   function gainMatchingOver(renderer: ThreeFrameRenderer): GainMatchingFrameSink<VideoFrame> {
-    const matching = new GainMatchingFrameSink({ sink: renderer, renderer });
+    const matching = new GainMatchingFrameSink({ sink: renderer, renderer, lensCount: LENS_COUNT });
     gainMatchers.push(matching);
     return matching;
   }

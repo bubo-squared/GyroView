@@ -12,13 +12,13 @@ const MEASURE_INTERVAL_SECONDS = 0.5;
 /**
  * Keeps the lens gains matched over time: measures the seam after a presented frame every so
  * often, feeds the matcher and applies what it says. One measurement in flight at a time; one
- * that lands after disposal changes nothing.
+ * that lands after `stop` changes nothing. The meter is borrowed: whoever created it disposes it.
  */
 export class GainMatching {
   private readonly matcher = new GainMatcher();
   private lastMeasuredAt: Seconds | undefined;
   private inFlight: Promise<void> | undefined;
-  private isDisposed = false;
+  private isStopped = false;
 
   public constructor(
     private readonly meter: SeamMeter,
@@ -40,16 +40,15 @@ export class GainMatching {
     return this.inFlight;
   }
 
-  public dispose(): void {
-    this.isDisposed = true;
-    this.meter.dispose();
+  public stop(): void {
+    this.isStopped = true;
   }
 
   private async measureAt(mediaTime: Seconds): Promise<void> {
     try {
       const means = await this.meter.measure();
       this.lastMeasuredAt = mediaTime;
-      if (means && !this.isDisposed) this.applyGains(this.matcher.update(means, mediaTime));
+      if (means && !this.isStopped) this.applyGains(this.matcher.update(means, mediaTime));
     } finally {
       this.inFlight = undefined;
     }

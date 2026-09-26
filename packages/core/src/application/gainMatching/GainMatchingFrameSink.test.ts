@@ -41,7 +41,7 @@ function subject(): {
 } {
   const sink = new FakeFrameSink<string>();
   const renderer = new FakeRenderer();
-  return { sink, renderer, matching: new GainMatchingFrameSink({ sink, renderer }) };
+  return { sink, renderer, matching: new GainMatchingFrameSink({ sink, renderer, lensCount: 2 }) };
 }
 
 function presentAt(matching: GainMatchingFrameSink<string>, time: number): void {
@@ -82,5 +82,17 @@ describe('GainMatchingFrameSink', () => {
     matching.enable();
     matching.dispose();
     expect(renderer.meters).toEqual([{ isDisposed: true }, { isDisposed: true }]);
+  });
+
+  it('puts the recorded exposure back when disabled', async () => {
+    const { renderer, matching } = subject();
+    matching.enable();
+    presentAt(matching, 0);
+    await matching.matchNow();
+    matching.disable();
+    expect(renderer.applied.at(-1)).toEqual([
+      [1, 1, 1],
+      [1, 1, 1],
+    ]);
   });
 });

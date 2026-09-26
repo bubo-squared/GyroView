@@ -97,8 +97,7 @@ export class Player {
   }
 
   /**
-   * Whether a drag moves the picture as it is framed now: always in the stitched views, in the
-   * raw lenses once zoomed in.
+   * Whether a drag moves the picture as it is framed now; the view mode decides.
    */
   public get canPan(): boolean {
     return this.viewing.canPan;

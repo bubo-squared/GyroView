@@ -1,7 +1,7 @@
 /**
  * Stable machine-readable failure categories. Embedders switch on these; messages are for humans.
  */
-export const GYRO_VIEW_ERROR_CODES = [
+const GYRO_VIEW_ERROR_CODES = [
   'binary-out-of-bounds',
   'binary-unsafe-integer',
   'codec-unsupported',

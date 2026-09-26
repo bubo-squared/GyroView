@@ -87,7 +87,7 @@ export class PlayerView {
   }
 
   public lookAt(yaw: Degrees, pitch: Degrees): void {
-    this.set(lookAt(this.framing.view, yaw, pitch));
+    this.frame({ ...this.framing, view: lookAt(this.framing.view, yaw, pitch) });
   }
 
   public pan(delta: DragDelta): void {

@@ -99,8 +99,16 @@ export class HttpRangeSource implements RandomAccessSource {
   private async sizeFromContentRange(): Promise<number> {
     const response = await this.request('GET', { Range: FIRST_BYTE_RANGE });
     discardBody(response);
+    // A whole-page 200 here is as often a missing file behind a fallback page as a server that
+    // ignores ranges, so it stays unreadable; the status tells the host which.
+    if (response.status !== HTTP_PARTIAL_CONTENT) {
+      throw new GyroViewError(
+        'source-unreadable',
+        `${this.url} answered ${response.status} to a byte range; cannot determine the file size`,
+      );
+    }
     const total = CONTENT_RANGE_TOTAL.exec(response.headers.get('content-range') ?? '')?.[1];
-    if (total === undefined || response.status !== HTTP_PARTIAL_CONTENT) {
+    if (total === undefined) {
       throw new GyroViewError(
         'source-unreadable',
         `${this.url} reports neither Content-Length nor Content-Range; cannot determine the file size`,

@@ -72,9 +72,12 @@ function respond(request: IncomingMessage, response: ServerResponse, served: Ser
     return;
   }
   response.setHeader('Accept-Ranges', 'bytes');
-  const isRange = RANGE_HEADER.test(request.headers.range ?? '');
-  if (isRange && !served.behaviour.ignoresRanges) respondWithRange(request, response, served);
-  else respondWhole(request, response, served);
+  const range = RANGE_HEADER.exec(request.headers.range ?? '');
+  if (range && !served.behaviour.ignoresRanges) {
+    respondWithRange(request, response, { body: served.body, range });
+  } else {
+    respondWhole(request, response, served);
+  }
 }
 
 /**
@@ -85,14 +88,21 @@ function refusalOf(request: IncomingMessage, behaviour: TestServerBehaviour): nu
   return behaviour.refusesHead && request.method === 'HEAD' ? HTTP_METHOD_NOT_ALLOWED : undefined;
 }
 
+/**
+ * The part of the body a `Range` header asked for.
+ */
+interface RangeAsked {
+  readonly body: Uint8Array;
+  readonly range: RegExpExecArray;
+}
+
 function respondWithRange(
   request: IncomingMessage,
   response: ServerResponse,
-  { body }: Served,
+  { body, range }: RangeAsked,
 ): void {
-  const range = RANGE_HEADER.exec(request.headers.range ?? '');
-  const start = Number(range?.[1]);
-  const end = Math.min(Number(range?.[2]), body.byteLength - 1);
+  const start = Number(range[1]);
+  const end = Math.min(Number(range[2]), body.byteLength - 1);
   response.setHeader('Content-Range', `bytes ${start}-${end}/${body.byteLength}`);
   response.setHeader('Content-Length', String(end - start + 1));
   response.writeHead(HTTP_PARTIAL_CONTENT);

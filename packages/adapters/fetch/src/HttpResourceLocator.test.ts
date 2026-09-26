@@ -13,14 +13,6 @@ async function serve(behaviour = {}): Promise<TestServer> {
   return server;
 }
 
-/**
- * A server that answers HEAD with 405 Method Not Allowed and everything else normally.
- */
-const refusingHead: typeof fetch = (input, init) =>
-  init?.method === 'HEAD'
-    ? Promise.resolve(new Response(null, { status: 405 }))
-    : fetch(input, init);
-
 afterAll(async () => {
   await Promise.all(servers.map((server) => server.stop()));
 });
@@ -65,10 +57,8 @@ describe('HttpResourceLocator', () => {
   });
 
   it('falls back to a one-byte GET when HEAD is not allowed', async () => {
-    const server = await serve();
-    await expect(new HttpResourceLocator({ fetch: refusingHead }).exists(server.url)).resolves.toBe(
-      true,
-    );
+    const server = await serve({ refusesHead: true });
+    await expect(new HttpResourceLocator().exists(server.url)).resolves.toBe(true);
   });
 
   it('answers false instead of throwing when the server is unreachable', async () => {

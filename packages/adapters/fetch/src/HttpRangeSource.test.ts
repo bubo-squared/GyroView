@@ -62,6 +62,14 @@ describe('HttpRangeSource', () => {
     await expect(new HttpRangeSource(server.url).size()).resolves.toBe(5000);
   });
 
+  it('names the status a size lookup got instead of a byte range', async () => {
+    const server = await serve(content, { refusesHead: true, ignoresRanges: true });
+    await expect(new HttpRangeSource(server.url).size()).rejects.toMatchObject({
+      code: 'source-unreadable',
+      message: expect.stringContaining('answered 200 to a byte range') as string,
+    });
+  });
+
   it('reports a server that ignores Range requests with the range-unsupported code', async () => {
     const server = await serve(content, { ignoresRanges: true });
     await expect(new HttpRangeSource(server.url).read(ByteRange.of(0, 10))).rejects.toMatchObject({

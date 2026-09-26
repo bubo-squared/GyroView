@@ -79,7 +79,7 @@ Every failure is a `GyroViewError` with a stable `code`; the `error` event carri
 | `source-truncated`      | Fewer bytes came back than asked: the file changed or the server misbehaves. |
 | `codec-unsupported`     | This browser cannot decode the tracks (no HEVC hardware, or not a secure     |
 |                         | context).                                                                    |
-| `missing-second-file`   | A split-file recording without its `_10_` other lens file: set `src2`.       |
+| `missing-second-file`   | One lens of a split-file pair without the other lens's file: set `src2`.     |
 | `no-calibration`        | The file carries no lens calibration; it cannot be stitched.                 |
 | `no-info-record`        | Not an Insta360 recording (or a truncated one).                              |
 | `no-key-frame`          | A video track has no key frame to start decoding from.                       |

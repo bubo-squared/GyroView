@@ -109,9 +109,24 @@ describe('detectLensLayout', () => {
       [input('clip.insv', track(0, 2880))],
       { fileLayout: 'split-files', trackOrder: undefined },
     ],
+    [
+      'only the _10_ half is given',
+      [input('VID_20240101_120000_10_001.insv', track(0, 2880))],
+      NO_HINTS,
+    ],
+    ['a renamed half comes without a hint', [input('clip.insv', track(0, 2880))], NO_HINTS],
   ])('asks for the second file when %s', (_case, inputs, hints) => {
     expect(captureError(() => detectLensLayout(inputs, hints))).toMatchObject({
       code: 'missing-second-file',
+    });
+  });
+
+  it('names the file that holds the other lens when the name follows the pattern', () => {
+    const error = captureError(() =>
+      detectLensLayout([input('VID_20240101_120000_10_001.insv', track(0, 2880))], NO_HINTS),
+    );
+    expect(error).toMatchObject({
+      message: expect.stringContaining('VID_20240101_120000_00_001.insv') as string,
     });
   });
 

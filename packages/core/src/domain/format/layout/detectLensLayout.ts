@@ -58,7 +58,7 @@ export function detectLensLayout(
   }
   const [only] = candidates;
   if (only && candidates.length === 1 && isPacked(only.track)) return packed(only);
-  throw undecidable(inputs, candidates, hints);
+  throw undecidable(inputs, candidates);
 }
 
 /**
@@ -167,24 +167,30 @@ function fileRank(input: InputDescription): number {
 function undecidable(
   inputs: readonly InputDescription[],
   candidates: readonly Candidate[],
-  hints: LayoutHints,
 ): GyroViewError {
-  const isLoneHalfOfPair =
-    inputs.length === 1 &&
-    candidates.length === 1 &&
-    (hints.fileLayout === 'split-files' ||
-      RecordingFileName.parse(inputs[0]?.name ?? '')?.isBackLens === true);
-  if (isLoneHalfOfPair) {
-    return new GyroViewError(
-      'missing-second-file',
-      'this recording stores one lens per file; provide the matching _10_ file as the second source',
-    );
-  }
+  // One square track can only be one lens of a pair, whatever the file is called: a packed frame
+  // holding both is 2:1.
+  const [only] = candidates;
+  const isLoneHalfOfPair = inputs.length === 1 && candidates.length === 1 && only !== undefined;
+  if (isLoneHalfOfPair && isSquare(only.track)) return missingSecondFile(only.input);
   const shape = candidates
     .map((candidate) => `${candidate.track.codedWidth}x${candidate.track.codedHeight}`)
     .join(', ');
   return new GyroViewError(
     'unsupported-layout',
     `cannot map ${candidates.length} video track(s) [${shape}] in ${inputs.length} file(s) onto two lenses`,
+  );
+}
+
+/**
+ * What to hand over besides a lone half: the file the name says holds the other lens, when the
+ * name follows the camera's pattern.
+ */
+function missingSecondFile(input: InputDescription): GyroViewError {
+  const name = RecordingFileName.parse(input.name ?? '');
+  const other = name ? `the matching ${name.otherLensName()}` : "the other lens's file";
+  return new GyroViewError(
+    'missing-second-file',
+    `this recording stores one lens per file; provide ${other} as the second source`,
   );
 }

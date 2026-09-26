@@ -1,0 +1,89 @@
+import { FileRandomAccessSource } from '@gyroview/adapter-node';
+import {
+  conjugateQuaternion,
+  imuFrameFor,
+  microseconds,
+  OrientationTrack,
+  readRecording,
+  rotateVector,
+  toBodyFrame,
+  type CaptureClock,
+  type GyroTrack,
+  type Vector3,
+} from '@gyroview/core';
+import { describe, expect, it } from 'vitest';
+
+import { hasSamples, OFFICE_RECORDING, SAILING_RECORDING } from './samples';
+
+const TIMEOUT_MS = 30_000;
+/**
+ * Video times, in seconds, at which the estimate is compared with the accelerometer.
+ */
+const CHECKED_TIMES = [60, 100];
+/**
+ * The estimated down direction may differ from the accelerometer by this much (degrees): the
+ * filter follows gravity with a time constant of seconds while the boat accelerates.
+ */
+const MAX_DOWN_ERROR_DEGREES = 12;
+/**
+ * Every this many gyro samples are searched for the one nearest a video time: a tenth of a
+ * second at the X5's 1 kHz, far below what the filter's time constant can tell apart.
+ */
+const SEARCH_STRIDE = 100;
+const DOWN: Vector3 = [0, -1, 0];
+
+function angleBetweenDegrees(a: Vector3, b: Vector3): number {
+  const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const lengths = Math.hypot(...a) * Math.hypot(...b);
+  return (Math.acos(Math.max(-1, Math.min(1, dot / lengths))) * 180) / Math.PI;
+}
+
+function nearestGyroSample(track: GyroTrack, clock: CaptureClock, videoTime: number): number {
+  let best = 0;
+  let bestDistance = Infinity;
+  for (let index = 0; index < track.length; index += SEARCH_STRIDE) {
+    const captureTime = microseconds(track.captureTimes[index] ?? 0);
+    const distance = Math.abs(clock.gyroVideoTimeOf(captureTime) - videoTime);
+    if (distance >= bestDistance) continue;
+    bestDistance = distance;
+    best = index;
+  }
+  return best;
+}
+
+/**
+ * The orientation the player integrates from the real gyro records: the filter leans toward the
+ * accelerometer over seconds, so its estimated down stays with measured gravity whatever the IMU
+ * frame (ADR 0009); the check guards the filter, not the frame.
+ */
+describe.skipIf(!hasSamples())('the motion of the real X5 recordings', () => {
+  it.each([
+    ['office', OFFICE_RECORDING],
+    ['sailing', SAILING_RECORDING],
+  ])(
+    'keeps the estimated down of the %s recording with measured gravity',
+    async (_name, file) => {
+      const source = await FileRandomAccessSource.open(file);
+      try {
+        const recording = await readRecording(source);
+        const [gyro, clock] = await Promise.all([
+          recording.readGyroRecord(),
+          recording.captureClock(),
+        ]);
+        if (!gyro || !clock) throw new Error('the recording lacks a gyro record or a clock');
+        const frame = imuFrameFor(recording.info);
+        const orientations = OrientationTrack.integrate({ gyro: gyro.track, clock, frame });
+        for (const time of CHECKED_TIMES) {
+          const sample = gyro.track.sampleAt(nearestGyroSample(gyro.track, clock, time));
+          const measuredUp = toBodyFrame(frame, sample.acceleration);
+          const orientation = orientations.orientationAt(clock.gyroVideoTimeOf(sample.captureTime));
+          const estimatedUp = rotateVector(conjugateQuaternion(orientation), DOWN);
+          expect(angleBetweenDegrees(measuredUp, estimatedUp)).toBeLessThan(MAX_DOWN_ERROR_DEGREES);
+        }
+      } finally {
+        await source.close();
+      }
+    },
+    TIMEOUT_MS,
+  );
+});

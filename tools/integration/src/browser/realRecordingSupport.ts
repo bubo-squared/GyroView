@@ -27,30 +27,44 @@ const ports = browserPorts();
 export const port = ports.decoderPort;
 
 /**
- * Opens a sample as the player does, through its own use case, which also proves the recording
- * decodes here. A browser build without an HEVC decoder (Playwright's Chromium) skips the test
- * instead of failing it.
+ * A sample opened as the player opens it, or why this run cannot open it.
  */
-export async function openSample(
-  context: TestContext,
-  sample: SampleRecording,
-): Promise<OpenedRecording> {
+export type Availability =
+  { readonly opened: OpenedRecording } | { readonly unavailableBecause: string };
+
+const NO_HEVC_DECODER = 'this browser build cannot decode the recording (no HEVC decoder)';
+
+/**
+ * Opens a sample through the player's own use case, which also proves the recording decodes
+ * here. A sample missing locally (as in CI) or a browser build without an HEVC decoder
+ * (Playwright's Chromium) makes it unavailable rather than failing.
+ */
+export async function availabilityOf(sample: SampleRecording): Promise<Availability> {
+  if (!(await isServed(sample.url))) {
+    return { unavailableBecause: `${sample.name} is not available locally` };
+  }
   const source = { main: { url: sample.url }, second: undefined };
   try {
-    return await openRecording(source, ports, new AbortController().signal);
+    return { opened: await openRecording(source, ports, new AbortController().signal) };
   } catch (error) {
-    if (hasErrorCode(error, 'codec-unsupported')) {
-      context.skip('this browser build cannot decode the recording (no HEVC decoder)');
-    }
+    if (hasErrorCode(error, 'codec-unsupported')) return { unavailableBecause: NO_HEVC_DECODER };
     throw error;
   }
 }
 
-export async function skipUnlessServed(
+/**
+ * The opened sample, or the test skipped with the reason it is unavailable.
+ */
+export function openedOrSkip(context: TestContext, availability: Availability): OpenedRecording {
+  if ('unavailableBecause' in availability) context.skip(availability.unavailableBecause);
+  return availability.opened;
+}
+
+export async function openSample(
   context: TestContext,
   sample: SampleRecording,
-): Promise<void> {
-  if (!(await isServed(sample.url))) context.skip(`${sample.name} is not available locally`);
+): Promise<OpenedRecording> {
+  return openedOrSkip(context, await availabilityOf(sample));
 }
 
 function wait(ms: number): Promise<void> {

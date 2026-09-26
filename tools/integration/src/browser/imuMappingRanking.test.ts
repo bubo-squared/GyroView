@@ -8,7 +8,6 @@ import {
   DecodePipeline,
   stabilizerFor,
   OrientationTrack,
-  type FramePair,
   type BodyAxes,
   type ImuFrame,
   type SignedAxis,
@@ -17,12 +16,12 @@ import { commands } from '@vitest/browser/context';
 import { DECODE_PIPELINE_OPTIONS } from '@gyroview/player/composition';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { closeAll, openSample, port, skipUnlessServed, takePairs } from './realRecordingSupport';
+import { closeAll, openSample, port, takePairs } from './realRecordingSupport';
 import { OFFICE_5K7_60, SAILING_8K_30 } from './sampleUrls';
+import { worldMovement } from './worldMovement';
 
 const WIDTH = 384;
 const HEIGHT = 192;
-const RGBA = 4;
 /**
  * Consecutive pairs this far apart: enough camera motion to tell mappings apart, little scene
  * motion.
@@ -45,43 +44,6 @@ function allImuFrames(): readonly ImuFrame[] {
 function properFrameOf(x: SignedAxis, y: SignedAxis, z: SignedAxis): ImuFrame[] {
   const axes: BodyAxes = [x, y, z];
   return isProperRotation(axes) ? [assumedImuFrame(axes.join(','), axes)] : [];
-}
-
-/**
- * Mean absolute colour difference between two renders: how much the world moved.
- */
-function difference(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
-  let total = 0;
-  for (let offset = 0; offset < a.length; offset += RGBA) {
-    for (let channel = 0; channel < RGBA - 1; channel += 1) {
-      total += Math.abs((a[offset + channel] ?? 0) - (b[offset + channel] ?? 0));
-    }
-  }
-  return total / ((a.length / RGBA) * (RGBA - 1));
-}
-
-interface Renderable {
-  readonly renderer: ThreeFrameRenderer;
-  readonly first: FramePair<VideoFrame>;
-  readonly second: FramePair<VideoFrame>;
-}
-
-/**
- * How much the world moves between the two pairs when each is turned by `rotationFor` its time.
- */
-function movement(
-  renderable: Renderable,
-  rotationFor: (
-    pair: FramePair<VideoFrame>,
-  ) => Parameters<ThreeFrameRenderer['setStabilization']>[0],
-): number {
-  const { renderer, first, second } = renderable;
-  renderer.setStabilization(rotationFor(first));
-  renderer.present({ pair: first, mediaTime: first.timestamp });
-  const before = renderer.readPixels();
-  renderer.setStabilization(rotationFor(second));
-  renderer.present({ pair: second, mediaTime: second.timestamp });
-  return difference(before, renderer.readPixels());
 }
 
 /**
@@ -122,12 +84,12 @@ async function measureStillness(parts: MeasurementParts): Promise<Measured> {
     );
     const pairs = await takePairs(pipeline, time, PAIRS_APART);
     const [first] = pairs;
-    const second = pairs.at(-1);
-    if (!first || !second) throw new Error('no pairs decoded');
-    const renderable = { renderer: parts.renderer, first, second };
-    unstabilized += movement(renderable, () => IDENTITY_MATRIX3);
+    const later = pairs.at(-1);
+    if (!first || !later) throw new Error('no pairs decoded');
+    const renderable = { renderer: parts.renderer, first, later };
+    unstabilized += worldMovement(renderable, () => IDENTITY_MATRIX3);
     for (const candidate of parts.candidates) {
-      candidate.total += movement(renderable, (pair) =>
+      candidate.total += worldMovement(renderable, (pair) =>
         lock.nextRotation(candidate.orientations.orientationAt(pair.timestamp), pair.timestamp),
       );
     }
@@ -156,7 +118,6 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
     ['office', OFFICE_5K7_60, [3, 45, 120, 210, 240]],
   ] as const) {
     it(`ranks the configured X5 frame first on the ${sample.name}`, async (context) => {
-      await skipUnlessServed(context, sample);
       const opened = await openSample(context, sample);
       cleanups.push(() => {
         opened.dispose();

@@ -6,7 +6,7 @@ import {
   PAIR_QUEUE_CAPACITY,
   type OpenedRecording,
 } from '@gyroview/player/composition';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
 import {
   closeAll,
@@ -14,10 +14,10 @@ import {
   openSample,
   port,
   DECODE_TIMEOUT_MS,
-  skipUnlessServed,
   takePairs,
   waitFor,
 } from './realRecordingSupport';
+import { SharedSample } from './SharedSample';
 import { OFFICE_5K7_60, SAILING_8K_30, type SampleRecording } from './sampleUrls';
 
 const PRESENTATIONS_BEFORE_SEEK = 30;
@@ -68,18 +68,19 @@ function expectPictureFollowsSound(sink: FakeFrameSink<VideoFrame>, sample: Samp
 }
 
 describe('the browser pipeline on the real X5 recordings', () => {
+  const office = new SharedSample(OFFICE_5K7_60);
   const cleanups: (() => void)[] = [];
 
   afterEach(() => {
     for (const cleanup of cleanups.splice(0).toReversed()) cleanup();
   });
 
+  afterAll(() => {
+    office.dispose();
+  });
+
   it('reads the office recording over HTTP ranges and decodes both lenses in lockstep from a mid-file time', async (context) => {
-    await skipUnlessServed(context, OFFICE_5K7_60);
-    const opened = await openSample(context, OFFICE_5K7_60);
-    cleanups.push(() => {
-      opened.dispose();
-    });
+    const opened = await office.open(context);
     expect(opened.recording.info.model).toBe('Insta360 X5');
     expect(opened.frameSources).toHaveLength(2);
 
@@ -100,11 +101,7 @@ describe('the browser pipeline on the real X5 recordings', () => {
   });
 
   it('plays the office recording through the session in step with its own audio and follows a seek', async (context) => {
-    await skipUnlessServed(context, OFFICE_5K7_60);
-    const opened = await openSample(context, OFFICE_5K7_60);
-    cleanups.push(() => {
-      opened.dispose();
-    });
+    const opened = await office.open(context);
     const clock = await openAudioClock(opened, cleanups);
     const sink = new FakeFrameSink<VideoFrame>();
     const session = new PlaybackSession<VideoFrame>({
@@ -142,7 +139,6 @@ describe('the browser pipeline on the real X5 recordings', () => {
   });
 
   it('probes and decodes the first frames of the 8K sailing recording', async (context) => {
-    await skipUnlessServed(context, SAILING_8K_30);
     const opened = await openSample(context, SAILING_8K_30);
     cleanups.push(() => {
       opened.dispose();

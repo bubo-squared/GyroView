@@ -100,17 +100,19 @@ describe('resolveFrameTimes fallbacks', () => {
     expect(resolved.frameTimes.frameAt(0).shutterTime).toBeUndefined();
   });
 
-  it('rebases track timestamps that do not start at zero onto the first frame', () => {
+  it('lands the first track timestamp on the first frame of a track that starts late', () => {
+    const lateClock = new CaptureClock(OFFICE_FIRST_FRAME, milliseconds(1.6), seconds(0.5));
     const resolved = resolveOrFail(
       context({
+        clock: lateClock,
         frameCount: 3,
         exposureRecord: undefined,
         trackTimestamps: [seconds(0.5), seconds(1), seconds(1.5)],
       }),
       'track-timestamps',
     );
-    expect(resolved.frameTimes.frameAt(0).videoTime).toBe(0);
-    expect(resolved.frameTimes.frameAt(2).videoTime).toBe(1);
+    expect(resolved.frameTimes.frameAt(0).captureTime).toBe(OFFICE_FIRST_FRAME);
+    expect(resolved.frameTimes.frameAt(2).videoTime).toBe(1.5);
   });
 
   it('prefers track timestamps when the camera says so, even with an exposure record present', () => {

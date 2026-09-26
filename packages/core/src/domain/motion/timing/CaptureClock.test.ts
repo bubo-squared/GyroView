@@ -20,6 +20,14 @@ describe('CaptureClock', () => {
     expect(clock.captureTimeOf(seconds(0.0000004))).toBe(921_751_839);
   });
 
+  it('maps the first frame to where a track that starts late shows it, both ways', () => {
+    const late = clock.withFirstFrameAt(seconds(0.7));
+    expect(late.videoTimeOf(microseconds(921_751_839))).toBe(0.7);
+    expect(late.videoTimeOf(microseconds(921_751_839 + 2_500_000))).toBeCloseTo(3.2, 9);
+    expect(late.captureTimeOf(seconds(0.7))).toBe(921_751_839);
+    expect(late.gyroOffset).toBe(clock.gyroOffset);
+  });
+
   it('defaults to no gyro offset', () => {
     expect(new CaptureClock(microseconds(1000)).gyroVideoTimeOf(microseconds(2000))).toBe(0.001);
   });

@@ -82,8 +82,9 @@ the last encoded frame. Frame k of the video is entry `indexAtOrAfter(first_fram
 ## Capture clock
 
 Gyro samples, exposure entries and `first_frame_timestamp` share one microsecond clock.
-`video time = (timestamp - first_frame_timestamp) / 1e6`; gyro readings are additionally shifted
-by the info record's gyro offset (1.6 ms on X5). Stabilization samples the orientation at
+`video time = first frame's track time + (timestamp - first_frame_timestamp) / 1e6`, the first
+frame's track time being zero unless an edit list starts the track later; gyro readings are
+additionally shifted by the info record's gyro offset (1.6 ms on X5). Stabilization samples the orientation at
 `video time + exposure / 2 + rolling shutter / 2`.
 
 ## Calibration strings

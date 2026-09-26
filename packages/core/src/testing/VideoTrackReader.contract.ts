@@ -80,6 +80,7 @@ export function describeVideoTrackReaderContract(
       await expect(track.frameCount()).resolves.toBe(expected.frameCount);
       const timestamps = await track.sampleTimestamps();
       expect(timestamps).toHaveLength(expected.frameCount);
+      expect(timestamps[0]).toBeCloseTo(start, 6);
       expect([...timestamps]).toEqual([...timestamps].toSorted((left, right) => left - right));
       const configuration = await track.decoderConfiguration();
       expect(configuration.codec).toBe(track.description.codec);

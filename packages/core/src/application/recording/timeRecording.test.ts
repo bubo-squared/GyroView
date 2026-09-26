@@ -75,18 +75,26 @@ describe('timeRecording', () => {
     },
   );
 
-  it('keeps the first frame at video time zero whatever the track origin', async () => {
-    const track = new CountingTrack({
-      trackIndex: 0,
-      frameRate: 10,
-      frameCount: 30,
-      framesPerGop: 10,
-      firstTimestamp: seconds(0.7),
-    });
-    const timing = await timeRecording(await officeRecording(), track);
-    expect(timing.frameTimes?.frameAt(0).videoTime).toBeCloseTo(0, 6);
-    expect(timing.frameTimes?.frameAt(10).videoTime).toBeCloseTo(1, 6);
-  });
+  it.each([
+    [30, 'track-timestamps'],
+    [10, 'exposure-record'],
+  ] as const)(
+    'times the frames of a track that starts late where the decoder shows them (%i frames, %s)',
+    async (frameCount, expectedSource) => {
+      const track = new CountingTrack({
+        trackIndex: 0,
+        frameRate: 10,
+        frameCount,
+        framesPerGop: 10,
+        firstTimestamp: seconds(0.7),
+      });
+      const timing = await timeRecording(await officeRecording(), track);
+      expect(timing.frameTimeSource).toBe(expectedSource);
+      expect(timing.frameTimes?.frameAt(0).videoTime).toBeCloseTo(0.7, 6);
+      expect(timing.frameTimes?.frameIndexAt(seconds(0.7))).toBe(0);
+      expect(timing.frameTimes?.frameIndexAt(seconds(1.75))).toBe(frameCount === 30 ? 10 : 9);
+    },
+  );
 
   it('integrates the gyro under the verified X5 frame', async () => {
     const timing = await timeRecording(await officeRecording(), trackOf(10));

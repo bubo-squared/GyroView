@@ -35,7 +35,8 @@ export class GainMatchingFrameSink<Handle = unknown> implements FrameSink<Handle
   }
 
   /**
-   * One measurement and adjustment of the picture on screen right now, for a still frame.
+   * One measurement and adjustment of the picture on screen right now, awaited: how tests
+   * observe matching without waiting for the next scheduled measurement.
    */
   public async matchNow(): Promise<void> {
     if (this.lastMediaTime === undefined) return;

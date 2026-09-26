@@ -44,7 +44,9 @@ export interface LensModel {
    */
   readonly projection: LensProjectionParameters;
   /**
-   * Undefined when the direction cannot be imaged (behind the lens or outside its field).
+   * The projection computed on the CPU: the domain's reference, against which the calibration
+   * parsers and the renderer's shader are checked. Undefined when the direction cannot be
+   * imaged (behind the lens or outside its field).
    */
   project(direction: Vector3): PixelPoint | undefined;
 }

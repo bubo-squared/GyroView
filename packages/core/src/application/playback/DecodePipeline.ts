@@ -20,6 +20,10 @@ export interface DecodePipelineOptions {
   readonly pairTolerance: Seconds;
 }
 
+/**
+ * How one run went. The session acts on `hasReachedEnd`; the counts make the run observable,
+ * which is how its pairing, backpressure and start gate are tested.
+ */
 export interface DecodeRunReport {
   readonly packetsDecoded: number;
   readonly pairsDelivered: number;

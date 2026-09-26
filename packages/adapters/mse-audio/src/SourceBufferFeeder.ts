@@ -107,13 +107,13 @@ export class SourceBufferFeeder {
     stop: RunStop,
   ): Promise<IteratorResult<Uint8Array<ArrayBuffer>> | typeof STOPPED> {
     await this.waitUntilNeeded(stop);
-    return stop.race(segments.next());
+    return stop.race(() => segments.next());
   }
 
   private async waitUntilNeeded(stop: RunStop): Promise<void> {
     while (!stop.wasStopped && this.bufferedAhead() >= BUFFER_AHEAD_SECONDS) {
       const woken = new AbortController();
-      await stop.race(nextOfEvents(this.parts.element, WAKE_EVENTS, woken.signal));
+      await stop.race(() => nextOfEvents(this.parts.element, WAKE_EVENTS, woken.signal));
       woken.abort();
     }
   }

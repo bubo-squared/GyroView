@@ -39,13 +39,4 @@ export class TrailerFooter {
       reader.uint32LeAt(FOOTER_VERSION_OFFSET),
     );
   }
-
-  /**
-   * Whether the last bytes of a file look like an Insta360 footer, without throwing.
-   */
-  public static isPresentIn(bytes: Uint8Array): boolean {
-    if (bytes.byteLength < TRAILER_FOOTER_SIZE) return false;
-    const tail = bytes.subarray(bytes.byteLength - TRAILER_FOOTER_SIZE);
-    return new ByteReader(tail).asciiAt(FOOTER_MAGIC_OFFSET, FOOTER_MAGIC_SIZE) === TRAILER_MAGIC;
-  }
 }

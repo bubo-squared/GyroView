@@ -22,7 +22,6 @@ export const GYRO_VIEW_ERROR_CODES = [
   'no-key-frame',
   'playback-blocked',
   'range-unsupported',
-  'record-not-found',
   'render-unavailable',
   'source-truncated',
   'source-unreadable',

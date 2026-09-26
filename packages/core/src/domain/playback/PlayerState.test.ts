@@ -1,7 +1,30 @@
 import { describe, expect, it } from 'vitest';
 
-import { PlayerStateMachine, transitionsFrom, type PlayerState } from './PlayerState';
+import { PlayerStateMachine, type PlayerState } from './PlayerState';
 import { captureError } from '../../../test/support/errors';
+
+/**
+ * A legal way into each state from `ready`.
+ */
+const PATHS: Readonly<Record<PlayerState, readonly PlayerState[]>> = {
+  ready: [],
+  playing: ['playing'],
+  buffering: ['buffering'],
+  paused: ['paused'],
+  seeking: ['seeking'],
+  ended: ['playing', 'ended'],
+  error: ['error'],
+  disposed: ['disposed'],
+};
+
+const ALL_STATES = Object.keys(PATHS) as PlayerState[];
+
+function machineIn(state: PlayerState): PlayerStateMachine {
+  const machine = new PlayerStateMachine();
+  const path = PATHS[state];
+  for (const next of path) machine.transitionTo(next);
+  return machine;
+}
 
 const EXPECTED_TRANSITIONS: Readonly<Record<PlayerState, readonly PlayerState[]>> = {
   ready: ['playing', 'buffering', 'paused', 'seeking', 'error', 'disposed'],
@@ -34,11 +57,11 @@ describe('PlayerStateMachine', () => {
   });
 
   it('allows exactly the documented transitions from every state', () => {
-    for (const [state, allowed] of Object.entries(EXPECTED_TRANSITIONS) as [
-      PlayerState,
-      readonly PlayerState[],
-    ][]) {
-      expect(transitionsFrom(state), state).toEqual(allowed);
+    const table = Object.entries(EXPECTED_TRANSITIONS) as [PlayerState, readonly PlayerState[]][];
+    for (const [state, allowed] of table) {
+      const machine = machineIn(state);
+      const permitted = ALL_STATES.filter((next) => machine.canTransitionTo(next));
+      expect(permitted, state).toEqual(allowed);
     }
   });
 

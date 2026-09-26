@@ -22,12 +22,6 @@ describe('TrailerFooter', () => {
     },
   );
 
-  it('recognises the magic at the end of a byte array', () => {
-    expect(TrailerFooter.isPresentIn(loadFixture('x5/office/footer-with-index.bin'))).toBe(true);
-    expect(TrailerFooter.isPresentIn(new Uint8Array(100))).toBe(false);
-    expect(TrailerFooter.isPresentIn(new Uint8Array(10))).toBe(false);
-  });
-
   it('rejects a block of the wrong length', () => {
     expect(captureError(() => TrailerFooter.parse(new Uint8Array(71)))).toMatchObject({
       code: 'invalid-trailer',

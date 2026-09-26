@@ -39,7 +39,7 @@ describe('resolveFrameTimes with the office exposure record', () => {
     expect(resolved.source).toBe('exposure-record');
     expect(resolved.warnings).toEqual([]);
     expect(resolved.frameTimes.frameCount).toBe(10);
-    expect(resolved.frameTimes.hasShutterTimes).toBe(true);
+    expect(resolved.frameTimes.frameAt(0).shutterTime).toBeDefined();
     expect(resolved.frameTimes.frameAt(0).captureTime).toBe(OFFICE_FIRST_FRAME);
     expect(resolved.frameTimes.frameAt(0).videoTime).toBe(0);
   });
@@ -81,7 +81,7 @@ describe('resolveFrameTimes fallbacks', () => {
     expect(resolved.warnings).toEqual(['exposure-record unavailable']);
     expect(resolved.frameTimes.frameAt(2).videoTime).toBe(1);
     expect(resolved.frameTimes.frameAt(2).shutterTime).toBeUndefined();
-    expect(resolved.frameTimes.hasShutterTimes).toBe(false);
+    expect(resolved.frameTimes.frameAt(0).shutterTime).toBeUndefined();
   });
 
   it('rebases track timestamps that do not start at zero onto the first frame', () => {

@@ -45,8 +45,4 @@ export class ByteRange {
   public fitsWithin(totalSize: number): boolean {
     return this.end <= totalSize;
   }
-
-  public equals(other: ByteRange): boolean {
-    return this.offset === other.offset && this.length === other.length;
-  }
 }

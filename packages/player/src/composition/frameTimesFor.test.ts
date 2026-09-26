@@ -41,7 +41,7 @@ describe('frameTimesFor', () => {
 
     expect(resolved?.source).toBe('exposure-record');
     expect(resolved?.frameTimes.frameCount).toBe(10);
-    expect(resolved?.frameTimes.hasShutterTimes).toBe(true);
+    expect(resolved?.frameTimes.frameAt(0).shutterTime).toBeDefined();
     expect(track.sampleTimestampCalls).toBe(0);
   });
 

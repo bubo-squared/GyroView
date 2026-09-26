@@ -18,11 +18,6 @@ describe('ByteRange', () => {
     expect(ByteRange.of(91, 10).fitsWithin(100)).toBe(false);
   });
 
-  it('compares by value', () => {
-    expect(ByteRange.of(1, 2).equals(ByteRange.of(1, 2))).toBe(true);
-    expect(ByteRange.of(1, 2).equals(ByteRange.of(1, 3))).toBe(false);
-  });
-
   it.each([
     [-1, 4],
     [1.5, 4],

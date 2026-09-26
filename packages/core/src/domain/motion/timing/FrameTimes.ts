@@ -59,10 +59,6 @@ export class FrameTimes {
     return this.captureTimes.length;
   }
 
-  public get hasShutterTimes(): boolean {
-    return this.shutterTimes !== undefined;
-  }
-
   public frameAt(index: number): FrameTime {
     ensureIndexInRange(index, this.frameCount, 'frame');
     const captureTime = this.captureTimes[index] as Microseconds;

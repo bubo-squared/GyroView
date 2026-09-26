@@ -49,10 +49,3 @@ export class PlayerStateMachine {
     return states.includes(this.current);
   }
 }
-
-/**
- * The transition table, for tests and documentation.
- */
-export function transitionsFrom(state: PlayerState): readonly PlayerState[] {
-  return TRANSITIONS[state];
-}

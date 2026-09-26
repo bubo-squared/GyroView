@@ -52,7 +52,7 @@ describe('readTrailer with the real X5 layout', () => {
       const entry = manifest[sample];
       expect(trailer.payloadStart).toBe(entry.payloadStart);
       expect(trailer.footer.version).toBe(entry.trailerVersion);
-      expect(trailer.recordIds.toSorted((left, right) => left - right)).toEqual(
+      expect(trailer.records.map((record) => record.id).toSorted((a, b) => a - b)).toEqual(
         Object.keys(entry.records).map(Number),
       );
       expect(trailer.locationOf(RecordType.Info)?.payload.offset).toBe(entry.records['1']!.offset);
@@ -110,8 +110,12 @@ describe('readTrailer with synthetic layouts', () => {
   it('walks contiguous records backwards when there is no index', async () => {
     const file = syntheticRecords().buildContiguous();
     const trailer = await readTrailer(new InMemoryRandomAccessSource(file.bytes));
-    expect(trailer.has(RecordType.Index)).toBe(false);
-    expect(trailer.recordIds).toEqual([RecordType.Info, RecordType.Gyro, RecordType.Exposure]);
+    expect(trailer.locationOf(RecordType.Index)).toBeUndefined();
+    expect(trailer.records.map((record) => record.id)).toEqual([
+      RecordType.Info,
+      RecordType.Gyro,
+      RecordType.Exposure,
+    ]);
     for (const expected of file.records) {
       expect(trailer.locationOf(expected.id)).toMatchObject({
         format: expected.format,
@@ -166,12 +170,10 @@ describe('readTrailer with synthetic layouts', () => {
 });
 
 describe('Trailer', () => {
-  it('reports a missing record with a typed error when required', async () => {
+  it('knows no location for a record the file lacks', async () => {
     const file = syntheticRecords().buildContiguous();
     const trailer = await readTrailer(new InMemoryRandomAccessSource(file.bytes));
-    expect(() => trailer.requireLocation(RecordType.Gps)).toThrow(
-      expect.objectContaining({ code: 'record-not-found' }) as Error,
-    );
+    expect(trailer.locationOf(RecordType.Gps)).toBeUndefined();
     expect(trailer.records).toHaveLength(3);
   });
 });

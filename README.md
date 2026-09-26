@@ -67,8 +67,10 @@ version, frame time source, gyro and IMU frame, audio), `statuschange` (`idle`,
 unverified IMU frame, silent clock) and `error` (`code` and `message`; the codes
 are listed in `docs/DEPLOYMENT.md`).
 
-Keyboard: space or K play/pause, J and L seek, arrows look around (Shift + arrows seek), plus
-and minus zoom, 0 resets the view, M mutes, F fills the screen. Mouse and touch: drag to look,
+Keyboard: space or K play/pause, J and L seek, S stops, arrows look around (Shift + arrows
+seek), plus and minus zoom, 0 resets the view, M mutes, F fills the screen, Escape closes an
+open menu and then leaves fullscreen. A focused slider keeps its arrows and a focused button
+its Space. Mouse and touch: drag to look,
 wheel or pinch to zoom, tap to play or pause. The equirectangular panorama only turns sideways
 and does not zoom; the raw lenses neither turn nor zoom.
 

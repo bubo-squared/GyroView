@@ -67,6 +67,20 @@ function menuOf(element: GyroViewElement, name: string): { choices: string[]; ch
   };
 }
 
+/**
+ * A key pressed on a control inside the shadow tree, as the browser dispatches it.
+ */
+function pressKey(target: Element, key: string): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    composed: true,
+    cancelable: true,
+  });
+  target.dispatchEvent(event);
+  return event;
+}
+
 function pointer(type: string, at: { x: number; y: number }): PointerEvent {
   return new PointerEvent(type, {
     pointerId: 1,
@@ -192,6 +206,27 @@ describe('<gyro-view>', () => {
     expect(element.view).toMatchObject({ yaw: 0, pitch: 0, fieldOfView: 90 });
     key('ArrowRight', true);
     await waitFor(() => element.currentTime >= 3, 'a clamped seek to the end');
+  });
+
+  it('leaves a focused slider its arrows and a focused button its Space', async () => {
+    const element = await createReady();
+
+    expect(
+      pressKey(control(element, '.volume', HTMLInputElement), 'ArrowRight').defaultPrevented,
+    ).toBe(false);
+    expect(
+      pressKey(control(element, '.seek', HTMLInputElement), 'ArrowLeft').defaultPrevented,
+    ).toBe(false);
+    expect(pressKey(control(element, '.mute', HTMLButtonElement), ' ').defaultPrevented).toBe(
+      false,
+    );
+    expect(element.view.yaw).toBe(0);
+    expect(element.paused).toBe(true);
+
+    expect(pressKey(control(element, '.volume', HTMLInputElement), 'm').defaultPrevented).toBe(
+      true,
+    );
+    expect(element.muted).toBe(true);
   });
 
   it('looks around with drags and wheel turns on the canvas, and toggles play on a tap', async () => {

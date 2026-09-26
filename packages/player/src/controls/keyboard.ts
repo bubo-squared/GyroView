@@ -18,9 +18,9 @@ export type ShortcutCommand =
   | 'look-down';
 
 /**
- * Keys as `KeyboardEvent.key` reports them. Space and K play, J and L seek, the arrows look
- * around (with Shift they seek), M mutes, F fills the screen, 0 resets the view, plus and minus
- * zoom.
+ * Keys as `KeyboardEvent.key` reports them. Space and K play, J and L seek, S stops, the arrows
+ * look around (with Shift they seek), M mutes, F fills the screen, 0 resets the view, plus and
+ * minus zoom. Escape leaves fullscreen.
  */
 const PLAIN_KEYS: ReadonlyMap<string, ShortcutCommand> = new Map<string, ShortcutCommand>([
   [' ', 'toggle-play'],
@@ -129,7 +129,7 @@ const ACTIONS: Readonly<Record<ShortcutCommand, Action>> = {
 
 /**
  * Turns key presses on the element into player commands for as long as the element lives,
- * leaving the controls' own inputs and the browser's shortcuts alone.
+ * leaving the keys a focused control handles itself and the browser's shortcuts alone.
  */
 export function bindKeyboard(element: HTMLElement, host: KeyboardHost): void {
   element.addEventListener('keydown', (event) => {
@@ -137,25 +137,32 @@ export function bindKeyboard(element: HTMLElement, host: KeyboardHost): void {
       host.exitFullscreen();
       return;
     }
-    if (isEditable(event.target)) return;
     const command = shortcutFor({
       key: event.key,
       isShiftPressed: event.shiftKey,
       hasSystemModifier: event.ctrlKey || event.altKey || event.metaKey,
     });
-    if (!command) return;
+    if (!command || isControlsOwnKey(event)) return;
     event.preventDefault();
     ACTIONS[command](host);
   });
 }
 
+const SLIDER_KEYS: ReadonlySet<string> = new Set([
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowUp',
+  'ArrowDown',
+]);
+const BUTTON_KEY = ' ';
+
 /**
- * Keys typed into the controls' own inputs and selects belong to them.
+ * A slider steps with the arrows and a button presses with Space. A press from the shadow tree
+ * reaches the element retargeted to it, so the control it started at is read from its path.
  */
-function isEditable(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLSelectElement ||
-    target instanceof HTMLTextAreaElement
-  );
+function isControlsOwnKey(event: KeyboardEvent): boolean {
+  const [origin] = event.composedPath();
+  return origin instanceof HTMLInputElement
+    ? SLIDER_KEYS.has(event.key)
+    : origin instanceof HTMLButtonElement && event.key === BUTTON_KEY;
 }

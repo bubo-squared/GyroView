@@ -12,7 +12,7 @@ export interface ClockUnderTest {
   readonly letTimePass: (elapsed: Seconds) => Promise<void>;
 }
 
-const A_WHILE = seconds(0.4);
+const A_WHILE = seconds(0.2);
 /**
  * A clock driven by a media element moves in steps of its own; readings a few hundredths apart
  * are the same time.

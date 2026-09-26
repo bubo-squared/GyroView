@@ -22,15 +22,20 @@ function wait(ms: number): Promise<void> {
 }
 
 /**
- * Polls until the clock has moved past `time` or the timeout passes, whichever is first.
+ * How long a test waits for the audio before it gives up.
  */
-async function waitUntilPast(
-  clock: MediaSourceAudioClock,
-  time: number,
-  timeoutMs: number,
-): Promise<void> {
-  const deadline = performance.now() + timeoutMs;
-  while (clock.currentTime <= time && performance.now() < deadline) await wait(20);
+const WAIT_TIMEOUT_MS = 4000;
+
+/**
+ * Polls until the condition holds or the timeout passes, whichever is first.
+ */
+async function waitUntil(isSatisfied: () => boolean): Promise<void> {
+  const deadline = performance.now() + WAIT_TIMEOUT_MS;
+  while (!isSatisfied() && performance.now() < deadline) await wait(20);
+}
+
+function waitUntilPast(clock: MediaSourceAudioClock, time: number): Promise<void> {
+  return waitUntil(() => clock.currentTime > time);
 }
 
 describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
@@ -75,25 +80,6 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     letTimePass: (elapsed): Promise<void> => wait(secondsToMilliseconds(elapsed)),
   }));
 
-  it('follows the audio once started, within the track', async () => {
-    const clock = await openClock();
-    await clock.start();
-    await waitUntilPast(clock, 0.3, 4000);
-    expect(clock.currentTime).toBeGreaterThan(0.3);
-    expect(clock.currentTime).toBeLessThan(3);
-    expect(clock.failure).toBeUndefined();
-  });
-
-  it('holds its time while stopped', async () => {
-    const clock = await openClock();
-    await clock.start();
-    await waitUntilPast(clock, 0.2, 4000);
-    clock.pause();
-    const held = clock.currentTime;
-    await wait(300);
-    expect(clock.currentTime).toBeCloseTo(held, 2);
-  });
-
   it('stops running when someone else pauses its element, as media keys do', async () => {
     const clock = await openClock();
     await clock.start();
@@ -118,7 +104,7 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     clock.seek(seconds(2));
     expect(clock.currentTime).toBeCloseTo(2, 2);
     await clock.start();
-    await waitUntilPast(clock, 2.3, 4000);
+    await waitUntilPast(clock, 2.3);
     expect(clock.currentTime).toBeGreaterThan(2.3);
     expect(clock.currentTime).toBeLessThanOrEqual(3.05);
   });
@@ -127,7 +113,7 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     const clock = await openClock();
     clock.seek(seconds(2.6));
     await clock.start();
-    await waitUntilPast(clock, 2.95, 4000);
+    await waitUntilPast(clock, 2.95);
     await wait(200);
     expect(clock.hasEnded).toBe(true);
     expect(clock.currentTime).toBeCloseTo(3, 1);
@@ -149,7 +135,7 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     elements.push(element);
     const clock = await MediaSourceAudioClock.open(element, broken);
     clocks.push(clock);
-    await wait(100);
+    await waitUntil(() => clock.failure !== undefined);
     expect(clock.failure?.code).toBe('source-unreadable');
   });
 

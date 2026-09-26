@@ -6,19 +6,20 @@ import {
   type Seconds,
 } from '@gyroview/core';
 
-import { nextEvent, nextOfEvents } from './events';
+import { nextOfEvents } from './events';
 
 interface SourceBufferFeederParts {
   readonly element: HTMLMediaElement;
   readonly mediaSource: MediaSource;
   readonly sourceBuffer: SourceBuffer;
   readonly source: AudioSegmentSource;
-  /**
-   * How far past the playhead the buffer is kept filled.
-   */
-  readonly bufferAhead: Seconds;
 }
 
+/**
+ * How far past the playhead audio is kept buffered: a seek discards and refills it, and it
+ * rides out a slow network.
+ */
+const BUFFER_AHEAD_SECONDS = 30;
 /**
  * Buffered audio kept behind the playhead for small backward seeks; older data is evicted.
  */
@@ -37,7 +38,7 @@ type Segments = AsyncIterator<Uint8Array<ArrayBuffer>>;
 
 /**
  * Keeps the source buffer filled from the playhead onwards: appends segments while less than
- * `bufferAhead` is buffered past the current time, evicts what lies far behind, and ends the
+ * `BUFFER_AHEAD_SECONDS` of audio is buffered past the current time, evicts what lies far behind, and ends the
  * stream when the track ends. A seek restarts it from the new time; disposal stops it.
  */
 export class SourceBufferFeeder {
@@ -116,7 +117,7 @@ export class SourceBufferFeeder {
   }
 
   private async waitUntilNeeded(stop: Signal): Promise<void> {
-    while (!stop.wasTriggered && this.bufferedAhead() >= this.parts.bufferAhead) {
+    while (!stop.wasTriggered && this.bufferedAhead() >= BUFFER_AHEAD_SECONDS) {
       await Promise.race([nextOfEvents(this.parts.element, WAKE_EVENTS), stop.promise]);
     }
   }
@@ -156,7 +157,8 @@ export class SourceBufferFeeder {
   }
 
   private async settlePendingAppend(): Promise<void> {
-    if (this.parts.sourceBuffer.updating) await nextEvent(this.parts.sourceBuffer, 'updateend');
+    if (this.parts.sourceBuffer.updating)
+      await nextOfEvents(this.parts.sourceBuffer, ['updateend']);
   }
 
   private abortPendingAppend(): void {

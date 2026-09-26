@@ -44,7 +44,7 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     element.muted = true;
     document.body.append(element);
     elements.push(element);
-    const clock = await MediaSourceAudioClock.open(element, source, { bufferAhead: seconds(5) });
+    const clock = await MediaSourceAudioClock.open(element, source);
     clocks.push(clock);
     return clock;
   }

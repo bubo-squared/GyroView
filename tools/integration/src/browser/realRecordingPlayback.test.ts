@@ -40,7 +40,7 @@ async function openAudioClock(
     element.remove();
   });
   const segments = await new MediabunnyAudioSegmenter().open(audioTrack);
-  return MediaSourceAudioClock.open(element, segments, { bufferAhead: seconds(5) });
+  return MediaSourceAudioClock.open(element, segments);
 }
 
 /**

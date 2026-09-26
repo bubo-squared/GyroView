@@ -15,16 +15,6 @@ import {
 } from './mediaSourceSupport';
 import { SourceBufferFeeder } from './SourceBufferFeeder';
 
-export interface MediaSourceAudioClockOptions {
-  /**
-   * How far past the playhead audio is kept buffered. Default 30 s: a seek discards and refills
-   * it, and it rides out a slow network.
-   */
-  readonly bufferAhead?: Seconds;
-}
-
-const DEFAULT_BUFFER_AHEAD_SECONDS = 30;
-
 /**
  * PlaybackClock over an audio element fed through Media Source Extensions with the recording's
  * own audio track, so the picture follows the sound and volume and mute are the element's.
@@ -48,7 +38,6 @@ export class MediaSourceAudioClock implements PlaybackClock {
   public static async open(
     element: HTMLMediaElement,
     source: AudioSegmentSource,
-    options: MediaSourceAudioClockOptions = {},
   ): Promise<MediaSourceAudioClock> {
     const mediaSourceClass = mediaSourceConstructor();
     if (!mediaSourceClass?.isTypeSupported(source.mimeType)) {
@@ -66,7 +55,6 @@ export class MediaSourceAudioClock implements PlaybackClock {
         mediaSource: attached.mediaSource,
         sourceBuffer,
         source,
-        bufferAhead: options.bufferAhead ?? seconds(DEFAULT_BUFFER_AHEAD_SECONDS),
       });
       feeder.restartFrom(seconds(0));
       return new MediaSourceAudioClock(element, feeder, attached);

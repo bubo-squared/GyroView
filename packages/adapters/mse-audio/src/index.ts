@@ -1,1 +1,1 @@
-export { MediaSourceAudioClock, type MediaSourceAudioClockOptions } from './MediaSourceAudioClock';
+export { MediaSourceAudioClock } from './MediaSourceAudioClock';

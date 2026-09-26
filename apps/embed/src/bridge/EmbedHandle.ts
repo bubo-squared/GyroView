@@ -171,8 +171,9 @@ export class EmbedHandle {
   private onMessage(message: ProtocolMessage): void {
     switch (message.kind) {
       case 'hello': {
-        // Trusted as the state it claims to be, as event details are (ADR 0010).
-        this.stateValue = message.state as EmbedState;
+        // Trusted as the state it claims to be, as event details are (ADR 0010); an older frame
+        // sends none, and the mirror keeps the defaults.
+        if (message.state !== undefined) this.stateValue = message.state as EmbedState;
         this.isConnected = true;
         for (const queued of this.queued.splice(0)) this.endpoint.send(queued);
         break;

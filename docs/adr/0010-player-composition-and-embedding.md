@@ -43,7 +43,9 @@ use: every command argument and field by type, event names against the forwarded
 codes against the known ones. An event's payload from the pinned frame is trusted once its
 message has passed those checks. The frame trusts one origin: the one the snippet names in the URL, or
 the referrer's, never `*`; a frame with neither plays standalone without a bridge. The page
-trusts only the frame's origin and window. Commands sent before the frame's `hello` wait for it.
+trusts only the frame's origin and window. Commands sent before the frame's `hello` wait for it;
+the `hello` carries the element's state, which the page's mirror starts from (a frame of an
+earlier build sends none, and the mirror starts from the defaults).
 Errors cross the boundary as `{ code, message }`, so the codes stay stable on both sides.
 
 ## Alternatives considered

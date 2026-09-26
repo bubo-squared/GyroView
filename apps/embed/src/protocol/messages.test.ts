@@ -14,6 +14,7 @@ describe('isProtocolMessage', () => {
   it('accepts every message the factories build', () => {
     for (const message of [
       helloMessage({ status: 'idle' }),
+      { protocol: PROTOCOL, kind: 'hello' },
       commandMessage(1, 'seek', [12]),
       okResult(1, undefined),
       failedResult(2, { code: 'decode', message: 'no' }),
@@ -27,7 +28,7 @@ describe('isProtocolMessage', () => {
     expect(isProtocolMessage(undefined)).toBe(false);
     expect(isProtocolMessage('gyro-view/1')).toBe(false);
     expect(isProtocolMessage({ protocol: 'other/1', kind: 'hello', state: {} })).toBe(false);
-    expect(isProtocolMessage({ protocol: PROTOCOL, kind: 'hello' })).toBe(false);
+    expect(isProtocolMessage({ protocol: PROTOCOL, kind: 'hello', state: 'ready' })).toBe(false);
     expect(isProtocolMessage({ protocol: PROTOCOL, kind: 'dance' })).toBe(false);
     for (const kind of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) {
       expect(isProtocolMessage({ protocol: PROTOCOL, kind })).toBe(false);

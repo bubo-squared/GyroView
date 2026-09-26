@@ -28,7 +28,8 @@ export type CommandName = (typeof COMMAND_NAMES)[number];
 
 /**
  * The frame is listening; `state` is the player's state at that moment, which the page's mirror
- * starts from, and the events after it keep current.
+ * starts from, and the events after it keep current. A frame built before the state was added
+ * says hello without it.
  */
 export interface HelloMessage {
   readonly protocol: typeof PROTOCOL;
@@ -140,7 +141,7 @@ type BodyCheck = (message: Record<string, unknown>) => boolean;
  * A map, not an object: a `kind` of `constructor` or `__proto__` must find nothing.
  */
 const BODY_CHECKS: ReadonlyMap<string, BodyCheck> = new Map<string, BodyCheck>([
-  ['hello', (message): boolean => isRecord(message['state'])],
+  ['hello', (message): boolean => message['state'] === undefined || isRecord(message['state'])],
   [
     'command',
     (message): boolean =>

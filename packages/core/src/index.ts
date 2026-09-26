@@ -159,13 +159,7 @@ export {
   type Milliseconds,
   type Seconds,
 } from './shared/units/time';
-export {
-  degrees,
-  degreesToRadians,
-  radians,
-  type Degrees,
-  type Radians,
-} from './shared/units/angle';
+export { degrees, radians, type Degrees, type Radians } from './shared/units/angle';
 
 // Playback ports and pipeline
 export type { AudioTrackReader, DemuxedInput, Demuxer, VideoTrackReader } from './ports/Demuxer';

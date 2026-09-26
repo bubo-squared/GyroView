@@ -41,9 +41,13 @@ module.exports = {
     },
     {
       name: 'byte-layout-stays-in-format',
-      comment: 'Only domain/format reads bytes; motion and optics receive decoded values.',
+      comment:
+        'Only domain/format reads bytes; everything else in the core receives decoded values.',
       severity: 'error',
-      from: { path: '^packages/core/src/domain/(motion|optics)/' },
+      from: {
+        path: '^packages/core/src/(?!domain/format/|shared/|testing/)',
+        pathNot: '\\.test\\.ts$',
+      },
       to: { path: '^packages/core/src/shared/(binary/ByteReader|protobuf)/' },
     },
     {
@@ -64,24 +68,66 @@ module.exports = {
     {
       name: 'format-is-the-way-in',
       comment:
-        'Format is the anti-corruption layer: it produces motion, optics, view and stitching values, never the reverse.',
+        "Format is the anti-corruption layer: it produces the other domain folders' values, never the reverse.",
+      severity: 'error',
+      from: { path: '^packages/core/src/domain/(?!format/)', pathNot: '\\.test\\.ts$' },
+      to: { path: '^packages/core/src/domain/format/' },
+    },
+    {
+      name: 'only-recording-knows-the-format',
+      comment:
+        'The ports and every use case but reading a recording know nothing of .insv: their vocabulary lives with the ports and the domain.',
       severity: 'error',
       from: {
-        path: '^packages/core/src/domain/(motion|optics|view|playback|stitching)/',
+        path: '^packages/core/src/(ports|application/(?!recording/))',
         pathNot: '\\.test\\.ts$',
       },
       to: { path: '^packages/core/src/domain/format/' },
     },
     {
-      name: 'ports-and-playback-do-not-know-the-format',
+      name: 'playback-knows-only-ports-and-its-state',
       comment:
-        'The container and decoder ports, and the playback built on them, know nothing of .insv: their vocabulary lives with the ports.',
+        'Playback is generic transport: motion and optics reach it only as sink decorators the composition root wires.',
+      severity: 'error',
+      from: { path: '^packages/core/src/application/playback/', pathNot: '\\.test\\.ts$' },
+      to: {
+        path: '^packages/core/src/',
+        pathNot: '^packages/core/src/(ports|shared|domain/playback|application/playback)/',
+      },
+    },
+    {
+      name: 'use-cases-do-not-know-each-other',
+      comment:
+        'Each application folder is one use case; what two need is domain or port vocabulary.',
+      severity: 'error',
+      from: { path: '^packages/core/src/application/([^/]+)/', pathNot: '\\.test\\.ts$' },
+      to: {
+        path: '^packages/core/src/application/',
+        pathNot: '^packages/core/src/application/$1/',
+      },
+    },
+    {
+      name: 'shared-is-a-leaf',
+      comment: 'Units, maths, errors and bytes know nothing of the domain above them.',
+      severity: 'error',
+      from: { path: '^packages/core/src/shared/' },
+      to: { path: '^packages/core/src/(?!shared/)' },
+    },
+    {
+      name: 'production-code-does-not-use-test-support',
+      comment:
+        "The core's fakes, contracts and fixture builders serve tests and the fixtures tool only.",
       severity: 'error',
       from: {
-        path: '^packages/core/src/(ports|application/playback)/',
-        pathNot: '\\.test\\.ts$',
+        path: '^(packages|apps)/[^/]+/(src|[^/]+/src)/',
+        pathNot: [
+          '\\.test\\.ts$',
+          '\\.contract\\.ts$',
+          '/src/test/',
+          '^packages/core/src/testing/',
+        ],
       },
-      to: { path: '^packages/core/src/domain/format/' },
+      to: { path: '^packages/core/src/testing/' },
     },
     {
       name: 'ports-do-not-know-use-cases',

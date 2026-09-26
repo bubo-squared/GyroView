@@ -34,8 +34,6 @@ export interface PipelineParts {
   readonly decoderPort: VideoDecoderPort<VideoFrame>;
 }
 
-export type ClockKind = 'audio' | 'wall';
-
 /**
  * Everything running for one loaded recording. The stabilizing sink is present only when the
  * recording had a gyro to integrate.
@@ -45,8 +43,6 @@ export interface Pipeline {
   readonly renderer: PictureRenderer<VideoFrame>;
   readonly stabilizing: StabilizingFrameSink<VideoFrame> | undefined;
   readonly gainMatching: GainMatchingFrameSink<VideoFrame>;
-  readonly clock: PlaybackClock;
-  readonly clockKind: ClockKind;
   readonly warnings: readonly string[];
   dispose(): void;
 }
@@ -99,8 +95,6 @@ export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
       renderer: drawing.renderer,
       stabilizing: drawing.stabilizing,
       gainMatching: drawing.gainMatching,
-      clock: clock.clock,
-      clockKind: clock.kind,
       warnings: clock.warnings,
       dispose: disposables.toDisposer(),
     };
@@ -138,7 +132,6 @@ function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
 
 interface ChosenClock {
   readonly clock: PlaybackClock;
-  readonly kind: ClockKind;
   readonly warnings: readonly string[];
 }
 
@@ -155,7 +148,7 @@ async function clockFor(
     const segments = await new MediabunnyAudioSegmenter().open(audioTrack);
     if (!MediaSourceAudioClock.isSupported(segments)) return wallClock(AUDIO_UNSUPPORTED_WARNING);
     const clock = await MediaSourceAudioClock.open(audio, segments);
-    return { clock, kind: 'audio', warnings: [] };
+    return { clock, warnings: [] };
   } catch (error) {
     // Sound is a comfort, the picture is the point: a broken audio path must not stop playback.
     return wallClock(`${AUDIO_FAILED_WARNING} (${messageOf(error)})`);
@@ -163,7 +156,7 @@ async function clockFor(
 }
 
 function wallClock(warning: string): ChosenClock {
-  return { clock: new WallClock(), kind: 'wall', warnings: [warning] };
+  return { clock: new WallClock(), warnings: [warning] };
 }
 
 function stitchingSetupOf(opened: OpenedRecording): ReturnType<typeof buildStitchingSetup> {

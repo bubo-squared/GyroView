@@ -12,7 +12,6 @@ import type { PlayerSource } from '../PlayerSource';
 export interface LoadedRecording {
   readonly opened: OpenedRecording;
   readonly pipeline: Pipeline;
-  readonly viewport: Viewport;
   dispose(): void;
 }
 
@@ -47,7 +46,7 @@ export async function loadRecording(request: LoadRequest): Promise<LoadedRecordi
     disposables.add(() => {
       viewport.dispose();
     });
-    return { opened, pipeline, viewport, dispose: disposables.toDisposer() };
+    return { opened, pipeline, dispose: disposables.toDisposer() };
   } catch (error) {
     disposables.disposeAll();
     throw error;

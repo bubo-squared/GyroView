@@ -44,8 +44,8 @@ export class Player {
   private readonly sound: PlayerSound;
   private readonly relay = new SessionRelay({
     events: this.events,
-    onState: (state): void => {
-      this.setStatus(state);
+    onState: (): void => {
+      this.announceStatus();
     },
     onEnded: (): void => {
       this.onEnded();
@@ -130,7 +130,7 @@ export class Player {
       settled: new Deferred(),
     };
     this.phase = loading;
-    this.setStatus('loading');
+    this.announceStatus();
     try {
       await this.complete(loading, source, options);
     } catch (error) {
@@ -150,7 +150,7 @@ export class Player {
     this.viewing.attach(undefined);
     this.picture.attach(undefined);
     if (previous.kind === 'loaded') previous.loaded.dispose();
-    this.setStatus('idle');
+    this.announceStatus();
   }
 
   /**
@@ -283,7 +283,7 @@ export class Player {
     this.picture.attach(loaded.pipeline);
     this.relay.attach(session);
     this.loop.start();
-    this.setStatus(session.state);
+    this.announceStatus();
     for (const warning of [...loaded.opened.warnings, ...loaded.pipeline.warnings]) {
       this.events.emit('warning', warning);
     }
@@ -327,12 +327,16 @@ export class Player {
             cause: error,
           });
     this.phase = { kind: 'failed', failure };
-    this.setStatus('error');
+    this.announceStatus();
     this.events.emit('error', failure);
     return failure;
   }
 
-  private setStatus(status: PlayerStatus): void {
+  /**
+   * Announces the status the phase gives now, once for each change.
+   */
+  private announceStatus(): void {
+    const { status } = this;
     if (status === this.lastStatus) return;
     this.lastStatus = status;
     this.events.emit('statuschange', status);

@@ -36,6 +36,9 @@ export interface PlayerEvents {
   readonly waiting: undefined;
   readonly pause: undefined;
   readonly ended: undefined;
+  /**
+   * The media time, every quarter second of playback and on a pause, a seek or the end.
+   */
   readonly timeupdate: Seconds;
   readonly seeking: Seconds;
   readonly seeked: Seconds;

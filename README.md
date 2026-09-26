@@ -63,7 +63,8 @@ before the time, for a dragged seek bar), `currentTime`, `duration`, `paused`, `
 Events (`CustomEvent`s, payload in `detail`): `ready` (metadata: camera, layout, calibration
 version, frame time source, gyro and IMU frame, audio), `statuschange` (`idle`,
 `loading`, `ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`), `play`,
-`waiting`, `playing`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `frame`,
+`waiting`, `playing`, `pause`, `ended`, `timeupdate` (every quarter second of playback, and on
+a pause, a seek or the end, as a media element's), `seeking`, `seeked`, `frame`,
 `viewchange`, `viewmodechange`, `stabilizationchange`, `volumechange` (`{ volume, isMuted }`),
 `warning` (something the player worked around: a degraded feature such as no gyro, an
 unverified IMU frame or a silent clock, an attribute value it ignored, a refused start, a seek

@@ -38,6 +38,11 @@ const PRIMING_PAIRS = 2;
  * have fallen behind: several frames at any frame rate, well beyond jitter.
  */
 const STARVATION_LAG_SECONDS = 0.25;
+/**
+ * How much media time passes between two `timeupdate`s while playing: the slowest cadence of a
+ * media element's, often enough for a seek bar and cheap to relay across `postMessage`.
+ */
+const TIME_UPDATE_INTERVAL_SECONDS = 0.25;
 
 /**
  * Use case: drives one recording through the decode pipeline in step with the clock and hands
@@ -56,6 +61,10 @@ export class PlaybackSession<Handle = unknown> {
    * The pair on screen, kept open until the next one replaces it.
    */
   private presented: Presentation<Handle> | undefined;
+  /**
+   * The time the last `timeupdate` announced.
+   */
+  private announcedTime: Seconds | undefined;
   /**
    * The `play` call waiting for the clock to start once frames are ready.
    */
@@ -101,6 +110,7 @@ export class PlaybackSession<Handle = unknown> {
     if (!this.machine.canTransitionTo('paused')) return;
     this.parts.clock.pause();
     this.setState('paused');
+    this.announceTime(this.parts.clock.currentTime);
     this.settleStartAttempt();
   }
 
@@ -125,7 +135,7 @@ export class PlaybackSession<Handle = unknown> {
     this.parts.clock.seek(target);
     this.startRun(target);
     this.setState(shouldResume ? 'buffering' : 'paused');
-    this.events.emit('timeupdate', target);
+    this.announceTime(target);
   }
 
   /**
@@ -202,8 +212,20 @@ export class PlaybackSession<Handle = unknown> {
       this.setState('buffering');
       return;
     }
-    this.events.emit('timeupdate', now);
+    if (this.isTimeUpdateDue(now)) this.announceTime(now);
     if (this.run?.hasReachedEnd === true && this.isPlayedOut(now)) this.end();
+  }
+
+  private isTimeUpdateDue(now: Seconds): boolean {
+    const { announcedTime } = this;
+    return (
+      announcedTime === undefined || Math.abs(now - announcedTime) >= TIME_UPDATE_INTERVAL_SECONDS
+    );
+  }
+
+  private announceTime(time: Seconds): void {
+    this.announcedTime = time;
+    this.events.emit('timeupdate', time);
   }
 
   /**
@@ -314,6 +336,7 @@ export class PlaybackSession<Handle = unknown> {
     if (!this.machine.canTransitionTo('ended')) return;
     this.parts.clock.pause();
     this.setState('ended');
+    this.announceTime(this.parts.clock.currentTime);
     this.events.emit('ended', undefined);
   }
 

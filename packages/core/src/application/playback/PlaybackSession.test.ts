@@ -76,10 +76,23 @@ describe('PlaybackSession transport', () => {
     expect(sink.presentations.length).toBe(shownWhilePaused);
     expect(updates.length).toBe(updatesWhilePaused);
     await session.play();
-    await advance(100);
-    expect(sink.lastTimestamp).toBeCloseTo(0.4, 6);
+    await advance(300);
+    expect(sink.lastTimestamp).toBeCloseTo(0.6, 6);
     expect(decoderPort.decodersCreated).toHaveLength(2);
     expect(updates.length).toBe(updatesWhilePaused + 1);
+    session.dispose();
+  });
+
+  it('announces its time every quarter second of playback, and the time it pauses at', async () => {
+    const { session, advance } = sessionHarness();
+    const updates: number[] = [];
+    session.events.on('timeupdate', (time) => {
+      updates.push(time);
+    });
+    await session.play();
+    for (let step = 0; step < 5; step += 1) await advance(100);
+    session.pause();
+    expect(updates.map((time) => Number(time.toFixed(6)))).toEqual([0.1, 0.4, 0.5]);
     session.dispose();
   });
 

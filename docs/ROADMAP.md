@@ -61,8 +61,8 @@ are covered by synthetic fixtures built from the documented format variants.
   on the sailing recording the people within a metre of the camera dominated the estimate,
   the biased correction misaligned everything else, and the near people stayed torn, since
   no rigid calibration aligns two depths at once with lenses 3.2 cm apart.
-- The frame is mapped onto the whole calibration square; a 1.2 % scale uncertainty (about
-  half a degree at the seam) remains until another camera's window record or a Studio export
+- The frame is mapped onto the whole calibration square; a 1.2 % scale uncertainty (about two
+  degrees of relative shift at the seam) remains until another camera's window record or a Studio export
   settles it (ADR 0014).
 - Recordings split into several `_NNN` segment files play one segment at a time.
 - Playback speed is 1x; no buffered-ranges display (decoding is on demand).
@@ -82,8 +82,7 @@ In rough order of value, none started:
 3. WebGPU external textures for the frame upload, once WebGPU video import is broad enough.
 4. Multi-segment recordings played as one.
 5. `.insp` photos through the same stitcher.
-6. Optical-flow seam refinement.
-7. The decode pipeline in a worker, if main-thread scheduling ever shows in profiles (it did
+6. The decode pipeline in a worker, if main-thread scheduling ever shows in profiles (it did
    not on an M4 Pro).
 
 ## History

@@ -37,4 +37,5 @@ keeps the recording as it was.
 One small extra render and an asynchronous read-back every half second while playing;
 measurements are skipped while one is in flight and a failed read-back (a lost context) is
 ignored until the next frame. Blown-out or black overlap bands leave the gains at one. The
-`setLensGain` hook remains for inspection and is overwritten by the matcher while it runs.
+renderer's `setLensGains` also silences a lens for inspection; the matcher overwrites it while it
+runs.

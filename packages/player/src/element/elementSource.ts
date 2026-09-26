@@ -1,4 +1,9 @@
-import { qualityFromAttribute, sourceFromAttributes, type AttributeReader } from './attributes';
+import {
+  qualityFromAttribute,
+  sourceFromAttributes,
+  type AttributeReader,
+  type ParsedSource,
+} from './attributes';
 import type { PlayerSource, Quality } from '../PlayerSource';
 
 /**
@@ -10,11 +15,6 @@ export interface FileSource {
   readonly proxy?: File;
 }
 
-export interface ElementSource {
-  readonly source: PlayerSource | undefined;
-  readonly problems: readonly string[];
-}
-
 /**
  * What the element should play: the files handed to it, if any, otherwise what its attributes
  * name. Files still take the `quality` attribute into account.
@@ -23,7 +23,7 @@ export function elementSourceOf(
   read: AttributeReader,
   baseUrl: string,
   files: FileSource | undefined,
-): ElementSource {
+): ParsedSource {
   if (!files) return sourceFromAttributes(read, baseUrl);
   const { quality, problems } = qualityFromAttribute(read);
   return { source: fileSourceOf(files, quality), problems };

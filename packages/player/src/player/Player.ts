@@ -243,20 +243,17 @@ export class Player {
     source: PlayerSource,
     options: LoadOptions,
   ): Promise<void> {
-    const loaded = await this.open(source, loading.controller.signal);
+    const { signal } = loading.controller;
+    const loaded = await loadRecording({ source, parts: this.parts, signal });
     // A newer load may have started between the last abort check and here; its parts belong to
     // nobody now.
-    if (loading.controller.signal.aborted) {
+    if (signal.aborted) {
       loaded.dispose();
       return;
     }
     this.attach(loaded);
     if (options.preload !== false) loaded.pipeline.session.preload();
     if (options.autoplay) await this.autoplay();
-  }
-
-  private async open(source: PlayerSource, signal: AbortSignal): Promise<LoadedRecording> {
-    return loadRecording({ source, parts: this.parts, signal });
   }
 
   private attach(loaded: LoadedRecording): void {

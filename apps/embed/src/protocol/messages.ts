@@ -34,7 +34,7 @@ export type CommandName = (typeof COMMAND_NAMES)[number];
 export interface HelloMessage {
   readonly protocol: typeof PROTOCOL;
   readonly kind: 'hello';
-  readonly state: unknown;
+  readonly state?: unknown;
 }
 
 export interface CommandMessage {

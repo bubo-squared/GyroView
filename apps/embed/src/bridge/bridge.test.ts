@@ -3,7 +3,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { portEndpoint, windowEndpoint } from './Endpoint';
 import { EmbedHandle } from './EmbedHandle';
-import { EmbedHost } from './EmbedHost';
+import { EmbedHost } from '../frame/EmbedHost';
 import { eventMessage, helloMessage, PROTOCOL, type ProtocolMessage } from '../protocol/messages';
 import { waitFor } from '../test/waiting';
 import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
@@ -166,7 +166,7 @@ describe('the embed bridge over a message channel', () => {
     await expect(handle.play()).rejects.toMatchObject({ code: 'embed-destroyed' });
   });
 
-  it('queues commands until the frame says hello', async () => {
+  it('queues commands until the frame says hello, even an older frame that sends no state', async () => {
     const channel = new MessageChannel();
     const handle = new EmbedHandle(portEndpoint(channel.port2));
     const received: ProtocolMessage[] = [];
@@ -182,9 +182,10 @@ describe('the embed bridge over a message channel', () => {
     await waitFor(() => received.length === 1, 'the marker');
     expect(received).toEqual([marker]);
 
-    hostSide.send(helloMessage({}));
+    hostSide.send({ protocol: PROTOCOL, kind: 'hello' });
     await waitFor(() => received.length === 2, 'the queued command');
     expect(received[1]).toMatchObject({ kind: 'command', name: 'pause', id: 1 });
+    expect(handle.state.status).toBe('idle');
     hostSide.send({ protocol: PROTOCOL, kind: 'result', id: 1, isOk: true, value: undefined });
     await pausing;
     handle.destroy();

@@ -67,7 +67,8 @@ Errors cross the boundary as `{ code, message }`, so the codes stay stable on bo
 
 `packages/player` is the only package that imports several adapters; `apps/*` import the
 player, never the adapters (dependency-cruiser). The player tests need Chromium and WebKit,
-like the adapters'. The embed protocol is public API: a change is a new protocol name.
+like the adapters'. The embed protocol is public API: an incompatible change is a new protocol
+name, and a field added under the same name is optional on receipt.
 Orientation integration runs on the main thread while loading: measured at 90 ms for the
 262 000 samples of a four-minute clip, so no worker is needed. Phase 6 added the buffering
 state (sound waits for the picture), key-frame scrubbing, per-channel gain matching along the

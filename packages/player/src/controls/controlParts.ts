@@ -4,7 +4,6 @@ import { ensureInvariant } from '@gyroview/core';
  * The elements the controls bar drives, found once in the shadow tree.
  */
 export interface ControlParts {
-  readonly controls: HTMLElement;
   readonly seek: HTMLInputElement;
   readonly play: HTMLButtonElement;
   readonly bigPlay: HTMLButtonElement;
@@ -37,7 +36,6 @@ export function queryShadow<Found extends Element>(
 
 export function queryControlParts(root: ParentNode): ControlParts {
   return {
-    controls: queryShadow(root, '.controls', HTMLElement),
     seek: queryShadow(root, '.seek', HTMLInputElement),
     play: queryShadow(root, '.play', HTMLButtonElement),
     bigPlay: queryShadow(root, '.big-play', HTMLButtonElement),

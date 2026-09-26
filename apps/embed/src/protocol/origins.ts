@@ -1,19 +1,15 @@
 /**
- * Any origin; only for pages that do not care who embeds them.
- */
-export const ANY_ORIGIN = '*';
-
-/**
  * The opaque origin sandboxed frames and `file:` pages report; never trusted.
  */
 const OPAQUE_ORIGIN = 'null';
 
 /**
- * Whether a message from `origin` may drive the player, given the origins the page allows.
+ * Whether a message from `origin` may drive the player, given the origins the page names;
+ * there is no wildcard (ADR 0010).
  */
 export function isTrustedOrigin(origin: string, allowed: readonly string[]): boolean {
   const isAnonymous = origin === OPAQUE_ORIGIN || origin === '';
-  return !isAnonymous && (allowed.includes(ANY_ORIGIN) || allowed.includes(origin));
+  return !isAnonymous && allowed.includes(origin);
 }
 
 /**

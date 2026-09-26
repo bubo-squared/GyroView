@@ -23,7 +23,7 @@ import { IDLE, statusOf, type LoadingPhase, type PlayerPhase } from './PlayerPha
 import { PictureSettings } from './PictureSettings';
 import { PlayerSound } from './PlayerSound';
 import { PlayerView } from './PlayerView';
-import { transportEventsFor } from './transportEvents';
+import { transportEventsFor, type TransportEventName } from './transportEvents';
 import { isAbortError } from '../composition/errorCodes';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
@@ -48,7 +48,7 @@ export class Player {
   public constructor(private readonly parts: PlayerParts) {
     this.loop = new FrameLoop(() => {
       this.loaded?.pipeline.session.tick();
-    }, parts.scheduler);
+    });
     this.sound = new PlayerSound(parts.host.audio, this.events);
   }
 
@@ -89,10 +89,6 @@ export class Player {
 
   public get isLooping(): boolean {
     return this.isLoopingValue;
-  }
-
-  public get isMatchingGains(): boolean {
-    return this.picture.isMatchingGains;
   }
 
   public get volume(): number {
@@ -317,7 +313,7 @@ export class Player {
     this.setStatus(state);
   }
 
-  private emitTransport(name: ReturnType<typeof transportEventsFor>[number]): void {
+  private emitTransport(name: TransportEventName): void {
     if (name === 'seeking' || name === 'seeked') this.events.emit(name, this.currentTime);
     else this.events.emit(name, undefined);
   }

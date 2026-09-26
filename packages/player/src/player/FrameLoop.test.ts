@@ -49,7 +49,7 @@ describe('FrameLoop', () => {
     scheduler.fire();
 
     expect(ticks).toBe(2);
-    expect(loop.isRunning).toBe(true);
+    expect(scheduler.pendingCount).toBe(1);
   });
 
   it('stops cleanly, leaving no frame requested, and can start again', () => {
@@ -61,9 +61,9 @@ describe('FrameLoop', () => {
 
     loop.start();
     loop.stop();
+    expect(scheduler.pendingCount).toBe(0);
     scheduler.fire();
     expect(ticks).toBe(0);
-    expect(loop.isRunning).toBe(false);
 
     loop.start();
     scheduler.fire();
@@ -78,6 +78,5 @@ describe('FrameLoop', () => {
     loop.start();
     scheduler.fire();
     expect(scheduler.pendingCount).toBe(0);
-    expect(loop.isRunning).toBe(false);
   });
 });

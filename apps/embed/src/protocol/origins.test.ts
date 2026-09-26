@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { ANY_ORIGIN, isTrustedOrigin, originOf } from './origins';
+import { isTrustedOrigin, originOf } from './origins';
 
 describe('isTrustedOrigin', () => {
-  it('trusts listed origins and the wildcard, never the opaque origin', () => {
+  it('trusts the listed origins only, and never the opaque origin, even when listed', () => {
     expect(isTrustedOrigin('https://site.example', ['https://site.example'])).toBe(true);
     expect(isTrustedOrigin('https://other.example', ['https://site.example'])).toBe(false);
-    expect(isTrustedOrigin('https://other.example', [ANY_ORIGIN])).toBe(true);
-    expect(isTrustedOrigin('null', [ANY_ORIGIN])).toBe(false);
-    expect(isTrustedOrigin('', [ANY_ORIGIN])).toBe(false);
+    expect(isTrustedOrigin('*', ['https://site.example'])).toBe(false);
+    expect(isTrustedOrigin('null', ['null'])).toBe(false);
+    expect(isTrustedOrigin('', [''])).toBe(false);
   });
 });
 

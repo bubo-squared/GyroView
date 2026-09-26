@@ -25,10 +25,6 @@ export class FrameLoop {
     private readonly scheduler: FrameScheduler = ANIMATION_FRAMES,
   ) {}
 
-  public get isRunning(): boolean {
-    return this.isActive;
-  }
-
   public start(): void {
     if (this.isActive) return;
     this.isActive = true;

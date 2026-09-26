@@ -49,7 +49,8 @@ export function windowEndpoint(parts: WindowEndpointParts): Endpoint {
 }
 
 /**
- * Both ends in one document, for tests and same-page hosts.
+ * Both ends in one document over a `MessageChannel`: how the bridge tests drive a host and a
+ * handle together.
  */
 export function portEndpoint(port: MessagePort): Endpoint {
   return {

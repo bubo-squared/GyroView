@@ -3,7 +3,7 @@ import { defineGyroView, GYRO_VIEW_TAG, type GyroViewElement } from '@gyroview/p
 import { embedderOriginOf } from './embedderOrigin';
 import { windowEndpoint } from '../bridge/Endpoint';
 import { EmbedHost } from '../bridge/EmbedHost';
-import { embedPageRequestOf } from '../bridge/embedUrl';
+import { embedAttributesOf } from '../bridge/embedUrl';
 
 /**
  * `embed.html`: a full-viewport `<gyro-view>` configured by the query string, driven by the
@@ -12,7 +12,7 @@ import { embedPageRequestOf } from '../bridge/embedUrl';
 export function startEmbedPage(page: Window & typeof globalThis): GyroViewElement {
   defineGyroView();
   const element = page.document.createElement(GYRO_VIEW_TAG) as GyroViewElement;
-  const { attributes } = embedPageRequestOf(new URLSearchParams(page.location.search));
+  const attributes = embedAttributesOf(new URLSearchParams(page.location.search));
   for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
   page.document.body.append(element);
   const embedderOrigin = embedderOriginOf({

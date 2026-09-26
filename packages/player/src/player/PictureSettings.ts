@@ -35,10 +35,6 @@ export class PictureSettings {
     return this.mode;
   }
 
-  public get isMatchingGains(): boolean {
-    return this.isMatching;
-  }
-
   /**
    * The pipeline of the loaded recording, or nothing between loads.
    */

@@ -6,7 +6,7 @@ import type { PlayerEvents } from '@gyroview/player';
  */
 export const PROTOCOL = 'gyro-view/1';
 
-export const COMMAND_NAMES = [
+const COMMAND_NAMES = [
   'play',
   'pause',
   'stop',

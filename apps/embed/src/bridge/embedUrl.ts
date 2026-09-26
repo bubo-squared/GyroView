@@ -105,18 +105,11 @@ export function embedUrlFor(
   return url.href;
 }
 
-export interface EmbedPageRequest {
-  /**
-   * Attributes to put on the element; boolean attributes have the empty string.
-   */
-  readonly attributes: Readonly<Record<string, string>>;
-  readonly embedderOrigin: string | undefined;
-}
-
 /**
- * Reads a frame URL's query back into element attributes.
+ * Reads a frame URL's query back into the attributes to put on the element; boolean attributes
+ * have the empty string.
  */
-export function embedPageRequestOf(query: URLSearchParams): EmbedPageRequest {
+export function embedAttributesOf(query: URLSearchParams): Readonly<Record<string, string>> {
   const attributes: Record<string, string> = {};
   const valued = [...Object.values(STRING_PARAMETERS), ...Object.values(NUMBER_PARAMETERS)];
   for (const name of valued) {
@@ -124,7 +117,7 @@ export function embedPageRequestOf(query: URLSearchParams): EmbedPageRequest {
     if (value !== null && value !== '') attributes[name] = value;
   }
   for (const name of flagAttributesOf(query)) attributes[name] = '';
-  return { attributes, embedderOrigin: query.get(ORIGIN_PARAMETER) ?? undefined };
+  return attributes;
 }
 
 /**

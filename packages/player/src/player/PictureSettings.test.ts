@@ -38,9 +38,10 @@ function recordedSettings(): Recorded {
 
 describe('PictureSettings', () => {
   it('starts with lock stabilization and gain matching on', () => {
-    const { settings } = recordedSettings();
+    const { settings, targets, calls } = recordedSettings();
     expect(settings.stabilization).toBe('lock');
-    expect(settings.isMatchingGains).toBe(true);
+    settings.attach(targets);
+    expect(calls).toContain('match gains');
   });
 
   it('applies what it holds to a pipeline as soon as it is attached', () => {

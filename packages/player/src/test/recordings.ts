@@ -1,11 +1,4 @@
-import {
-  readRecording,
-  Signal,
-  type Demuxer,
-  type Recording,
-  type ResourceLocator,
-  type VideoDecoderPort,
-} from '@gyroview/core';
+import { Signal, type Demuxer, type ResourceLocator, type VideoDecoderPort } from '@gyroview/core';
 import {
   encodeBox,
   FakeResourceLocator,
@@ -20,9 +13,6 @@ import {
 
 import type { RecordingPorts, SourceOpener } from '../composition/ports';
 import type { MediaInput } from '../PlayerSource';
-import exposureUrl from '../../../../test/fixtures/x5/office/record-04-exposure-first16.bin?url';
-import gyroUrl from '../../../../test/fixtures/x5/office/record-03-gyro-first2000.bin?url';
-import infoUrl from '../../../../test/fixtures/x5/office/record-01-info.bin?url';
 
 export { default as X5_RECORDING_URL } from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
 export { default as X5_RECORDING_WITH_AUDIO_URL } from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-aac-64px-10fps-3s.mp4?url';
@@ -31,21 +21,6 @@ export async function fetchBytes(url: string): Promise<Uint8Array<ArrayBuffer>> 
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${url} answered ${response.status}`);
   return new Uint8Array(await response.arrayBuffer());
-}
-
-export interface OfficeRecords {
-  readonly info: Uint8Array;
-  readonly gyro: Uint8Array;
-  readonly exposure: Uint8Array;
-}
-
-export async function officeRecords(): Promise<OfficeRecords> {
-  const [info, gyro, exposure] = await Promise.all([
-    fetchBytes(infoUrl),
-    fetchBytes(gyroUrl),
-    fetchBytes(exposureUrl),
-  ]);
-  return { info, gyro, exposure };
 }
 
 export interface SyntheticTrailer {
@@ -68,10 +43,6 @@ export function syntheticRecordingBytes(trailer: SyntheticTrailer): Uint8Array {
   if (trailer.gyro) builder.addRecord({ id: RecordType.Gyro, payload: trailer.gyro });
   if (trailer.exposure) builder.addRecord({ id: RecordType.Exposure, payload: trailer.exposure });
   return builder.buildIndexed({ alignment: 64, wrapInInstBox: true }).bytes;
-}
-
-export function recordingOf(bytes: Uint8Array): Promise<Recording> {
-  return readRecording(new InMemoryRandomAccessSource(bytes));
 }
 
 /**

@@ -1,5 +1,5 @@
 const IDLE_ATTRIBUTE = 'data-idle';
-const DEFAULT_DELAY_MS = 2500;
+const IDLE_DELAY_MS = 2500;
 const ACTIVITY_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'focusin'] as const;
 
 /**
@@ -12,7 +12,6 @@ export class IdleWatcher {
   public constructor(
     private readonly element: HTMLElement,
     private readonly shouldHide: () => boolean,
-    private readonly delayMs: number = DEFAULT_DELAY_MS,
   ) {}
 
   public start(): void {
@@ -43,7 +42,7 @@ export class IdleWatcher {
     this.clearTimer();
     this.timer = setTimeout(() => {
       if (this.shouldHide()) this.element.setAttribute(IDLE_ATTRIBUTE, '');
-    }, this.delayMs);
+    }, IDLE_DELAY_MS);
   }
 
   private clearTimer(): void {

@@ -41,14 +41,14 @@ export class Viewport {
     this.fit();
   }
 
-  public fit(): void {
+  public dispose(): void {
+    this.observer.disconnect();
+  }
+
+  private fit(): void {
     const rectangle = this.canvas.getBoundingClientRect();
     const size = drawingBufferSizeFor(rectangle, window.devicePixelRatio);
     if (size.width === this.canvas.width && size.height === this.canvas.height) return;
     this.renderer.resize(size.width, size.height);
-  }
-
-  public dispose(): void {
-    this.observer.disconnect();
   }
 }

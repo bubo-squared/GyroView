@@ -8,7 +8,6 @@ import {
   TypedEmitter,
   type Degrees,
   type DragDelta,
-  type PlayerState,
   type Seconds,
   type StabilizationMode,
   type ViewMode,
@@ -23,16 +22,16 @@ import { IDLE, statusOf, type LoadingPhase, type PlayerPhase } from './PlayerPha
 import { PictureSettings } from './PictureSettings';
 import { PlayerSound } from './PlayerSound';
 import { PlayerView } from './PlayerView';
-import { transportEventsFor, type TransportEventName } from './transportEvents';
+import { SessionRelay } from './SessionRelay';
 import { isAbortError } from '../composition/abortError';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
 
 /**
  * Headless player: the facade the element drives (and the embed bridge, through the element).
- * Owns one loaded recording at a time, relays the session's events in media-element terms, and owns the
- * settings (view, view mode, stabilization, gain matching, sound, loop), which carry over from
- * load to load. Everything DOM it touches is handed in.
+ * Owns one loaded recording at a time, relays its session's events in media-element terms
+ * (`SessionRelay`), and owns the settings (view, view mode, stabilization, gain matching, sound,
+ * loop), which carry over from load to load. Everything DOM it touches is handed in.
  */
 export class Player {
   public readonly events = new TypedEmitter<PlayerEvents>();
@@ -41,9 +40,17 @@ export class Player {
   private readonly viewing = new PlayerView(this.events);
   private readonly picture = new PictureSettings(this.events);
   private readonly sound: PlayerSound;
+  private readonly relay = new SessionRelay({
+    events: this.events,
+    onState: (state): void => {
+      this.setStatus(state);
+    },
+    onEnded: (): void => {
+      this.onEnded();
+    },
+  });
   private isLoopingValue = false;
   private lastStatus: PlayerStatus = 'idle';
-  private lastSessionState: PlayerState | undefined;
 
   public constructor(private readonly parts: PlayerParts) {
     this.loop = new FrameLoop(() => {
@@ -128,7 +135,7 @@ export class Player {
     this.phase = IDLE;
     if (previous.kind === 'loading') previous.controller.abort();
     this.loop.stop();
-    this.lastSessionState = undefined;
+    this.relay.detach();
     this.viewing.attach(undefined);
     this.picture.attach(undefined);
     if (previous.kind === 'loaded') previous.loaded.dispose();
@@ -261,22 +268,7 @@ export class Player {
     this.viewing.attach(loaded.pipeline.renderer);
     const { session } = loaded.pipeline;
     this.picture.attach(loaded.pipeline);
-    session.events.on('statechange', (state) => {
-      this.onSessionState(state);
-    });
-    session.events.on('timeupdate', (time) => {
-      this.events.emit('timeupdate', time);
-    });
-    session.events.on('present', (time) => {
-      this.events.emit('frame', time);
-    });
-    session.events.on('ended', () => {
-      this.onEnded();
-    });
-    session.events.on('error', (error) => {
-      this.events.emit('error', error);
-    });
-    this.lastSessionState = session.state;
+    this.relay.attach(session);
     this.loop.start();
     this.setStatus(session.state);
     for (const warning of [...loaded.opened.warnings, ...loaded.pipeline.warnings]) {
@@ -299,20 +291,6 @@ export class Player {
           : `autoplay failed: ${messageOf(error)}`,
       );
     }
-  }
-
-  private onSessionState(state: PlayerState): void {
-    const previous = this.lastSessionState;
-    this.lastSessionState = state;
-    for (const name of transportEventsFor(previous, state)) {
-      this.emitTransport(name);
-    }
-    this.setStatus(state);
-  }
-
-  private emitTransport(name: TransportEventName): void {
-    if (name === 'seeking' || name === 'seeked') this.events.emit(name, this.currentTime);
-    else this.events.emit(name, undefined);
   }
 
   private onEnded(): void {

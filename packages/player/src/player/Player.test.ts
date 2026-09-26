@@ -129,6 +129,13 @@ describe('Player over the synthetic X5 recording', () => {
     expect(canvas.width).toBe(CANVAS_WIDTH * Math.min(window.devicePixelRatio, 2));
   });
 
+  it('reloads without announcing the old session going away', async () => {
+    const { player, statuses } = open();
+    await player.load(sourceOf(X5_RECORDING_URL));
+    await player.load(sourceOf(X5_RECORDING_URL));
+    expect(statuses).toEqual(['loading', 'ready', 'idle', 'loading', 'ready']);
+  });
+
   it('plays frames in media order, pauses, seeks and stops with media-element events', async () => {
     const { player, events, frames } = open();
     await player.load(sourceOf(X5_RECORDING_URL));

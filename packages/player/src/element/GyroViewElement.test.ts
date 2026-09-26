@@ -176,6 +176,25 @@ describe('<gyro-view>', () => {
     expect(element.paused).toBe(false);
   });
 
+  it('is a named region for assistive technology, unless the page describes it otherwise', () => {
+    const element = create();
+    expect(element.getAttribute('role')).toBe('region');
+    expect(element.getAttribute('aria-label')).toBe('360° video player');
+    const described = create({ role: 'application', 'aria-labelledby': 'caption' });
+    expect(described.getAttribute('role')).toBe('application');
+    expect(described.hasAttribute('aria-label')).toBe(false);
+  });
+
+  it("keeps the controls up while the keyboard's focus is in them", async () => {
+    const element = await createReady();
+    const controls = control(element, '.controls', HTMLElement);
+    control(element, '.fullscreen', HTMLButtonElement).focus();
+    element.dataset['idle'] = '';
+    expect(getComputedStyle(controls).pointerEvents).not.toBe('none');
+    control(element, '.fullscreen', HTMLButtonElement).blur();
+    expect(getComputedStyle(controls).pointerEvents).toBe('none');
+  });
+
   it('mirrors its source and presentation attributes as properties and takes focus', () => {
     const element = create({ controls: '', src: X5_RECORDING_URL });
     expect(element.src).toBe(X5_RECORDING_URL);
@@ -250,9 +269,8 @@ describe('<gyro-view>', () => {
     expect(
       pressKey(control(element, '.volume', HTMLInputElement), 'ArrowRight').defaultPrevented,
     ).toBe(false);
-    expect(
-      pressKey(control(element, '.seek', HTMLInputElement), 'ArrowLeft').defaultPrevented,
-    ).toBe(false);
+    // The seek slider takes its arrows itself, seeking five seconds a press.
+    pressKey(control(element, '.seek', HTMLInputElement), 'ArrowLeft');
     expect(pressKey(control(element, '.mute', HTMLButtonElement), ' ').defaultPrevented).toBe(
       false,
     );
@@ -507,6 +525,9 @@ describe('<gyro-view>', () => {
     expect(element.dataset['idle']).toBeUndefined();
 
     control(element, '.view-mode-button', HTMLButtonElement).click();
+    // The closed menu hands the focus back to its button, which holds the controls up too.
+    const focused = shadowOf(element).activeElement;
+    if (focused instanceof HTMLElement) focused.blur();
     element.dataset['idle'] = '';
     expect(getComputedStyle(controls).pointerEvents).toBe('none');
   });

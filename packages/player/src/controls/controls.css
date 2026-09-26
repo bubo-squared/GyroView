@@ -43,8 +43,9 @@
   display: none;
 }
 
-/* Controls with an open menu stay up: the viewer is reading it. */
-:host([data-idle]) .controls:not(:has(.popup:not([hidden]))) {
+/* Controls with an open menu stay up: the viewer is reading it. So do controls holding the
+   keyboard's focus, which would otherwise fade with its ring out of sight. */
+:host([data-idle]) .controls:not(:has(.popup:not([hidden]))):not(:has(:focus-visible)) {
   opacity: 0;
   pointer-events: none;
 }

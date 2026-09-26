@@ -45,6 +45,11 @@ const STRING_ATTRIBUTES = [
 const BOOLEAN_ATTRIBUTES = [PlaybackAttribute.Autoplay, PlaybackAttribute.Controls];
 const SOURCE_ATTRIBUTES: readonly string[] = Object.values(SourceAttribute);
 const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);
+/**
+ * What assistive technology calls the element when the page names it nothing else; the embed
+ * snippet titles its frame the same.
+ */
+const ACCESSIBLE_NAME = '360° video player';
 
 /**
  * `<gyro-view>`: the player as an element. Attributes name what to play and configure the
@@ -146,7 +151,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   }
 
   public connectedCallback(): void {
-    if (!this.hasAttribute('tabindex')) this.tabIndex = 0;
+    this.describeUnlessTheAuthorDid();
     this.dataset['status'] = this.player.status;
     this.idle.start();
     this.scheduleLoad();
@@ -274,6 +279,17 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
    * What the controls and the keyboard ask of the element. They live as long as the element:
    * their listeners sit on its own shadow tree and host, and on its player.
    */
+  /**
+   * The element takes focus and keys, so assistive technology needs to know what it is: a named
+   * region, unless the page gave it a role, a name or a tab order of its own.
+   */
+  private describeUnlessTheAuthorDid(): void {
+    if (!this.hasAttribute('tabindex')) this.tabIndex = 0;
+    if (!this.hasAttribute('role')) this.setAttribute('role', 'region');
+    const isNamed = this.hasAttribute('aria-label') || this.hasAttribute('aria-labelledby');
+    if (!isNamed) this.setAttribute('aria-label', ACCESSIBLE_NAME);
+  }
+
   private controlsHost(): ControlsHost & KeyboardHost {
     return {
       player: this.player,

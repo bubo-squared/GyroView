@@ -3,9 +3,21 @@ import { messageOf, seconds } from '@gyroview/core';
 import type { ControlParts } from './controlParts';
 import type { ControlsHost } from './ControlsHost';
 import { formatTime } from './formatTime';
+import { SEEK_STEP_SECONDS } from './keyboard';
 import type { Player } from '../player/Player';
 
 export type SeekParts = Pick<ControlParts, 'seek' | 'time'>;
+
+/**
+ * The slider's arrow keys and the direction each seeks in: the native step is the one the
+ * thumb is dragged in, a hundredth of a second, too fine for a key.
+ */
+const ARROW_DIRECTIONS: ReadonlyMap<string, number> = new Map([
+  ['ArrowLeft', -1],
+  ['ArrowDown', -1],
+  ['ArrowRight', 1],
+  ['ArrowUp', 1],
+]);
 
 /**
  * What the seek bar follows and moves.
@@ -55,6 +67,13 @@ export class SeekBar {
     seek.addEventListener('change', () => {
       this.isScrubbing = false;
       void this.seekExactly(Number(seek.value));
+    });
+    seek.addEventListener('keydown', (event) => {
+      const direction = ARROW_DIRECTIONS.get(event.key);
+      if (direction === undefined) return;
+      event.preventDefault();
+      const { player } = this.host;
+      player.seek(seconds(player.currentTime + direction * SEEK_STEP_SECONDS));
     });
   }
 

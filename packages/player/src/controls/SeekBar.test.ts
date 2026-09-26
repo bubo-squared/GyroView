@@ -97,6 +97,21 @@ describe('SeekBar', () => {
     expect(parts.seek.getAttribute('aria-valuetext')).toBe('0:04 of 0:10');
   });
 
+  it("seeks five seconds with the slider's arrow keys, not its hundredth-of-a-second step", () => {
+    const { parts, transport } = seekBar();
+    transport.becomeReady(60);
+    transport.currentTime = seconds(20);
+    const press = (key: string): KeyboardEvent => {
+      const event = new KeyboardEvent('keydown', { key, cancelable: true });
+      parts.seek.dispatchEvent(event);
+      return event;
+    };
+    expect(press('ArrowRight').defaultPrevented).toBe(true);
+    press('ArrowDown');
+    expect(transport.seeks).toEqual([25, 15]);
+    expect(press('Home').defaultPrevented).toBe(false);
+  });
+
   it('scrubs one position at a time, the latest one a drag passed', async () => {
     const { transport, drag } = seekBar();
     transport.becomeReady(10);

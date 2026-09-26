@@ -81,7 +81,10 @@ export interface KeyboardHost extends Pick<ControlsHost, 'togglePlay' | 'toggleF
 
 type Action = (host: KeyboardHost) => void;
 
-const SEEK_STEP_SECONDS = 5;
+/**
+ * How far J, L and the seek slider's arrows move, like a media player's.
+ */
+export const SEEK_STEP_SECONDS = 5;
 const LOOK_STEP_DEGREES = 5;
 
 function seekBy(delta: number): Action {

@@ -29,7 +29,7 @@ export interface Embedded {
   destroy(): void;
 }
 
-const DEFAULT_TITLE = '360 video player';
+const DEFAULT_TITLE = '360° video player';
 
 /**
  * The URL this script was loaded from, remembered at load time because `currentScript` is gone

@@ -3,10 +3,12 @@ import {
   magnitudeOf,
   microseconds,
   microsecondsToSeconds,
+  inspectLayout,
   readRecording,
   type ExposureRecord,
   type ParsedGyroRecord,
   type Recording,
+  type RecordingLayout,
 } from '@gyroview/core';
 
 import type { CalibrationSummary, ExposureSummary, GyroSummary, Inspection } from './Inspection';
@@ -19,13 +21,13 @@ const GRAVITY_SAMPLE_COUNT = 1000;
 export async function inspectFile(file: string): Promise<Inspection> {
   const source = await FileRandomAccessSource.open(file);
   try {
-    const recording = await readRecording(source);
+    const [layout, recording] = await Promise.all([inspectLayout(source), readRecording(source)]);
     const [gyro, exposure] = await Promise.all([
       recording.readGyroRecord(),
       recording.readExposureRecord(),
     ]);
     return {
-      ...summarizeStructure(file, recording),
+      ...summarizeStructure(file, layout),
       info: recording.info,
       calibration: summarizeCalibration(recording),
       calibrationWarnings: recording.calibration.warnings,
@@ -45,19 +47,19 @@ type StructureSummary = Pick<
   'file' | 'fileSize' | 'boxes' | 'trailerWrapper' | 'trailerVersion' | 'payloadStart' | 'records'
 >;
 
-function summarizeStructure(file: string, recording: Recording): StructureSummary {
+function summarizeStructure(file: string, layout: RecordingLayout): StructureSummary {
   return {
     file,
-    fileSize: recording.fileSize,
-    boxes: recording.boxes.map((box) => ({
+    fileSize: layout.fileSize,
+    boxes: layout.boxes.map((box) => ({
       type: box.type,
       offset: box.range.offset,
       size: box.range.length,
     })),
-    trailerWrapper: recording.trailerWrapper,
-    trailerVersion: recording.trailerVersion,
-    payloadStart: recording.trailerPayloadStart,
-    records: recording.recordLocations().map((record) => ({
+    trailerWrapper: layout.trailerWrapper,
+    trailerVersion: layout.trailerVersion,
+    payloadStart: layout.trailerPayloadStart,
+    records: layout.records.map((record) => ({
       id: record.id,
       format: record.format,
       offset: record.payload.offset,

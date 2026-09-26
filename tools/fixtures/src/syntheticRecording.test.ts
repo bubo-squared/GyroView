@@ -1,4 +1,4 @@
-import { readRecording } from '@gyroview/core';
+import { inspectLayout, readRecording } from '@gyroview/core';
 import { InMemoryRandomAccessSource, RecordType } from '@gyroview/core/testing';
 import { describe, expect, it } from 'vitest';
 
@@ -15,21 +15,17 @@ describe('assembleSyntheticRecording', () => {
     });
 
     expect(bytes.subarray(0, media.byteLength)).toEqual(media);
-    const recording = await readRecording(new InMemoryRandomAccessSource(bytes));
-    expect(recording.boxes.map((box) => box.type)).toEqual([
-      'ftyp',
-      'moov',
-      'free',
-      'mdat',
-      'inst',
-    ]);
-    expect(recording.trailerWrapper).toBe('inst-box');
-    expect(recording.info.model).toBe('Insta360 X5');
-    expect(recording.recordLocations().map((record) => record.id)).toEqual([
+    const source = new InMemoryRandomAccessSource(bytes);
+    const layout = await inspectLayout(source);
+    expect(layout.boxes.map((box) => box.type)).toEqual(['ftyp', 'moov', 'free', 'mdat', 'inst']);
+    expect(layout.trailerWrapper).toBe('inst-box');
+    expect(layout.records.map((record) => record.id)).toEqual([
       RecordType.Info,
       RecordType.Gyro,
       RecordType.Exposure,
     ]);
+    const recording = await readRecording(source);
+    expect(recording.info.model).toBe('Insta360 X5');
     const gyro = await recording.readGyroRecord();
     const exposure = await recording.readExposureRecord();
     expect(gyro?.track.length).toBe(2000);

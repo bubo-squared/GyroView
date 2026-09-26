@@ -1,5 +1,6 @@
 // Application API
 export { readRecording } from './application/recording/readRecording';
+export { inspectLayout, type RecordingLayout } from './application/recording/inspectLayout';
 export { Recording } from './application/recording/Recording';
 export { timeRecording, type RecordingTiming } from './application/recording/timeRecording';
 export type { MotionSetup } from './application/recording/motionOf';

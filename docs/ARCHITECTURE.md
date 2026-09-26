@@ -103,8 +103,9 @@ Use cases that orchestrate the domain through ports.
   for its first frame source (`frameTimesOf`: exposure record first, the sample table only if
   needed) and the orientation for stabilization (`motionOf`: gyro integration with the camera's
   IMU frame), each optional with a warning for what is missing.
-- `recording/readRecording` opens a `RandomAccessSource` and reads everything cheap: boxes,
-  trailer, info record, calibration choice. The result, `Recording`, hands out the large gyro
+- `recording/readRecording` opens a `RandomAccessSource` and reads everything cheap: the
+  trailer's table of contents, the info record, the calibration choice. `inspectLayout` maps the
+  boxes and the records' places for the inspector, which playing never needs. The result, `Recording`, hands out the large gyro
   and exposure records on demand, read by the format's `TrailerRecords`. `locateCompanions` looks for the proxy and the other lens file.
 - `playback/DecodePipeline` runs one lockstep decode of all frame sources from a time: one
   decoder per source, packets fed under backpressure, frames paired by timestamp

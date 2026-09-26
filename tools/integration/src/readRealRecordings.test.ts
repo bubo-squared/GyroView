@@ -1,5 +1,5 @@
 import { FileRandomAccessSource } from '@gyroview/adapter-node';
-import { CalibrationVersion, readRecording } from '@gyroview/core';
+import { CalibrationVersion, inspectLayout, readRecording } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
 import { hasSamples, OFFICE_RECORDING as OFFICE, SAILING_RECORDING as SAILING } from './samples';
@@ -16,10 +16,11 @@ describe.skipIf(!hasSamples())('reading the real X5 recordings', () => {
     async () => {
       const source = await FileRandomAccessSource.open(OFFICE);
       try {
+        const layout = await inspectLayout(source);
+        expect(layout.trailerWrapper).toBe('inst-box');
+        expect(layout.boxes.map((box) => box.type)).toEqual(['ftyp', 'mdat', 'moov', 'inst']);
+        expect(layout.records).toHaveLength(10);
         const recording = await readRecording(source);
-        expect(recording.trailerWrapper).toBe('inst-box');
-        expect(recording.boxes.map((box) => box.type)).toEqual(['ftyp', 'mdat', 'moov', 'inst']);
-        expect(recording.recordLocations()).toHaveLength(10);
         expect(recording.info).toMatchObject({ model: 'Insta360 X5', frameRate: 60 });
         expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
 

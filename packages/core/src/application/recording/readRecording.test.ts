@@ -33,19 +33,10 @@ function officeRecords(): TrailerFixtureBuilder {
 }
 
 describe('readRecording on synthetic X5 files', () => {
-  it('assembles boxes, trailer, info and calibration from an inst-wrapped indexed file', async () => {
+  it('assembles the info and calibration from an inst-wrapped indexed file', async () => {
     const file = officeRecords().buildIndexed({ alignment: 4096, wrapInInstBox: true });
     const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
 
-    expect(recording.boxes.map((box) => box.type)).toEqual(['ftyp', 'moov', 'inst']);
-    expect(recording.trailerWrapper).toBe('inst-box');
-    expect(recording.trailerVersion).toBe(3);
-    expect(recording.trailerPayloadStart).toBe(file.payloadStart);
-    expect(recording.recordLocations().map((record) => record.id)).toEqual([
-      RecordType.Info,
-      RecordType.Gyro,
-      RecordType.Exposure,
-    ]);
     expect(recording.info.model).toBe('Insta360 X5');
     expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
     expect(recording.calibration.warnings).toEqual([]);
@@ -53,13 +44,12 @@ describe('readRecording on synthetic X5 files', () => {
       fileLayout: 'multi-track',
       trackOrder: 'stream-10-first',
     });
-    expect(recording.fileSize).toBe(file.bytes.byteLength);
   });
 
-  it('reads a bare contiguous trailer and reports it as such', async () => {
+  it('reads a bare contiguous trailer', async () => {
     const file = officeRecords().buildContiguous();
     const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
-    expect(recording.trailerWrapper).toBe('bare');
+    expect(recording.info.model).toBe('Insta360 X5');
   });
 
   it('decodes the gyro record with the ranges from the info record', async () => {
@@ -142,10 +132,11 @@ describe('readRecording on synthetic X5 files', () => {
     expect(gyro?.layout).toBe('float');
   });
 
-  it('opens with one size lookup and reads boxes and trailer concurrently', async () => {
+  it('opens with one size lookup and leaves the box headers at the start of the file alone', async () => {
     const source = new InMemoryRandomAccessSource(officeRecords().buildContiguous().bytes);
     await readRecording(source);
     expect(source.sizeCalls).toBe(1);
+    expect(source.reads.filter((range) => range.offset === 0)).toEqual([]);
   });
 
   it('fails with a typed error when the info record is not protobuf', async () => {
@@ -164,8 +155,6 @@ describe('readRecording on real trailers from other cameras (insta360py fixtures
     const recording = await readRecording(
       new InMemoryRandomAccessSource(loadFixture('thirdparty/insta360py/sample.insv')),
     );
-    expect(recording.boxes.map((box) => box.type)).toEqual(['ftyp', 'moov', 'mdat']);
-    expect(recording.trailerWrapper).toBe('bare');
     expect(recording.info).toMatchObject({
       model: 'Insta360 OneR',
       frameRate: 30,
@@ -174,9 +163,6 @@ describe('readRecording on real trailers from other cameras (insta360py fixtures
     });
     expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Legacy);
     expect(recording.calibration.calibration?.canvas).toEqual({ width: 6080, height: 3040 });
-    expect(recording.recordLocations().map((record) => record.id)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12,
-    ]);
 
     const gyro = await recording.readGyroRecord();
     expect(gyro).toMatchObject({ layout: 'raw', strayBytes: 1 });
@@ -196,14 +182,12 @@ describe('readRecording on real trailers from other cameras (insta360py fixtures
     const recording = await readRecording(
       new InMemoryRandomAccessSource(loadFixture('thirdparty/insta360py/x5_indexed.insv')),
     );
-    expect(recording.trailerWrapper).toBe('inst-box');
     expect(recording.info).toMatchObject({
       model: 'Insta360 X5',
       firmware: 'v1.11.6_build1',
       fileLayout: undefined,
     });
     expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
-    expect(recording.recordLocations()).toHaveLength(13);
     const gyro = await recording.readGyroRecord();
     expect(gyro?.track.length).toBe(12);
   });

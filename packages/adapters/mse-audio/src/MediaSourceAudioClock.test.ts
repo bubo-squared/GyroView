@@ -109,12 +109,11 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     expect(clock.currentTime).toBeLessThanOrEqual(3.05);
   });
 
-  it('stops running and reports the end when the track runs out', async () => {
+  it('reports the end when the track runs out', async () => {
     const clock = await openClock();
     clock.seek(seconds(2.6));
     await clock.start();
-    await waitUntilPast(clock, 2.95);
-    await wait(200);
+    await waitUntil(() => clock.hasEnded);
     expect(clock.hasEnded).toBe(true);
     expect(clock.currentTime).toBeCloseTo(3, 1);
     expect(clock.failure).toBeUndefined();

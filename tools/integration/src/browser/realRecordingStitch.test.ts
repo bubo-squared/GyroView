@@ -137,8 +137,8 @@ function principalPointOnFrame(
   const calibrated = stitched.calibration.lenses.find((c) => c.lensIndex === lens.lensIndex);
   if (!calibrated) throw new Error(`no calibration for lens ${lens.lensIndex}`);
   const side = stitched.calibration.canvas.height;
-  const frame = stitched.pair.frames[lens.frameIndex]?.handle;
-  if (!frame) throw new Error(`no frame ${lens.frameIndex}`);
+  const frame = stitched.pair.frames[lens.frameSlot]?.handle;
+  if (!frame) throw new Error(`no frame ${lens.frameSlot}`);
   const width = lens.region.width * frame.displayWidth;
   const height = lens.region.height * frame.displayHeight;
   const localX =
@@ -170,8 +170,8 @@ function distance(a: PixelPoint, b: PixelPoint): number {
  * assumed).
  */
 function measureCentre(lens: LensStitch, stitched: StitchedFrame): CentreMeasurement {
-  const frame = stitched.pair.frames[lens.frameIndex]?.handle;
-  if (!frame) throw new Error(`no frame ${lens.frameIndex}`);
+  const frame = stitched.pair.frames[lens.frameSlot]?.handle;
+  if (!frame) throw new Error(`no frame ${lens.frameSlot}`);
   const side = stitched.calibration.canvas.height;
   const circle = imageCircleOf(frame, lens.region);
   const onWholeSquare = principalPointOnFrame(lens, stitched, {

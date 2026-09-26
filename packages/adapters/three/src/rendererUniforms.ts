@@ -182,7 +182,7 @@ function samplingUniforms(
         (lens) => new Vector4(lens.region.x, lens.region.y, lens.region.width, lens.region.height),
       ),
     },
-    uLensTexture: { value: lenses.map((lens) => lens.frameIndex) },
+    uLensTexture: { value: lenses.map((lens) => lens.frameSlot) },
     uLensGain: { value: lenses.map(() => new Vector3(1, 1, 1)) },
   };
 }

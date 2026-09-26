@@ -32,7 +32,7 @@ export interface LensStitch {
   /**
    * Which decoded frame of a pair holds this lens's pixels; see {@link lensFrameOrder}.
    */
-  readonly frameIndex: number;
+  readonly frameSlot: number;
   readonly region: FrameRegion;
   readonly window: CanvasWindow;
   /**
@@ -74,7 +74,7 @@ export const DEFAULT_FEATHER: FeatherBand = {
 
 /**
  * The distinct video tracks a layout draws from, in order of first use by lens index. The
- * composition root hands the session its readers in this order, and {@link LensStitch.frameIndex}
+ * composition root hands the session its readers in this order, and {@link LensStitch.frameSlot}
  * indexes the pairs the session presents.
  */
 export function lensFrameOrder(layout: LensLayout): readonly FrameSourceKey[] {
@@ -104,7 +104,7 @@ export function buildStitchingSetup(inputs: StitchingInputs): StitchingSetup {
     const lens = lensOf(calibration, source.lensIndex);
     return {
       lensIndex: source.lensIndex,
-      frameIndex: frames.findIndex((key) => isSameSource(key, source)),
+      frameSlot: frames.findIndex((key) => isSameSource(key, source)),
       region: source.region,
       window: canvasWindowOf(calibration, lens),
       rotation: lensRotation(lens),

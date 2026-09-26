@@ -35,6 +35,13 @@ describe('elementSourceOf', () => {
     expect(problems).toEqual([]);
   });
 
+  it('warns about an unknown quality for files too, and plays them at the default', () => {
+    const main = new File([], 'VID_00.insv');
+    const { source, problems } = elementSourceOf(readerOf({ quality: 'best' }), BASE, { main });
+    expect(source?.quality).toBe('auto');
+    expect(problems).toHaveLength(1);
+  });
+
   it('falls back to the attributes without files', () => {
     const { source } = elementSourceOf(readerOf({ src: 'clip.insv' }), BASE, undefined);
     expect(source?.main).toEqual({ url: 'https://site.example/clip.insv' });

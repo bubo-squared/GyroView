@@ -1,7 +1,5 @@
-import { SourceAttribute } from './attributeNames';
-import { sourceFromAttributes, type AttributeReader } from './attributes';
-import { qualityOf } from '../choices';
-import type { PlayerSource } from '../PlayerSource';
+import { qualityFromAttribute, sourceFromAttributes, type AttributeReader } from './attributes';
+import type { PlayerSource, Quality } from '../PlayerSource';
 
 /**
  * Local files to play, from a picker or a drop.
@@ -26,21 +24,17 @@ export function elementSourceOf(
   baseUrl: string,
   files: FileSource | undefined,
 ): ElementSource {
-  const parsed = sourceFromAttributes(read, baseUrl);
-  if (!files) return parsed;
-  const quality = qualityOf(read(SourceAttribute.Quality));
-  return { source: fileSourceOf(files, quality), problems: parsed.problems };
+  if (!files) return sourceFromAttributes(read, baseUrl);
+  const { quality, problems } = qualityFromAttribute(read);
+  return { source: fileSourceOf(files, quality), problems };
 }
 
-function fileSourceOf(
-  files: FileSource,
-  quality: PlayerSource['quality'] | undefined,
-): PlayerSource {
+function fileSourceOf(files: FileSource, quality: Quality): PlayerSource {
   return {
     main: { blob: files.main, name: files.main.name },
     second: files.second && { blob: files.second, name: files.second.name },
     proxy: files.proxy && { blob: files.proxy, name: files.proxy.name },
     shouldDiscoverProxy: false,
-    quality: quality ?? 'auto',
+    quality,
   };
 }

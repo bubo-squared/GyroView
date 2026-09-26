@@ -2,7 +2,13 @@ import { clampView, degrees, type ViewState } from '@gyroview/core';
 
 import { SourceAttribute, ViewAttribute } from './attributeNames';
 import { qualityOf } from '../choices';
-import { DEFAULT_QUALITY, QUALITIES, type MediaInput, type PlayerSource } from '../PlayerSource';
+import {
+  DEFAULT_QUALITY,
+  QUALITIES,
+  type MediaInput,
+  type PlayerSource,
+  type Quality,
+} from '../PlayerSource';
 
 /**
  * Reads one attribute of the element, `null` when absent, like `Element.getAttribute`.
@@ -27,9 +33,7 @@ export interface ParsedSource {
 export function sourceFromAttributes(read: AttributeReader, baseUrl: string): ParsedSource {
   const main = read(SourceAttribute.Src);
   if (main === null || main.trim() === '') return { source: undefined, problems: [] };
-  const qualityValue = read(SourceAttribute.Quality);
-  const quality = qualityOf(qualityValue);
-  const problems = quality === undefined ? problemsWith('quality', qualityValue, QUALITIES) : [];
+  const { quality, problems } = qualityFromAttribute(read);
   const second = read(SourceAttribute.Src2);
   const proxy = proxyFromAttribute(read(SourceAttribute.Proxy), baseUrl);
   const source: PlayerSource = {
@@ -37,9 +41,26 @@ export function sourceFromAttributes(read: AttributeReader, baseUrl: string): Pa
     second: second === null || second.trim() === '' ? undefined : urlInput(second, baseUrl),
     proxy: proxy.input,
     shouldDiscoverProxy: proxy.shouldDiscover,
-    quality: quality ?? DEFAULT_QUALITY,
+    quality,
   };
   return { source, problems };
+}
+
+export interface ParsedQuality {
+  readonly quality: Quality;
+  readonly problems: readonly string[];
+}
+
+/**
+ * The quality the `quality` attribute names; the default when it is absent or unknown, an
+ * unknown one being a problem to warn about.
+ */
+export function qualityFromAttribute(read: AttributeReader): ParsedQuality {
+  const value = read(SourceAttribute.Quality);
+  const quality = qualityOf(value);
+  return quality === undefined
+    ? { quality: DEFAULT_QUALITY, problems: problemsWith('quality', value, QUALITIES) }
+    : { quality, problems: [] };
 }
 
 interface ProxyChoice {

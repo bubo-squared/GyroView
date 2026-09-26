@@ -8,7 +8,6 @@ import {
   stabilizerFor,
   StabilizingFrameSink,
   WallClock,
-  type AudioTrackReader,
   type DecodePipelineOptions,
   type FrameSink,
   type PlaybackClock,
@@ -47,7 +46,7 @@ const AUDIO_FAILED_WARNING =
 export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
   const disposables = new Disposables();
   try {
-    const clock = await clockFor(parts.opened.audioTrack, parts.host.audio);
+    const clock = await clockFor(parts);
     disposables.add(() => {
       clock.clock.dispose();
     });
@@ -132,15 +131,16 @@ interface ChosenClock {
  * The recording's own audio when there is a track this browser can feed to the element;
  * otherwise a wall clock, with a warning saying why there is no sound.
  */
-async function clockFor(
-  audioTrack: AudioTrackReader | undefined,
-  audio: HTMLMediaElement,
-): Promise<ChosenClock> {
+async function clockFor(parts: PipelineParts): Promise<ChosenClock> {
+  const { audioTrack } = parts.opened;
   if (!audioTrack) return wallClock(NO_AUDIO_WARNING);
   try {
     const segments = await audioTrack.openSegments();
     if (!MediaSourceAudioClock.isSupported(segments)) return wallClock(AUDIO_UNSUPPORTED_WARNING);
-    const clock = await MediaSourceAudioClock.open(audio, segments);
+    // The audio element is the host's, shared with any newer load: a superseded load must not
+    // take it over. The pipeline stops right after this, whatever clock it got.
+    parts.signal.throwIfAborted();
+    const clock = await MediaSourceAudioClock.open(parts.host.audio, segments);
     return { clock, warnings: [] };
   } catch (error) {
     // Sound is a comfort, the picture is the point: a broken audio path must not stop playback.

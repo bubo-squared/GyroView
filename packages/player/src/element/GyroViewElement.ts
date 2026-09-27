@@ -103,7 +103,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     defineLiveSettings(this, this.player);
     const host = this.controlsHost();
     bindControlsBar(shadow, host);
-    new ViewGestures(canvas, this.player, this.togglePlayback);
+    new ViewGestures(canvas, this.player, this.onPictureTap);
     bindKeyboard(this, host);
     this.idle = new IdleWatcher(this, () => this.player.status === 'playing');
     this.observePlayer();
@@ -312,6 +312,15 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
       },
     };
   }
+
+  /**
+   * A tap on the picture toggles playback, except a touch that brought hidden controls back:
+   * touch has no hover to reveal them, so that tap is the viewer asking to see them.
+   */
+  private readonly onPictureTap = (pointerType: string): void => {
+    if (pointerType !== 'mouse' && this.idle.wasIdleAtLastPress) return;
+    this.togglePlayback();
+  };
 
   /**
    * Pauses, or starts playing and reports a refused start as a warning.

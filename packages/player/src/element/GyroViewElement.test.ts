@@ -110,6 +110,19 @@ function expectBarWithin(element: GyroViewElement): void {
   }
 }
 
+/**
+ * A finger's press or release, composed as the browser's own events are, so the host hears it.
+ */
+function touchOf(type: string): PointerEvent {
+  return new PointerEvent(type, {
+    pointerId: 3,
+    pointerType: 'touch',
+    bubbles: true,
+    composed: true,
+    isPrimary: true,
+  });
+}
+
 function pointer(type: string, at: { x: number; y: number }): PointerEvent {
   return new PointerEvent(type, {
     pointerId: 1,
@@ -337,6 +350,24 @@ describe('<gyro-view>', () => {
     const playing = nextEvent(element, 'play');
     canvas.dispatchEvent(pointer('pointerdown', { x: 10, y: 10 }));
     canvas.dispatchEvent(pointer('pointerup', { x: 11, y: 10 }));
+    await playing;
+  });
+
+  it('brings hidden controls back on a touch without also toggling play, and toggles on the next', async () => {
+    const element = await createReady();
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    // Synthetic touches are no active pointers, so the browser would refuse to capture them.
+    canvas.setPointerCapture = (): void => undefined;
+    element.dataset['idle'] = '';
+    canvas.dispatchEvent(touchOf('pointerdown'));
+    canvas.dispatchEvent(touchOf('pointerup'));
+    await settle();
+    expect(element.dataset['idle']).toBeUndefined();
+    expect(element.paused).toBe(true);
+
+    const playing = nextEvent(element, 'play');
+    canvas.dispatchEvent(touchOf('pointerdown'));
+    canvas.dispatchEvent(touchOf('pointerup'));
     await playing;
   });
 

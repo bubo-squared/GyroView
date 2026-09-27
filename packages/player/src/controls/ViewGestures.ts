@@ -45,7 +45,10 @@ export class ViewGestures {
   public constructor(
     private readonly surface: HTMLElement,
     private readonly player: GestureTarget,
-    private readonly onTap: () => void,
+    /**
+     * Hears a tap, with the kind of pointer that made it (`mouse`, `touch`, `pen`).
+     */
+    private readonly onTap: (pointerType: string) => void,
   ) {
     surface.addEventListener('pointerenter', this.reflectDraggable);
     surface.addEventListener('pointerdown', this.onPointerDown);
@@ -76,7 +79,7 @@ export class ViewGestures {
   private readonly onPointerUp = (event: PointerEvent): void => {
     const wasTracked = this.pointers.delete(event.pointerId);
     if (!wasTracked || this.pointers.size > 0) return;
-    if (this.dragDistance < TAP_TOLERANCE_PIXELS) this.onTap();
+    if (this.dragDistance < TAP_TOLERANCE_PIXELS) this.onTap(event.pointerType);
   };
 
   /**

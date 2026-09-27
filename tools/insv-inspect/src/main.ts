@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { GyroViewError } from '@gyroview/core';
 
 import { inspectFile } from './inspectFile';
@@ -14,7 +16,7 @@ async function main(argv: readonly string[]): Promise<number> {
     process.stderr.write(`${USAGE}\n`);
     return EXIT_USAGE;
   }
-  const inspection = await inspectFile(file);
+  const inspection = await inspectFile(invokedPath(file));
   const output = argv.includes('--json')
     ? JSON.stringify(inspection, null, JSON_INDENT)
     : renderInspection(inspection);
@@ -27,6 +29,14 @@ try {
 } catch (error) {
   process.stderr.write(`${describeError(error)}\n`);
   process.exitCode = EXIT_FAILURE;
+}
+
+/**
+ * The file where the user named it: pnpm runs the script from this package's folder and says in
+ * INIT_CWD where it was invoked.
+ */
+function invokedPath(file: string): string {
+  return path.resolve(process.env['INIT_CWD'] ?? process.cwd(), file);
 }
 
 function describeError(error: unknown): string {

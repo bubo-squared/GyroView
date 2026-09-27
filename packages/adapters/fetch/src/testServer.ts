@@ -20,14 +20,19 @@ interface TestServerBehaviour {
    */
   readonly failsWith?: number;
   /**
-   * Cut the connection halfway through every range body, as a dropped network does.
+   * Cut the connection halfway through this many range bodies, the first ones asked for, as a
+   * dropped network does.
    */
-  readonly breaksOffRanges?: boolean;
+  readonly breaksOffRanges?: number;
 }
 
 interface Served {
   readonly body: Uint8Array;
   readonly behaviour: TestServerBehaviour;
+  /**
+   * How many range bodies are still to be broken off.
+   */
+  rangesToBreakOff: number;
 }
 
 const HTTP_OK = 200;
@@ -48,7 +53,7 @@ export class TestServer {
     body: Uint8Array,
     behaviour: TestServerBehaviour = {},
   ): Promise<TestServer> {
-    const served: Served = { body, behaviour };
+    const served: Served = { body, behaviour, rangesToBreakOff: behaviour.breaksOffRanges ?? 0 };
     const server = createServer((request, response) => {
       respond(request, response, served);
     });
@@ -79,8 +84,12 @@ function respond(request: IncomingMessage, response: ServerResponse, served: Ser
   const range = RANGE_HEADER.exec(request.headers.range ?? '');
   if (range && !served.behaviour.ignoresRanges) {
     const asked = { body: served.body, range };
-    if (served.behaviour.breaksOffRanges === true) breakOffRange(response, asked);
-    else respondWithRange(request, response, asked);
+    if (served.rangesToBreakOff > 0) {
+      served.rangesToBreakOff -= 1;
+      breakOffRange(response, asked);
+    } else {
+      respondWithRange(request, response, asked);
+    }
   } else {
     respondWhole(request, response, served);
   }

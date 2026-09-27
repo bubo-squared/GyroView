@@ -6,6 +6,10 @@ import { HttpRangeSource } from './HttpRangeSource';
 import { TestServer } from './testServer';
 
 const servers: TestServer[] = [];
+/**
+ * Retries at once, so the tests of asking again take no time.
+ */
+const NO_WAIT = [0, 0];
 
 async function serve(bytes: Uint8Array, behaviour = {}): Promise<TestServer> {
   const server = await TestServer.start(bytes, behaviour);
@@ -21,6 +25,29 @@ describeRandomAccessSourceContract(async (bytes) => {
   const server = await serve(bytes);
   return new HttpRangeSource(server.url);
 });
+
+interface CountingFetch {
+  readonly fetch: typeof fetch;
+  /**
+   * How many byte ranges were asked for.
+   */
+  readonly ranges: () => number;
+}
+
+/**
+ * A fetch that answers the first byte range with `status` and passes everything else on.
+ */
+function firstRangeAnswered(status: number): CountingFetch {
+  let ranges = 0;
+  return {
+    ranges: (): number => ranges,
+    fetch: (input, init): Promise<Response> => {
+      if (init?.method !== 'GET') return fetch(input, init);
+      ranges += 1;
+      return ranges === 1 ? Promise.resolve(new Response(null, { status })) : fetch(input, init);
+    },
+  };
+}
 
 describe('HttpRangeSource', () => {
   const content = Uint8Array.from({ length: 5000 }, (_value, index) => index % 256);
@@ -96,14 +123,38 @@ describe('HttpRangeSource', () => {
     });
   });
 
-  it('reports a range whose body breaks off with the source-unreadable code', async () => {
-    const server = await serve(content, { breaksOffRanges: true });
-    await expect(new HttpRangeSource(server.url).read(ByteRange.of(0, 4000))).rejects.toMatchObject(
-      {
-        code: 'source-unreadable',
-        message: expect.stringContaining('broke off') as string,
-      },
-    );
+  it('asks again for a range whose body broke off, and reads it', async () => {
+    const server = await serve(content, { breaksOffRanges: 1 });
+    const source = new HttpRangeSource(server.url, { retryDelaysMs: NO_WAIT });
+    await expect(source.read(ByteRange.of(0, 4000))).resolves.toEqual(content.subarray(0, 4000));
+  });
+
+  it('reports a range that keeps breaking off as source-unreadable once the retries are spent', async () => {
+    const server = await serve(content, { breaksOffRanges: 3 });
+    const source = new HttpRangeSource(server.url, { retryDelaysMs: NO_WAIT });
+    await expect(source.read(ByteRange.of(0, 4000))).rejects.toMatchObject({
+      code: 'source-unreadable',
+      message: expect.stringContaining('broke off') as string,
+    });
+  });
+
+  it('asks again after a server error, never after a refusal', async () => {
+    const server = await serve(content);
+    const busy = firstRangeAnswered(503);
+    const recovering = new HttpRangeSource(server.url, {
+      fetch: busy.fetch,
+      retryDelaysMs: NO_WAIT,
+    });
+    await expect(recovering.read(ByteRange.of(0, 10))).resolves.toEqual(content.subarray(0, 10));
+    const refusing = firstRangeAnswered(404);
+    const refused = new HttpRangeSource(server.url, {
+      fetch: refusing.fetch,
+      retryDelaysMs: NO_WAIT,
+    });
+    await expect(refused.read(ByteRange.of(0, 10))).rejects.toMatchObject({
+      code: 'source-unreadable',
+    });
+    expect(refusing.ranges()).toBe(1);
   });
 
   it("stops reading once its signal or the host's aborts", async () => {

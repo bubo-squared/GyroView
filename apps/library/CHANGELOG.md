@@ -16,4 +16,5 @@ The first release:
 - `inspectRecording`, which reads what a recording holds from a file or a URL.
 - `gyroview/standalone`, one file with Three.js and mediabunny inside, for a page without a
   bundler.
-- `GyroViewError` and its codes, and the types of the settings, metadata, events and inspection.
+- `GyroViewError` and its codes, and the types of the settings, metadata, events and inspection,
+  with `GyroViewAttributes` for a framework's JSX declaration of the element.

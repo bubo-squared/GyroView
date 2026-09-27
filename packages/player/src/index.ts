@@ -22,6 +22,7 @@ export type { BrowserPortsOptions } from './composition/browserPorts';
 export type { PipelineHost } from './composition/ports';
 export { GyroViewElement } from './element/GyroViewElement';
 export type { GyroViewElementEventMap } from './element/TypedEventElement';
+export type { GyroViewAttributes } from './element/GyroViewAttributes';
 export type { FileSource } from './element/elementSource';
 export type {
   GyroViewLabels,

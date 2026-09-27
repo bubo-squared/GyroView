@@ -16,6 +16,7 @@ export type {
   BlobInput,
   BrowserPortsOptions,
   FileSource,
+  GyroViewAttributes,
   GyroViewElementEventMap,
   GyroViewLabels,
   GyroViewMessageOverrides,

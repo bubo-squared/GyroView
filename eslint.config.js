@@ -108,7 +108,7 @@ export default defineConfig(
         // A key that needs quotes is data spelled as the outside world spells it (an attribute
         // name, a kebab-case choice), not an identifier this codebase names.
         {
-          selector: ['objectLiteralProperty', 'objectLiteralMethod'],
+          selector: ['objectLiteralProperty', 'objectLiteralMethod', 'typeProperty'],
           modifiers: ['requiresQuotes'],
           format: null,
         },

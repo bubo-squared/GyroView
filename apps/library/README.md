@@ -120,6 +120,51 @@ rates other than 1.
 `isGyroViewErrorCode` to check a string against it), and the types of the element's settings,
 metadata, events and inspection.
 
+## Frameworks
+
+The element takes properties and attributes as any element does, and its events are DOM
+events, so a framework needs only to know the tag.
+
+**React 19** sets the attributes and hears events through a ref. For JSX to know the tag, a
+declaration file of the project's own extends React's elements with the package's
+`GyroViewAttributes`:
+
+```ts
+// gyro-view.d.ts
+import type { DetailedHTMLProps, HTMLAttributes } from 'react';
+import type { GyroViewAttributes, GyroViewElement } from 'gyroview';
+
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'gyro-view': DetailedHTMLProps<HTMLAttributes<GyroViewElement>, GyroViewElement> &
+        GyroViewAttributes;
+    }
+  }
+}
+```
+
+```tsx
+const player = useRef<GyroViewElement>(null);
+useEffect(() => {
+  const element = player.current;
+  const onReady = (event: CustomEvent<PlayerMetadata>): void => console.log(event.detail.model);
+  element?.addEventListener('ready', onReady);
+  return () => element?.removeEventListener('ready', onReady);
+}, []);
+return <gyro-view ref={player} src={url} stabilization="lock" controls muted />;
+```
+
+**Vue 3** is told the tag is a custom element (`isCustomElement: (tag) => tag === 'gyro-view'`
+in the template compiler options), then binds as usual: `<gyro-view :src="url" controls
+@ready="onReady" />`.
+
+**Svelte 5** needs nothing: `<gyro-view src={url} controls onready={onReady} />`.
+
+In every case the element registers in the browser only: import `gyroview/define` in code that
+runs there, or call `defineGyroView()` once mounted. Importing either while the server renders
+is safe and registers nothing.
+
 ## Several players on one page
 
 Each player holds a WebGL context and, while a recording is loaded, two hardware video

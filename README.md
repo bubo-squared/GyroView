@@ -68,7 +68,8 @@ a pause, a seek or the end, as a media element's), `seeking`, `seeked`, `frame`,
 `viewchange`, `viewmodechange`, `stabilizationchange`, `volumechange` (`{ volume, isMuted }`),
 `warning` (something the player worked around: a degraded feature such as no gyro, an
 unverified IMU frame or a silent clock, an attribute value it ignored, a refused start, a seek
-bar position it could not show, a loop that could not restart) and `error` (`code` and
+bar position it could not show, a loop that could not restart, a property set before the
+element was defined that it refused) and `error` (`code` and
 `message`; the codes are listed in `docs/DEPLOYMENT.md`).
 
 Keyboard: space or K play/pause, J and L seek, S stops, arrows look around (Shift + arrows

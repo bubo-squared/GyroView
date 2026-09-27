@@ -8,7 +8,7 @@ import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSo
 import { TrailerFixtureBuilder } from '../../testing/TrailerFixtureBuilder';
 import { loadFixture } from '../../../test/support/fixtures';
 import { minimalMp4Prefix } from '../../../test/support/mp4Prefix';
-import { officeRecords } from '../../../test/support/officeRecording';
+import { officeRecording, officeRecords } from '../../../test/support/officeRecording';
 import {
   OFFICE_FIRST_GYRO_SAMPLE,
   RAW_FULL_SCALE,
@@ -36,9 +36,7 @@ describe('readRecording on synthetic X5 files', () => {
   });
 
   it('decodes the gyro record with the ranges from the info record', async () => {
-    const recording = await readRecording(
-      new InMemoryRandomAccessSource(officeRecords().buildContiguous().bytes),
-    );
+    const recording = await officeRecording();
     const gyro = await recording.readGyroRecord();
     expect(gyro?.layout).toBe('raw');
     expect(gyro?.track.length).toBe(2000);
@@ -48,9 +46,7 @@ describe('readRecording on synthetic X5 files', () => {
   });
 
   it('decodes the exposure record and derives the capture clock in microseconds', async () => {
-    const recording = await readRecording(
-      new InMemoryRandomAccessSource(officeRecords().buildContiguous().bytes),
-    );
+    const recording = await officeRecording();
     const exposure = await recording.readExposureRecord();
     expect(recording.listsExposureRecord).toBe(true);
     expect(exposure?.length).toBe(16);
@@ -61,15 +57,7 @@ describe('readRecording on synthetic X5 files', () => {
   });
 
   it('reports missing gyro and exposure records as undefined rather than failing', async () => {
-    const file = new TrailerFixtureBuilder()
-      .withPrefix(minimalMp4Prefix())
-      .addRecord({
-        id: RecordType.Info,
-        format: InfoRecordFormat.Protobuf,
-        payload: loadFixture('x5/office/record-01-info.bin'),
-      })
-      .buildContiguous();
-    const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
+    const recording = await officeRecording({ hasGyro: false, hasExposure: false });
     await expect(recording.readGyroRecord()).resolves.toBeUndefined();
     await expect(recording.readExposureRecord()).resolves.toBeUndefined();
     expect(recording.listsExposureRecord).toBe(false);

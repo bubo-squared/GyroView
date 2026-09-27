@@ -28,6 +28,11 @@ export interface LoadingPhase {
 export interface LoadedPhase {
   readonly kind: 'loaded';
   readonly loaded: LoadedRecording;
+  /**
+   * The load's controller: its signal still governs the recording's reads, which the unload
+   * ends so nothing keeps downloading for a recording gone.
+   */
+  readonly controller: AbortController;
 }
 
 export interface FailedPhase {

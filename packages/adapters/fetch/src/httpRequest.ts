@@ -86,6 +86,7 @@ export function withAbortSignal(
 
 /**
  * Fires when either does. `AbortSignal.any` would do, but iOS Safari has it only from 17.4.
+ * Whichever fires takes both listeners along, so a long-lived host signal keeps none.
  */
 function eitherSignal(first: AbortSignal, second: AbortSignal): AbortSignal {
   const controller = new AbortController();
@@ -96,7 +97,7 @@ function eitherSignal(first: AbortSignal, second: AbortSignal): AbortSignal {
       () => {
         controller.abort(signal.reason);
       },
-      { once: true },
+      { once: true, signal: controller.signal },
     );
   }
   return controller.signal;

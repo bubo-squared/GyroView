@@ -12,7 +12,7 @@ import { Player } from './Player';
 import type { PlayerStatus } from './PlayerEvents';
 import { browserPorts } from '../composition/browserPorts';
 import { buildPipeline } from '../composition/buildPipeline';
-import type { PipelineFactory } from '../composition/ports';
+import type { PipelineFactory, RecordingPorts, SourceOpener } from '../composition/ports';
 import type { PlayerSource } from '../PlayerSource';
 import { X5_RECORDING_URL, X5_RECORDING_WITH_AUDIO_URL } from '../test/recordings';
 import { settle, waitFor } from '../test/waiting';
@@ -34,14 +34,14 @@ interface Harness {
   readonly errors: GyroViewError[];
 }
 
-function harness(pipelines: PipelineFactory): Harness {
+function harness(pipelines: PipelineFactory, ports: RecordingPorts = browserPorts()): Harness {
   const canvas = document.createElement('canvas');
   canvas.style.width = `${CANVAS_WIDTH}px`;
   canvas.style.height = `${CANVAS_HEIGHT}px`;
   const audio = document.createElement('audio');
   audio.muted = true;
   document.body.append(canvas, audio);
-  const player = new Player({ host: { canvas, audio }, ports: browserPorts(), pipelines });
+  const player = new Player({ host: { canvas, audio }, ports, pipelines });
   const statuses: PlayerStatus[] = [];
   const events: string[] = [];
   const frames: Seconds[] = [];
@@ -79,8 +79,8 @@ function harness(pipelines: PipelineFactory): Harness {
 describe('Player over the synthetic X5 recording', () => {
   const harnesses: Harness[] = [];
 
-  function open(pipelines: PipelineFactory = buildPipeline): Harness {
-    const created = harness(pipelines);
+  function open(pipelines: PipelineFactory = buildPipeline, ports?: RecordingPorts): Harness {
+    const created = harness(pipelines, ports);
     harnesses.push(created);
     return created;
   }
@@ -343,6 +343,23 @@ describe('Player over the synthetic X5 recording', () => {
     const { player } = open();
     await expect(player.load(sourceOf(`${X5_RECORDING_URL}.missing`))).rejects.toThrow();
     await expect(player.play()).rejects.toMatchObject({ code: 'source-unreadable' });
+  });
+
+  it('ends the reads of a recording it unloads', async () => {
+    const browser = browserPorts();
+    const signals: AbortSignal[] = [];
+    const sources: SourceOpener = {
+      open: (input, signal) => {
+        signals.push(signal);
+        return browser.sources.open(input, signal);
+      },
+    };
+    const { player } = open(buildPipeline, { ...browser, sources });
+    await player.load(sourceOf(X5_RECORDING_URL));
+    expect(signals.some((signal) => signal.aborted)).toBe(false);
+    player.unload();
+    expect(signals.length).toBeGreaterThan(0);
+    expect(signals.every((signal) => signal.aborted)).toBe(true);
   });
 
   it("leaves a load made on ready its own start time and no autoplay of the older load's", async () => {

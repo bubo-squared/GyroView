@@ -163,7 +163,10 @@ export class Player {
     this.relay.detach();
     this.viewing.attach(undefined);
     this.picture.attach(undefined);
-    if (previous.kind === 'loaded') previous.loaded.dispose();
+    if (previous.kind === 'loaded') {
+      previous.loaded.dispose();
+      previous.controller.abort();
+    }
     this.announceStatus();
   }
 
@@ -307,7 +310,7 @@ export class Player {
       loaded.dispose();
       return;
     }
-    this.attach(loaded);
+    this.attach(loaded, loading.controller);
     // A listener of `ready` may have loaded something else already; the rest is that load's.
     if (this.loaded !== loaded) return;
     this.startAtPendingTime(loaded);
@@ -321,8 +324,8 @@ export class Player {
     if (time !== undefined) loaded.pipeline.session.seek(time);
   }
 
-  private attach(loaded: LoadedRecording): void {
-    this.phase = { kind: 'loaded', loaded };
+  private attach(loaded: LoadedRecording, controller: AbortController): void {
+    this.phase = { kind: 'loaded', loaded, controller };
     this.viewing.attach(loaded.pipeline.renderer);
     const { session } = loaded.pipeline;
     this.picture.attach(loaded.pipeline);

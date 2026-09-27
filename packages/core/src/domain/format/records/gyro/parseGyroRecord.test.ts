@@ -128,6 +128,26 @@ describe('parseGyroRecord with the raw X5 layout', () => {
     expect([0, 1].map((index) => track.sampleAt(index).captureTime)).toEqual([10_000, 50_000]);
   });
 
+  it('leaves out a reading that leaps from its agreeing neighbours, as a flipped high bit does', () => {
+    const payload = new Uint8Array(
+      [10, 20, 30, 40, 50].flatMap((stamp, index) => [
+        ...encodeFloatSample(stamp, [0, 1, 0], [0, index === 2 ? 34.9 : 0.1, 0]),
+      ]),
+    );
+    const { track, damagedSamples } = read(payload, { isRawGyro: false, ranges: undefined });
+    expect(damagedSamples).toBe(1);
+    expect([...track.captureTimes]).toEqual([10_000, 20_000, 40_000, 50_000]);
+  });
+
+  it('keeps a fast turn that the next sample carries on', () => {
+    const payload = new Uint8Array(
+      [10, 20, 30, 40].flatMap((stamp, index) => [
+        ...encodeFloatSample(stamp, [0, 1, 0], [0, index >= 2 ? 30 : 0, 0]),
+      ]),
+    );
+    expect(read(payload, { isRawGyro: false, ranges: undefined }).damagedSamples).toBe(0);
+  });
+
   it('mends a stamp far off its neighbours and counts it', () => {
     const stamps = [10, 20, 30, 1_000_040, 50, 60, 70];
     const payload = new Uint8Array(
@@ -169,6 +189,17 @@ describe('parseGyroRecord with the float layout', () => {
 describe('selectGyroSampleLayout', () => {
   it('recognises raw samples by their microsecond spacing', () => {
     const payload = new Uint8Array([...encodeRawSample(5_000_000), ...encodeRawSample(5_001_000)]);
+    expect(selectGyroSampleLayout(NO_HINTS, payload)?.name).toBe('raw');
+  });
+
+  it('tells raw samples despite a stamp left at zero and one glitched among the first', () => {
+    const stamps = Array.from({ length: 32 }, (_unused, index) => 5_000_000 + index * 1000);
+    stamps[0] = 0;
+    const glitched = encodeRawSample(stamps[5] ?? 0);
+    glitched[7] = 0xff;
+    const payload = new Uint8Array(
+      stamps.flatMap((stamp, index) => [...(index === 5 ? glitched : encodeRawSample(stamp))]),
+    );
     expect(selectGyroSampleLayout(NO_HINTS, payload)?.name).toBe('raw');
   });
 

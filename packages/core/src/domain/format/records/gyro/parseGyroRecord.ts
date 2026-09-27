@@ -14,13 +14,24 @@ import type { SensorRanges } from '../../info/RecordingInfo';
  */
 const MIN_PLAUSIBLE_INTERVAL_US = 100;
 const MAX_PLAUSIBLE_INTERVAL_US = 10_000;
-const SAMPLES_NEEDED_TO_GUESS = 2;
+/**
+ * The samples the layout is told from when the info record does not say: enough that a few
+ * uninitialised or glitched stamps at the start are outvoted, in one small read.
+ */
+const SAMPLES_TO_GUESS_FROM = 32;
+const MIN_SAMPLES_TO_GUESS_FROM = 2;
 /**
  * Readings past these are no motion a camera makes: the X5 declares a 32 g and a 2000 degrees a
  * second (35 rad/s) range. A flipped bit in a float64 reading lands far beyond them, or at NaN.
  */
 const MAX_PLAUSIBLE_ACCELERATION_G = 64;
 const MAX_PLAUSIBLE_ANGULAR_VELOCITY_RAD_S = 100;
+/**
+ * No motion changes this much from one sample to the next and back: a raw reading's high bits
+ * (2000 and 1000 degrees a second, 32 and 16 g on the X5) leap further, inside the bounds.
+ */
+const MAX_ANGULAR_VELOCITY_STEP_RAD_S = 10;
+const MAX_ACCELERATION_STEP_G = 8;
 
 export interface GyroLayoutHints {
   /**
@@ -52,9 +63,9 @@ export interface ParsedGyroRecord {
 }
 
 /**
- * Enough leading bytes of a gyro record to tell its layout: two samples of the larger layout.
+ * Enough leading bytes of a gyro record to tell its layout, in samples of the larger layout.
  */
-export const GYRO_LAYOUT_PROBE_SIZE = FLOAT_SAMPLE_SIZE * SAMPLES_NEEDED_TO_GUESS;
+export const GYRO_LAYOUT_PROBE_SIZE = FLOAT_SAMPLE_SIZE * SAMPLES_TO_GUESS_FROM;
 
 /**
  * The sample layout of the gyro record: from the info record's flag when present, otherwise from
@@ -93,6 +104,7 @@ export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): 
     const sample = readableSampleAt(reader, layout, index * layout.sampleSize);
     if (sample) columns.push(sample);
   }
+  columns.dropSpikes();
   const timeline = repairedTimeline(columns.captureTimes());
   return {
     track: columns.toTrack(timeline.times),
@@ -151,6 +163,21 @@ class SampleColumns {
   }
 
   /**
+   * Leaves out samples whose reading leaps away from both neighbours while they agree: a flipped
+   * high bit in a raw reading stays within the bounds, but no motion changes that fast for one
+   * sample and back. Compacts in place; each check reads only samples not yet moved over.
+   */
+  public dropSpikes(): void {
+    let kept = 0;
+    for (let index = 0; index < this.length; index += 1) {
+      if (this.isSpikeAt(index)) continue;
+      this.moveSample(index, kept);
+      kept += 1;
+    }
+    this.length = kept;
+  }
+
+  /**
    * The stamps as recorded, to be mended before they make a track.
    */
   public captureTimes(): Float64Array {
@@ -165,19 +192,80 @@ class SampleColumns {
       this.angularVelocities.subarray(0, vectors),
     );
   }
+  private isSpikeAt(index: number): boolean {
+    const hasNeighbours = index > 0 && index < this.length - 1;
+    return (
+      hasNeighbours &&
+      (isSpike(this.angularVelocities, index, MAX_ANGULAR_VELOCITY_STEP_RAD_S) ||
+        isSpike(this.accelerations, index, MAX_ACCELERATION_STEP_G))
+    );
+  }
+
+  private moveSample(from: number, to: number): void {
+    if (from === to) return;
+    this.recordedTimes[to] = this.recordedTimes[from] ?? 0;
+    for (const vectors of [this.accelerations, this.angularVelocities]) {
+      vectors.copyWithin(
+        to * VECTOR3_COMPONENTS,
+        from * VECTOR3_COMPONENTS,
+        (from + 1) * VECTOR3_COMPONENTS,
+      );
+    }
+  }
 }
 
 /**
- * A layout fits when it decodes at least two samples whose capture times increase by a plausible
- * IMU interval.
+ * A layout fits when the stamps it decodes step by a plausible IMU interval: the median step,
+ * so a few stamps left at zero or glitched at the start do not decide.
  */
 function hasPlausibleTimestamps(payload: Uint8Array, layout: GyroSampleLayout): boolean {
-  if (payload.byteLength < layout.sampleSize * SAMPLES_NEEDED_TO_GUESS) return false;
+  const stamps = stampsOf(payload, layout);
+  if (stamps.length < MIN_SAMPLES_TO_GUESS_FROM) return false;
+  const steps = stamps.slice(1).map((stamp, index) => stamp - (stamps[index] ?? stamp));
+  const median = steps.toSorted((a, b) => a - b)[Math.floor(steps.length / 2)] ?? 0;
+  return median >= MIN_PLAUSIBLE_INTERVAL_US && median <= MAX_PLAUSIBLE_INTERVAL_US;
+}
+
+/**
+ * The stamps `layout` decodes from the leading samples; one that cannot be a stamp is skipped.
+ */
+function stampsOf(payload: Uint8Array, layout: GyroSampleLayout): number[] {
   const reader = new ByteReader(payload);
-  try {
-    const interval = layout.timestampAt(reader, layout.sampleSize) - layout.timestampAt(reader, 0);
-    return interval >= MIN_PLAUSIBLE_INTERVAL_US && interval <= MAX_PLAUSIBLE_INTERVAL_US;
-  } catch {
-    return false;
+  const count = Math.floor(payload.byteLength / layout.sampleSize);
+  const stamps: number[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const stamp = stampAt(reader, layout, index * layout.sampleSize);
+    if (stamp !== undefined) stamps.push(stamp);
   }
+  return stamps;
+}
+
+function stampAt(reader: ByteReader, layout: GyroSampleLayout, offset: number): number | undefined {
+  try {
+    return layout.timestampAt(reader, offset);
+  } catch (error) {
+    if (hasErrorCode(error, 'binary-unsafe-integer')) return undefined;
+    throw error;
+  }
+}
+
+/**
+ * The reading at `index` leaps from both neighbours by more than `step`, which agree within it.
+ */
+function isSpike(vectors: Float32Array, index: number, step: number): boolean {
+  const distance = (a: number, b: number): number => {
+    let largest = 0;
+    for (let axis = 0; axis < VECTOR3_COMPONENTS; axis += 1) {
+      const difference =
+        (vectors[a * VECTOR3_COMPONENTS + axis] ?? 0) -
+        (vectors[b * VECTOR3_COMPONENTS + axis] ?? 0);
+      largest = Math.max(largest, Math.abs(difference));
+    }
+    return largest;
+  };
+  return (
+    distance(index, index - 1) > step &&
+    distance(index, index + 1) > step &&
+    distance(index - 1, index + 1) <= step
+  );
 }

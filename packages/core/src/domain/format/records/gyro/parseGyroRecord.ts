@@ -89,7 +89,8 @@ export function selectGyroSampleLayout(
  * Decodes the gyro record payload into a {@link GyroTrack} with the given layout. Whole samples
  * only: a partial sample at the end is tolerated and reported, never rejected. So is a sample whose
  * bytes cannot be a reading (a stamp past the safe integers, a value no camera measures, a
- * component a flipped bit moved): each sample carries its own time, so the others still count.
+ * component a flipped bit moved, a slot left all zero): each sample carries its own time, so the
+ * others still count.
  * Stamps that stray from their neighbours are mended (see {@link repairedTimeline}).
  */
 export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): ParsedGyroRecord {
@@ -117,8 +118,11 @@ function readableSampleAt(
   offset: number,
 ): GyroSample | undefined {
   try {
+    const captureTime = layout.timestampAt(reader, offset);
+    if (captureTime === 0 && isUnwritten(reader.bytesAt(offset, layout.sampleSize)))
+      return undefined;
     const sample = {
-      captureTime: layout.timestampAt(reader, offset),
+      captureTime,
       acceleration: layout.accelerationAt(reader, offset),
       angularVelocity: layout.angularVelocityAt(reader, offset),
     };
@@ -130,6 +134,14 @@ function readableSampleAt(
     if (hasErrorCode(error, 'binary-unsafe-integer')) return undefined;
     throw error;
   }
+}
+
+/**
+ * A sample left all zero, as a camera leaves the first slots it never wrote: in the raw layout
+ * it would read the negative full range on every axis, which no sensor measures.
+ */
+function isUnwritten(sample: Uint8Array): boolean {
+  return sample.every((byte) => byte === 0);
 }
 
 function isWithin(vector: Vector3, bound: number): boolean {

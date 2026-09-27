@@ -1,4 +1,4 @@
-import { seconds, type AudioSegmentSource } from '@gyroview/core';
+import { Deferred, seconds, type AudioSegmentSource } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -43,6 +43,10 @@ async function openMediaSource(element: HTMLMediaElement): Promise<AttachedMedia
  * The fixture's first segments: its initialisation and about a second of audio.
  */
 const FIRST_SECOND = 4;
+/**
+ * A time inside that first second.
+ */
+const SEEK_WITHIN = 0.5;
 
 type Segments = AsyncIterable<Uint8Array<ArrayBuffer>>;
 
@@ -52,8 +56,9 @@ function everySegment(segments: Segments): Segments {
 
 /**
  * The first `count` segments, then none ever again: a run that waits as on a stalled network.
+ * `stalled` resolves once the run asks for the next segment, its last one appended.
  */
-function stallingAfter(count: number): (segments: Segments) => Segments {
+function stallingAfter(count: number, stalled: Deferred<void>): (segments: Segments) => Segments {
   return async function* (segments) {
     let yielded = 0;
     for await (const segment of segments) {
@@ -61,6 +66,7 @@ function stallingAfter(count: number): (segments: Segments) => Segments {
       yield segment;
       yielded += 1;
     }
+    stalled.resolve();
     await new Promise<never>(() => {
       // never settled on purpose
     });
@@ -166,12 +172,15 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
   });
 
   it('appends only what is missing after a seek within the audio already buffered', async () => {
-    const { feeder, element, asked, close } = await fixtureFeeder(stallingAfter(FIRST_SECOND));
-    const bufferedEnd = (): number => (element.buffered.length > 0 ? element.buffered.end(0) : 0);
+    const stalled = new Deferred<void>();
+    const { feeder, element, asked, close } = await fixtureFeeder(
+      stallingAfter(FIRST_SECOND, stalled),
+    );
     feeder.restartFrom(seconds(0));
-    await waitUntil(() => bufferedEnd() > 0);
-    const stalledAt = bufferedEnd();
-    feeder.restartFrom(seconds(0.5));
+    await stalled.promise;
+    const stalledAt = element.buffered.end(0);
+    expect(stalledAt).toBeGreaterThan(SEEK_WITHIN);
+    feeder.restartFrom(seconds(SEEK_WITHIN));
     await waitUntil(() => asked.length === 2);
     expect(asked[1]).toBe(stalledAt);
     close();

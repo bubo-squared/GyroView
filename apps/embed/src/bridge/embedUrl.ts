@@ -90,14 +90,16 @@ export function absoluteUrl<Value>(value: Value, pageUrl: string): Value | strin
 }
 
 /**
- * The options with their URLs (the recording, its second file, the poster) made absolute
- * against the embedding page.
+ * The embed options or a load request with their URLs (the recording, its second file, the
+ * poster) made absolute against the embedding page. Anything but an object goes as it is, for
+ * the frame to refuse as it refuses every bad argument.
  */
-export function withAbsoluteUrls(options: EmbedOptions, pageUrl: string): EmbedOptions {
-  const { src2, poster } = options;
+export function withAbsoluteUrls<Value>(value: Value, pageUrl: string): Value {
+  if (typeof value !== 'object' || value === null) return value;
+  const { src, src2, poster } = value as Partial<Record<'src' | 'src2' | 'poster', unknown>>;
   return {
-    ...options,
-    src: absoluteUrl(options.src, pageUrl),
+    ...value,
+    ...(src !== undefined && { src: absoluteUrl(src, pageUrl) }),
     ...(src2 !== undefined && { src2: absoluteUrl(src2, pageUrl) }),
     ...(poster !== undefined && { poster: absoluteUrl(poster, pageUrl) }),
   };

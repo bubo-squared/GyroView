@@ -9,7 +9,7 @@ import {
 } from '@gyroview/core';
 import type { PlayerStatus } from '@gyroview/player';
 
-import { absoluteUrl } from './embedUrl';
+import { withAbsoluteUrls } from './embedUrl';
 import type { Endpoint } from './Endpoint';
 import type { EmbedState, LoadRequest } from './EmbedState';
 import {
@@ -220,21 +220,6 @@ export class EmbedHandle {
     if (result.isOk) pending.resolve(result.value);
     else pending.reject(errorFrom(result.error));
   }
-}
-
-/**
- * The request with its URLs made absolute against the embedding page. Anything but an object
- * goes as it is, for the frame to refuse as it refuses every bad argument, rather than throwing
- * here before there is a promise to reject.
- */
-function withAbsoluteUrls(request: unknown, pageUrl: string): unknown {
-  if (typeof request !== 'object' || request === null) return request;
-  const { src, src2 } = request as Partial<Record<keyof LoadRequest, unknown>>;
-  return {
-    ...request,
-    src: absoluteUrl(src, pageUrl),
-    ...(src2 !== undefined && { src2: absoluteUrl(src2, pageUrl) }),
-  };
 }
 
 function errorFrom(error: SerializedError): GyroViewError {

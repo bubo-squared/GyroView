@@ -102,7 +102,6 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
   public maxPendingSeen = 0;
   private pending = 0;
   private decodedCount = 0;
-  private generation = 0;
   private needsKeyFrame = true;
   private waiters: PendingWaiter[] = [];
   private isClosedNow = false;
@@ -121,18 +120,15 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
   public decode(packet: EncodedVideoPacket): void {
     if (this.isClosedNow) throw new GyroViewError('decode', 'decode on a closed decoder');
     if (this.needsKeyFrame && !packet.isKeyFrame) {
-      throw new GyroViewError(
-        'decode',
-        'the first packet after creation or reset must be a key frame',
-      );
+      throw new GyroViewError('decode', 'the first packet after creation must be a key frame');
     }
     this.needsKeyFrame = false;
     this.decodedCount += 1;
     this.pending += 1;
     this.maxPendingSeen = Math.max(this.maxPendingSeen, this.pending);
-    const { generation, decodedCount: ordinal } = this;
+    const ordinal = this.decodedCount;
     void afterTicks(this.parts.latencyTicks).then(() => {
-      if (generation === this.generation) this.output(packet, ordinal);
+      if (!this.isClosedNow) this.output(packet, ordinal);
     });
   }
 
@@ -152,8 +148,8 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
   }
 
   public close(): void {
-    this.discardPending();
     this.isClosedNow = true;
+    this.discardPending();
   }
 
   private output(packet: EncodedVideoPacket, ordinal: number): void {
@@ -178,10 +174,11 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
     this.parts.callbacks.onError(error);
   }
 
+  /**
+   * A closed decoder outputs nothing more: what was pending is dropped and its waiters let go.
+   */
   private discardPending(): void {
-    this.generation += 1;
     this.pending = 0;
-    this.needsKeyFrame = true;
     this.notifyWaiters();
   }
 

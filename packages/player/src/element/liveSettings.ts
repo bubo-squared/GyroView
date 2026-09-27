@@ -55,20 +55,21 @@ export const LIVE_SETTING_NAMES = Object.keys(SETTING_NAMES) as readonly (keyof 
  * Properties that read and change the player's settings as they are now, the way
  * `HTMLMediaElement.muted` does: the attribute of the same name configures the setting, the
  * property reports what is in effect however it was last changed (attribute, menu, keyboard,
- * gesture or script). A value the setting cannot take is refused; an unset one is ignored.
+ * gesture or script). An unset choice, angle or volume is left as it is, any other value it
+ * cannot take is refused; `muted` and `loop` take any value as a boolean.
  */
 export function defineLiveSettings(element: HTMLElement, player: Player): void {
   const accessors: Accessors = {
     stabilization: {
       get: (): unknown => player.stabilization,
       set: unlessUnset((value) => {
-        player.setStabilization(accepted(value, stabilizationModeOf, 'stabilization'));
+        player.setStabilization(stabilizationModeFrom(value));
       }),
     },
     viewMode: {
       get: (): unknown => player.viewMode,
       set: unlessUnset((value) => {
-        player.setViewMode(accepted(value, viewModeOf, 'viewMode'));
+        player.setViewMode(viewModeFrom(value));
       }),
     },
     ...viewAccessors(player),
@@ -114,6 +115,21 @@ function soundAccessors(player: Player): Pick<Accessors, 'muted' | 'loop' | 'vol
       }),
     },
   };
+}
+
+/**
+ * The stabilization mode `value` names; anything else is refused, as the element's methods and
+ * the embed commands refuse it.
+ */
+export function stabilizationModeFrom(value: unknown): StabilizationMode {
+  return accepted(value, stabilizationModeOf, 'stabilization');
+}
+
+/**
+ * The view mode `value` names; anything else is refused.
+ */
+export function viewModeFrom(value: unknown): ViewMode {
+  return accepted(value, viewModeOf, 'viewMode');
 }
 
 /**

@@ -22,7 +22,13 @@ import { IdleWatcher } from './IdleWatcher';
 import { applyPlaybackAttribute } from './playbackAttributes';
 import { describeUnlessTheAuthorDid } from './accessibleRegion';
 import { applyEarlyProperties, takeEarlyProperties } from './earlyProperties';
-import { defineLiveSettings, LIVE_SETTING_NAMES, type LiveSettings } from './liveSettings';
+import {
+  defineLiveSettings,
+  LIVE_SETTING_NAMES,
+  stabilizationModeFrom,
+  viewModeFrom,
+  type LiveSettings,
+} from './liveSettings';
 import {
   defineBooleanProperties,
   defineStringProperties,
@@ -269,17 +275,19 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   }
 
   /**
-   * Stabilizes the picture in `mode` (`off`, `lock`, `horizon`, `follow`).
+   * Stabilizes the picture in `mode` (`off`, `lock`, `horizon`, `follow`); any other value,
+   * an unset one included, is refused.
    */
   public setStabilization(mode: StabilizationMode): void {
-    this.stabilization = mode;
+    this.player.setStabilization(stabilizationModeFrom(mode));
   }
 
   /**
-   * Shows the picture in `mode` (`normal`, `equirectangular`, `raw-lenses`).
+   * Shows the picture in `mode` (`normal`, `equirectangular`, `raw-lenses`); any other value,
+   * an unset one included, is refused.
    */
   public setViewMode(mode: ViewMode): void {
-    this.viewMode = mode;
+    this.player.setViewMode(viewModeFrom(mode));
   }
 
   /**

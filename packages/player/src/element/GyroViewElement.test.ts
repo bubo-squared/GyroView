@@ -605,6 +605,20 @@ describe('<gyro-view>', () => {
     expect(element.stabilization).toBe('lock');
   });
 
+  it('refuses an unset mode handed to its setter methods, as the embed commands do', () => {
+    const element = create({ controls: '' });
+    const setViewMode = element.setViewMode.bind(element) as (mode: unknown) => void;
+    const setStabilization = element.setStabilization.bind(element) as (mode: unknown) => void;
+    for (const unset of [undefined, null, '']) {
+      expect(() => {
+        setViewMode(unset);
+      }).toThrow(expect.objectContaining({ code: 'invalid-argument' }));
+      expect(() => {
+        setStabilization(unset);
+      }).toThrow(expect.objectContaining({ code: 'invalid-argument' }));
+    }
+  });
+
   it('leaves a setting a framework unsets as it is, as removing its attribute does', () => {
     const element = create({ controls: '', 'view-mode': 'equirectangular', fov: '60' });
     const unset = element as unknown as Record<'viewMode' | 'fov' | 'volume', unknown>;

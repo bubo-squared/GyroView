@@ -106,6 +106,23 @@ describe('HttpRangeSource', () => {
     );
   });
 
+  it("stops reading once its signal or the host's aborts", async () => {
+    const server = await serve(content);
+    const load = new AbortController();
+    const source = new HttpRangeSource(server.url, {}, load.signal);
+    load.abort();
+    await expect(source.read(ByteRange.of(0, 10))).rejects.toMatchObject({ name: 'AbortError' });
+
+    const host = new AbortController();
+    const hosted = new HttpRangeSource(
+      server.url,
+      { requestInit: { signal: host.signal } },
+      new AbortController().signal,
+    );
+    host.abort();
+    await expect(hosted.read(ByteRange.of(0, 10))).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
   it('reads an empty range inside the file with no GET, only the size lookup', async () => {
     const server = await serve(content);
     const methods: string[] = [];

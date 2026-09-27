@@ -59,6 +59,10 @@ export function squareTracks(options: Partial<FakeVideoTrackOptions> = {}): Fake
  * A source opener that serves every input from the bytes registered for its name or URL.
  */
 export class MapSourceOpener implements SourceOpener {
+  /**
+   * The signal each source was opened with, in order.
+   */
+  public readonly signals: AbortSignal[] = [];
   private readonly sources = new Map<string, InMemoryRandomAccessSource>();
 
   public register(key: string, bytes: Uint8Array): InMemoryRandomAccessSource {
@@ -67,7 +71,8 @@ export class MapSourceOpener implements SourceOpener {
     return source;
   }
 
-  public open(input: MediaInput): InMemoryRandomAccessSource {
+  public open(input: MediaInput, signal: AbortSignal): InMemoryRandomAccessSource {
+    this.signals.push(signal);
     const key = isUrlInput(input) ? input.url : input.name;
     const source = this.sources.get(key);
     if (!source) throw new Error(`no bytes registered for ${key}`);

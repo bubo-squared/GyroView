@@ -74,7 +74,7 @@ async function demuxInputs(
   disposables: Disposables,
 ): Promise<DemuxedRecording> {
   const { ports, signal } = attempt;
-  const openings = inputs.map((input) => ({ input, source: ports.sources.open(input) }));
+  const openings = inputs.map((input) => ({ input, source: ports.sources.open(input, signal) }));
   const recording = await readRecordingOf(openings, ports);
   signal.throwIfAborted();
   const settled = await Promise.allSettled(

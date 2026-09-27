@@ -72,6 +72,37 @@ export function plainHttpRequest(
 }
 
 /**
+ * The options with `signal` ending their requests too, beside any signal the host gave: made once
+ * per source, so the listeners it adds do not pile up per request.
+ */
+export function withAbortSignal(
+  options: HttpRequestOptions,
+  signal: AbortSignal,
+): HttpRequestOptions {
+  const hostSignal = options.requestInit?.signal ?? undefined;
+  const either = hostSignal ? eitherSignal(hostSignal, signal) : signal;
+  return { ...options, requestInit: { ...options.requestInit, signal: either } };
+}
+
+/**
+ * Fires when either does. `AbortSignal.any` would do, but iOS Safari has it only from 17.4.
+ */
+function eitherSignal(first: AbortSignal, second: AbortSignal): AbortSignal {
+  const controller = new AbortController();
+  for (const signal of [first, second]) {
+    if (signal.aborted) controller.abort(signal.reason);
+    signal.addEventListener(
+      'abort',
+      () => {
+        controller.abort(signal.reason);
+      },
+      { once: true },
+    );
+  }
+  return controller.signal;
+}
+
+/**
  * A caller's abort, passed on as it is.
  */
 export function isAbort(error: unknown): boolean {

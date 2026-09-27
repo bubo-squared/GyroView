@@ -358,6 +358,16 @@ describe('openRecording', () => {
     expect(decoderPort.openDecoders).toBe(0);
   });
 
+  it('opens its sources with the load signal, so a load given up stops reading', async () => {
+    const world = x5World();
+    const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer });
+    const controller = new AbortController();
+    const opened = await openRecording(sourceOf(), ports, controller.signal);
+    opened.dispose();
+    expect(world.opener.signals.length).toBeGreaterThan(0);
+    expect(world.opener.signals.every((signal) => signal === controller.signal)).toBe(true);
+  });
+
   it('stops at the first check after an abort and leaves nothing open', async () => {
     const world = x5World();
     const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer });

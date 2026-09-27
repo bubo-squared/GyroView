@@ -45,9 +45,9 @@ export function browserPorts(options: BrowserPortsOptions = {}): RecordingPorts<
  */
 function sourcesOver(http: HttpRequestOptions): SourceOpener {
   return {
-    open: (input) =>
+    open: (input, signal) =>
       isUrlInput(input)
-        ? new HttpRangeSource(input.url, http)
+        ? new HttpRangeSource(input.url, http, signal)
         : new BlobRandomAccessSource(input.blob),
   };
 }

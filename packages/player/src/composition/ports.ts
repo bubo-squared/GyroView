@@ -13,10 +13,11 @@ import type { OpenedRecording } from './OpenedRecording';
 import type { MediaInput } from '../PlayerSource';
 
 /**
- * Turns a named input into the byte source the core reads.
+ * Turns a named input into the byte source the core reads; `signal` ends the reads of a load
+ * that was given up, so a superseded load stops downloading.
  */
 export interface SourceOpener {
-  open(input: MediaInput): RandomAccessSource;
+  open(input: MediaInput, signal: AbortSignal): RandomAccessSource;
 }
 
 /**

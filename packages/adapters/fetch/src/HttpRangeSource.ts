@@ -5,6 +5,7 @@ import {
   FIRST_BYTE_RANGE,
   httpRequest,
   isAbort,
+  withAbortSignal,
   type HttpMethod,
   type HttpRequestOptions,
 } from './httpRequest';
@@ -19,12 +20,19 @@ const CONTENT_RANGE_TOTAL = /\/(\d+)$/u;
  * of playing a remote recording and are reported with distinct error codes.
  */
 export class HttpRangeSource implements RandomAccessSource {
+  private readonly options: HttpRequestOptions;
   private sizePromise: Promise<number> | undefined;
 
+  /**
+   * `signal` ends every request the source makes, with the host's own `requestInit` signal.
+   */
   public constructor(
     private readonly url: string,
-    private readonly options: HttpRequestOptions = {},
-  ) {}
+    options: HttpRequestOptions = {},
+    signal?: AbortSignal,
+  ) {
+    this.options = signal ? withAbortSignal(options, signal) : options;
+  }
 
   /**
    * One HEAD request (or a one-byte range where HEAD is refused or gives no length), cached for

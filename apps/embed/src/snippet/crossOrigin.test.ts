@@ -13,15 +13,6 @@ import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-tr
 const OTHER_HOST = 'gyro-view-embed.test';
 const OTHER_ORIGIN = `https://${OTHER_HOST}`;
 
-async function isServedAsHtml(url: string): Promise<boolean> {
-  try {
-    const response = await fetch(url);
-    return response.ok && (response.headers.get('content-type') ?? '').includes('text/html');
-  } catch {
-    return false;
-  }
-}
-
 describe('embedding across origins', () => {
   const embedded: Embedded[] = [];
   const containers: HTMLElement[] = [];
@@ -31,10 +22,7 @@ describe('embedding across origins', () => {
     for (const container of containers.splice(0)) container.remove();
   });
 
-  it('drives a player in an iframe on another origin through embed.js', async (context) => {
-    if (!(await isServedAsHtml('/embed.html'))) {
-      context.skip('this test server does not serve embed.html');
-    }
+  it('drives a player in an iframe on another origin through embed.js', async () => {
     await commands.serveOtherOrigin(OTHER_HOST);
     const embedPageUrl = `${OTHER_ORIGIN}/embed.html`;
     const container = document.createElement('div');

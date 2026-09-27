@@ -6,15 +6,6 @@ import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-tr
 
 const EMBED_PAGE = `${location.origin}/embed.html`;
 
-async function isServedAsHtml(url: string): Promise<boolean> {
-  try {
-    const response = await fetch(url);
-    return response.ok && (response.headers.get('content-type') ?? '').includes('text/html');
-  } catch {
-    return false;
-  }
-}
-
 describe('GyroView.embed', () => {
   const containers: HTMLElement[] = [];
 
@@ -50,10 +41,7 @@ describe('GyroView.embed', () => {
     await expect(embedded.handle.play()).rejects.toMatchObject({ code: 'embed-destroyed' });
   });
 
-  it('keeps driving the frame once the page moves it, which loads it anew', async (context) => {
-    if (!(await isServedAsHtml(EMBED_PAGE))) {
-      context.skip('this test server does not serve embed.html');
-    }
+  it('keeps driving the frame once the page moves it, which loads it anew', async () => {
     const container = document.createElement('div');
     const elsewhere = document.createElement('div');
     document.body.append(container, elsewhere);

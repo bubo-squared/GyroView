@@ -2,6 +2,7 @@ import {
   detectLensLayout,
   ensureInvariant,
   GyroViewError,
+  hasErrorCode,
   lensFrameOrder,
   probeDecoding,
   readRecording,
@@ -10,6 +11,7 @@ import {
   type DecodeProbeReport,
   type DemuxedInput,
   type FrameSourceKey,
+  type RandomAccessSource,
   type Recording,
   type RecordingTiming,
   type Seconds,
@@ -36,8 +38,8 @@ interface DemuxedRecording {
 }
 
 /**
- * Opens the given inputs as one recording. The first input carries the trailer. Everything
- * opened is released again when any step fails or the attempt is aborted.
+ * Opens the given inputs as one recording, its metadata from the input that carries the
+ * trailer. Everything opened is released again when any step fails or the attempt is aborted.
  */
 export async function openInputs(
   inputs: readonly MediaInput[],
@@ -66,9 +68,7 @@ async function demuxInputs(
 ): Promise<DemuxedRecording> {
   const { ports, signal } = attempt;
   const openings = inputs.map((input) => ({ input, source: ports.sources.open(input) }));
-  const [primary] = openings;
-  ensureInvariant(primary !== undefined, 'a recording needs at least one input');
-  const recording = await readRecording(primary.source);
+  const recording = await readTrailerCarrier(openings.map(({ source }) => source));
   signal.throwIfAborted();
   const settled = await Promise.allSettled(
     openings.map(({ input, source }) => ports.demuxer.open(source, inputName(input))),
@@ -83,6 +83,22 @@ async function demuxInputs(
   if (failure) throw failure.reason;
   signal.throwIfAborted();
   return { recording, inputs: opened };
+}
+
+/**
+ * The recording read from the input that carries the trailer: the first, or the second when the
+ * first has none, as the _10_ file of an older camera's pair, which writes it to _00_ alone,
+ * when the pair is given the other way round.
+ */
+async function readTrailerCarrier(sources: readonly RandomAccessSource[]): Promise<Recording> {
+  const [first, second] = sources;
+  ensureInvariant(first !== undefined, 'a recording needs at least one input');
+  try {
+    return await readRecording(first);
+  } catch (error) {
+    if (second === undefined || !hasErrorCode(error, 'invalid-trailer')) throw error;
+    return readRecording(second);
+  }
 }
 
 function trackAt(inputs: readonly DemuxedInput[], key: FrameSourceKey): VideoTrackReader {

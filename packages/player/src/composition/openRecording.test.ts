@@ -201,6 +201,49 @@ describe('openRecording', () => {
     expect(demuxer.openCount).toBe(0);
   });
 
+  it('reads the trailer from the second file when the first, the _10_ half, has none', async () => {
+    const opener = new MapSourceOpener();
+    const withoutTrailer = opener.register(SECOND_URL, new Uint8Array(4096));
+    const withTrailer = opener.register(MAIN_URL, fixture.x5Bytes);
+    const [screenTrack] = squareTracks();
+    const [backTrack] = squareTracks();
+    const demuxer = new FakeDemuxer([
+      { source: withoutTrailer, duration: seconds(3), videoTracks: [screenTrack!] },
+      { source: withTrailer, duration: seconds(3), videoTracks: [backTrack!] },
+    ]);
+    const ports = fakePorts({ sources: opener, demuxer });
+    const source = sourceOf({ main: { url: SECOND_URL }, second: { url: MAIN_URL } });
+
+    const opened = await openRecording(source, ports, new AbortController().signal);
+
+    expect(opened.layout.kind).toBe('split-files');
+    expect(opened.recording.info.model).toBe('Insta360 X5');
+    opened.dispose();
+  });
+
+  it('fetches the _00_ file for a lone _10_ file that has no trailer', async () => {
+    const opener = new MapSourceOpener();
+    const withoutTrailer = opener.register(SECOND_URL, new Uint8Array(4096));
+    const withTrailer = opener.register(MAIN_URL, fixture.x5Bytes);
+    const [screenTrack] = squareTracks();
+    const [backTrack] = squareTracks();
+    const demuxer = new FakeDemuxer([
+      { source: withoutTrailer, duration: seconds(3), videoTracks: [screenTrack!] },
+      { source: withTrailer, duration: seconds(3), videoTracks: [backTrack!] },
+    ]);
+    const ports = fakePorts({
+      sources: opener,
+      demuxer,
+      locator: new FakeResourceLocator([MAIN_URL]),
+    });
+    const source = sourceOf({ main: { url: SECOND_URL } });
+
+    const opened = await openRecording(source, ports, new AbortController().signal);
+
+    expect(opened.layout.kind).toBe('split-files');
+    opened.dispose();
+  });
+
   it('reports a lone half of a pair when the sibling is not there', async () => {
     const opener = new MapSourceOpener();
     const main = opener.register(MAIN_URL, fixture.x5Bytes);

@@ -45,6 +45,16 @@ describe('repairedTimeline', () => {
     }
   });
 
+  it('trusts a stretch of seventeen after a jump as a real gap, and mends one of sixteen', () => {
+    const tailFrom = (start: number): Float64Array =>
+      Float64Array.from(
+        { length: COUNT },
+        (_unused, index) => index * 1000 + (index >= start ? 2_000_000 : 0),
+      );
+    expect(repairedTimeline(tailFrom(COUNT - 17)).mended).toBe(0);
+    expect(repairedTimeline(tailFrom(COUNT - 16))).toEqual({ times: timeline(), mended: 16 });
+  });
+
   it('keeps a stamp between strays that is only jittered', () => {
     const recorded = timeline([40, 43], 5e6).map((time, index) =>
       index === 41 ? time + 300 : time,

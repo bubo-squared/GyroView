@@ -51,10 +51,12 @@ export function repairedTimeline(recorded: Float64Array): RepairedTimeline {
   const line = { recorded, interval, tolerance: toleranceOf(interval) };
   const times = Float64Array.from(recorded);
   placeOutsideTrusted(times, trustedStretches(steadyStretches(line)), line);
+  // Counted before the clamp: a stamp held at its predecessor's time was not a stray.
+  const mended = times.filter((time, index) => time !== recorded[index]).length;
   for (let index = 1; index < times.length; index += 1) {
     times[index] = Math.max(times[index] ?? 0, times[index - 1] ?? 0);
   }
-  return { times, mended: times.filter((time, index) => time !== recorded[index]).length };
+  return { times, mended };
 }
 
 function toleranceOf(interval: number): number {
@@ -83,7 +85,7 @@ function steadyStretches({ recorded, tolerance }: Line): Stretch[] {
     stretches.push({ start, end: index });
     start = index;
   }
-  return recorded.length > 0 ? stretches : [];
+  return stretches;
 }
 
 function trustedStretches(stretches: readonly Stretch[]): Stretch[] {

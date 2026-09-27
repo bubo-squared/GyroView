@@ -9,6 +9,7 @@ import type {
 import { Deferred } from '../../shared/async/Deferred';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { seconds } from '../../shared/units/time';
+import { FakeFrameSink } from '../../testing/FakeFrameSink';
 import { FakePlaybackClock } from '../../testing/FakePlaybackClock';
 import { FakeVideoDecoderPort, type FakeFrameHandle } from '../../testing/FakeVideoDecoderPort';
 import { DURATION, sessionHarness } from '../../../test/support/sessionHarness';
@@ -129,6 +130,24 @@ describe('PlaybackSession lifecycle', () => {
     expect(session.state).toBe('ended');
     expect(sink.lastTimestamp).toBeCloseTo(2.8, 6);
     session.dispose();
+  });
+
+  it('fails with the error of a sink that cannot draw instead of freezing', async () => {
+    const refusal = new GyroViewError('render-unavailable', 'the stitching shader did not compile');
+    class RefusingSink extends FakeFrameSink<FakeFrameHandle> {
+      public override present(): void {
+        throw refusal;
+      }
+    }
+    const { session, advance } = sessionHarness({ parts: { sink: new RefusingSink() } });
+    const errors: GyroViewError[] = [];
+    session.events.on('error', (error) => {
+      errors.push(error);
+    });
+    session.preload();
+    for (let step = 0; step < 3; step += 1) await advance(0);
+    expect(session.state).toBe('error');
+    expect(errors).toEqual([refusal]);
   });
 
   it('turns a clock failure into the error state on the next tick', async () => {

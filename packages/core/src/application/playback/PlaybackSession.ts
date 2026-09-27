@@ -3,6 +3,7 @@ import { ClockWatch } from './ClockWatch';
 import { SeekOrder } from './SeekOrder';
 import { TimeUpdates } from './TimeUpdates';
 import { DecodeRun, type DecodeRunParts } from './DecodeRun';
+import { isAtEndOfMedia, isStoppedFromOutside } from './clockReadings';
 import { keyframeTimeAt } from './keyframeTimeAt';
 import { PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
@@ -245,7 +246,8 @@ export class PlaybackSession<Handle = unknown> {
       this.end();
       return;
     }
-    if (this.isStoppedFromOutside()) {
+    // The platform stopped the clock while playing: the next `play` starts it again.
+    if (isStoppedFromOutside(this.parts.clock)) {
       this.setState('paused');
       this.timeUpdates.announce(now);
       return;
@@ -330,18 +332,7 @@ export class PlaybackSession<Handle = unknown> {
    * Ended, or paused at the end: a play from there starts over, as a media element does.
    */
   private isAtTheEnd(): boolean {
-    const { clock, duration } = this.parts;
-    const isAtEndOfMedia = clock.hasEnded || clock.currentTime >= duration;
-    return this.machine.state === 'ended' || isAtEndOfMedia;
-  }
-
-  /**
-   * The platform stopped the clock by itself (media keys, an audio interruption) while playing:
-   * the session follows, so the next `play` starts it again.
-   */
-  private isStoppedFromOutside(): boolean {
-    const { clock } = this.parts;
-    return !clock.isRunning && !clock.hasEnded;
+    return this.machine.state === 'ended' || isAtEndOfMedia(this.parts.clock, this.parts.duration);
   }
 
   private isPrimed(): boolean {
@@ -406,8 +397,13 @@ export class PlaybackSession<Handle = unknown> {
   private present(pair: FramePair<Handle>, mediaTime: Seconds): void {
     if (this.presented) closeFramePair(this.presented.pair);
     this.presented = { pair, mediaTime };
-    this.parts.sink.present(this.presented);
-    this.events.emit('present', mediaTime);
+    try {
+      this.parts.sink.present(this.presented);
+      this.events.emit('present', mediaTime);
+    } catch (error) {
+      // A sink that cannot draw (a renderer the GPU refused) must not freeze playback unheard.
+      this.fail(error);
+    }
   }
 
   /**

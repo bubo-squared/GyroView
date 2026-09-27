@@ -605,6 +605,16 @@ describe('<gyro-view>', () => {
     expect(element.stabilization).toBe('lock');
   });
 
+  it('warns of a view attribute it cannot read, as it warns of an unknown choice', () => {
+    const element = create({ controls: '' });
+    const warnings: string[] = [];
+    element.addEventListener('warning', (event) => {
+      warnings.push((event as CustomEvent<string>).detail);
+    });
+    element.setAttribute('fov', 'wide');
+    expect(warnings).toEqual(['ignoring fov="wide"; expected a number of degrees']);
+  });
+
   it('refuses an unset mode handed to its setter methods, as the embed commands do', () => {
     const element = create({ controls: '' });
     const setViewMode = element.setViewMode.bind(element) as (mode: unknown) => void;

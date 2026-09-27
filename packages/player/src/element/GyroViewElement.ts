@@ -15,7 +15,7 @@ import {
   SourceAttribute,
   ViewAttribute,
 } from './attributeNames';
-import { shouldPreload, viewAfterAttribute } from './attributes';
+import { shouldPreload, unreadableAngleWarning, viewAfterAttribute } from './attributes';
 import { elementSourceOf, type FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
 import { IdleWatcher } from './IdleWatcher';
@@ -206,6 +206,8 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
       this.scheduleLoad();
     } else if (VIEW_ATTRIBUTES.includes(name)) {
       this.player.setView(viewAfterAttribute(this.player.view, name, value));
+      const warning = unreadableAngleWarning(name, value);
+      if (warning !== undefined) this.warn(warning);
     } else {
       const targets = { player: this.player, posterImage: this.posterImage, warn: this.warn };
       applyPlaybackAttribute(targets, name, value);

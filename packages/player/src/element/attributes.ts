@@ -80,6 +80,19 @@ export function ignoredChoiceWarning(
   return `ignoring ${attribute}="${value}"; expected one of ${choices.join(', ')}`;
 }
 
+/**
+ * The `warning` for a view attribute whose value is no number of degrees; none for one that is,
+ * or for an absent attribute, which leaves the view as it is.
+ */
+export function unreadableAngleWarning(
+  attribute: string,
+  value: string | null,
+): string | undefined {
+  return value === null || parseNumber(value) !== undefined
+    ? undefined
+    : `ignoring ${attribute}="${value}"; expected a number of degrees`;
+}
+
 const PRELOAD_NONE = 'none';
 
 export function shouldPreload(value: string | null): boolean {

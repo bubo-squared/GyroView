@@ -7,6 +7,7 @@ import {
   shouldPreload,
   parseNumber,
   sourceFromAttributes,
+  unreadableAngleWarning,
   viewAfterAttribute,
 } from './attributes';
 
@@ -73,5 +74,15 @@ describe('view and playback attributes', () => {
     expect(shouldMatchGains(null)).toBe(true);
     expect(shouldMatchGains('on')).toBe(true);
     expect(shouldMatchGains('OFF')).toBe(false);
+  });
+});
+
+describe('unreadableAngleWarning', () => {
+  it('warns of a view attribute that names no number of degrees, and of nothing else', () => {
+    expect(unreadableAngleWarning('fov', 'wide')).toBe(
+      'ignoring fov="wide"; expected a number of degrees',
+    );
+    expect(unreadableAngleWarning('yaw', '30')).toBeUndefined();
+    expect(unreadableAngleWarning('pitch', null)).toBeUndefined();
   });
 });

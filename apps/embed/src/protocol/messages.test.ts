@@ -16,6 +16,7 @@ describe('isProtocolMessage', () => {
       helloMessage({ status: 'idle' }),
       { protocol: PROTOCOL, kind: 'hello' },
       commandMessage(1, 'seek', [12]),
+      { ...commandMessage(2, 'play', []), oldestUnanswered: 1 },
       okResult(1, undefined),
       failedResult(2, { code: 'decode', message: 'no' }),
       eventMessage('timeupdate', 3.5),
@@ -46,6 +47,9 @@ describe('isProtocolMessage', () => {
       }),
     ).toBe(false);
     expect(isProtocolMessage({ protocol: PROTOCOL, kind: 'command', id: 1, name: 'play' })).toBe(
+      false,
+    );
+    expect(isProtocolMessage({ ...commandMessage(2, 'play', []), oldestUnanswered: 'first' })).toBe(
       false,
     );
     expect(

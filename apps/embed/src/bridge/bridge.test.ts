@@ -224,6 +224,7 @@ describe('an embed handle whose frame loads anew', () => {
     hostSide.send(helloMessage(reloadedState));
     await waitFor(() => received.length === 2, 'the command asked again');
     expect(received[1]).toEqual(received[0]);
+    expect(received[1]).toMatchObject({ id: 1, oldestUnanswered: 1 });
     expect(handle.state).toEqual(reloadedState);
     hostSide.send({ protocol: PROTOCOL, kind: 'result', id: 1, isOk: true, value: undefined });
     await pausing;
@@ -232,6 +233,27 @@ describe('an embed handle whose frame loads anew', () => {
 });
 
 describe('an embed host asked again', () => {
+  it('remembers only the commands the page may still ask again', async () => {
+    const element = document.createElement('gyro-view') as GyroViewElement;
+    document.body.append(element);
+    const channel = new MessageChannel();
+    const host = new EmbedHost(element, portEndpoint(channel.port1));
+    const pageSide = portEndpoint(channel.port2);
+    const results: number[] = [];
+    pageSide.receive((message) => {
+      if (message.kind === 'result') results.push(message.id);
+    });
+    const first = { ...commandMessage(1, 'getState', []), oldestUnanswered: 1 };
+    const second = { ...commandMessage(2, 'getState', []), oldestUnanswered: 2 };
+    for (const message of [first, second, second, first]) pageSide.send(message);
+    pageSide.send(commandMessage(3, 'getState', []));
+    await waitFor(() => results.includes(3), 'the last result');
+    // The second is still remembered and runs once; the first was forgotten, so it runs again.
+    expect(results.toSorted((a, b) => a - b)).toEqual([1, 1, 2, 3]);
+    host.dispose();
+    element.remove();
+  });
+
   it('runs a command it hears twice only once', async () => {
     const element = document.createElement('gyro-view') as GyroViewElement;
     document.body.append(element);

@@ -40,9 +40,17 @@ export interface HelloMessage {
 export interface CommandMessage {
   readonly protocol: typeof PROTOCOL;
   readonly kind: 'command';
+  /**
+   * Unique among the commands one page sends one frame document.
+   */
   readonly id: number;
   readonly name: CommandName;
   readonly parameters: readonly unknown[];
+  /**
+   * The oldest command the page still waits on, this one included: the frame forgets the ids
+   * below it, which cannot be asked again. A page of an earlier build sends none.
+   */
+  readonly oldestUnanswered?: number;
 }
 
 export interface SerializedError {
@@ -118,6 +126,10 @@ function isCommandName(value: unknown): value is CommandName {
   return typeof value === 'string' && (COMMAND_NAMES as readonly string[]).includes(value);
 }
 
+function isOptionalNumber(value: unknown): boolean {
+  return value === undefined || typeof value === 'number';
+}
+
 function isForwardedEventName(value: unknown): value is ForwardedEventName {
   return typeof value === 'string' && Object.hasOwn(FORWARDED, value);
 }
@@ -147,7 +159,8 @@ const BODY_CHECKS: ReadonlyMap<string, BodyCheck> = new Map<string, BodyCheck>([
     (message): boolean =>
       typeof message['id'] === 'number' &&
       isCommandName(message['name']) &&
-      Array.isArray(message['parameters']),
+      Array.isArray(message['parameters']) &&
+      isOptionalNumber(message['oldestUnanswered']),
   ],
   ['result', isResultBody],
   ['event', (message): boolean => isForwardedEventName(message['name']) && 'detail' in message],

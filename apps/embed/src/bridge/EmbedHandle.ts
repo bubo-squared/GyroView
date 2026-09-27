@@ -170,7 +170,8 @@ export class EmbedHandle {
     }
     const id = this.nextId;
     this.nextId += 1;
-    const message = commandMessage(id, name, parameters);
+    const oldestUnanswered = this.pending.keys().next().value ?? id;
+    const message = { ...commandMessage(id, name, parameters), oldestUnanswered };
     return new Promise<Value>((resolve, reject) => {
       this.pending.set(id, {
         message,

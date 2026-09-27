@@ -49,7 +49,8 @@ for it; the `hello` carries the element's state, which the page's mirror starts 
 an earlier build sends none, and the mirror starts from the defaults). A second `hello` is a
 frame that loaded anew from its URL's options: the page asks it again what the old one left
 unanswered, and the frame runs each command id once, since a command sent just before that
-`hello` may have reached it already.
+`hello` may have reached it already. Each command names the oldest the page still waits on, so
+the frame forgets the ids below it instead of remembering every command for its whole life.
 Errors cross the boundary as `{ code, message }`, so the codes stay stable on both sides.
 
 ## Alternatives considered

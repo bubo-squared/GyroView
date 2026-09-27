@@ -25,8 +25,9 @@ export class EmbedHost {
   private readonly stopReceiving: () => void;
   private readonly listeners: (readonly [string, EventListener])[] = [];
   /**
-   * The ids of the commands run: a page that sees this frame say hello asks again what it has
-   * not heard back about, which may be a command this frame is running already.
+   * The ids of the commands run that the page may still ask again: a page that sees this frame
+   * say hello asks again what it has not heard back about, which may be a command this frame is
+   * running already.
    */
   private readonly commandsRun = new Set<number>();
 
@@ -60,8 +61,18 @@ export class EmbedHost {
 
   private onMessage(message: ProtocolMessage): void {
     if (message.kind !== 'command' || this.commandsRun.has(message.id)) return;
+    this.forgetBefore(message.oldestUnanswered);
     this.commandsRun.add(message.id);
     void this.run(message);
+  }
+
+  /**
+   * Ids below the oldest the page waits on cannot be asked again; remembering them would grow
+   * for the life of the frame (a page driving the view every animation frame).
+   */
+  private forgetBefore(oldestUnanswered: number | undefined): void {
+    if (oldestUnanswered === undefined) return;
+    for (const id of this.commandsRun) if (id < oldestUnanswered) this.commandsRun.delete(id);
   }
 
   private async run(command: CommandMessage): Promise<void> {

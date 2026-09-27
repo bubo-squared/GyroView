@@ -145,6 +145,14 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     expect(clock.failure?.code).toBe('source-unreadable');
   });
 
+  it('reports an error of its element through failure, as sound that would not decode stalls it', async () => {
+    const clock = await openClock();
+    const [element] = elements;
+    const decodeError = { code: MediaError.MEDIA_ERR_DECODE, message: '' };
+    Object.defineProperty(element, 'error', { value: decodeError });
+    expect(clock.failure).toMatchObject({ code: 'decode', cause: decodeError });
+  });
+
   it('treats a pause that interrupts the start as a plain pause, not an error', async () => {
     const clock = await openClock();
     const starting = clock.start();

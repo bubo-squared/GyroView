@@ -85,8 +85,12 @@ export class MediaSourceAudioClock implements PlaybackClock {
     return element.ended || element.currentTime >= element.duration;
   }
 
+  /**
+   * What the feeder met, or the element's own error: sound that buffered but would not decode,
+   * which stalls the element without the feeder ever hearing of it.
+   */
   public get failure(): GyroViewError | undefined {
-    return this.feeder.failure;
+    return this.feeder.failure ?? failureOfElement(this.element);
   }
 
   /**
@@ -129,6 +133,13 @@ export class MediaSourceAudioClock implements PlaybackClock {
 
 function isNamed(error: unknown, name: string): boolean {
   return error instanceof Error && error.name === name;
+}
+
+function failureOfElement(element: HTMLMediaElement): GyroViewError | undefined {
+  const { error } = element;
+  if (error === null) return undefined;
+  const message = `the audio element failed (media error ${error.code})`;
+  return new GyroViewError('decode', message, { cause: error });
 }
 
 /**

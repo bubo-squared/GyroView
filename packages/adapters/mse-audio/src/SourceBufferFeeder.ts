@@ -29,9 +29,8 @@ const KEEP_BEHIND_SECONDS = 30;
  */
 const EVICT_BEHIND_SECONDS = 60;
 /**
- * How far before its time a run starts feeding. The decoder gets the frames before the playhead
- * (each AAC frame overlaps the one before), and a seek to the very end appends more than the lone
- * last frame, of which WebKit on Linux buffers nothing, failing the element once the stream ends.
+ * How far before its time a run starts feeding: each AAC frame overlaps the one before, so the
+ * decoder gets the frames that lead up to the playhead.
  */
 const LEAD_IN_SECONDS = 1;
 /**

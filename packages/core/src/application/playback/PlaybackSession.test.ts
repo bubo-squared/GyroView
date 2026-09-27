@@ -97,6 +97,23 @@ describe('PlaybackSession transport', () => {
     session.dispose();
   });
 
+  it('settles a second play while buffering with the first, once the clock runs', async () => {
+    const { session } = sessionHarness();
+    const first = session.play();
+    expect(session.state).toBe('buffering');
+    let isSecondSettled = false;
+    const second = (async (): Promise<void> => {
+      await session.play();
+      isSecondSettled = true;
+    })();
+    await Promise.resolve();
+    expect(isSecondSettled).toBe(false);
+    await first;
+    await second;
+    expect(session.state).toBe('playing');
+    session.dispose();
+  });
+
   it('calling play while playing changes nothing', async () => {
     const { session, decoderPort, states } = sessionHarness();
     await session.play();
@@ -177,6 +194,7 @@ describe('PlaybackSession transport', () => {
     for (let step = 0; step < 40; step += 1) await advance(100);
     expect(session.state).toBe('ended');
     const held = clock.currentTime;
+    expect(held).toBeGreaterThanOrEqual(DURATION);
     expect(heard.filter((event) => event === 'ended')).toHaveLength(1);
     expect(heard.slice(-2)).toEqual([held, 'ended']);
     await advance(300);

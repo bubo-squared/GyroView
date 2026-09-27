@@ -4,6 +4,7 @@ import { timeRecording } from './timeRecording';
 import { PtsType } from '../../domain/format/info/infoFields';
 import { RAW_SAMPLE_SIZE } from '../../domain/format/records/gyro/gyroLayouts';
 import { GYRO_LAYOUT_PROBE_SIZE } from '../../domain/format/records/gyro/parseGyroRecord';
+import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import { minimalInfoRecord } from '../../testing/minimalInfoRecord';
 import { seconds, type Seconds } from '../../shared/units/time';
@@ -33,6 +34,15 @@ const OFFICE_FIRST_FRAME_STAMP = 921_751_839;
 class UntimedTrack extends FakeVideoTrack {
   public override sampleTimestamps(): Promise<readonly Seconds[]> {
     return Promise.resolve([]);
+  }
+}
+
+/**
+ * A track whose sample table cannot be read, as over a connection that dropped.
+ */
+class UnreadableTimestampsTrack extends FakeVideoTrack {
+  public override sampleTimestamps(): Promise<readonly Seconds[]> {
+    return Promise.reject(new GyroViewError('source-unreadable', 'the connection dropped'));
   }
 }
 
@@ -158,6 +168,23 @@ describe('timeRecording', () => {
     expect(timing.warnings).toEqual([
       'no frame timing source is usable; frames are timed by their track timestamps',
     ]);
+  });
+
+  it('fails with a read failure of the frame source instead of playing untimed', async () => {
+    const info = minimalInfoRecord({
+      model: 'Insta360 X5',
+      firstFrameTimestamp: OFFICE_FIRST_FRAME_STAMP,
+    });
+    const track = new UnreadableTimestampsTrack({
+      trackIndex: 0,
+      frameRate: 10,
+      frameCount: 10,
+      framesPerGop: 10,
+    });
+    const recording = await officeRecording({ info, hasExposure: false });
+    await expect(timeRecording(recording, track)).rejects.toMatchObject({
+      code: 'source-unreadable',
+    });
   });
 
   it('plays untimed when the gyro layout cannot be told from the record', async () => {

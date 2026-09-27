@@ -181,6 +181,8 @@ describe('PlaybackSession following what the platform does to its clock', () => 
       clock.advance(seconds(2));
       session.tick();
       expect(session.state).toBe('buffering');
+      // Held while decoding starts again at its time, rather than running on without pictures.
+      expect(clock.isRunning).toBe(false);
       for (let step = 0; step < 3; step += 1) await advance(0);
       expect(session.state).toBe('playing');
       expect(sink.lastTimestamp).toBeGreaterThanOrEqual(2);

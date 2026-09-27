@@ -1,6 +1,8 @@
 # ADR 0004: Select format variants from the file, not from the camera model
 
-Status: accepted (2026-09-18)
+Status: accepted (2026-09-18); amended (2026-09-27): without `is_raw_gyro`, the gyro sample
+layout is told from the median stamp step each candidate decodes over the first 32 samples, not
+from the payload size
 
 ## Context
 

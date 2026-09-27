@@ -1,6 +1,8 @@
 # ADR 0003: mediabunny as the demuxer
 
-Status: accepted (2026-09-18)
+Status: accepted (2026-09-18); amended (2026-09-27): the bytes reach mediabunny through a
+`CustomSource` over the core's `RandomAccessSource`, not `UrlSource` or `BlobSource`, so the
+fetch adapter's uncached reads (ADR 0013), retries (ADR 0019) and CORS diagnosis apply to them
 
 ## Context
 

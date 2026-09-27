@@ -77,7 +77,11 @@ with a warning), `img-src` for a poster, and no `worker-src` (the player uses no
 
 ## Error codes
 
-Every failure is a `GyroViewError` with a stable `code`; the `error` event carries it.
+Every failure is a `GyroViewError` with a stable `code`. A failed load or playback arrives as
+the `error` event (and as the rejection of `load()`); the rest arrive where they happen:
+`playback-blocked` rejects `play()`, and becomes a `warning` event when autoplay, a tap or the
+loop meets it; `invalid-argument` is thrown by the call that got the value; `embed-destroyed`
+rejects the embed handle's promises.
 
 | Code                    | Meaning and what to do                                                       |
 | ----------------------- | ---------------------------------------------------------------------------- |
@@ -97,7 +101,7 @@ Every failure is a `GyroViewError` with a stable `code`; the `error` event carri
 | `unsupported-layout`    | The tracks do not form two lens images the player understands.               |
 | `playback-blocked`      | The browser wants a user gesture before sound starts (autoplay policy).      |
 | `decode`                | A decoder or the audio buffer failed mid-stream.                             |
-| `render-unavailable`    | No WebGL2 context, the stitching shader did not compile, or the picture      |
+| `render-unavailable`    | No WebGL2 context, a shader did not compile or link, or the picture          |
 |                         | could not be drawn during playback (a GPU that gave up).                     |
 | `invalid-argument`      | A property, method or embed command got a value it does not accept.          |
 | `embed-destroyed`       | A command reached an embed handle after `destroy()`.                         |

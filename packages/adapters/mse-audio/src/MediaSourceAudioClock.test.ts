@@ -118,7 +118,9 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
 
   it('reports the end when the track runs out', async () => {
     const clock = await openClock();
-    clock.seek(seconds(2.6));
+    // Near the end: the less sound there is to remux and play, the less a loaded browser can
+    // hold the test past its time.
+    clock.seek(seconds(FIXTURE_DURATION - 0.1));
     await clock.start();
     await waitUntil(() => clock.hasEnded);
     expect(clock.hasEnded).toBe(true);

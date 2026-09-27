@@ -55,8 +55,19 @@ describe('parseExposureRecord edge cases', () => {
     const unsafeStamp = new Uint8Array(EXPOSURE_ENTRY_SIZE * 2);
     unsafeStamp[EXPOSURE_ENTRY_SIZE + 7] = 0xff;
     expect(parseExposureRecord(unsafeStamp, microseconds)).toBeUndefined();
-    const notANumber = new Uint8Array(EXPOSURE_ENTRY_SIZE * 2);
-    new DataView(notANumber.buffer).setFloat64(EXPOSURE_DURATION_OFFSET, NaN, true);
-    expect(parseExposureRecord(notANumber, microseconds)).toBeUndefined();
+    for (const shutterTime of [NaN, 1e305, -0.01]) {
+      const implausible = new Uint8Array(EXPOSURE_ENTRY_SIZE * 2);
+      new DataView(implausible.buffer).setFloat64(EXPOSURE_DURATION_OFFSET, shutterTime, true);
+      expect(parseExposureRecord(implausible, microseconds)).toBeUndefined();
+    }
+  });
+
+  it('leaves out a record whose capture times go back, as a stamp moved either way leaves them', () => {
+    const outOfOrder = new Uint8Array(EXPOSURE_ENTRY_SIZE * 3);
+    const view = new DataView(outOfOrder.buffer);
+    for (const [index, stamp] of [1000, 2 ** 40 + 2000, 3000].entries()) {
+      view.setBigUint64(index * EXPOSURE_ENTRY_SIZE, BigInt(stamp), true);
+    }
+    expect(parseExposureRecord(outOfOrder, microseconds)).toBeUndefined();
   });
 });

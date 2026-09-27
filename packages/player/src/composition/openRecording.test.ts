@@ -220,6 +220,25 @@ describe('openRecording', () => {
     expect((failure as Error).message).toContain('track 0 no-key-frame');
   });
 
+  it('asks for the other lens file once when the info record calls the recording split and it is not there', async () => {
+    const opener = new MapSourceOpener();
+    const splitInfo = minimalInfoRecord({ model: 'Insta360 X3', fileLayout: SPLIT_FILES });
+    const main = opener.register(MAIN_URL, syntheticRecordingBytes(splitInfo));
+    const [backTrack] = squareTracks();
+    const demuxer = new FakeDemuxer([
+      { source: main, duration: seconds(3), videoTracks: [backTrack!] },
+    ]);
+    const locator = new FakeResourceLocator([]);
+    const ports = fakePorts({ sources: opener, demuxer, locator });
+
+    const failure = await captureRejection(
+      openRecording(sourceOf(), ports, new AbortController().signal),
+    );
+
+    expect(failure).toMatchObject({ code: 'missing-second-file' });
+    expect(locator.asked).toEqual([SECOND_URL]);
+  });
+
   it('blames the network, not the browser, when the first frames do not arrive in time', async () => {
     const opener = new MapSourceOpener();
     const main = opener.register(MAIN_URL, fixture.x5Bytes);

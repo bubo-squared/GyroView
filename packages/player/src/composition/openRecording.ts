@@ -36,6 +36,19 @@ export async function openRecording(
 function attemptFor(source: PlayerSource, ports: RecordingPorts, signal: AbortSignal): OpenAttempt {
   const { main } = source;
   return source.second === undefined && isUrlInput(main)
-    ? { ports, signal, findSecondFile: () => locateOtherLensFile(main.url, ports.locator) }
+    ? {
+        ports,
+        signal,
+        findSecondFile: once(() => locateOtherLensFile(main.url, ports.locator)),
+      }
     : { ports, signal };
+}
+
+/**
+ * The lookup made at most once: asked before the tracks are read and again once they fall
+ * short, it would otherwise ask the server twice for a file that is not there.
+ */
+function once(lookUp: () => Promise<string | undefined>): () => Promise<string | undefined> {
+  let answer: Promise<string | undefined> | undefined;
+  return () => (answer ??= lookUp());
 }

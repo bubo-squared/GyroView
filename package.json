@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Browser player for raw Insta360 .insv recordings",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "packageManager": "pnpm@11.7.0",
   "engines": {
     "node": "^22 || ^24 || ^26"

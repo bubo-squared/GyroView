@@ -187,3 +187,8 @@ composition and embedding, 0011 sound follows the picture, 0012 gain matching al
 square, 0015 view modes replace projections, 0016 the player owns its settings, 0017 the
 recording itself or an error, 0018 every view mode zooms toward the pointer, 0019 a range that
 fails on the way is asked for again.
+
+## License
+
+MIT; see `LICENSE`. The two trailer fixtures under `test/fixtures/thirdparty` keep their own MIT
+license.

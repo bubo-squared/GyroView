@@ -286,6 +286,9 @@ validated commands on its element and forwards the element's events as plain dat
 ## Rules that keep it this way
 
 - The dependency rule is enforced by `.dependency-cruiser.cjs`; `core` may not import anything.
+  Everything but the node adapter runs in a browser: no Node built-ins outside tests
+  (dependency-cruiser), and the fetch and mediabunny adapters and the embed app type-check their
+  production code without Node's types.
 - Variants of the format (trailer wrapper, record locator, gyro layout, calibration version,
   lens layout, frame-time source) are strategies selected from data in the file, never from the
   camera model string alone (ADR 0004). The IMU frame alone comes from the model string,

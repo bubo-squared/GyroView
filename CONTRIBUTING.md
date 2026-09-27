@@ -14,7 +14,8 @@ describes the components layer by layer:
 
 - `packages/core`: domain and application code. Pure TypeScript, no runtime dependencies, no DOM
   or Node types in `src` (tests may use Node).
-- `packages/adapters/*`: one external technology per package, implementing `core` ports.
+- `packages/adapters/*`: one external technology per package, implementing `core` ports. All but
+  the node adapter run in a browser: no Node built-ins or Node types outside tests.
 - `packages/player`: the composition root (`openRecording`, `buildPipeline`), the headless
   `Player` and the `<gyro-view>` element with its controls and gestures.
 - `apps/embed`: the static site: embed page, `embed.js` snippet with the postMessage bridge,

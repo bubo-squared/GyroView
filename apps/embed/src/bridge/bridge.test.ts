@@ -32,7 +32,7 @@ describe('the embed bridge over a message channel', () => {
    * An element configured by `attributes` before the host starts, as the embed page does it.
    */
   function bridge(attributes: Record<string, string> = {}): Bridge {
-    const element = document.createElement('gyro-view') as GyroViewElement;
+    const element = document.createElement('gyro-view');
     element.style.width = '256px';
     element.style.height = '128px';
     for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
@@ -279,7 +279,7 @@ describe('an embed handle whose frame loads anew', () => {
 
 describe('an embed host asked again', () => {
   it('remembers only the commands the page may still ask again', async () => {
-    const element = document.createElement('gyro-view') as GyroViewElement;
+    const element = document.createElement('gyro-view');
     document.body.append(element);
     const channel = new MessageChannel();
     const host = new EmbedHost(element, portEndpoint(channel.port1));
@@ -300,7 +300,7 @@ describe('an embed host asked again', () => {
   });
 
   it('runs a command it hears twice only once', async () => {
-    const element = document.createElement('gyro-view') as GyroViewElement;
+    const element = document.createElement('gyro-view');
     document.body.append(element);
     const channel = new MessageChannel();
     const host = new EmbedHost(element, portEndpoint(channel.port1));

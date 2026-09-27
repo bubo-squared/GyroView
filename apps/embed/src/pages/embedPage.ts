@@ -11,7 +11,7 @@ import { embedAttributesOf } from '../bridge/embedUrl';
  */
 export function startEmbedPage(page: Window & typeof globalThis): GyroViewElement {
   defineGyroView();
-  const element = page.document.createElement(GYRO_VIEW_TAG) as GyroViewElement;
+  const element = page.document.createElement(GYRO_VIEW_TAG);
   const attributes = embedAttributesOf(new URLSearchParams(page.location.search));
   for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
   page.document.body.append(element);

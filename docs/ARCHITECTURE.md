@@ -229,7 +229,8 @@ The composition root and the user-facing element, in three layers.
 - **`element`** and **`controls`**: `GyroViewElement` is `<gyro-view>`: attributes parsed by
   pure functions in `attributes.ts` (names in `attributeNames.ts`, published as
   `@gyroview/player/attributes`), settings properties live over the player (`liveSettings`),
-  events re-dispatched as `CustomEvent`s, a shadow tree with the canvas, the audio element,
+  events re-dispatched as `CustomEvent`s and typed for listeners (`GyroViewElementEventMap`, over
+  the pass-through `TypedEventElement`), a shadow tree with the canvas, the audio element,
   poster and overlays. `bindControlsBar` binds `TransportButtons`, the view buttons (Reset view,
   Fullscreen), `SeekBar` (key-frame
   scrubbing), `SoundControls` and `PictureMenus` (the view mode and stabilization menus, each a
@@ -260,7 +261,8 @@ The composition root and the user-facing element, in three layers.
 
 - `src/index.ts` is the package's public API: the element, `createBrowserPlayer` and `Player`,
   `GyroViewError`, the view and stabilization modes, and the types of the metadata, settings and
-  events; it also types `<gyro-view>` in `HTMLElementTagNameMap`. `src/define.ts` registers the
+  events. The player types `<gyro-view>` in `HTMLElementTagNameMap`, and its events in
+  `GyroViewElementEventMap`. `src/define.ts` registers the
   element when imported (`gyroview/define`).
 - The build bundles the player, the core and the adapters and leaves Three.js and mediabunny to
   the page's install; `dts-bundle-generator` writes one self-contained `index.d.ts`,

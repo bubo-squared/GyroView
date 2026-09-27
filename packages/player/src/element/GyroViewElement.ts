@@ -36,6 +36,7 @@ import {
 } from './reflectedProperties';
 import { mirrorPlayerEvents } from './playerEventMirror';
 import { ELEMENT_TEMPLATE } from './template';
+import { TypedEventElement } from './TypedEventElement';
 import { createBrowserPlayer } from '../browserPlayer';
 import { queryShadow } from '../controls/controlParts';
 import { bindControlsBar } from '../controls/controlsBar';
@@ -74,7 +75,7 @@ const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);
  * does; the player's events are dispatched as `CustomEvent`s of the same name with the payload
  * in `detail`. Facade over {@link Player}, the controls and the gestures (ADR 0016).
  */
-export class GyroViewElement extends HTMLElement implements LiveSettings {
+export class GyroViewElement extends TypedEventElement implements LiveSettings {
   public static readonly observedAttributes = OBSERVED_ATTRIBUTES;
   declare public src: string | null;
   declare public src2: string | null;

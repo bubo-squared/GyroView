@@ -43,10 +43,17 @@ input?.addEventListener('change', () => {
 example in a framework that renders on the server, import `defineGyroView` from `gyroview` and
 call it in the browser. The element is browser-only: it extends `HTMLElement`.
 
+The element's events are typed: each is a `CustomEvent` with its payload in `detail`, and
+`document.querySelector('gyro-view')` is a `GyroViewElement`.
+
+```ts
+player?.addEventListener('ready', (event) => console.log(event.detail.model));
+player?.addEventListener('error', (event) => console.log(event.detail.code));
+```
+
 `gyroview` also exports `createBrowserPlayer` (the player without the element, drawing on your
 own canvas and audio element), `GyroViewError` with its codes, and the types of the element's
-settings, metadata and events. `document.querySelector('gyro-view')` and
-`document.createElement('gyro-view')` are typed as `GyroViewElement`.
+settings, metadata and events.
 
 ## Requirements
 

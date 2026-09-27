@@ -8,5 +8,6 @@ export type { PlayerEvents, PlayerStatus, SoundLevel } from './player/PlayerEven
 export type { BrowserPortsOptions } from './composition/browserPorts';
 export type { PipelineHost } from './composition/ports';
 export { GyroViewElement } from './element/GyroViewElement';
+export type { GyroViewElementEventMap } from './element/TypedEventElement';
 export type { FileSource } from './element/elementSource';
 export { defineGyroView, GYRO_VIEW_TAG } from './element/defineGyroView';

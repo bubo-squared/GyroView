@@ -151,7 +151,7 @@ describe('<gyro-view>', () => {
   const elements: GyroViewElement[] = [];
 
   function create(attributes: Record<string, string> = {}): GyroViewElement {
-    const element = document.createElement('gyro-view') as GyroViewElement;
+    const element = document.createElement('gyro-view');
     element.style.width = '256px';
     element.style.height = '128px';
     for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
@@ -388,7 +388,7 @@ describe('<gyro-view>', () => {
     const canvas = control(element, 'canvas', HTMLCanvasElement);
     const views: number[] = [];
     element.addEventListener('viewchange', (event) => {
-      views.push((event as CustomEvent<{ yaw: number }>).detail.yaw);
+      views.push(event.detail.yaw);
     });
 
     canvas.dispatchEvent(pointer('pointerdown', { x: 100, y: 50 }));
@@ -512,7 +512,7 @@ describe('<gyro-view>', () => {
     const element = await createReady();
     const statuses: string[] = [];
     element.addEventListener('statuschange', (event) => {
-      statuses.push((event as CustomEvent<string>).detail);
+      statuses.push(event.detail);
     });
 
     element.setAttribute('pitch', '15');
@@ -609,7 +609,7 @@ describe('<gyro-view>', () => {
     const element = create({ controls: '' });
     const warnings: string[] = [];
     element.addEventListener('warning', (event) => {
-      warnings.push((event as CustomEvent<string>).detail);
+      warnings.push(event.detail);
     });
     element.setAttribute('fov', 'wide');
     expect(warnings).toEqual(['ignoring fov="wide"; expected a number of degrees']);
@@ -796,7 +796,7 @@ describe('<gyro-view>', () => {
   it('leaves the fullscreen it entered from its button when it sits inside another component', async () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const element = document.createElement('gyro-view') as GyroViewElement;
+    const element = document.createElement('gyro-view');
     element.setAttribute('controls', '');
     element.style.cssText = 'width: 480px; height: 270px';
     host.attachShadow({ mode: 'open' }).append(element);
@@ -844,7 +844,7 @@ describe('<gyro-view>', () => {
     const element = await createReady();
     const statuses: string[] = [];
     element.addEventListener('statuschange', (event) => {
-      statuses.push(String((event as CustomEvent).detail));
+      statuses.push(event.detail);
     });
     const box = document.createElement('div');
     document.body.append(box);
@@ -856,12 +856,12 @@ describe('<gyro-view>', () => {
   });
 
   it('loads once connected when told to load before, and not before', async () => {
-    const element = document.createElement('gyro-view') as GyroViewElement;
+    const element = document.createElement('gyro-view');
     element.style.width = '256px';
     element.src = X5_RECORDING_URL;
     const statuses: string[] = [];
     element.addEventListener('statuschange', (event) => {
-      statuses.push(String((event as CustomEvent).detail));
+      statuses.push(event.detail);
     });
     const loaded = element.load();
     await settle();

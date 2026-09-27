@@ -2,6 +2,12 @@ import { GyroViewElement } from './GyroViewElement';
 
 export const GYRO_VIEW_TAG = 'gyro-view';
 
+declare global {
+  interface HTMLElementTagNameMap {
+    [GYRO_VIEW_TAG]: GyroViewElement;
+  }
+}
+
 /**
  * Registers `<gyro-view>` once; a page that loads the bundle twice keeps the first definition.
  */

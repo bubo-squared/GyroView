@@ -6,6 +6,7 @@ import {
   GyroViewError,
   hasErrorCode,
   VIEW_MODES,
+  type GyroViewErrorCode,
   type PlayerMetadata,
   type PlayerStatus,
   type ViewMode,
@@ -25,6 +26,17 @@ element.loadFiles({ main: new File([], 'VID_20260814_132640_00_013.insv') });
 
 const found = document.querySelector('gyro-view');
 found?.lookAt(90, 0);
+
+element.addEventListener('ready', (event) => {
+  const model: string | undefined = event.detail.model;
+  return model;
+});
+element.addEventListener('error', (event) => {
+  const code: GyroViewErrorCode = event.detail.code;
+  return code;
+});
+element.addEventListener('timeupdate', (event) => event.detail.toFixed(1));
+element.addEventListener('click', (event) => event.clientX);
 
 try {
   await element.load();

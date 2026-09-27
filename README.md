@@ -73,7 +73,7 @@ connected), `play()` (waits for a load in progress), `pause()`, `stop()`, `seek(
 `resetView()`, `zoom(steps)`, `setViewMode(mode)`, `setStabilization(mode)`, `volume`,
 `toggleFullscreen()`, `loadFiles({ main, second })`.
 
-Events (`CustomEvent`s, payload in `detail`): `ready` (metadata: camera, layout, calibration
+Events (`CustomEvent`s, payload in `detail`, typed in `GyroViewElementEventMap`): `ready` (metadata: camera, layout, calibration
 version, frame time source, gyro and IMU frame, audio), `statuschange` (`idle`,
 `loading`, `ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`), `play`,
 `waiting`, `playing`, `pause`, `ended`, `timeupdate` (every quarter second of playback, and on

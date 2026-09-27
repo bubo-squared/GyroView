@@ -6,6 +6,7 @@ import { ByteReader } from '../../../../shared/binary/ByteReader';
 import { GyroViewError, hasErrorCode } from '../../../../shared/errors/GyroViewError';
 import { VECTOR3_COMPONENTS, type Vector3 } from '../../../../shared/math/Vector3';
 import { GyroTrack, type GyroSample } from '../../../motion/gyro/GyroTrack';
+import { medianStep } from '../../../motion/gyro/medianStep';
 import { repairedTimeline } from '../../../motion/gyro/repairedTimeline';
 import type { SensorRanges } from '../../info/RecordingInfo';
 
@@ -221,15 +222,14 @@ class SampleColumns {
 function hasPlausibleTimestamps(payload: Uint8Array, layout: GyroSampleLayout): boolean {
   const stamps = stampsOf(payload, layout);
   if (stamps.length < MIN_SAMPLES_TO_GUESS_FROM) return false;
-  const steps = stamps.slice(1).map((stamp, index) => stamp - (stamps[index] ?? stamp));
-  const median = steps.toSorted((a, b) => a - b)[Math.floor(steps.length / 2)] ?? 0;
+  const median = medianStep(stamps);
   return median >= MIN_PLAUSIBLE_INTERVAL_US && median <= MAX_PLAUSIBLE_INTERVAL_US;
 }
 
 /**
  * The stamps `layout` decodes from the leading samples; one that cannot be a stamp is skipped.
  */
-function stampsOf(payload: Uint8Array, layout: GyroSampleLayout): number[] {
+function stampsOf(payload: Uint8Array, layout: GyroSampleLayout): Float64Array {
   const reader = new ByteReader(payload);
   const count = Math.floor(payload.byteLength / layout.sampleSize);
   const stamps: number[] = [];
@@ -237,7 +237,7 @@ function stampsOf(payload: Uint8Array, layout: GyroSampleLayout): number[] {
     const stamp = stampAt(reader, layout, index * layout.sampleSize);
     if (stamp !== undefined) stamps.push(stamp);
   }
-  return stamps;
+  return Float64Array.from(stamps);
 }
 
 function stampAt(reader: ByteReader, layout: GyroSampleLayout, offset: number): number | undefined {

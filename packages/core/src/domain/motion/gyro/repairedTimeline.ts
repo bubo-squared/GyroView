@@ -1,3 +1,5 @@
+import { medianStep } from './medianStep';
+
 /**
  * How far a stamp may stray from where its neighbours put it, in typical sample intervals,
  * before it is taken for a glitch: far beyond an IMU's jitter, far below what a flipped bit
@@ -64,13 +66,10 @@ function toleranceOf(interval: number): number {
 }
 
 /**
- * The median spacing of the first samples: a stray among them moves it no more than one.
+ * The median spacing of the first samples.
  */
 function typicalInterval(times: Float64Array): number {
-  const probe = times.subarray(0, INTERVAL_PROBE + 1);
-  const intervals = probe.subarray(1).map((time, index) => time - (probe[index] ?? time));
-  const sorted = intervals.toSorted();
-  return sorted[Math.floor(sorted.length / 2)] ?? 0;
+  return medianStep(times.subarray(0, INTERVAL_PROBE + 1));
 }
 
 /**

@@ -116,6 +116,14 @@ export function describeVideoDecoderPortContract<Handle>(
       closeAll(opened);
     });
 
+    it('ends a wait for room that is under way when it closes', async () => {
+      const opened = await openDecoder(await setup());
+      opened.decoder.decode(opened.key);
+      const waiting = opened.decoder.waitForPendingBelow(1);
+      opened.decoder.close();
+      await expect(waiting).resolves.toBeUndefined();
+    });
+
     it('refuses to decode and rejects flush once closed', async () => {
       const opened = await openDecoder(await setup());
       opened.decoder.close();

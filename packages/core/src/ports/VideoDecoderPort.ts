@@ -29,7 +29,8 @@ export interface VideoDecoderCallbacks<Handle = unknown> {
  */
 export interface VideoDecoderHandle {
   /**
-   * Packets submitted but not yet output.
+   * Packets submitted that the codec has not taken up yet, what backpressure waits on. A codec
+   * may still hold packets it took up without having output their pictures.
    */
   readonly pendingCount: number;
   decode(packet: EncodedVideoPacket): void;

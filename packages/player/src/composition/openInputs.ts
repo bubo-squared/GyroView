@@ -32,6 +32,11 @@ import { inputName, type MediaInput } from '../PlayerSource';
 export interface OpenAttempt {
   readonly ports: RecordingPorts;
   readonly signal: AbortSignal;
+  /**
+   * Where the other lens file of a lone file is, when the server has it; absent where there is
+   * nothing to look for (a pair given whole, a local file).
+   */
+  readonly findSecondFile?: () => Promise<string | undefined>;
 }
 
 interface Opening {
@@ -74,9 +79,10 @@ async function demuxInputs(
   disposables: Disposables,
 ): Promise<DemuxedRecording> {
   const { ports, signal } = attempt;
-  const openings = inputs.map((input) => ({ input, source: ports.sources.open(input, signal) }));
-  const recording = await readRecordingOf(openings, ports);
+  const given = inputs.map((input) => ({ input, source: ports.sources.open(input, signal) }));
+  const recording = await readRecordingOf(given, ports);
   signal.throwIfAborted();
+  const openings = [...given, ...(await declaredSecond(given, recording, attempt))];
   const settled = await Promise.allSettled(
     openings.map(({ input, source }) => ports.demuxer.open(source, inputName(input))),
   );
@@ -90,6 +96,26 @@ async function demuxInputs(
   if (failure) throw failure.reason;
   signal.throwIfAborted();
   return { recording, inputs: opened };
+}
+
+/**
+ * The other lens file a lone file's info record says the recording is split into, when the
+ * server has it: found before the lone file's tracks are read, which finding it only once they
+ * fell short would read twice. A file that does not say so still gets its sibling looked for
+ * once its tracks fall short (see openRecording).
+ */
+async function declaredSecond(
+  given: readonly Opening[],
+  recording: Recording,
+  attempt: OpenAttempt,
+): Promise<Opening[]> {
+  const isDeclaredSplit = given.length === 1 && recording.info.fileLayout === 'split-files';
+  if (!isDeclaredSplit || !attempt.findSecondFile) return [];
+  const url = await attempt.findSecondFile();
+  attempt.signal.throwIfAborted();
+  if (url === undefined) return [];
+  const input = { url };
+  return [{ input, source: attempt.ports.sources.open(input, attempt.signal) }];
 }
 
 /**

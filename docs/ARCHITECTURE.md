@@ -199,7 +199,9 @@ The composition root and the user-facing element, in three layers.
 
 - **`composition`**: `openRecording` is the use case that opens what a `PlayerSource` names,
   following the data: `readRecording`, demux every input, `detectLensLayout` (fetching the
-  other lens file of a lone split file when the server has it), calibration required, the decode probe
+  other lens file of a lone split file when the server has it: before demuxing when the info
+  record says the recording is split, after the tracks fall short otherwise), calibration
+  required, the decode probe
   (an undecodable recording is an error; nothing plays in its place, ADR 0017), then the core's
   `timeRecording`.
   It depends on `RecordingPorts` (`SourceOpener`, `Demuxer`, `VideoDecoderPort`,

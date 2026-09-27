@@ -33,6 +33,10 @@ const SECOND_URL = 'https://cdn.example/clips/VID_20260814_132640_10_013.insv';
  */
 const PACKED_URL = 'https://cdn.example/clips/LRV_20260814_132640_01_013.lrv';
 const HEVC = 'hvc1.fake';
+/**
+ * The info record's file layout value for a recording split into one file per lens.
+ */
+const SPLIT_FILES = 1;
 const AVC = 'avc1.fake';
 
 const fixture: { x5Bytes: Uint8Array } = { x5Bytes: new Uint8Array() };
@@ -249,6 +253,38 @@ describe('openRecording', () => {
     expect(demuxer.openCount).toBe(2);
     opened.dispose();
     expect(demuxer.openCount).toBe(0);
+  });
+
+  it('finds the other lens file before reading the tracks when the info record says the recording is split', async () => {
+    const opener = new MapSourceOpener();
+    const splitInfo = minimalInfoRecord({ model: 'Insta360 X3', fileLayout: SPLIT_FILES });
+    const main = opener.register(MAIN_URL, syntheticRecordingBytes(splitInfo));
+    const second = opener.register(SECOND_URL, new Uint8Array(4096));
+    const [backTrack] = squareTracks();
+    const [screenTrack] = squareTracks();
+    const demuxer = new FakeDemuxer([
+      { source: main, duration: seconds(3), videoTracks: [backTrack!] },
+      { source: second, duration: seconds(3), videoTracks: [screenTrack!] },
+    ]);
+    const demuxed: (string | undefined)[] = [];
+    const ports = fakePorts({
+      sources: opener,
+      demuxer: {
+        open: (source, name) => {
+          demuxed.push(name);
+          return demuxer.open(source, name);
+        },
+      },
+      locator: new FakeResourceLocator([SECOND_URL]),
+    });
+
+    // The minimal info record carries no calibration: the load stops once the layout is known.
+    const failure = await captureRejection(
+      openRecording(sourceOf(), ports, new AbortController().signal),
+    );
+
+    expect(failure).toMatchObject({ code: 'no-calibration' });
+    expect(demuxed).toHaveLength(2);
   });
 
   it('reads the trailer from the second file when the first, the _10_ half, has none', async () => {

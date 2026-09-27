@@ -15,16 +15,26 @@ export async function openRecording(
   ports: RecordingPorts,
   signal: AbortSignal,
 ): Promise<OpenedRecording> {
-  const attempt: OpenAttempt = { ports, signal };
+  const attempt = attemptFor(source, ports, signal);
   const inputs = source.second ? [source.main, source.second] : [source.main];
   try {
     return await openInputs(inputs, attempt);
   } catch (error) {
-    const isLoneHalf = source.second === undefined && hasErrorCode(error, 'missing-second-file');
-    if (!isLoneHalf || !isUrlInput(source.main)) throw error;
-    const second = await locateOtherLensFile(source.main.url, ports.locator);
+    const { findSecondFile } = attempt;
+    if (!findSecondFile || !hasErrorCode(error, 'missing-second-file')) throw error;
+    const second = await findSecondFile();
     signal.throwIfAborted();
     if (!second) throw error;
     return openInputs([source.main, { url: second }], attempt);
   }
+}
+
+/**
+ * How the source is opened: a lone file named by URL may have its other lens file beside it.
+ */
+function attemptFor(source: PlayerSource, ports: RecordingPorts, signal: AbortSignal): OpenAttempt {
+  const { main } = source;
+  return source.second === undefined && isUrlInput(main)
+    ? { ports, signal, findSecondFile: () => locateOtherLensFile(main.url, ports.locator) }
+    : { ports, signal };
 }

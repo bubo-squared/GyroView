@@ -36,19 +36,22 @@ describe('FramePairer', () => {
     expect(pairer.unpaired).toBe(0);
   });
 
-  it('drops and closes the earlier frame when the lenses disagree beyond the tolerance', () => {
-    const pairs: FramePair<Probe>[] = [];
-    const pairer = new FramePairer<Probe>(2, seconds(0.001), (pair) => {
-      pairs.push(pair);
-    });
-    const orphan = frame(0);
-    pairer.push(0, orphan);
-    pairer.push(0, frame(1));
-    pairer.push(1, frame(1));
-    expect(orphan.handle.closed()).toBe(true);
-    expect(pairer.unpaired).toBe(1);
-    expect(pairs.map((pair) => pair.timestamp)).toEqual([1]);
-  });
+  it.each([0, 1])(
+    'drops and closes the earlier frame of lens %i when the lenses disagree beyond the tolerance',
+    (orphanLens) => {
+      const pairs: FramePair<Probe>[] = [];
+      const pairer = new FramePairer<Probe>(2, seconds(0.001), (pair) => {
+        pairs.push(pair);
+      });
+      const orphan = frame(0);
+      pairer.push(orphanLens, orphan);
+      pairer.push(orphanLens, frame(1));
+      pairer.push(1 - orphanLens, frame(1));
+      expect(orphan.handle.closed()).toBe(true);
+      expect(pairer.unpaired).toBe(1);
+      expect(pairs.map((pair) => pair.timestamp)).toEqual([1]);
+    },
+  );
 
   it('treats timestamps within the tolerance as one instant', () => {
     const pairs: FramePair<Probe>[] = [];

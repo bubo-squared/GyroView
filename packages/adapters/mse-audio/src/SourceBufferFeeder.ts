@@ -17,8 +17,7 @@ interface SourceBufferFeederParts {
 }
 
 /**
- * How far past the playhead audio is kept buffered: a seek discards and refills it, and it
- * rides out a slow network.
+ * How far past the playhead audio is kept buffered, to ride out a slow network.
  */
 const BUFFER_AHEAD_SECONDS = 30;
 /**
@@ -44,8 +43,9 @@ type Segments = AsyncIterator<Uint8Array<ArrayBuffer>>;
 
 /**
  * Keeps the source buffer filled from the playhead onwards: appends segments while less than
- * `BUFFER_AHEAD_SECONDS` of audio is buffered past the current time, evicts what lies far behind, and ends the
- * stream when the track ends. A seek restarts it from the new time; disposal stops it.
+ * `BUFFER_AHEAD_SECONDS` of audio is buffered past the current time, evicts what lies far behind,
+ * and ends the stream when the track ends. A seek restarts it from what the new time is missing;
+ * disposal stops it.
  */
 export class SourceBufferFeeder {
   private stop = new RunStop();
@@ -85,20 +85,34 @@ export class SourceBufferFeeder {
   }
 
   private async feed(from: Seconds, stop: RunStop): Promise<void> {
-    const leadIn = seconds(Math.max(0, from - LEAD_IN_SECONDS));
-    const segments = this.parts.source.segmentsFrom(leadIn)[Symbol.asyncIterator]();
     try {
       await this.settlePendingAppend();
-      const hasReachedEnd = await this.pump(segments, stop);
-      if (hasReachedEnd) this.endStream();
+      await this.feedFrom(this.startOf(from), stop);
     } catch (error) {
       this.failureValue ??=
         error instanceof GyroViewError
           ? error
           : new GyroViewError('decode', 'feeding the audio buffer failed', { cause: error });
+    }
+  }
+
+  private async feedFrom(start: Seconds, stop: RunStop): Promise<void> {
+    const segments = this.parts.source.segmentsFrom(start)[Symbol.asyncIterator]();
+    try {
+      const hasReachedEnd = await this.pump(segments, stop);
+      if (hasReachedEnd) this.endStream();
     } finally {
       void segments.return?.();
     }
+  }
+
+  /**
+   * Where a run for `from` starts: at the end of the audio already buffered around it, so a seek
+   * within the buffer appends only what is missing, or a lead-in before it otherwise.
+   */
+  private startOf(from: Seconds): Seconds {
+    const bufferedEnd = this.bufferedEndAt(from);
+    return seconds(bufferedEnd > from ? bufferedEnd : Math.max(0, from - LEAD_IN_SECONDS));
   }
 
   /**
@@ -138,13 +152,19 @@ export class SourceBufferFeeder {
    * Seconds buffered from the playhead to the end of the range it lies in; zero outside any.
    */
   private bufferedAhead(): Seconds {
-    const { buffered, currentTime } = this.parts.element;
+    const { currentTime } = this.parts.element;
+    return seconds(this.bufferedEndAt(currentTime) - currentTime);
+  }
+
+  /**
+   * The end of the buffered range `time` lies in; `time` itself outside any.
+   */
+  private bufferedEndAt(time: number): number {
+    const { buffered } = this.parts.element;
     for (let index = 0; index < buffered.length; index += 1) {
-      if (buffered.start(index) <= currentTime && currentTime < buffered.end(index)) {
-        return seconds(buffered.end(index) - currentTime);
-      }
+      if (buffered.start(index) <= time && time < buffered.end(index)) return buffered.end(index);
     }
-    return seconds(0);
+    return time;
   }
 
   private evictBehind(): void {

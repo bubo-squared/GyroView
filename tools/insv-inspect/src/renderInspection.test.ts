@@ -1,7 +1,7 @@
-import { milliseconds, seconds } from '@gyroview/core';
+import { milliseconds, seconds, type GyroSummary } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
-import type { GyroSummary, Inspection } from './Inspection';
+import type { Inspection } from './Inspection';
 import { renderInspection } from './renderInspection';
 
 const GYRO: GyroSummary = {

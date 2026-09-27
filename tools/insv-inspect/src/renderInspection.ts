@@ -1,6 +1,11 @@
-import { secondsToMilliseconds, type Seconds } from '@gyroview/core';
+import {
+  secondsToMilliseconds,
+  type ExposureSummary,
+  type LensSummary,
+  type Seconds,
+} from '@gyroview/core';
 
-import type { ExposureSummary, Inspection, LensSummary } from './Inspection';
+import type { Inspection } from './Inspection';
 
 const DECIMALS = 3;
 const TRANSLATION_DECIMALS = 6;

@@ -119,6 +119,9 @@ Use cases that orchestrate the domain through ports.
   boxes and the records' places for the inspector, which playing never needs. The result,
   `Recording`, hands out the large gyro and exposure records on demand, read by the format's
   `TrailerRecords`. `locateOtherLensFile` looks for the other lens's file of a split-file pair.
+  `inspectRecording` condenses a file into a `RecordingInspection`, plain data for a report or a
+  page: its boxes and records, the info record, the calibration and summaries of the gyro and
+  exposure records.
 - `playback/DecodePipeline` runs one lockstep decode of all frame sources from a time: one
   decoder per source, packets fed under backpressure, frames paired by timestamp
   (`FramePairer`), pairs before the start dropped by the `StartGate`, output into a
@@ -266,7 +269,7 @@ The composition root and the user-facing element, in three layers.
 
 ## Tools and tests
 
-- `tools/insv-inspect`: a CLI that prints what the core understands about a file.
+- `tools/insv-inspect`: a CLI that prints the core's `inspectRecording` of a file on disk.
 - `tools/fixtures`: assembles the synthetic recordings in `test/fixtures/synthetic` (tiny
   two-track MP4s with a real X5 trailer) that the browser tests play.
 - `tools/integration`: end-to-end tests over the real sample recordings, in Node (the core over

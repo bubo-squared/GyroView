@@ -1,6 +1,20 @@
 // Application API
 export { readRecording } from './application/recording/readRecording';
 export { inspectLayout, type RecordingLayout } from './application/recording/inspectLayout';
+export { inspectRecording } from './application/recording/inspectRecording';
+export type {
+  BoxSummary,
+  CalibrationSummary,
+  DamagedExposure,
+  ExposureReport,
+  ExposureSummary,
+  GyroSummary,
+  LensSummary,
+  RecordingInspection,
+  RecordSummary,
+  UnreadableGyro,
+  UnreadExposure,
+} from './application/recording/RecordingInspection';
 export { Recording } from './application/recording/Recording';
 export { timeRecording, type RecordingTiming } from './application/recording/timeRecording';
 export type { MotionSetup } from './application/recording/motionOf';

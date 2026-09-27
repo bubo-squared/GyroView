@@ -12,14 +12,8 @@ const SYNTHETIC_X5 = fileURLToPath(
 );
 
 describe('inspectFile', () => {
-  it('summarises the gyro and exposure records of a recording on disk', async () => {
+  it('inspects a recording on disk and names the file it read', async () => {
     const inspection = await inspectFile(SYNTHETIC_X5);
-    expect(inspection.gyro).toMatchObject({
-      layout: 'raw',
-      samples: 2000,
-      damagedSamples: 0,
-      mendedStamps: 0,
-    });
-    expect(inspection.exposure).toMatchObject({ entries: 16 });
+    expect(inspection).toMatchObject({ file: SYNTHETIC_X5, gyro: { samples: 2000 } });
   });
 });

@@ -17,6 +17,10 @@ export function defineStringProperties(element: HTMLElement, names: readonly str
   }
 }
 
+/**
+ * Boolean attributes, the value coerced as a media element's `autoplay` coerces it:
+ * `toggleAttribute` would take `undefined` for no force at all and flip the attribute.
+ */
 export function defineBooleanProperties(element: HTMLElement, names: readonly string[]): void {
   for (const name of names) {
     Object.defineProperty(element, propertyNameOf(name), {
@@ -25,8 +29,8 @@ export function defineBooleanProperties(element: HTMLElement, names: readonly st
       get(this: HTMLElement): boolean {
         return this.hasAttribute(name);
       },
-      set(this: HTMLElement, isSet: boolean): void {
-        this.toggleAttribute(name, isSet);
+      set(this: HTMLElement, isSet: unknown): void {
+        this.toggleAttribute(name, Boolean(isSet));
       },
     });
   }

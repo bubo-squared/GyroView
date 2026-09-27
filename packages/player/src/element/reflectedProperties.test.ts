@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { defineStringProperties, propertyNameOf } from './reflectedProperties';
+import {
+  defineBooleanProperties,
+  defineStringProperties,
+  propertyNameOf,
+} from './reflectedProperties';
 
 describe('reflected properties', () => {
   it('names properties after attributes, camel-casing hyphens', () => {
@@ -19,5 +23,17 @@ describe('reflected properties', () => {
     expect(mirrored.gainMatch).toBe('on');
     mirrored.gainMatch = null;
     expect(element.hasAttribute('gain-match')).toBe(false);
+  });
+
+  it('coerces a boolean property as a media element does, so undefined never flips it', () => {
+    const element = document.createElement('div');
+    defineBooleanProperties(element, ['autoplay']);
+    const mirrored = element as unknown as HTMLElement & { autoplay: unknown };
+    mirrored.autoplay = undefined;
+    expect(element.hasAttribute('autoplay')).toBe(false);
+    mirrored.autoplay = 'yes';
+    expect(element.hasAttribute('autoplay')).toBe(true);
+    mirrored.autoplay = undefined;
+    expect(element.hasAttribute('autoplay')).toBe(false);
   });
 });

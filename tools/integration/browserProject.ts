@@ -58,8 +58,8 @@ export interface BrowserProjectOptions {
 
 /**
  * Tests of the browser pipeline (HTTP ranges, demuxing, WebCodecs, the audio clock, WebGL)
- * against the real recordings, served by Vite's dev server with Range support. Skipped inside
- * the tests when the samples are absent, as in CI.
+ * against the real recordings, served by Vite's dev server with Range support. A test whose
+ * sample is absent skips itself; without any samples, as in CI, the project is not run at all.
  */
 export function browserProject(options: BrowserProjectOptions): UserWorkspaceConfig {
   return defineProject({

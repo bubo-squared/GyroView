@@ -267,7 +267,7 @@ describe('openRecording', () => {
     expect((failure as Error).message).toContain('track 0 key-frame-late');
   });
 
-  it('blames the network when one frame source waits for its key frame while the other decodes', async () => {
+  it("blames the network when one frame source waits for its key frame while the other's decoder is still busy", async () => {
     const opener = new MapSourceOpener();
     const main = opener.register(MAIN_URL, fixture.x5Bytes);
     const deadline = new Signal();

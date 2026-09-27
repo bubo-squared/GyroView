@@ -13,15 +13,18 @@ describe('reflected properties', () => {
     expect(propertyNameOf('a-b-c')).toBe('aBC');
   });
 
-  it('mirrors an attribute through its property, removing it on null', () => {
+  it('mirrors an attribute through its property, removing it on null or undefined', () => {
     const element = document.createElement('div');
     defineStringProperties(element, ['gain-match']);
-    const mirrored = element as unknown as HTMLElement & { gainMatch: string | null };
+    const mirrored = element as unknown as HTMLElement & { gainMatch: string | null | undefined };
     mirrored.gainMatch = 'off';
     expect(element.getAttribute('gain-match')).toBe('off');
     element.setAttribute('gain-match', 'on');
     expect(mirrored.gainMatch).toBe('on');
     mirrored.gainMatch = null;
+    expect(element.hasAttribute('gain-match')).toBe(false);
+    mirrored.gainMatch = 'off';
+    mirrored.gainMatch = undefined;
     expect(element.hasAttribute('gain-match')).toBe(false);
   });
 

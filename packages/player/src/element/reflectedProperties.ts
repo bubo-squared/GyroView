@@ -10,7 +10,7 @@ export function defineStringProperties(element: HTMLElement, names: readonly str
       get(this: HTMLElement): string | null {
         return this.getAttribute(name);
       },
-      set(this: HTMLElement, value: string | null): void {
+      set(this: HTMLElement, value: string | null | undefined): void {
         writeAttribute(this, name, value);
       },
     });
@@ -37,11 +37,12 @@ export function defineBooleanProperties(element: HTMLElement, names: readonly st
 }
 
 /**
- * `null` removes the attribute, as assigning `null` to `img.alt` would not but `removeAttribute`
- * does.
+ * `null` or `undefined` removes the attribute, as assigning either to `img.alt` would not but
+ * `removeAttribute` does: a framework unsetting a property assigns `undefined`, which would
+ * otherwise be written as the text "undefined".
  */
-function writeAttribute(element: Element, name: string, value: string | null): void {
-  if (value === null) {
+function writeAttribute(element: Element, name: string, value: string | null | undefined): void {
+  if (value === null || value === undefined) {
     element.removeAttribute(name);
     return;
   }

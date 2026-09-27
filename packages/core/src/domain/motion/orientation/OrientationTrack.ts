@@ -63,7 +63,6 @@ interface IntegrationState {
  * What every step needs besides the state and the sample.
  */
 interface IntegrationContext {
-  readonly clock: CaptureClock;
   readonly frame: ImuFrame;
   readonly bias: Vector3;
   readonly gravityGain: number;
@@ -72,8 +71,7 @@ interface IntegrationContext {
 const QUATERNION_COMPONENTS = 4;
 /**
  * Gaps longer than this between samples are integrated as if they were this long: a dropout
- * must not spin the estimate by a whole missing second. A sample stamped before its
- * predecessor (clock glitch) contributes no step at all.
+ * must not spin the estimate by a whole missing second.
  */
 const MAX_STEP_SECONDS = 0.05;
 
@@ -107,15 +105,16 @@ export class OrientationTrack {
       stillestWindow(gyro, frame, seconds(BIAS_WINDOW_SECONDS)),
     );
     const gravityGain = parts.options?.gravityGain ?? DEFAULT_GRAVITY_GAIN;
-    const context = { clock, frame, bias, gravityGain };
+    const context = { frame, bias, gravityGain };
+    videoTimes.set(sampleVideoTimes(gyro, clock));
     let state: IntegrationState = {
       orientation: initialOrientation(gyro, frame, seconds(LEVELLING_WINDOW_SECONDS)),
-      time: clock.gyroVideoTimeOf(gyro.sampleAt(0).captureTime),
+      time: seconds(videoTimes[0] ?? 0),
       rate: ZERO_VECTOR3,
     };
     for (let index = 0; index < gyro.length; index += 1) {
-      state = stepTo(state, finiteSample(gyro, index), context);
-      videoTimes[index] = state.time;
+      const time = seconds(videoTimes[index] ?? state.time);
+      state = stepTo(state, { sample: finiteSample(gyro, index), time }, context);
       quaternions.set(state.orientation, index * QUATERNION_COMPONENTS);
     }
     return new OrientationTrack(videoTimes, quaternions);
@@ -160,6 +159,37 @@ export class OrientationTrack {
   }
 }
 
+/**
+ * A sample and the video time it is taken at.
+ */
+interface TimedSample {
+  readonly sample: GyroSample;
+  readonly time: Seconds;
+}
+
+/**
+ * The samples' video times, never going back, so the lookup's binary search holds: a sample
+ * stamped off both its neighbours (a clock glitch, a flipped bit) takes the time between them,
+ * and one still behind its predecessor is held at it. A run of glitched samples holds the time
+ * where the run began.
+ */
+function sampleVideoTimes(gyro: GyroTrack, clock: CaptureClock): Float64Array {
+  const times = Float64Array.from({ length: gyro.length }, (_unused, index) =>
+    clock.gyroVideoTimeOf(gyro.sampleAt(index).captureTime),
+  );
+  for (let index = 1; index < times.length; index += 1) times[index] = restamped(times, index);
+  return times;
+}
+
+function restamped(times: Float64Array, index: number): number {
+  const previous = times[index - 1] ?? -Infinity;
+  const current = times[index] ?? previous;
+  const next = times[index + 1];
+  const isOffItsNeighbours =
+    next !== undefined && next >= previous && (current < previous || current > next);
+  return isOffItsNeighbours ? (previous + next) / 2 : Math.max(current, previous);
+}
+
 function finiteSample(gyro: GyroTrack, index: number): GyroSample {
   const sample = gyro.sampleAt(index);
   ensureInvariant(
@@ -175,11 +205,10 @@ function finiteSample(gyro: GyroTrack, index: number): GyroSample {
  */
 function stepTo(
   state: IntegrationState,
-  sample: GyroSample,
+  { sample, time }: TimedSample,
   context: IntegrationContext,
 ): IntegrationState {
-  const { clock, frame, bias, gravityGain } = context;
-  const time = clock.gyroVideoTimeOf(sample.captureTime);
+  const { frame, bias, gravityGain } = context;
   const step = Math.min(Math.max(time - state.time, 0), MAX_STEP_SECONDS);
   const correction = gravityCorrection(state.orientation, toBodyFrame(frame, sample.acceleration));
   return {

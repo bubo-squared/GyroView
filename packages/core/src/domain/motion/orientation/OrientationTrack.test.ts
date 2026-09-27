@@ -44,6 +44,27 @@ function atRest(): { acceleration: Vector3; angularVelocity: Vector3 } {
   return { acceleration: RESTING_UPRIGHT, angularVelocity: [0, 0, 0] };
 }
 
+/**
+ * Four seconds of a quarter turn per second about the vertical, one sample optionally stamped
+ * `offset` seconds off where it belongs.
+ */
+function turningWithGlitch(glitch?: { index: number; offset: number }): OrientationTrack {
+  const count = 4 * RATE_HZ;
+  const captureTimes = Float64Array.from({ length: count }, (_unused, index) => {
+    const offset = index === glitch?.index ? glitch.offset : 0;
+    return SYNTHETIC_CLOCK.captureTimeOf(seconds(index / RATE_HZ + offset));
+  });
+  const accelerations = new Float32Array(count * 3);
+  const angularVelocities = new Float32Array(count * 3);
+  for (let index = 0; index < count; index += 1) {
+    accelerations.set(RESTING_UPRIGHT, index * 3);
+    angularVelocities.set([0, QUARTER_TURN_PER_SECOND, 0], index * 3);
+  }
+  return integrate(new GyroTrack(captureTimes, accelerations, angularVelocities), {
+    gravityGain: 0,
+  });
+}
+
 function expectVector(actual: Vector3, expected: Vector3, digits: number): void {
   for (const [index, value] of expected.entries()) {
     expect(actual[index]).toBeCloseTo(value, digits);
@@ -149,6 +170,17 @@ describe('OrientationTrack', () => {
     const turned = Math.atan2(forwardAt(track, 2.015)[0], forwardAt(track, 2.015)[2]);
     expect(turned).toBeLessThan(0.1);
     expect(turned).toBeGreaterThan(0.05);
+  });
+
+  it('keeps its course through a sample stamped far off its neighbours', () => {
+    const clean = turningWithGlitch();
+    for (const offset of [5, -5]) {
+      // The middle sample is where a lookup starts searching: the worst place for a glitch.
+      const glitched = turningWithGlitch({ index: 2 * RATE_HZ, offset });
+      for (let time = 0; time < 4; time += 0.1) {
+        expectVector(forwardAt(glitched, time), forwardAt(clean, time), 2);
+      }
+    }
   });
 
   it('holds the first and last orientation outside the recorded span and is empty-safe', () => {

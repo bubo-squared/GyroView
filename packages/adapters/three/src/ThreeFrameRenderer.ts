@@ -78,8 +78,8 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   private framing: Framing = DEFAULT_FRAMING;
   private viewMode: ViewMode = DEFAULT_VIEW_MODE;
   /**
-   * False until the first pair arrives and again after a context loss: the textures then hold
-   * frames the session has closed, which must not be uploaded again.
+   * False until the first pair arrives. The textures then hold the pair on screen, which the
+   * session keeps open until it presents the next one.
    */
   private hasFrames = false;
   private isDisposed = false;
@@ -90,7 +90,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     private readonly canvas: HTMLCanvasElement,
   ) {
     this.applyFraming();
-    canvas.addEventListener('webglcontextlost', this.onContextLost);
+    canvas.addEventListener('webglcontextrestored', this.onContextRestored);
   }
 
   public static create(
@@ -205,7 +205,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   public dispose(): void {
     if (this.isDisposed) return;
     this.isDisposed = true;
-    this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
+    this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
     for (const meter of this.meters) meter.dispose();
     for (const texture of this.parts.textures) texture.dispose();
     disposePictureMaterials(this.parts.materials);
@@ -213,8 +213,13 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     this.parts.renderer.dispose();
   }
 
-  private readonly onContextLost = (): void => {
-    this.hasFrames = false;
+  /**
+   * Three.js builds its state anew on a restored context but draws nothing: a paused picture
+   * (iOS drops the context of a tab in the background) comes back only through a redraw, which
+   * uploads the frames on screen again.
+   */
+  private readonly onContextRestored = (): void => {
+    this.render();
   };
 
   private render(): void {

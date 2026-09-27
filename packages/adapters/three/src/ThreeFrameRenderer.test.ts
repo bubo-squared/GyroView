@@ -492,7 +492,7 @@ describe('ThreeFrameRenderer', () => {
     ).toBeGreaterThan(BRIGHT);
   });
 
-  it('survives a lost context: it draws nothing until fresh frames arrive after the restore', async () => {
+  it('draws the standing frame again once a lost context is restored', async () => {
     const renderer = open();
     presentRedAndBlue(renderer);
     const canvas = canvases.at(-1);
@@ -509,15 +509,7 @@ describe('ThreeFrameRenderer', () => {
     const restored = eventOnce(canvas, 'webglcontextrestored');
     loser.restoreContext();
     await restored;
-    // The frames it drew before the loss may be closed by now; whatever asks for a redraw before
-    // fresh ones arrive draws nothing rather than reach for them.
-    renderer.setLensGains([
-      [1, 1, 1],
-      [1, 1, 1],
-    ]);
-    const blank = pixelAt(renderer, CENTRE);
-    expect(Math.max(blank.r, blank.g, blank.b)).toBeLessThan(DIM);
-    presentRedAndBlue(renderer);
+    // The pair on screen stays open until the next one comes: a paused picture redraws from it.
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
   });
 

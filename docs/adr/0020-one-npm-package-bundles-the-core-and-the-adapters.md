@@ -31,6 +31,10 @@ users: a page needs the element, the player without the element, and the types t
   against it and lints the manifest with publint.
 - `gyroview` has no side effects; `gyroview/define` registers `<gyro-view>` when imported, as
   `gyro-view.js` does.
+- `gyroview/standalone` (`dist/standalone.js`) is the package as one minified module with
+  Three.js and mediabunny inside, for a page without a bundler or a CDN link: it registers the
+  element and exports what `gyroview` does. It names mediabunny's MPL-2.0 and where its source
+  is, as that license asks of a compiled copy.
 - A tag `v<version>` publishes it from GitHub Actions through npm trusted publishing, with
   provenance and no stored token.
 
@@ -42,8 +46,9 @@ users: a page needs the element, the player without the element, and the types t
 - Publishing the player package itself: its manifest exports sources and names private
   workspace packages as dependencies; pnpm's `publishConfig` can swap the entry points but not
   the name or the dependencies.
-- Bundling Three.js and mediabunny too: one file, but a page using Three.js would ship it
-  twice, and MPL-2.0 files would sit inside an MIT package.
+- Bundling Three.js and mediabunny into the main entries too: one file, but a page using
+  Three.js would ship it twice. The standalone file does, for the pages that have no bundler to
+  share a copy with.
 - Three.js as a peer dependency: every page would install it by hand, although most pages that
   embed a player use no Three.js of their own; and a peer range wide enough to help would admit
   minor versions the renderer was never tested against, since Three.js breaks between them.

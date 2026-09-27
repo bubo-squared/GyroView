@@ -3,6 +3,7 @@
 // not throw, and defining the element must do nothing there.
 import { defineGyroView, inspectRecording } from 'gyroview';
 import 'gyroview/define';
+import 'gyroview/standalone';
 
 defineGyroView();
 if (typeof inspectRecording !== 'function') {

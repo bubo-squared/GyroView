@@ -38,10 +38,11 @@ npm install gyroview
 import 'gyroview/define'; // registers <gyro-view>
 ```
 
-Without a bundler, host `gyro-view.js` and load it as a module:
+Without a bundler, load the package's standalone file (Three.js and the demuxer inside) from
+a CDN or your own host; the site build's `gyro-view.js` registers the element the same way:
 
 ```html
-<script type="module" src="https://your-host/gyro-view.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/gyroview@0.1/dist/standalone.js"></script>
 
 <gyro-view
   src="https://media.example/VID_20260814_132640_00_013.insv"

@@ -36,6 +36,19 @@ A relative `src` resolves against the document, as an image's does. `timeupdate`
 times a second while playing, as a media element's does; `frame` comes with every picture
 drawn.
 
+A page without a bundler loads the standalone file, which has Three.js and mediabunny inside
+(about 280 KB compressed) and registers the element; it exports what the package does:
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/gyroview@0.1/dist/standalone.js"></script>
+<script type="module">
+  import { inspectRecording } from 'https://cdn.jsdelivr.net/npm/gyroview@0.1/dist/standalone.js';
+</script>
+```
+
+Bundling it next to a Three.js of the page's own ships two copies; `gyroview` and
+`gyroview/define` share the page's instead.
+
 Play a file the visitor picks, without any server:
 
 ```ts

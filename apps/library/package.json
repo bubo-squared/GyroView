@@ -25,7 +25,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "sideEffects": [
-    "./dist/define.js"
+    "./dist/define.js",
+    "./dist/standalone.js"
   ],
   "exports": {
     ".": {
@@ -36,6 +37,10 @@
       "types": "./dist/define.d.ts",
       "default": "./dist/define.js"
     },
+    "./standalone": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/standalone.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -43,7 +48,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "vite build && dts-bundle-generator --silent --config dts-bundle-generator.config.json && cp types/define.d.ts dist/ && tsc -p tsconfig.consumer.json && node consumer/server.mjs && publint --strict",
+    "build": "vite build && vite build --config vite.standalone.config.ts && dts-bundle-generator --silent --config dts-bundle-generator.config.json && cp types/define.d.ts dist/ && tsc -p tsconfig.consumer.json && node consumer/server.mjs && publint --strict",
     "prepack": "cp ../../LICENSE LICENSE",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"

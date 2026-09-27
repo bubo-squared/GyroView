@@ -82,7 +82,7 @@ Every failure is a `GyroViewError` with a stable `code`; the `error` event carri
 | Code                    | Meaning and what to do                                                       |
 | ----------------------- | ---------------------------------------------------------------------------- |
 | `cors`                  | The media server answered but forbade this origin: add the CORS headers.     |
-| `source-unreadable`     | The URL could not be fetched (network, DNS, wrong URL).                      |
+| `source-unreadable`     | The URL could not be fetched (network, DNS, wrong URL), asked twice more.    |
 | `range-unsupported`     | The server ignores `Range`: enable byte-range serving.                       |
 | `source-truncated`      | Fewer bytes came back than asked: the file changed or the server misbehaves. |
 | `codec-unsupported`     | This browser cannot decode the tracks (no HEVC hardware, or not a secure     |

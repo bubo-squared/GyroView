@@ -171,8 +171,8 @@ One package per external technology; none imports another.
 
 - **`node`**: `FileRandomAccessSource` over the file system, for the CLI and Node tests.
 - **`fetch`**: `HttpRangeSource` reads byte ranges over HTTP, past the browser's own cache
-  (ADR 0013), and reports the server's shortcomings with distinct codes
-  (`range-unsupported`, `cors`, `source-unreadable`); `HttpResourceLocator` answers "does it
+  (ADR 0013), asks again for a range that failed on the way (ADR 0019), and reports the
+  server's shortcomings with distinct codes (`range-unsupported`, `cors`, `source-unreadable`); `HttpResourceLocator` answers "does it
   exist" with a HEAD, and a one-byte GET where a server refuses HEAD.
 - **`blob`**: `BlobRandomAccessSource` slices a `File` from a picker or a drop.
 - **`mediabunny`**: the demuxer and track readers over the mediabunny library; an audio track

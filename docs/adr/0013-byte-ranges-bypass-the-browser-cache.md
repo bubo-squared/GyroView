@@ -34,7 +34,8 @@ server can choose another mode through the shared `requestInit`.
   while the player has to survive any host.
 - Cache-busting query parameters: break signed URLs and CDN caching, and the sparse-entry
   path would still be taken for the first request of each range.
-- Retrying a short read: hides the fault and repeats it on the next range.
+- Retrying a short read: hides the fault and repeats it on the next range. (A range that fails
+  on the way, a broken-off body or a server error, is another matter: ADR 0019.)
 - Rejecting on a `Content-Range` mismatch: a correct diagnosis and no playback.
 
 ## Consequences

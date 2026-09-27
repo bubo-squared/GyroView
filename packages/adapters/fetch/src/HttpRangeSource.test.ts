@@ -26,6 +26,22 @@ describeRandomAccessSourceContract(async (bytes) => {
   return new HttpRangeSource(server.url);
 });
 
+/**
+ * A fetch whose first byte-range request fails outright; the no-CORS probe that diagnoses the
+ * failure fails too when `isServerGone`, and answers otherwise, as a server whose error page
+ * lacks CORS headers does.
+ */
+function firstRangeFailing(isServerGone: boolean): typeof fetch {
+  let ranges = 0;
+  return (input, init) => {
+    const isProbe = init?.mode === 'no-cors';
+    if (isProbe && isServerGone) return Promise.reject(new TypeError('offline'));
+    if (init?.method !== 'GET') return fetch(input, init);
+    ranges += 1;
+    return ranges === 1 ? Promise.reject(new TypeError('network changed')) : fetch(input, init);
+  };
+}
+
 interface CountingFetch {
   readonly fetch: typeof fetch;
   /**
@@ -155,6 +171,29 @@ describe('HttpRangeSource', () => {
       code: 'source-unreadable',
     });
     expect(refusing.ranges()).toBe(1);
+  });
+
+  it('asks again for a range whose request did not get through', async () => {
+    const server = await serve(content);
+    const source = new HttpRangeSource(server.url, {
+      fetch: firstRangeFailing(true),
+      retryDelaysMs: NO_WAIT,
+    });
+    await expect(source.read(ByteRange.of(0, 10))).resolves.toEqual(content.subarray(0, 10));
+  });
+
+  it('asks again once a range came through, though the failure looks like CORS', async () => {
+    const server = await serve(content);
+    const answered: typeof fetch = firstRangeFailing(false);
+    let hasReadOnce = false;
+    const source = new HttpRangeSource(server.url, {
+      fetch: (input, init): Promise<Response> =>
+        hasReadOnce ? answered(input, init) : fetch(input, init),
+      retryDelaysMs: NO_WAIT,
+    });
+    await source.read(ByteRange.of(0, 10));
+    hasReadOnce = true;
+    await expect(source.read(ByteRange.of(10, 10))).resolves.toEqual(content.subarray(10, 20));
   });
 
   it("stops reading once its signal or the host's aborts", async () => {

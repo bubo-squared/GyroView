@@ -49,6 +49,11 @@ export class HttpRangeSource implements RandomAccessSource {
   private readonly options: HttpRequestOptions;
   private readonly retryDelaysMs: readonly number[];
   private sizePromise: Promise<number> | undefined;
+  /**
+   * A range has come through: CORS is proven for this source, so a request that fails from here
+   * on failed on the way, whatever the diagnosis says of an error page without CORS headers.
+   */
+  private hasReadRange = false;
 
   /**
    * `signal` ends every request the source makes, with the host's own `requestInit` signal.
@@ -99,6 +104,7 @@ export class HttpRangeSource implements RandomAccessSource {
       discardBody(response);
       throw this.refusalOf(response.status);
     }
+    this.hasReadRange = true;
     const bytes = await this.bodyOf(response, range);
     if (bytes.byteLength !== range.length) {
       throw new GyroViewError(
@@ -111,15 +117,21 @@ export class HttpRangeSource implements RandomAccessSource {
 
   /**
    * A request that did not get through for want of a network is worth another try; one CORS
-   * refused is not.
+   * refused before any range came through is not.
    */
   private async requestRange(range: ByteRange): Promise<Response> {
     try {
       return await this.request('GET', { Range: `bytes=${range.offset}-${range.end - 1}` });
     } catch (error) {
-      if (!hasErrorCode(error, 'source-unreadable') || !(error instanceof Error)) throw error;
-      throw new PassingFailure('source-unreadable', error.message, { cause: error.cause });
+      throw this.hasReadRange ? this.passingOnceAnswered(error) : passingIfUnreachable(error);
     }
+  }
+
+  private passingOnceAnswered(error: unknown): unknown {
+    const message = `${this.url} could not be reached for a byte range`;
+    return error instanceof GyroViewError
+      ? new PassingFailure('source-unreadable', message, { cause: error.cause ?? error })
+      : error;
   }
 
   private refusalOf(status: number): GyroViewError {
@@ -214,4 +226,11 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function passingIfUnreachable(error: unknown): unknown {
+  const isUnreachable = hasErrorCode(error, 'source-unreadable') && error instanceof Error;
+  return isUnreachable
+    ? new PassingFailure('source-unreadable', error.message, { cause: error.cause })
+    : error;
 }

@@ -315,10 +315,12 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
 
   /**
    * A tap on the picture toggles playback, except a touch that brought hidden controls back:
-   * touch has no hover to reveal them, so that tap is the viewer asking to see them.
+   * touch has no hover to reveal them, so that tap is the viewer asking to see them. Without
+   * controls there is nothing to reveal, and every tap toggles.
    */
   private readonly onPictureTap = (pointerType: string): void => {
-    if (pointerType !== 'mouse' && this.idle.wasIdleAtLastPress) return;
+    const isRevealingControls = this.controls && this.idle.wasIdleAtLastPress;
+    if (pointerType !== 'mouse' && isRevealingControls) return;
     this.togglePlayback();
   };
 

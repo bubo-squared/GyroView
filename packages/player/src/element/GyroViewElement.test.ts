@@ -371,6 +371,18 @@ describe('<gyro-view>', () => {
     await playing;
   });
 
+  it('toggles play on every touch when it has no controls to bring back', async () => {
+    const element = await createReady({ controls: '' });
+    element.controls = false;
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    canvas.setPointerCapture = (): void => undefined;
+    element.dataset['idle'] = '';
+    const playing = nextEvent(element, 'play');
+    canvas.dispatchEvent(touchOf('pointerdown'));
+    canvas.dispatchEvent(touchOf('pointerup'));
+    await playing;
+  });
+
   it('takes neither a drag nor a tap from another mouse button, nor a tap from a cancelled press', async () => {
     const element = await createReady();
     const canvas = control(element, 'canvas', HTMLCanvasElement);

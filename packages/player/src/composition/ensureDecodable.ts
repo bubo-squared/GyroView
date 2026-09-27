@@ -50,14 +50,23 @@ const BROWSER_CANNOT_DECODE: ProbeFailure = {
 };
 
 function probeFailure(report: DecodeProbeReport): GyroViewError {
+  const cause = sharedCause(report);
+  const failure = cause === undefined ? undefined : FAILURES_NOT_OF_THE_BROWSER[cause];
+  const { code, message } = failure ?? BROWSER_CANNOT_DECODE;
+  return new GyroViewError(code, `${message}: ${describeProbe(report)}`);
+}
+
+/**
+ * The verdict every failed track shares, if one does. A decoder still busy at the deadline beside
+ * a key frame that never came is taken for the same slow link's doing.
+ */
+function sharedCause(report: DecodeProbeReport): ProbeVerdict | undefined {
   const verdicts = new Set(
     report.sources.filter((source) => source.verdict !== 'decodes').map((source) => source.verdict),
   );
+  if (verdicts.has('key-frame-late')) verdicts.delete('timed-out');
   const [shared] = verdicts;
-  const failure =
-    shared !== undefined && verdicts.size === 1 ? FAILURES_NOT_OF_THE_BROWSER[shared] : undefined;
-  const { code, message } = failure ?? BROWSER_CANNOT_DECODE;
-  return new GyroViewError(code, `${message}: ${describeProbe(report)}`);
+  return verdicts.size === 1 ? shared : undefined;
 }
 
 /**

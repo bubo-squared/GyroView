@@ -93,7 +93,9 @@ class WebCodecsDecoderHandle implements VideoDecoderHandle {
         callbacks.onFrame(wrapFrame(frame));
       },
       error: (error): void => {
-        this.failure ??= failureOf(error);
+        this.failure ??= new GyroViewError('decode', `video decoder failed: ${error.message}`, {
+          cause: error,
+        });
         callbacks.onError(this.failure);
       },
     });
@@ -179,21 +181,4 @@ function wrapFrame(frame: VideoFrame): DecodedFrame<VideoFrame> {
       frame.close();
     },
   };
-}
-
-/**
- * A configuration the platform refuses only once it tries (WebCodecs reports a NotSupportedError
- * through the callback) is the codec's, as a refusal at `create` is; anything else is the
- * stream's.
- */
-function failureOf(error: DOMException): GyroViewError {
-  return error.name === 'NotSupportedError'
-    ? new GyroViewError(
-        'codec-unsupported',
-        `the decoder refused its configuration: ${error.message}`,
-        {
-          cause: error,
-        },
-      )
-    : new GyroViewError('decode', `video decoder failed: ${error.message}`, { cause: error });
 }

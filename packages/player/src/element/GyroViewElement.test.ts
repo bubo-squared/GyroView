@@ -605,6 +605,19 @@ describe('<gyro-view>', () => {
     expect(element.stabilization).toBe('lock');
   });
 
+  it('leaves a setting a framework unsets as it is, as removing its attribute does', () => {
+    const element = create({ controls: '', 'view-mode': 'equirectangular', fov: '60' });
+    const unset = element as unknown as Record<'viewMode' | 'fov' | 'volume', unknown>;
+    for (const value of [undefined, null, '']) {
+      unset.viewMode = value;
+      unset.fov = value;
+      unset.volume = value;
+    }
+    expect(element.viewMode).toBe('equirectangular');
+    expect(element.fov).toBe(60);
+    expect(element.volume).toBe(1);
+  });
+
   it('shows an error overlay for a source it cannot read and recovers on a new src', async () => {
     const element = create({ controls: '' });
     const failed = nextEvent<{ code: string }>(element, 'error');

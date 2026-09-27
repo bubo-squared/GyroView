@@ -44,5 +44,7 @@ The `Player` is the single owner of the settings, which carry over from load to 
 After a change from the menu, keyboard, gestures or script, an attribute can differ from the
 property of the same name, exactly as `<video muted>` can differ from `video.muted`. Removing
 a choice attribute (`stabilization`, `view-mode`) leaves the setting as it is; removing
-`muted` or `loop` turns it off, as for any boolean attribute. A headless `Player` user sets the
+`muted` or `loop` turns it off, as for any boolean attribute. Unsetting a setting's property, as
+a framework does with a prop it no longer passes (`undefined`, `null` or `''`), leaves it as it
+is too; any other value it cannot take is refused. A headless `Player` user sets the
 settings on the player before or after `load`.

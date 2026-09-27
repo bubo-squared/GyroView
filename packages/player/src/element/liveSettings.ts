@@ -55,21 +55,21 @@ export const LIVE_SETTING_NAMES = Object.keys(SETTING_NAMES) as readonly (keyof 
  * Properties that read and change the player's settings as they are now, the way
  * `HTMLMediaElement.muted` does: the attribute of the same name configures the setting, the
  * property reports what is in effect however it was last changed (attribute, menu, keyboard,
- * gesture or script). A value the setting cannot take is refused.
+ * gesture or script). A value the setting cannot take is refused; an unset one is ignored.
  */
 export function defineLiveSettings(element: HTMLElement, player: Player): void {
   const accessors: Accessors = {
     stabilization: {
       get: (): unknown => player.stabilization,
-      set: (value): void => {
+      set: unlessUnset((value) => {
         player.setStabilization(accepted(value, stabilizationModeOf, 'stabilization'));
-      },
+      }),
     },
     viewMode: {
       get: (): unknown => player.viewMode,
-      set: (value): void => {
+      set: unlessUnset((value) => {
         player.setViewMode(accepted(value, viewModeOf, 'viewMode'));
-      },
+      }),
     },
     ...viewAccessors(player),
     ...soundAccessors(player),
@@ -82,9 +82,9 @@ export function defineLiveSettings(element: HTMLElement, player: Player): void {
 function viewAccessors(player: Player): Pick<Accessors, 'fov' | 'yaw' | 'pitch'> {
   const angle = (key: keyof ViewState, property: string): Accessor => ({
     get: (): unknown => player.view[key],
-    set: (value): void => {
+    set: unlessUnset((value) => {
       player.setView({ ...player.view, [key]: angleOf(value, property) });
-    },
+    }),
   });
   return {
     fov: angle('fieldOfView', 'fov'),
@@ -109,10 +109,20 @@ function soundAccessors(player: Player): Pick<Accessors, 'muted' | 'loop' | 'vol
     },
     volume: {
       get: (): unknown => player.volume,
-      set: (value): void => {
+      set: unlessUnset((value) => {
         player.setVolume(numberOf(value, 'volume'));
-      },
+      }),
     },
+  };
+}
+
+/**
+ * A setting unset leaves it as it is, as removing its attribute does: a framework unsets a
+ * property it no longer passes with `undefined` (React), `null` or an empty string (Preact).
+ */
+function unlessUnset(set: (value: unknown) => void): (value: unknown) => void {
+  return (value) => {
+    if (value !== undefined && value !== null && value !== '') set(value);
   };
 }
 

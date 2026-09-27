@@ -11,6 +11,7 @@ import {
   type DecodeProbeReport,
   type DemuxedInput,
   type FrameSourceKey,
+  type LayoutHints,
   type RandomAccessSource,
   type Recording,
   type RecordingTiming,
@@ -30,6 +31,11 @@ import { inputName, type MediaInput } from '../PlayerSource';
 export interface OpenAttempt {
   readonly ports: RecordingPorts;
   readonly signal: AbortSignal;
+}
+
+interface Opening {
+  readonly input: MediaInput;
+  readonly source: RandomAccessSource;
 }
 
 interface DemuxedRecording {
@@ -68,7 +74,7 @@ async function demuxInputs(
 ): Promise<DemuxedRecording> {
   const { ports, signal } = attempt;
   const openings = inputs.map((input) => ({ input, source: ports.sources.open(input) }));
-  const recording = await readTrailerCarrier(openings.map(({ source }) => source));
+  const recording = await readRecordingOf(openings, ports);
   signal.throwIfAborted();
   const settled = await Promise.allSettled(
     openings.map(({ input, source }) => ports.demuxer.open(source, inputName(input))),
@@ -83,6 +89,47 @@ async function demuxInputs(
   if (failure) throw failure.reason;
   signal.throwIfAborted();
   return { recording, inputs: opened };
+}
+
+/**
+ * The layout hints of a file without an info record: the tracks alone decide.
+ */
+const NO_HINTS: LayoutHints = { fileLayout: undefined, trackOrder: undefined };
+
+async function readRecordingOf(
+  openings: readonly Opening[],
+  ports: RecordingPorts,
+): Promise<Recording> {
+  try {
+    return await readTrailerCarrier(openings.map(({ source }) => source));
+  } catch (error) {
+    const [only] = openings;
+    const isLoneFileWithoutTrailer =
+      openings.length === 1 && hasErrorCode(error, 'invalid-trailer');
+    if (isLoneFileWithoutTrailer && only) await refuseAsLoneHalf(only, ports);
+    throw error;
+  }
+}
+
+/**
+ * A file without a trailer may be the _10_ half of an older camera's pair, which writes the
+ * trailer to _00_ alone: its one square track tells, and the refusal asks for the other file
+ * instead of calling it damaged. Anything else leaves the trailer's own refusal standing.
+ */
+async function refuseAsLoneHalf(opening: Opening, ports: RecordingPorts): Promise<void> {
+  let input: DemuxedInput;
+  try {
+    input = await ports.demuxer.open(opening.source, inputName(opening.input));
+  } catch {
+    return;
+  }
+  try {
+    detectLensLayout([input], NO_HINTS);
+  } catch (error) {
+    if (hasErrorCode(error, 'missing-second-file')) throw error;
+  } finally {
+    input.dispose();
+  }
 }
 
 /**
@@ -154,9 +201,9 @@ interface AssemblyParts {
 
 function assemble(parts: AssemblyParts, disposables: Disposables): OpenedRecording {
   const { demuxed, layout, frameSources, calibration, timing } = parts;
-  const [primary] = demuxed.inputs;
   const duration = seconds(Math.min(...demuxed.inputs.map((input) => input.duration)));
-  const audioTrack = primary?.audioTracks[0];
+  // Whichever file carries the sound: a split pair given either way round still plays it.
+  const [audioTrack] = demuxed.inputs.flatMap((input) => input.audioTracks);
   return {
     recording: demuxed.recording,
     layout,

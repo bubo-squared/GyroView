@@ -221,6 +221,60 @@ describe('openRecording', () => {
     opened.dispose();
   });
 
+  it('asks for the other file of a lone _10_ file without a trailer, not calling it damaged', async () => {
+    const opener = new MapSourceOpener();
+    const withoutTrailer = opener.register(SECOND_URL, new Uint8Array(4096));
+    const [screenTrack] = squareTracks();
+    const demuxer = new FakeDemuxer([
+      { source: withoutTrailer, duration: seconds(3), videoTracks: [screenTrack!] },
+    ]);
+    const ports = fakePorts({ sources: opener, demuxer });
+    const source = sourceOf({ main: { url: SECOND_URL } });
+
+    await expect(openRecording(source, ports, new AbortController().signal)).rejects.toMatchObject({
+      code: 'missing-second-file',
+    });
+    expect(demuxer.openCount).toBe(0);
+  });
+
+  it('calls a file without a trailer damaged when its tracks are no half of a pair', async () => {
+    const opener = new MapSourceOpener();
+    const withoutTrailer = opener.register(MAIN_URL, new Uint8Array(4096));
+    const demuxer = new FakeDemuxer([
+      { source: withoutTrailer, duration: seconds(3), videoTracks: squareTracks() },
+    ]);
+    const ports = fakePorts({ sources: opener, demuxer });
+
+    await expect(
+      openRecording(sourceOf(), ports, new AbortController().signal),
+    ).rejects.toMatchObject({ code: 'invalid-trailer' });
+  });
+
+  it('plays the sound of the pair from whichever file carries it', async () => {
+    const opener = new MapSourceOpener();
+    const withoutTrailer = opener.register(SECOND_URL, new Uint8Array(4096));
+    const withTrailer = opener.register(MAIN_URL, fixture.x5Bytes);
+    const [screenTrack] = squareTracks();
+    const [backTrack] = squareTracks();
+    const sound = { openSegments: (): Promise<never> => Promise.reject(new Error('not needed')) };
+    const demuxer = new FakeDemuxer([
+      { source: withoutTrailer, duration: seconds(3), videoTracks: [screenTrack!] },
+      {
+        source: withTrailer,
+        duration: seconds(3),
+        videoTracks: [backTrack!],
+        audioTracks: [sound],
+      },
+    ]);
+    const ports = fakePorts({ sources: opener, demuxer });
+    const source = sourceOf({ main: { url: SECOND_URL }, second: { url: MAIN_URL } });
+
+    const opened = await openRecording(source, ports, new AbortController().signal);
+
+    expect(opened.audioTrack).toBe(sound);
+    opened.dispose();
+  });
+
   it('fetches the _00_ file for a lone _10_ file that has no trailer', async () => {
     const opener = new MapSourceOpener();
     const withoutTrailer = opener.register(SECOND_URL, new Uint8Array(4096));

@@ -30,7 +30,8 @@ export class SessionRelay {
   private stopListening: readonly (() => void)[] = [];
   private lastState: PlayerState | undefined;
   /**
-   * Counts state changes, so a change whose listener made a newer one stops relaying.
+   * Counts state changes and detachments, so a change whose listener made a newer one, or let the
+   * session go, stops relaying.
    */
   private changes = 0;
 
@@ -63,6 +64,7 @@ export class SessionRelay {
     for (const stop of this.stopListening) stop();
     this.stopListening = [];
     this.lastState = undefined;
+    this.changes += 1;
   }
 
   private onStateChange(state: PlayerState, session: RelayedSession): void {

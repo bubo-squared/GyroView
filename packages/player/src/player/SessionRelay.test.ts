@@ -36,31 +36,55 @@ function ignoreEnd(): void {
   // The session is paused long before its end.
 }
 
+interface Relaying {
+  readonly relay: SessionRelay;
+  readonly events: TypedEmitter<PlayerEvents>;
+  readonly relayed: string[];
+  readonly states: PlayerState[];
+}
+
+function relaying(session: PlaybackSession<FakeFrameHandle>): Relaying {
+  const events = new TypedEmitter<PlayerEvents>();
+  const relayed: string[] = [];
+  const states: PlayerState[] = [];
+  const relay = new SessionRelay({
+    events,
+    onState: (state): void => {
+      states.push(state);
+    },
+    onEnded: ignoreEnd,
+  });
+  relay.attach(session);
+  for (const name of ['play', 'waiting', 'pause'] as const) {
+    events.on(name, () => {
+      relayed.push(name);
+    });
+  }
+  return { relay, events, relayed, states };
+}
+
 describe('SessionRelay', () => {
   it("cuts a change's events short when a listener changes the state again", async () => {
-    const events = new TypedEmitter<PlayerEvents>();
-    const relayed: string[] = [];
-    const states: PlayerState[] = [];
-    const relay = new SessionRelay({
-      events,
-      onState: (state): void => {
-        states.push(state);
-      },
-      onEnded: ignoreEnd,
-    });
     const session = idleSession();
-    relay.attach(session);
-    for (const name of ['play', 'waiting', 'pause'] as const) {
-      events.on(name, () => {
-        relayed.push(name);
-      });
-    }
+    const { events, relayed, states } = relaying(session);
     events.on('play', () => {
       session.pause();
     });
     await session.play();
     expect(relayed).toEqual(['play', 'pause']);
     expect(states).toEqual(['paused']);
+    session.dispose();
+  });
+
+  it("cuts a change's events short when a listener lets the session go", () => {
+    const session = idleSession();
+    const { relay, events, relayed, states } = relaying(session);
+    events.on('play', () => {
+      relay.detach();
+    });
+    void session.play();
+    expect(relayed).toEqual(['play']);
+    expect(states).toEqual([]);
     session.dispose();
   });
 });

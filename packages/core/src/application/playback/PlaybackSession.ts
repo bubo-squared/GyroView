@@ -1,6 +1,9 @@
 import { closeFramePair, type FramePair } from '../../ports/FramePair';
+import { ClockWatch } from './ClockWatch';
+import { SeekOrder } from './SeekOrder';
+import { TimeUpdates } from './TimeUpdates';
 import { DecodeRun, type DecodeRunParts } from './DecodeRun';
-import { isFlowing, PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
+import { PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
 import { Deferred } from '../../shared/async/Deferred';
@@ -30,28 +33,6 @@ export interface PlaybackSessionParts<Handle> extends DecodeRunParts<Handle> {
 }
 
 /**
- * Pairs queued before the clock (re)starts, so playback does not stall on its first frames.
- */
-const PRIMING_PAIRS = 2;
-/**
- * A shown frame this far behind the clock, with nothing decoded to follow it, means the decoders
- * have fallen behind: several frames at any frame rate, well beyond jitter.
- */
-const STARVATION_LAG_SECONDS = 0.25;
-/**
- * This much media time between two playing ticks means the ticks stopped while the clock ran on
- * (a hidden tab or an offscreen frame gets no animation frames); decoding the gap would replay it
- * at decode speed, so the run starts again at the clock's time. Ticks come with every animation
- * frame, a few hundredths of a second apart at the slowest.
- */
-const STOPPED_TICKS_SECONDS = 1;
-/**
- * How much media time passes between two `timeupdate`s while playing: the slowest cadence of a
- * media element's, often enough for a seek bar and cheap to relay across `postMessage`.
- */
-const TIME_UPDATE_INTERVAL_SECONDS = 0.25;
-
-/**
  * Use case: drives one recording through the decode pipeline in step with the clock and hands
  * frame pairs to the sink. The host calls {@link tick} once per animation frame; everything
  * else is event-driven. Sound follows the picture: the clock waits in `buffering` until frames
@@ -68,18 +49,15 @@ export class PlaybackSession<Handle = unknown> {
    * The pair on screen, kept open until the next one replaces it.
    */
   private presented: Presentation<Handle> | undefined;
-  /**
-   * The time the last `timeupdate` announced.
-   */
-  private announcedTime: Seconds | undefined;
+  private readonly timeUpdates = new TimeUpdates((time) => {
+    this.events.emit('timeupdate', time);
+  });
   /**
    * The `play` call waiting for the clock to start once frames are ready.
    */
   private startAttempt: Deferred<void> | undefined;
-  /**
-   * The clock's time at the last tick while playing, on the timeline of the current run.
-   */
-  private previousPlayingTick: Seconds | undefined;
+  private readonly clockWatch = new ClockWatch();
+  private readonly seeks = new SeekOrder();
 
   public constructor(private readonly parts: PlaybackSessionParts<Handle>) {}
 
@@ -118,7 +96,7 @@ export class PlaybackSession<Handle = unknown> {
     this.parts.clock.pause();
     if (!this.machine.canTransitionTo('paused')) return;
     this.setState('paused');
-    this.announceTime(this.parts.clock.currentTime);
+    this.timeUpdates.announce(this.parts.clock.currentTime);
     this.settleStartAttempt();
   }
 
@@ -137,15 +115,14 @@ export class PlaybackSession<Handle = unknown> {
   public seek(time: Seconds): void {
     if (this.machine.isOneOf('disposed', 'error')) return;
     const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
-    const wasFlowing = isFlowing(this.machine.state);
-    this.parts.clock.pause();
-    this.parts.clock.seek(target);
-    this.setState('seeking');
-    if (this.machine.isOneOf('disposed', 'error')) return;
+    const generation = this.seeks.begin(this.machine.state);
+    this.moveClockTo(target);
     this.startRun(target);
-    // A listener that paused during `seeking` keeps the session paused.
-    if (this.isIn('seeking')) this.setState(wasFlowing ? 'buffering' : 'paused');
-    this.announceTime(target);
+    if (!this.isIn('seeking')) this.setState('seeking');
+    // A listener may have sought again, paused or disposed while `seeking` was announced.
+    if (!this.isSeekCurrent(generation)) return;
+    if (this.isIn('seeking')) this.setState(this.seeks.resumesPlaying ? 'buffering' : 'paused');
+    if (this.isSeekCurrent(generation)) this.timeUpdates.announce(target);
   }
 
   /**
@@ -156,8 +133,10 @@ export class PlaybackSession<Handle = unknown> {
     const [track] = this.parts.frameSources;
     if (!track || this.machine.isOneOf('disposed', 'error')) return;
     const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
+    const generation = this.seeks.current;
     const keyPacket = await track.keyPacketAt(target);
-    if (this.machine.isOneOf('disposed', 'error')) return;
+    // A seek made meanwhile is newer: the scrub lands no more.
+    if (!this.isSeekCurrent(generation)) return;
     this.seek(keyPacket?.timestamp ?? target);
   }
 
@@ -183,6 +162,10 @@ export class PlaybackSession<Handle = unknown> {
       return;
     }
     const now = this.parts.clock.currentTime;
+    if (this.clockWatch.wasMovedFromOutside(now, this.isIn('playing'))) {
+      this.followMoveFromOutside(now);
+      return;
+    }
     if (this.haveTicksStopped(now)) {
       this.restartAt(now);
       return;
@@ -232,7 +215,7 @@ export class PlaybackSession<Handle = unknown> {
    * too, as when playback starts in a hidden tab or an offscreen frame.
    */
   private enterPlaying(): void {
-    this.previousPlayingTick = this.parts.clock.currentTime;
+    this.clockWatch.playingFrom(this.parts.clock.currentTime);
     this.setState('playing');
   }
 
@@ -259,15 +242,15 @@ export class PlaybackSession<Handle = unknown> {
     }
     if (this.isStoppedFromOutside()) {
       this.setState('paused');
-      this.announceTime(now);
+      this.timeUpdates.announce(now);
       return;
     }
-    if (this.isStarved(now)) {
+    if (this.run?.isStarvedAt(now, this.presented?.pair.timestamp) === true) {
       this.parts.clock.pause();
       this.setState('buffering');
       return;
     }
-    if (this.isTimeUpdateDue(now)) this.announceTime(now);
+    this.timeUpdates.followPlayback(now);
   }
 
   /**
@@ -286,16 +269,44 @@ export class PlaybackSession<Handle = unknown> {
     }
   }
 
+  private isSeekCurrent(generation: number): boolean {
+    return this.seeks.isCurrent(generation) && !this.machine.isOneOf('disposed', 'error');
+  }
+
   /**
-   * Whether the clock ran on for a while since the last playing tick, which the ticks missed.
-   * An ended clock is left to end the session.
+   * Stops the clock and puts it at `time`, remembering where it landed (a clock clamps to the
+   * end of its own media).
+   */
+  private moveClockTo(time: Seconds): void {
+    this.parts.clock.pause();
+    this.parts.clock.seek(time);
+    this.clockWatch.placedAt(this.parts.clock.currentTime);
+  }
+
+  /**
+   * Follows the clock where the platform moved it: decodes from there, restarting the clock's
+   * own feed at that time, and waits for the frames if playing. A start that came with it is
+   * followed on the next tick.
+   */
+  private followMoveFromOutside(now: Seconds): void {
+    const wasPlaying = this.isIn('playing');
+    const wasRunning = this.parts.clock.isRunning;
+    this.parts.clock.seek(now);
+    this.startRun(now);
+    if (wasPlaying) {
+      this.parts.clock.pause();
+      this.setState('buffering');
+    } else if (!wasRunning) {
+      this.timeUpdates.announce(now);
+    }
+  }
+
+  /**
+   * Ticks were missed while the clock ran on; an ended clock is left to end the session.
    */
   private haveTicksStopped(now: Seconds): boolean {
-    const previous = this.previousPlayingTick;
-    const isPlaying = this.machine.state === 'playing';
-    this.previousPlayingTick = isPlaying ? now : undefined;
-    const gap = previous === undefined ? 0 : now - previous;
-    return isPlaying && gap > STOPPED_TICKS_SECONDS && !this.parts.clock.hasEnded;
+    const wereMissed = this.clockWatch.wereTicksMissed(now, this.isIn('playing'));
+    return wereMissed && !this.parts.clock.hasEnded;
   }
 
   /**
@@ -306,8 +317,7 @@ export class PlaybackSession<Handle = unknown> {
   private restartAt(now: Seconds): void {
     const { clock, duration } = this.parts;
     if (now >= duration) {
-      clock.pause();
-      clock.seek(duration);
+      this.moveClockTo(duration);
       this.end();
       return;
     }
@@ -315,7 +325,7 @@ export class PlaybackSession<Handle = unknown> {
     clock.pause();
     this.startRun(now);
     this.setState(wasRunning ? 'buffering' : 'paused');
-    if (!wasRunning) this.announceTime(now);
+    if (!wasRunning) this.timeUpdates.announce(now);
   }
 
   /**
@@ -327,18 +337,6 @@ export class PlaybackSession<Handle = unknown> {
     return this.machine.state === 'ended' || isAtEndOfMedia;
   }
 
-  private isTimeUpdateDue(now: Seconds): boolean {
-    const { announcedTime } = this;
-    return (
-      announcedTime === undefined || Math.abs(now - announcedTime) >= TIME_UPDATE_INTERVAL_SECONDS
-    );
-  }
-
-  private announceTime(time: Seconds): void {
-    this.announcedTime = time;
-    this.events.emit('timeupdate', time);
-  }
-
   /**
    * The platform stopped the clock by itself (media keys, an audio interruption) while playing:
    * the session follows, so the next `play` starts it again.
@@ -348,25 +346,8 @@ export class PlaybackSession<Handle = unknown> {
     return !clock.isRunning && !clock.hasEnded;
   }
 
-  /**
-   * Enough frames are decoded to start moving: a couple queued, or the run is over and what is
-   * left is already there.
-   */
   private isPrimed(): boolean {
-    const { run } = this;
-    const primingPairs = Math.min(PRIMING_PAIRS, this.parts.queueCapacity);
-    return run !== undefined && (run.hasReachedEnd || run.queuedPairs >= primingPairs);
-  }
-
-  /**
-   * Nothing is queued, the run is not over, and the frame on screen is well behind the clock:
-   * the decoders cannot keep up, even when each tick still finds a pair to show.
-   */
-  private isStarved(now: Seconds): boolean {
-    const { run } = this;
-    const isWaitingOnDecoders = run?.queuedPairs === 0 && !run.hasReachedEnd;
-    const lag = now - (this.presented?.pair.timestamp ?? -Infinity);
-    return isWaitingOnDecoders && lag > STARVATION_LAG_SECONDS;
+    return this.run?.isPrimed === true;
   }
 
   /**
@@ -416,9 +397,8 @@ export class PlaybackSession<Handle = unknown> {
    * decoded to the end has been shown and the clock passed the duration.
    */
   private isPlayedOut(now: Seconds): boolean {
-    if (this.parts.clock.hasEnded) return true;
-    const isDrained = this.run?.hasReachedEnd === true && this.run.queuedPairs === 0;
-    return isDrained && now >= this.parts.duration;
+    const hasShownAll = this.run?.isDrained === true && now >= this.parts.duration;
+    return this.parts.clock.hasEnded || hasShownAll;
   }
 
   private present(pair: FramePair<Handle>, mediaTime: Seconds): void {
@@ -434,7 +414,7 @@ export class PlaybackSession<Handle = unknown> {
    */
   private startRun(from: Seconds): void {
     this.abortRun();
-    this.previousPlayingTick = undefined;
+    this.clockWatch.forgetTicks();
     this.run = DecodeRun.start(this.parts, from, {
       onProgress: (): void => {
         this.resumeIfPrimed();
@@ -454,7 +434,7 @@ export class PlaybackSession<Handle = unknown> {
     if (!this.machine.canTransitionTo('ended')) return;
     this.parts.clock.pause();
     this.setState('ended');
-    this.announceTime(this.parts.clock.currentTime);
+    this.timeUpdates.announce(this.parts.clock.currentTime);
     this.events.emit('ended', undefined);
   }
 

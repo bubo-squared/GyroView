@@ -9,6 +9,16 @@ import type { FramePair } from '../../ports/FramePair';
 import type { VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { seconds, type Seconds } from '../../shared/units/time';
 
+/**
+ * Pairs queued before the clock (re)starts, so playback does not stall on its first frames.
+ */
+const PRIMING_PAIRS = 2;
+/**
+ * A shown frame this far behind the clock, with nothing decoded to follow it, means the decoders
+ * have fallen behind: several frames at any frame rate, well beyond jitter.
+ */
+const STARVATION_LAG_SECONDS = 0.25;
+
 export interface DecodeRunParts<Handle> {
   /**
    * One reader per frame source, in the order of `lensFrameOrder`.
@@ -41,14 +51,16 @@ export interface DecodeRunListener {
 export class DecodeRun<Handle> {
   private readonly queue: FramePairQueue<Handle>;
   private readonly pipeline: DecodePipeline<Handle>;
+  private readonly primingPairs: number;
   private isAborted = false;
-  private hasReachedEndValue = false;
+  private hasReachedEnd = false;
   private hasHandedOutPair = false;
 
   private constructor(
     parts: DecodeRunParts<Handle>,
     private readonly listener: DecodeRunListener,
   ) {
+    this.primingPairs = Math.min(PRIMING_PAIRS, parts.queueCapacity);
     this.queue = new FramePairQueue<Handle>(parts.queueCapacity, () => {
       if (!this.isAborted) listener.onProgress();
     });
@@ -70,14 +82,29 @@ export class DecodeRun<Handle> {
   }
 
   /**
-   * Everything to be decoded has been, and what is left is in the queue.
+   * Everything has been decoded and every pair handed out.
    */
-  public get hasReachedEnd(): boolean {
-    return this.hasReachedEndValue;
+  public get isDrained(): boolean {
+    return this.hasReachedEnd && this.queue.length === 0;
   }
 
-  public get queuedPairs(): number {
-    return this.queue.length;
+  /**
+   * Enough frames are decoded to start moving: a couple queued, or the run is over and what is
+   * left is already there.
+   */
+  public get isPrimed(): boolean {
+    return this.hasReachedEnd || this.queue.length >= this.primingPairs;
+  }
+
+  /**
+   * Nothing is queued, the run is not over, and the frame on screen (shown for `shownAt`, if any)
+   * is well behind the clock: the decoders cannot keep up, even when each tick still finds a
+   * pair to show.
+   */
+  public isStarvedAt(now: Seconds, shownAt: Seconds | undefined): boolean {
+    const isWaitingOnDecoders = this.queue.length === 0 && !this.hasReachedEnd;
+    const lag = now - (shownAt ?? -Infinity);
+    return isWaitingOnDecoders && lag > STARVATION_LAG_SECONDS;
   }
 
   /**
@@ -102,7 +129,7 @@ export class DecodeRun<Handle> {
     try {
       const { hasReachedEnd } = await report;
       if (this.isAborted) return;
-      this.hasReachedEndValue = hasReachedEnd;
+      this.hasReachedEnd = hasReachedEnd;
       this.listener.onProgress();
     } catch (error) {
       if (!this.isAborted) this.listener.onFailure(error);

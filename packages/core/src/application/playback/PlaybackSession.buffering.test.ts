@@ -116,25 +116,12 @@ describe('PlaybackSession buffering', () => {
     session.dispose();
   });
 
-  it('pauses with a clock the platform stopped by itself, and plays again on request', async () => {
-    const clock = new FakePlaybackClock();
-    const { session, states, advance } = sessionHarness({ clock });
-    const updates: number[] = [];
-    session.events.on('timeupdate', (time) => {
-      updates.push(time);
-    });
-    await session.play();
-    await advance(0);
-
-    await advance(100);
-    clock.pause();
-    await advance(30);
-
-    expect(session.state).toBe('paused');
-    expect(states.at(-1)).toBe('paused');
-    expect(updates.at(-1)).toBeCloseTo(clock.currentTime, 6);
-    await session.play();
-    expect(clock.isRunning).toBe(true);
+  it('lets a seek made while a scrub looks for its key frame win', async () => {
+    const { session } = sessionHarness();
+    const scrubbing = session.scrub(seconds(1.5));
+    session.seek(seconds(2.5));
+    await scrubbing;
+    expect(session.currentTime).toBe(2.5);
     session.dispose();
   });
 });

@@ -3,7 +3,6 @@ import {
   degrees,
   messageOf,
   seconds,
-  type GyroViewError,
   type Seconds,
   type StabilizationMode,
   type ViewMode,
@@ -29,6 +28,7 @@ import {
   defineStringProperties,
   propertyNameOf,
 } from './reflectedProperties';
+import { mirrorPlayerEvents } from './playerEventMirror';
 import { ELEMENT_TEMPLATE } from './template';
 import { createBrowserPlayer } from '../browserPlayer';
 import { queryShadow } from '../controls/controlParts';
@@ -38,7 +38,7 @@ import { bindKeyboard, type KeyboardHost } from '../controls/keyboard';
 import { ViewGestures } from '../controls/ViewGestures';
 import { ensureFinite } from '../player/ensureFinite';
 import type { Player } from '../player/Player';
-import { PLAYER_EVENT_NAMES, type PlayerStatus } from '../player/PlayerEvents';
+import type { PlayerStatus } from '../player/PlayerEvents';
 import type { PlayerMetadata } from '../PlayerMetadata';
 /**
  * Attributes whose properties mirror them, as `img.src` does: what to play and how to present
@@ -97,8 +97,6 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   private readonly fullscreen = new FullscreenToggle(this);
   private readonly idle: IdleWatcher;
   private readonly posterImage: HTMLImageElement;
-  private readonly errorMessage: HTMLElement;
-  private readonly errorCode: HTMLElement;
   private scheduledLoad: Promise<void> | undefined;
   /**
    * The recording the attributes name is still to be loaded once connected: at first, after a
@@ -121,8 +119,6 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     const canvas = queryShadow(shadow, 'canvas', HTMLCanvasElement);
     const audio = queryShadow(shadow, 'audio', HTMLAudioElement);
     this.posterImage = queryShadow(shadow, '.poster', HTMLImageElement);
-    this.errorMessage = queryShadow(shadow, '.error-message', HTMLElement);
-    this.errorCode = queryShadow(shadow, '.error-code', HTMLElement);
     this.player = createBrowserPlayer({ canvas, audio });
     defineLiveSettings(this, this.player);
     const host = this.controlsHost();
@@ -130,7 +126,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     new ViewGestures(canvas, this.player, this.onPictureTap);
     bindKeyboard(this, host);
     this.idle = new IdleWatcher(this, () => this.player.status === 'playing');
-    this.observePlayer();
+    mirrorPlayerEvents(this.player, { element: this, shadow, idle: this.idle });
   }
 
   /**
@@ -423,34 +419,6 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     // The player is loading now, so it starts the recording there; a later seek replaces it.
     if (startTime !== undefined) this.player.seek(startTime);
     return loading;
-  }
-
-  /**
-   * The element's own bookkeeping runs before the events reach page listeners, so a listener
-   * sees the attributes already matching the event it hears. Every player event is then
-   * dispatched as a composed `CustomEvent` of the same name, the payload in `detail`.
-   */
-  private observePlayer(): void {
-    this.player.events.on('statuschange', (status) => {
-      this.dataset['status'] = status;
-      this.idle.refresh();
-    });
-    this.player.events.on('frame', () => {
-      this.dataset['hasFrame'] = '';
-    });
-    this.player.events.on('error', (error) => {
-      this.showError(error);
-    });
-    for (const name of PLAYER_EVENT_NAMES) {
-      this.player.events.on(name, (detail) => {
-        this.dispatchEvent(new CustomEvent(name, { detail, composed: true }));
-      });
-    }
-  }
-
-  private showError(error: GyroViewError): void {
-    this.errorMessage.textContent = error.message;
-    this.errorCode.textContent = error.code;
   }
 
   private readonly warn = (message: string): void => {

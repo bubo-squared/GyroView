@@ -228,6 +228,27 @@ describe('the embed bridge over a message channel', () => {
     await pausing;
     handle.destroy();
   });
+
+  it('forgets a command the channel could not carry, so the frame may forget what it answered', async () => {
+    const channel = new MessageChannel();
+    const handle = new EmbedHandle(portEndpoint(channel.port2), () => location.href);
+    const received: ProtocolMessage[] = [];
+    const hostSide = portEndpoint(channel.port1);
+    hostSide.receive((message) => {
+      received.push(message);
+    });
+    hostSide.send(helloMessage({ status: 'ready' }));
+    await waitFor(() => handle.state.status === 'ready', 'the hello');
+
+    await expect(
+      handle.load({ src: new URL('clip.insv', location.href) as unknown as string }),
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    const pausing = handle.pause();
+    await waitFor(() => received.length === 1, 'the next command');
+    expect(received[0]).toMatchObject({ name: 'pause', id: 2, oldestUnanswered: 2 });
+    handle.destroy();
+    await expect(pausing).rejects.toMatchObject({ code: 'embed-destroyed' });
+  });
 });
 
 describe('an embed handle whose frame loads anew', () => {

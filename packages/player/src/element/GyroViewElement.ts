@@ -106,9 +106,9 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
    */
   private isLoadOwed = true;
   /**
-   * A `load()` asked for out of the document, waiting for the connection.
+   * A `load()` asked for out of the document, settled by the load the connection starts.
    */
-  private awaitedConnection: Deferred<void> | undefined;
+  private awaitedLoad: Deferred<void> | undefined;
   private files: FileSource | undefined;
 
   public constructor() {
@@ -185,8 +185,8 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     this.dataset['status'] = this.player.status;
     this.idle.start();
     if (this.isLoadOwed) this.scheduleLoad();
-    this.awaitedConnection?.resolve();
-    this.awaitedConnection = undefined;
+    void this.awaitedLoad?.follow(this.scheduledLoad ?? Promise.resolve());
+    this.awaitedLoad = undefined;
   }
 
   public disconnectedCallback(): void {
@@ -299,9 +299,8 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
    * read, or else now; out of the document, once connected. Resolves once the recording is
    * ready; rejects with the failure, which is dispatched as an `error` event too.
    */
-  public async load(): Promise<void> {
-    if (!this.isConnected) await this.connection();
-    return this.scheduledLoad ?? this.reload();
+  public load(): Promise<void> {
+    return this.isConnected ? (this.scheduledLoad ?? this.reload()) : this.loadOnConnection();
   }
 
   /**
@@ -368,13 +367,13 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   }
 
   /**
-   * Resolves when the element is next connected, owing the load until then: only a connected
+   * The load the element starts when it is next connected, owed until then: only a connected
    * element can let its recording go again.
    */
-  private connection(): Promise<void> {
+  private loadOnConnection(): Promise<void> {
     this.isLoadOwed = true;
-    this.awaitedConnection ??= new Deferred<void>();
-    return this.awaitedConnection.promise;
+    this.awaitedLoad ??= new Deferred<void>();
+    return this.awaitedLoad.promise;
   }
 
   /**

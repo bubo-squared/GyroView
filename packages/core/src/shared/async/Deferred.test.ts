@@ -20,4 +20,13 @@ describe('Deferred', () => {
     expect(deferred.isSettled).toBe(true);
     await expect(deferred.promise).rejects.toThrow('first');
   });
+
+  it('follows an outcome settled elsewhere, resolved or rejected', async () => {
+    const resolved = new Deferred<number>();
+    void resolved.follow(Promise.resolve(7));
+    await expect(resolved.promise).resolves.toBe(7);
+    const rejected = new Deferred<number>();
+    void rejected.follow(Promise.reject(new Error('no')));
+    await expect(rejected.promise).rejects.toThrow('no');
+  });
 });

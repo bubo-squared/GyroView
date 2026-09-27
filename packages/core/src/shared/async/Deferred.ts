@@ -30,4 +30,15 @@ export class Deferred<Value> {
     this.isSettledNow = true;
     this.rejectPromise?.(reason);
   }
+
+  /**
+   * Settles as `outcome` does, once it has: hands work begun elsewhere to whoever waits here.
+   */
+  public async follow(outcome: Promise<Value>): Promise<void> {
+    try {
+      this.resolve(await outcome);
+    } catch (error) {
+      this.reject(error);
+    }
+  }
 }

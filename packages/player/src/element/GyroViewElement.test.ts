@@ -776,6 +776,10 @@ describe('<gyro-view>', () => {
     const element = document.createElement('gyro-view') as GyroViewElement;
     element.style.width = '256px';
     element.src = X5_RECORDING_URL;
+    const statuses: string[] = [];
+    element.addEventListener('statuschange', (event) => {
+      statuses.push(String((event as CustomEvent).detail));
+    });
     const loaded = element.load();
     await settle();
     // Out of the document nothing could let the recording go again.
@@ -784,7 +788,7 @@ describe('<gyro-view>', () => {
     elements.push(element);
     await loaded;
     expect(element.status).toBe('ready');
-    expect(element.metadata).toBeDefined();
+    expect(statuses).toEqual(['loading', 'ready']);
   });
 
   it('loads a src set while out of the document once back in it', async () => {

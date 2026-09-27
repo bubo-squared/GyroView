@@ -1,7 +1,7 @@
 /**
  * Enforces the hexagonal dependency rule:
  *   core <- adapters <- player <- apps, core has no runtime dependencies, adapters do not
- *   import each other. See PLAN.md "Architecture" and "Engineering standards".
+ *   import each other. See docs/ARCHITECTURE.md and CONTRIBUTING.md.
  * @type {import('dependency-cruiser').IConfiguration}
  */
 module.exports = {

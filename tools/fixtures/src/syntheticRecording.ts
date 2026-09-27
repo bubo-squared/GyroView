@@ -10,7 +10,7 @@ export interface TrailerRecords {
 }
 
 /**
- * Records sit at aligned offsets like the camera's (1 MiB there); 4 KiB keeps the fixture small.
+ * Records sit at aligned offsets like the camera's (128 KiB there); 4 KiB keeps the fixture small.
  */
 const RECORD_ALIGNMENT = 4096;
 

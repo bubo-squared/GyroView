@@ -1,4 +1,4 @@
-import { hasErrorCode, locateOtherLensFile } from '@gyroview/core';
+import { hasErrorCode, lazy, locateOtherLensFile } from '@gyroview/core';
 
 import type { OpenedRecording } from './OpenedRecording';
 import type { OpenAttempt } from './OpenAttempt';
@@ -39,16 +39,9 @@ function attemptFor(source: PlayerSource, ports: RecordingPorts, signal: AbortSi
     ? {
         ports,
         signal,
-        findSecondFile: once(() => locateOtherLensFile(main.url, ports.locator)),
+        // Asked before the tracks are read and again once they fall short, the lookup would
+        // otherwise ask the server twice for a file that is not there.
+        findSecondFile: lazy(() => locateOtherLensFile(main.url, ports.locator)),
       }
     : { ports, signal };
-}
-
-/**
- * The lookup made at most once: asked before the tracks are read and again once they fall
- * short, it would otherwise ask the server twice for a file that is not there.
- */
-function once(lookUp: () => Promise<string | undefined>): () => Promise<string | undefined> {
-  let answer: Promise<string | undefined> | undefined;
-  return () => (answer ??= lookUp());
 }

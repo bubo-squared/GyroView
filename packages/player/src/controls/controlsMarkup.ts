@@ -74,12 +74,18 @@ function choiceMenuOf(menu: ChoiceMenuMarkup): string {
 }
 
 /**
- * The big play button and the control bar with their own styles, for the element's stage. Class
- * names are the contract with `queryControlParts` and `controls.css`; the controls give the play
- * and mute buttons their state-dependent labels and icons when they are bound.
+ * The controls' stylesheet, which the element adopts beside its own.
  */
-export const CONTROLS_MARKUP = `
-  <style>${controlsStyles}</style>
+export const CONTROLS_STYLES: string = controlsStyles;
+
+/**
+ * The big play button and the control bar, for the element's stage; built when first asked for,
+ * so a page importing only the package's types and errors carries none of it. Class names are
+ * the contract with `queryControlParts` and `controls.css`; the controls give the play and mute
+ * buttons their state-dependent labels and icons when they are bound.
+ */
+export function controlsMarkup(): string {
+  return `
   <button class="big-play" type="button">${ICONS.play}</button>
   <div class="controls" part="controls">
     <input class="seek" type="range" min="0" max="0" step="0.01" value="0" aria-label="Seek" />
@@ -106,3 +112,4 @@ export const CONTROLS_MARKUP = `
       <button class="fullscreen" type="button" aria-label="Fullscreen">${ICONS.fullscreen}</button>
     </div>
   </div>`;
+}

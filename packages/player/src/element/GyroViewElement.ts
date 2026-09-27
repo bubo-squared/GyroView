@@ -33,7 +33,7 @@ import {
   propertyNameOf,
 } from './reflectedProperties';
 import { mirrorPlayerEvents } from './playerEventMirror';
-import { ELEMENT_TEMPLATE } from './template';
+import { renderShadowTree } from './template';
 import { TypedEventElement } from './TypedEventElement';
 import { createBrowserPlayer } from '../browserPlayer';
 import { queryShadow } from '../controls/controlParts';
@@ -122,7 +122,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     defineKeywordProperties(this, KEYWORD_ATTRIBUTES);
     defineBooleanProperties(this, BOOLEAN_ATTRIBUTES);
     const shadow = this.attachShadow({ mode: 'open' });
-    shadow.innerHTML = ELEMENT_TEMPLATE;
+    renderShadowTree(shadow);
     const canvas = queryShadow(shadow, 'canvas', HTMLCanvasElement);
     const audio = queryShadow(shadow, 'audio', HTMLAudioElement);
     this.posterImage = queryShadow(shadow, '.poster', HTMLImageElement);

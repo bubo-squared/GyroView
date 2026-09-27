@@ -301,6 +301,14 @@ describe('<gyro-view>', () => {
     expect(getComputedStyle(controls).pointerEvents).toBe('none');
   });
 
+  it('styles its shadow tree with adopted stylesheets, which a CSP does not refuse as it does <style>', () => {
+    const [first, second] = [create({ controls: '' }), create({ controls: '' })];
+    expect(first.shadowRoot?.querySelector('style')).toBeNull();
+    expect(first.shadowRoot?.adoptedStyleSheets).toHaveLength(2);
+    expect(second.shadowRoot?.adoptedStyleSheets).toEqual(first.shadowRoot?.adoptedStyleSheets);
+    expect(getComputedStyle(control(first, '.controls', HTMLElement)).position).toBe('absolute');
+  });
+
   it('mirrors its source and presentation attributes as properties and takes focus', () => {
     const element = create({ controls: '', src: X5_RECORDING_URL });
     expect(element.src).toBe(X5_RECORDING_URL);

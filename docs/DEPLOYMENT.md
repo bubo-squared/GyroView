@@ -75,10 +75,13 @@ to a blog post is fetched from the blog's host, across origins from the frame.
 
 A page with a Content Security Policy needs, for the iframe form, `frame-src` for the frame's
 origin and `script-src` for `embed.js`. The element form runs in the page itself, so it needs
-`script-src` for `gyro-view.js`, `connect-src` for the media host, `style-src 'unsafe-inline'`
-(the element's styles are `<style>` elements in its shadow root), `media-src blob:` (the sound
+`script-src` for `gyro-view.js`, `connect-src` for the media host, `media-src blob:` (the sound
 plays through a Media Source object URL; without it the player falls back to a silent clock
-with a warning), `img-src` for a poster, and no `worker-src` (the player uses no workers).
+with a warning), `img-src` for a poster, and no `worker-src` (the player uses no workers). It
+needs no `'unsafe-inline'` styles: the element adopts stylesheets it constructs, which
+`style-src` does not govern. A page that enforces Trusted Types
+(`require-trusted-types-for 'script'`) allows the policy the element parses its own markup
+through: `trusted-types gyroview`, with `'allow-duplicates'` if two copies of the player load.
 
 ## Error codes
 

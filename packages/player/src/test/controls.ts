@@ -1,7 +1,8 @@
 import { expect } from 'vitest';
 
 import { queryControlParts, type ControlParts } from '../controls/controlParts';
-import { CONTROLS_MARKUP } from '../controls/controlsMarkup';
+import { controlsMarkup } from '../controls/controlsMarkup';
+import { parseMarkup } from '../controls/parseMarkup';
 
 /**
  * The controls' real markup in the page, and its parts as the controls find them.
@@ -15,7 +16,7 @@ const fixtures: HTMLElement[] = [];
 
 export function renderControls(): ControlsFixture {
   const root = document.createElement('div');
-  root.innerHTML = CONTROLS_MARKUP;
+  root.append(parseMarkup(controlsMarkup()));
   document.body.append(root);
   fixtures.push(root);
   return { root, parts: queryControlParts(root) };

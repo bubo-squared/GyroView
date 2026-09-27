@@ -154,6 +154,7 @@ export {
   messageOf,
   type GyroViewErrorCode,
 } from './shared/errors/GyroViewError';
+export { lazy } from './shared/lazy';
 export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
 export { IDENTITY_MATRIX3, transformVector, type Matrix3 } from './shared/math/Matrix3';
 export {

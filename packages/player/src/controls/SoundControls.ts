@@ -1,5 +1,5 @@
 import type { ControlParts } from './controlParts';
-import { ICONS } from './icons';
+import { iconNode } from './icons';
 import type { Player } from '../player/Player';
 
 export type SoundParts = Pick<ControlParts, 'mute' | 'volume'>;
@@ -44,7 +44,7 @@ export class SoundControls {
   private reflect(): void {
     const { isMuted, volume } = this.player;
     const shown = isMuted ? 0 : volume;
-    this.parts.mute.innerHTML = isMuted ? ICONS.muted : ICONS.sound;
+    this.parts.mute.replaceChildren(iconNode(isMuted ? 'muted' : 'sound'));
     this.parts.mute.setAttribute('aria-pressed', String(isMuted));
     this.parts.volume.value = String(shown);
     this.parts.volume.setAttribute('aria-valuetext', `${Math.round(shown * PERCENT)}%`);

@@ -1,6 +1,6 @@
 import type { ControlParts } from './controlParts';
 import type { ControlsHost } from './ControlsHost';
-import { ICONS } from './icons';
+import { iconNode } from './icons';
 import type { Player } from '../player/Player';
 
 type TransportParts = Pick<ControlParts, 'play' | 'bigPlay' | 'stop'>;
@@ -41,6 +41,6 @@ export class TransportButtons {
     for (const button of [this.parts.play, this.parts.bigPlay]) {
       button.setAttribute('aria-label', label);
     }
-    this.parts.play.innerHTML = isPaused ? ICONS.play : ICONS.pause;
+    this.parts.play.replaceChildren(iconNode(isPaused ? 'play' : 'pause'));
   }
 }

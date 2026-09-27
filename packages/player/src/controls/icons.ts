@@ -1,3 +1,5 @@
+import { parseMarkup } from './parseMarkup';
+
 /**
  * Wraps an icon's shapes in a 24-unit square. Shapes are stroked in `currentColor` unless they
  * say otherwise, so every icon takes the controls' text colour.
@@ -31,3 +33,20 @@ export const ICONS = {
   ),
   fullscreen: icon('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
 } satisfies Readonly<Record<string, string>>;
+
+export type IconName = keyof typeof ICONS;
+
+const parsedIcons = new Map<IconName, DocumentFragment>();
+
+/**
+ * A copy of an icon for a button to show; each is parsed once per page, so changing a button's
+ * icon parses nothing.
+ */
+export function iconNode(name: IconName): Node {
+  let parsed = parsedIcons.get(name);
+  if (!parsed) {
+    parsed = parseMarkup(ICONS[name]);
+    parsedIcons.set(name, parsed);
+  }
+  return parsed.cloneNode(true);
+}

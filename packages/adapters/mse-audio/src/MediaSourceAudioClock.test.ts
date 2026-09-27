@@ -119,6 +119,32 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     expect(clock.failure).toBeUndefined();
   });
 
+  it('stands at its end without seeking its element there, and seeks it again once away', async () => {
+    const clock = await openClock();
+    const [element] = elements;
+    let seeks = 0;
+    element?.addEventListener('seeking', () => {
+      seeks += 1;
+    });
+    clock.seek(FIXTURE_DURATION);
+    await wait(100);
+    expect(clock.hasEnded).toBe(true);
+    expect(clock.currentTime).toBeCloseTo(FIXTURE_DURATION, 2);
+    expect(seeks).toBe(0);
+    expect(element?.currentTime).toBe(0);
+    clock.seek(seconds(1));
+    expect(clock.hasEnded).toBe(false);
+    expect(element?.currentTime).toBeCloseTo(1, 2);
+  });
+
+  it('stops running once it stands at its end', async () => {
+    const clock = await openClock();
+    await clock.start();
+    clock.seek(FIXTURE_DURATION);
+    expect(clock.isRunning).toBe(false);
+    expect(clock.hasEnded).toBe(true);
+  });
+
   it('reports a failing segment source through failure instead of swallowing it', async () => {
     const broken: AudioSegmentSource = {
       mimeType: source.mimeType,

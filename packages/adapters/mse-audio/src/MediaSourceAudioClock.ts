@@ -22,6 +22,11 @@ import { SourceBufferFeeder } from './SourceBufferFeeder';
  * See ADR 0007.
  */
 export class MediaSourceAudioClock implements PlaybackClock {
+  /**
+   * The end the clock stands at since a seek there, the element left where it was.
+   */
+  private standingEnd: Seconds | undefined;
+
   private constructor(
     private readonly element: HTMLMediaElement,
     private readonly feeder: SourceBufferFeeder,
@@ -65,7 +70,7 @@ export class MediaSourceAudioClock implements PlaybackClock {
   }
 
   public get currentTime(): Seconds {
-    return seconds(this.element.currentTime);
+    return this.standingEnd ?? seconds(this.element.currentTime);
   }
 
   /**
@@ -77,12 +82,10 @@ export class MediaSourceAudioClock implements PlaybackClock {
   }
 
   /**
-   * At the end of its media: `ended`, or seeked there, which some engines (WebKit) report as
-   * ended only once the seek settles.
+   * Standing at the end since a seek there, or the element `ended`: it played to its end.
    */
   public get hasEnded(): boolean {
-    const { element } = this;
-    return element.ended || element.currentTime >= element.duration;
+    return this.standingEnd !== undefined || this.element.ended;
   }
 
   /**
@@ -95,8 +98,9 @@ export class MediaSourceAudioClock implements PlaybackClock {
 
   /**
    * Resolves once playback has started. A `pause` that interrupts the start is not an error;
-   * the autoplay policy refusing to start is reported as `playback-blocked`. An element at its
-   * end stays there: `play()` would restart it from the beginning, under the last picture.
+   * the autoplay policy refusing to start is reported as `playback-blocked`. A clock at its end
+   * stays there: `play()` would play the element from the beginning, or from where a seek to the
+   * end left it, under the last picture.
    */
   public async start(): Promise<void> {
     if (this.hasEnded) return;
@@ -119,7 +123,19 @@ export class MediaSourceAudioClock implements PlaybackClock {
     this.element.pause();
   }
 
+  /**
+   * A seek to the end stands the clock there and leaves the element paused where it was: an
+   * element at its end has nothing left to play, and engines differ right at the end. WebKit on
+   * Linux, under load, fails an element whose seek to the end of its sound is still pending when
+   * the stream ends there (media error 4); macOS WebKit loses a seek just short of the end.
+   */
   public seek(time: Seconds): void {
+    const end = this.attached.mediaSource.duration;
+    if (time >= end) {
+      this.standAtEnd(seconds(end));
+      return;
+    }
+    this.standingEnd = undefined;
     this.element.currentTime = time;
     this.feeder.restartFrom(time);
   }
@@ -128,6 +144,11 @@ export class MediaSourceAudioClock implements PlaybackClock {
     this.feeder.dispose();
     this.element.pause();
     this.attached.detach();
+  }
+
+  private standAtEnd(end: Seconds): void {
+    this.element.pause();
+    this.standingEnd = end;
   }
 }
 

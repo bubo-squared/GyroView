@@ -1,7 +1,8 @@
 # ADR 0007: The audio element, fed through Media Source Extensions, is the master clock
 
 Status: accepted (2026-09-18); amended (2026-09-27): a seek within the buffered audio appends
-from where the buffer ends, and nothing at all once the ended stream holds the rest of the track
+from where the buffer ends, and nothing at all once the ended stream holds the rest of the track;
+a seek to the end stands the clock there and leaves the element where it was
 
 ## Context
 
@@ -20,7 +21,11 @@ are taken from the muxer's box callbacks, not from its byte stream, so each is a
 the trailing `mfra` index (which MSE rejects) never appears. Fragmented output keeps the track's
 timestamps, so a run started at a seek point lands at its true position without offsets. The
 audio clock adapter pulls segments only while less than a buffer-ahead window is buffered past
-the playhead and restarts the run on every seek. Recordings without audio use the `WallClock`.
+the playhead and restarts the run on every seek. A seek to the end is the exception: the clock
+stands at the end by itself and leaves the element paused where it was. An element at its end has
+nothing left to play, and engines differ right there: WebKit on Linux, under load, fails an
+element whose seek to the end of its sound is still pending when the stream ends, and macOS
+WebKit loses a seek just short of the end. Recordings without audio use the `WallClock`.
 
 ## Alternatives considered
 

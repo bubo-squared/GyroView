@@ -203,11 +203,13 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   /**
-   * The attempt exists before `buffering` is announced, so a listener's pause settles it.
+   * The attempt exists before `buffering` is announced, so a listener's pause settles it. The
+   * clock holds meanwhile, even one the platform started (a media key's play).
    */
   private async startOncePrimed(): Promise<void> {
     const attempt = new Deferred<void>();
     this.startAttempt = attempt;
+    this.parts.clock.pause();
     this.setState('buffering');
     await attempt.promise;
   }

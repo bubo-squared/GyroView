@@ -39,6 +39,20 @@ describe('PlaybackSession following what the platform does to its clock', () => 
     session.dispose();
   });
 
+  it('holds a clock the platform started while the frames there are still decoding', async () => {
+    const clock = new FakePlaybackClock();
+    const { session, sink, advance } = sessionHarness({ clock });
+    session.seek(seconds(1.5));
+    await clock.start();
+    session.tick();
+    expect(session.state).toBe('buffering');
+    expect(clock.isRunning).toBe(false);
+    for (let step = 0; step < 3; step += 1) await advance(0);
+    expect(session.state).toBe('playing');
+    expect(sink.lastTimestamp).toBeCloseTo(1.5, 6);
+    session.dispose();
+  });
+
   describe('when the platform moves the clock by itself (a lock screen scrubber)', () => {
     it('decodes anew from where it moved a playing clock back, buffering meanwhile', async () => {
       const clock = new FakePlaybackClock();

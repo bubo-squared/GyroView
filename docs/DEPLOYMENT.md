@@ -63,7 +63,9 @@ playback; `GyroView.embed` sets it. The frame trusts one embedding origin: the o
 puts in the URL (`origin=`), or the referrer's. Frames opened directly play standalone.
 
 The frame fetches the recordings itself, so their host must allow the frame's origin (see
-above). `GyroView.embed` resolves a relative `src` against the embedding page, so a clip next
+above). Host `embed.html` on an origin that holds no credentials for private recordings: any
+page may frame it and ask it to load a URL, and the frame fetches with its own origin's cookies,
+so a page could learn whether a cookie-protected file exists and what it holds. `GyroView.embed` resolves a relative `src` against the embedding page, so a clip next
 to a blog post is fetched from the blog's host, across origins from the frame.
 
 A page with a Content Security Policy needs, for the iframe form, `frame-src` for the frame's

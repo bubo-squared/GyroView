@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { DecodeRun, type DecodeRunParts } from './DecodeRun';
+import type { EncodedVideoPacket } from '../../ports/VideoTrack';
+import { Deferred } from '../../shared/async/Deferred';
+import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { seconds, type Seconds } from '../../shared/units/time';
 import { FakeVideoDecoderPort, type FakeFrameHandle } from '../../testing/FakeVideoDecoderPort';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
@@ -44,6 +47,20 @@ function failOnError(error: unknown): never {
 
 const QUIET = { onProgress: ignoreProgress, onFailure: failOnError };
 
+/**
+ * A track whose key packet lookup fails once its gate opens, as a read over a dropped connection.
+ */
+class LateFailingTrack extends FakeVideoTrack {
+  public readonly gate = new Deferred<void>();
+  public lookups = 0;
+
+  public override async keyPacketAt(): Promise<EncodedVideoPacket | undefined> {
+    this.lookups += 1;
+    await this.gate.promise;
+    throw new GyroViewError('source-unreadable', 'the connection dropped');
+  }
+}
+
 describe('DecodeRun', () => {
   it('queues pairs, tells of each, and is drained once the last is taken', async () => {
     let progress = 0;
@@ -65,6 +82,8 @@ describe('DecodeRun', () => {
 
   it('hands out its first pair at once on tracks whose first frame comes later', async () => {
     const run = DecodeRun.start(parts(3, seconds(0.7)), seconds(0), QUIET);
+    // A tick before the first pair arrives takes nothing and leaves the first pair due at once.
+    expect(run.takePairAt(seconds(0))).toBeUndefined();
     await settle();
     expect(run.takePairAt(seconds(0))?.timestamp).toBeCloseTo(0.7, 9);
     expect(run.takePairAt(seconds(0))).toBeUndefined();
@@ -85,6 +104,39 @@ describe('DecodeRun', () => {
     expect(progress).toBe(0);
     expect(run.isPrimedAt(seconds(0))).toBe(false);
     expect(run.isDrained).toBe(false);
+  });
+
+  it('closes its decoders at once when aborted, their pending packets never decoded', async () => {
+    // Slow decoders: closing takes a few microtasks, a picture two hundred.
+    const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 200 });
+    const run = DecodeRun.start({ ...parts(30), decoderPort }, seconds(0), QUIET);
+    for (let tick = 0; tick < 60; tick += 1) await Promise.resolve();
+    const decodedBeforeAbort = decoderPort.framesCreated.length;
+    run.abort();
+    await settle();
+    expect(decoderPort.framesCreated).toHaveLength(decodedBeforeAbort);
+    expect(decoderPort.openDecoders).toBe(0);
+  });
+
+  it('reports no failure of a read that fails after the run was aborted', async () => {
+    const track = new LateFailingTrack({
+      trackIndex: 0,
+      frameRate: 10,
+      frameCount: 3,
+      framesPerGop: 10,
+    });
+    const failures: unknown[] = [];
+    const run = DecodeRun.start({ ...parts(3), frameSources: [track] }, seconds(0), {
+      onProgress: ignoreProgress,
+      onFailure: (error) => {
+        failures.push(error);
+      },
+    });
+    while (track.lookups === 0) await Promise.resolve();
+    run.abort();
+    track.gate.resolve();
+    await settle();
+    expect(failures).toEqual([]);
   });
 
   it('is primed by a full queue that holds fewer pairs than priming asks for', async () => {

@@ -31,6 +31,11 @@ export interface FakeDecoderOptions {
    * picture and closes itself, like a decoder meeting a broken bitstream.
    */
   readonly failAtPacket?: number;
+  /**
+   * Decoded frames each decoder keeps back until later packets push them out or a flush does, as
+   * a hardware decoder's reorder buffer holds its last frames.
+   */
+  readonly holdsFrames?: number;
 }
 
 interface PendingWaiter {
@@ -42,6 +47,7 @@ interface FakeVideoDecoderParts {
   readonly callbacks: VideoDecoderCallbacks<FakeFrameHandle>;
   readonly latencyTicks: number;
   readonly failAtPacket: number | undefined;
+  readonly holdsFrames: number;
   readonly onFrameCreated: (frame: DecodedFrame<FakeFrameHandle>) => void;
 }
 
@@ -87,6 +93,7 @@ export class FakeVideoDecoderPort implements VideoDecoderPort<FakeFrameHandle> {
       callbacks,
       latencyTicks: this.options.latencyTicks ?? DEFAULT_LATENCY_TICKS,
       failAtPacket: this.options.failAtPacket,
+      holdsFrames: this.options.holdsFrames ?? 0,
       onFrameCreated: (frame): void => {
         this.framesCreated.push(frame);
       },
@@ -102,6 +109,7 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
   private decodedCount = 0;
   private needsKeyFrame = true;
   private waiters: PendingWaiter[] = [];
+  private readonly held: DecodedFrame<FakeFrameHandle>[] = [];
   private isClosedNow = false;
   private failure: Error | undefined;
 
@@ -143,6 +151,7 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
       throw this.failure ?? new GyroViewError('decode', 'flush on a closed decoder');
     await this.waitForPendingBelow(1);
     if (this.failure) throw this.failure;
+    for (const frame of this.held.splice(0)) this.parts.callbacks.onFrame(frame);
   }
 
   public close(): void {
@@ -158,7 +167,11 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
     }
     const frame = this.frameFor(packet);
     this.parts.onFrameCreated(frame);
-    this.parts.callbacks.onFrame(frame);
+    this.held.push(frame);
+    while (this.held.length > this.parts.holdsFrames) {
+      const released = this.held.shift();
+      if (released) this.parts.callbacks.onFrame(released);
+    }
     this.notifyWaiters();
   }
 
@@ -173,10 +186,12 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
   }
 
   /**
-   * A closed decoder outputs nothing more: what was pending is dropped and its waiters let go.
+   * A closed decoder outputs nothing more: what was pending is dropped, the frames it held back
+   * are closed, and its waiters let go.
    */
   private discardPending(): void {
     this.pending = 0;
+    for (const frame of this.held.splice(0)) frame.close();
     this.notifyWaiters();
   }
 

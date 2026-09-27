@@ -46,6 +46,27 @@ class WeaklyTrackedTrack extends FakeVideoTrack {
 }
 
 /**
+ * Opens the first decoder fast and the second slow, as two hardware decoders need not keep pace.
+ */
+class SkewedDecoderPort implements VideoDecoderPort<FakeFrameHandle> {
+  public readonly fast = new FakeVideoDecoderPort({ latencyTicks: 1 });
+  public readonly slow = new FakeVideoDecoderPort({ latencyTicks: 40 });
+  private created = 0;
+
+  public isSupported(configuration: VideoDecoderConfiguration): Promise<boolean> {
+    return this.fast.isSupported(configuration);
+  }
+
+  public create(
+    configuration: VideoDecoderConfiguration,
+    callbacks: VideoDecoderCallbacks<FakeFrameHandle>,
+  ): Promise<VideoDecoderHandle> {
+    this.created += 1;
+    return (this.created === 1 ? this.fast : this.slow).create(configuration, callbacks);
+  }
+}
+
+/**
  * Consumes pairs in order as they arrive, closing each one once the next is taken, until the
  * pipeline run settles.
  */
@@ -193,6 +214,48 @@ describe('DecodePipeline', () => {
 
     expect(report.hasReachedEnd).toBe(false);
     expect(decoderPort.openFrames).toBe(0);
+  });
+
+  it('delivers the frames its decoders hold back until the end of the track, through their flush', async () => {
+    const decoderPort = new FakeVideoDecoderPort({ ...DECODER_LATENCY, holdsFrames: 2 });
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    const run = pipeline.run(seconds(0), queue);
+    const pairs = await drain(queue, run);
+
+    expect(pairs).toHaveLength(FRAMES);
+    expect(decoderPort.openFrames).toBe(0);
+  });
+
+  it('closes the pair it keeps back for the start when aborted before reaching it', async () => {
+    const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 1 });
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    const run = pipeline.run(seconds(1.9), queue);
+    while (decoderPort.framesCreated.length < 6) await Promise.resolve();
+    pipeline.abort();
+    await run;
+    await settle();
+
+    expect(queue.length).toBe(0);
+    expect(decoderPort.openFrames).toBe(0);
+  });
+
+  it('closes the frames it holds for their pair when aborted with one decoder ahead', async () => {
+    const decoderPort = new SkewedDecoderPort();
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    const run = pipeline.run(seconds(0), queue);
+    while (decoderPort.fast.framesCreated.length < 2) await Promise.resolve();
+    pipeline.abort();
+    await run;
+    queue.close();
+    await settle();
+
+    expect(decoderPort.fast.openFrames + decoderPort.slow.openFrames).toBe(0);
   });
 
   it('ends when the shorter track runs out and closes the longer track leftovers', async () => {

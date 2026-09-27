@@ -87,6 +87,13 @@ describe('repairedTimeline', () => {
     expect(times[51]).toBe(2_051_000);
   });
 
+  it('counts no stamp as mended that is only held while a jittered one ahead of it passes', () => {
+    const { times, mended } = repairedTimeline(timeline([50], 30_000));
+    expect(mended).toBe(0);
+    expect(times[51]).toBe(times[50]);
+    expect(times[81]).toBe(81_000);
+  });
+
   it('never lets a stamp go back, though a jump back never returns', () => {
     const reset = Float64Array.from({ length: COUNT }, (_unused, index) =>
       index < 50 ? index * 1000 : index * 1000 - 5e6,

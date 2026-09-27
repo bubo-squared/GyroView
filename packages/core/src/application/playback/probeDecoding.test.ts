@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { probeDecoding } from './probeDecoding';
-import type { VideoDecoderConfiguration } from '../../ports/VideoTrack';
+import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../../ports/VideoTrack';
 import type {
   VideoDecoderCallbacks,
   VideoDecoderHandle,
@@ -70,6 +70,15 @@ class StalledPort implements VideoDecoderPort<never> {
     const decoder = new StalledDecoder();
     this.decoders.push(decoder);
     return Promise.resolve(decoder);
+  }
+}
+
+/**
+ * A track whose video data cannot be read, as over a connection that dropped.
+ */
+class UnreadableTrack extends FakeVideoTrack {
+  public override firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
+    return Promise.reject(new GyroViewError('source-unreadable', 'the connection dropped'));
   }
 }
 
@@ -144,6 +153,22 @@ describe('probeDecoding', () => {
     const report = await probeDecoding(tracks([30, 0]), port, new Signal());
     expect(report.canDecode).toBe(false);
     expect(report.sources.map((lens) => lens.verdict)).toEqual(['decodes', 'no-key-frame']);
+  });
+
+  it('rejects with a failure to read a track as it is, rather than blaming the codec', async () => {
+    const [readable] = tracks([30]);
+    const unreadable = new UnreadableTrack({
+      trackIndex: 1,
+      frameRate: 30,
+      frameCount: 30,
+      framesPerGop: 30,
+    });
+    const probing = probeDecoding(
+      [readable ?? unreadable, unreadable],
+      new FakeVideoDecoderPort(),
+      new Signal(),
+    );
+    await expect(probing).rejects.toMatchObject({ code: 'source-unreadable' });
   });
 
   it('maps a refused decoder creation onto the codec verdicts', async () => {

@@ -45,7 +45,7 @@ const TIMED_OUT: Outcome = {
  * trusted: platforms answer yes and then fail, and hardware decoders can stall, hence the real
  * decode under a deadline. The host triggers `deadline` once the probe has taken too long (the
  * core has no timers); sources still undecided then report `timed-out` and their decoders are
- * closed.
+ * closed. A track that cannot be read rejects the probe with its own failure.
  */
 export async function probeDecoding<Handle>(
   frameSources: readonly VideoTrackReader[],
@@ -89,15 +89,15 @@ class SourceProbe<Handle> {
     private readonly decoderPort: VideoDecoderPort<Handle>,
   ) {}
 
+  /**
+   * The decoder's answers make the verdict; a failure to read the track rejects as it is, since
+   * a connection that dropped is no codec's fault.
+   */
   public async run(): Promise<Outcome> {
-    try {
-      const configuration = await this.track.decoderConfiguration();
-      if (!(await this.decoderPort.isSupported(configuration))) return unsupported(configuration);
-      const keyPacket = await this.track.firstKeyPacket();
-      return keyPacket ? await this.decodeFirst(configuration, keyPacket) : NO_KEY_FRAME;
-    } catch (error) {
-      return failedWith(error);
-    }
+    const configuration = await this.track.decoderConfiguration();
+    if (!(await this.decoderPort.isSupported(configuration))) return unsupported(configuration);
+    const keyPacket = await this.track.firstKeyPacket();
+    return keyPacket ? await this.decodeFirst(configuration, keyPacket) : NO_KEY_FRAME;
   }
 
   public close(): void {
@@ -111,15 +111,8 @@ class SourceProbe<Handle> {
     keyPacket: EncodedVideoPacket,
   ): Promise<Outcome> {
     const first = new Deferred<Outcome>();
-    const decoder = await this.decoderPort.create(configuration, {
-      onFrame: (frame): void => {
-        frame.close();
-        first.resolve(DECODES);
-      },
-      onError: (error): void => {
-        first.resolve(failedWith(error));
-      },
-    });
+    const decoder = await this.openDecoder(configuration, first);
+    if (decoder === undefined) return first.promise;
     if (this.isClosed) {
       decoder.close();
       return TIMED_OUT;
@@ -128,6 +121,30 @@ class SourceProbe<Handle> {
     decoder.decode(keyPacket);
     void this.flushInto(decoder, first);
     return first.promise;
+  }
+
+  /**
+   * A decoder that reports into `first`; undefined when the port refuses one, the refusal
+   * reported there.
+   */
+  private async openDecoder(
+    configuration: VideoDecoderConfiguration,
+    first: Deferred<Outcome>,
+  ): Promise<VideoDecoderHandle | undefined> {
+    try {
+      return await this.decoderPort.create(configuration, {
+        onFrame: (frame): void => {
+          frame.close();
+          first.resolve(DECODES);
+        },
+        onError: (error): void => {
+          first.resolve(failedWith(error));
+        },
+      });
+    } catch (error) {
+      first.resolve(failedWith(error));
+      return undefined;
+    }
   }
 
   /**

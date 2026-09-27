@@ -12,7 +12,7 @@ import {
   type VideoDecoderPort,
 } from '@gyroview/core';
 import { InMemoryRandomAccessSource } from '@gyroview/core/testing';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { WebCodecsVideoDecoderPort } from './WebCodecsVideoDecoderPort';
 import fixtureUrl from '../../../../test/fixtures/synthetic/dual-track-64px-10fps-3s.mp4?url';
@@ -20,6 +20,30 @@ import fixtureUrl from '../../../../test/fixtures/synthetic/dual-track-64px-10fp
 const FRAMES = 30;
 const PIPELINE_OPTIONS = { maxPendingPackets: 4, pairTolerance: seconds(0.0001) };
 const port = new WebCodecsVideoDecoderPort();
+
+/**
+ * A VideoDecoder that accepts any configuration and then refuses it, as WebCodecs does with a
+ * well-formed configuration the platform cannot decode.
+ */
+class RefusingVideoDecoder {
+  public readonly decodeQueueSize = 0;
+
+  public constructor(private readonly init: VideoDecoderInit) {}
+
+  public configure(): void {
+    queueMicrotask(() => {
+      this.init.error(new DOMException('no decoder for this configuration', 'NotSupportedError'));
+    });
+  }
+
+  public close(): void {
+    // Nothing to release.
+  }
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 async function drain(
   queue: FramePairQueue<VideoFrame>,
@@ -140,6 +164,23 @@ describe('WebCodecsVideoDecoderPort', () => {
     }).toThrow(errors[0]);
     await expect(decoder.flush()).rejects.toBe(errors[0]);
     await expect(decoder.waitForPendingBelow(1)).resolves.toBeUndefined();
+    decoder.close();
+  });
+
+  it('reports a configuration the platform refuses only once it tries as codec-unsupported', async () => {
+    vi.stubGlobal('VideoDecoder', RefusingVideoDecoder);
+    const errors: Error[] = [];
+    const decoder = await port.create(configuration, {
+      onFrame: (frame) => {
+        frame.close();
+      },
+      onError: (error) => {
+        errors.push(error);
+      },
+    });
+    await expect
+      .poll(() => errors)
+      .toEqual([expect.objectContaining({ code: 'codec-unsupported' })]);
     decoder.close();
   });
 

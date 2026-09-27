@@ -1,3 +1,5 @@
+import { messageOf } from '@gyroview/core';
+
 /**
  * Properties a page set on the element before its definition ran (a classic script ahead of the
  * module, a framework's property binding) sit on the plain element as its own; the element's
@@ -15,4 +17,24 @@ export function takeEarlyProperties(
     Reflect.deleteProperty(element, name);
   }
   return early;
+}
+
+/**
+ * Sets the properties taken off again, now through the element's accessors, and forgets them. A
+ * value its setter refuses is a warning: the rest still apply and the element still starts.
+ */
+export function applyEarlyProperties(
+  element: HTMLElement,
+  early: Map<string, unknown>,
+  warn: (message: string) => void,
+): void {
+  const entries = [...early];
+  early.clear();
+  for (const [name, value] of entries) {
+    try {
+      Reflect.set(element, name, value);
+    } catch (error) {
+      warn(`${name} set before the element was defined was refused: ${messageOf(error)}`);
+    }
+  }
 }

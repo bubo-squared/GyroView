@@ -20,7 +20,7 @@ import { elementSourceOf, type FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
 import { IdleWatcher } from './IdleWatcher';
 import { applyPlaybackAttribute } from './playbackAttributes';
-import { takeEarlyProperties } from './earlyProperties';
+import { applyEarlyProperties, takeEarlyProperties } from './earlyProperties';
 import { defineLiveSettings, LIVE_SETTING_NAMES, type LiveSettings } from './liveSettings';
 import {
   defineBooleanProperties,
@@ -180,7 +180,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
 
   public connectedCallback(): void {
     this.describeUnlessTheAuthorDid();
-    this.applyEarlyProperties();
+    applyEarlyProperties(this, this.earlyProperties, this.warn);
     this.dataset['status'] = this.player.status;
     this.idle.start();
     if (this.isLoadOwed) this.scheduleLoad();
@@ -305,14 +305,6 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   public loadFiles(files: FileSource): void {
     this.files = files;
     this.scheduleLoad();
-  }
-
-  /**
-   * Sets what the page assigned before the element was defined, now through its accessors.
-   */
-  private applyEarlyProperties(): void {
-    for (const [name, value] of this.earlyProperties) Reflect.set(this, name, value);
-    this.earlyProperties.clear();
   }
 
   /**

@@ -195,6 +195,23 @@ describe('<gyro-view>', () => {
     expect(upgraded.muted).toBe(true);
   });
 
+  it('warns of a property set before definition that its setter refuses, and applies the rest', async () => {
+    const element = document.createElement('gyro-view-refused-late');
+    Object.assign(element, { src: X5_RECORDING_URL, fov: 'wide', muted: true });
+    element.style.width = '256px';
+    const warnings: string[] = [];
+    element.addEventListener('warning', (event) => {
+      warnings.push(String((event as CustomEvent).detail));
+    });
+    document.body.append(element);
+    customElements.define('gyro-view-refused-late', class extends GyroViewElement {});
+    const upgraded = element as GyroViewElement;
+    elements.push(upgraded);
+    expect(warnings).toEqual([expect.stringContaining('fov set before the element was defined')]);
+    expect(upgraded.muted).toBe(true);
+    await nextEvent(upgraded, 'ready');
+  });
+
   it('plays and seeks what src names in the same task, as a media element does', async () => {
     const element = create({ controls: '' });
     element.src = X5_RECORDING_URL;

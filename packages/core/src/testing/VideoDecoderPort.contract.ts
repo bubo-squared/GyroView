@@ -3,11 +3,17 @@ import { describe, expect, it } from 'vitest';
 import type { VideoTrackReader } from '../ports/Demuxer';
 import type { EncodedVideoPacket } from '../ports/VideoTrack';
 import type { DecodedFrame, VideoDecoderHandle, VideoDecoderPort } from '../ports/VideoDecoderPort';
+import { seconds, type Seconds } from '../shared/units/time';
 
 /**
  * Whatever a decoder refuses, fake or real, crosses the port as a typed `decode` failure.
  */
 const DECODE_FAILURE = expect.objectContaining({ code: 'decode' }) as Error;
+
+/**
+ * Long enough for a picture a platform decoder had under way to arrive, were it to.
+ */
+const LATE_PICTURE_WAIT = seconds(0.05);
 
 export interface VideoDecoderContractSubject<Handle> {
   readonly port: VideoDecoderPort<Handle>;
@@ -15,6 +21,11 @@ export interface VideoDecoderContractSubject<Handle> {
    * A track the port can decode, with at least one delta packet after its first key packet.
    */
   readonly track: VideoTrackReader;
+  /**
+   * Lets time pass for the decoder: real time for a platform decoder, a settling of the queued
+   * work for a fake.
+   */
+  readonly letTimePass: (elapsed: Seconds) => Promise<void>;
 }
 
 interface OpenedDecoder<Handle> {
@@ -116,6 +127,15 @@ export function describeVideoDecoderPortContract<Handle>(
       const waiting = opened.decoder.waitForPendingBelow(1);
       opened.decoder.close();
       await expect(waiting).resolves.toBeUndefined();
+    });
+
+    it('delivers no picture once closed, though a packet was pending', async () => {
+      const subject = await setup();
+      const opened = await openDecoder(subject);
+      opened.decoder.decode(opened.key);
+      opened.decoder.close();
+      await subject.letTimePass(LATE_PICTURE_WAIT);
+      expect(opened.frames).toEqual([]);
     });
 
     it('refuses to decode and rejects flush once closed', async () => {

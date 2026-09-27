@@ -1,5 +1,5 @@
 import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
-import type { DemuxedInput } from '@gyroview/core';
+import { secondsToMilliseconds, type DemuxedInput, type Seconds } from '@gyroview/core';
 import {
   describeVideoDecoderPortContract,
   InMemoryRandomAccessSource,
@@ -29,6 +29,13 @@ describe('WebCodecsVideoDecoderPort over the synthetic fixture', () => {
   describeVideoDecoderPortContract('WebCodecsVideoDecoderPort', () => {
     const [track] = input.videoTracks;
     if (!track) throw new Error('the fixture has no video track');
-    return Promise.resolve({ port: new WebCodecsVideoDecoderPort(), track });
+    return Promise.resolve({
+      port: new WebCodecsVideoDecoderPort(),
+      track,
+      letTimePass: (elapsed: Seconds): Promise<void> =>
+        new Promise((resolve) => {
+          setTimeout(resolve, secondsToMilliseconds(elapsed));
+        }),
+    });
   });
 });

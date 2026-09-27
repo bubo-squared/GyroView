@@ -119,6 +119,30 @@ describe('WebCodecsVideoDecoderPort', () => {
     for (const pair of pairs) for (const frame of pair.frames) frame.close();
   });
 
+  it('reports a packet it cannot decode once, and fails every later call with that failure', async () => {
+    const [track] = input.videoTracks;
+    const key = await track?.firstKeyPacket();
+    if (!key) throw new Error('the fixture has no key packet');
+    const errors: Error[] = [];
+    const decoder = await port.create(configuration, {
+      onFrame: (frame) => {
+        frame.close();
+      },
+      onError: (error) => {
+        errors.push(error);
+      },
+    });
+    decoder.decode({ ...key, data: new Uint8Array(key.data.byteLength) });
+    await expect(decoder.flush()).rejects.toMatchObject({ code: 'decode' });
+    expect(errors).toEqual([expect.objectContaining({ code: 'decode' })]);
+    expect(() => {
+      decoder.decode(key);
+    }).toThrow(errors[0]);
+    await expect(decoder.flush()).rejects.toBe(errors[0]);
+    await expect(decoder.waitForPendingBelow(1)).resolves.toBeUndefined();
+    decoder.close();
+  });
+
   it('never holds more packets in a decoder than the pipeline allows', async () => {
     const observed = new PendingObservingPort(port);
     const pipeline = new DecodePipeline(input.videoTracks, observed, {

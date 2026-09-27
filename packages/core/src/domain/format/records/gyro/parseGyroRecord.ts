@@ -3,9 +3,9 @@ import { FLOAT_SAMPLE_SIZE } from './gyroLayouts';
 import type { GyroSampleLayout } from './GyroSampleLayout';
 import { RawGyroSampleLayout } from './RawGyroSampleLayout';
 import { ByteReader } from '../../../../shared/binary/ByteReader';
-import { GyroViewError } from '../../../../shared/errors/GyroViewError';
-import { VECTOR3_COMPONENTS } from '../../../../shared/math/Vector3';
-import { GyroTrack } from '../../../motion/gyro/GyroTrack';
+import { GyroViewError, hasErrorCode } from '../../../../shared/errors/GyroViewError';
+import { isFiniteVector, VECTOR3_COMPONENTS } from '../../../../shared/math/Vector3';
+import { GyroTrack, type GyroSample } from '../../../motion/gyro/GyroTrack';
 import type { SensorRanges } from '../../info/RecordingInfo';
 
 /**
@@ -34,6 +34,10 @@ export interface ParsedGyroRecord {
    * Bytes after the last whole sample. Real ONE R recordings carry one; they are ignored.
    */
   readonly strayBytes: number;
+  /**
+   * Samples left out because their bytes cannot be a reading (see {@link parseGyroRecord}).
+   */
+  readonly damagedSamples: number;
 }
 
 /**
@@ -65,25 +69,75 @@ export function selectGyroSampleLayout(
 
 /**
  * Decodes the gyro record payload into a {@link GyroTrack} with the given layout. Whole samples
- * only: a partial sample at the end is tolerated and reported, never rejected.
+ * only: a partial sample at the end is tolerated and reported, never rejected. So is a sample
+ * whose bytes cannot be a reading (a stamp past the safe integers, a value that is not finite,
+ * as a flipped bit leaves): each sample carries its own time, so the others still count.
  */
 export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): ParsedGyroRecord {
   const count = Math.floor(payload.byteLength / layout.sampleSize);
   const reader = new ByteReader(payload);
-  const captureTimes = new Float64Array(count);
-  const accelerations = new Float32Array(count * VECTOR3_COMPONENTS);
-  const angularVelocities = new Float32Array(count * VECTOR3_COMPONENTS);
+  const columns = new SampleColumns(count);
   for (let index = 0; index < count; index += 1) {
-    const offset = index * layout.sampleSize;
-    captureTimes[index] = layout.timestampAt(reader, offset);
-    accelerations.set(layout.accelerationAt(reader, offset), index * VECTOR3_COMPONENTS);
-    angularVelocities.set(layout.angularVelocityAt(reader, offset), index * VECTOR3_COMPONENTS);
+    const sample = readableSampleAt(reader, layout, index * layout.sampleSize);
+    if (sample) columns.push(sample);
   }
   return {
-    track: new GyroTrack(captureTimes, accelerations, angularVelocities),
+    track: columns.toTrack(),
     layout: layout.name,
     strayBytes: payload.byteLength % layout.sampleSize,
+    damagedSamples: count - columns.length,
   };
+}
+
+function readableSampleAt(
+  reader: ByteReader,
+  layout: GyroSampleLayout,
+  offset: number,
+): GyroSample | undefined {
+  try {
+    const sample = {
+      captureTime: layout.timestampAt(reader, offset),
+      acceleration: layout.accelerationAt(reader, offset),
+      angularVelocity: layout.angularVelocityAt(reader, offset),
+    };
+    const isReading = isFiniteVector(sample.acceleration) && isFiniteVector(sample.angularVelocity);
+    return isReading && Number.isFinite(sample.captureTime) ? sample : undefined;
+  } catch (error) {
+    if (hasErrorCode(error, 'binary-unsafe-integer')) return undefined;
+    throw error;
+  }
+}
+
+/**
+ * The samples kept so far, in the columns a {@link GyroTrack} stores them in.
+ */
+class SampleColumns {
+  public length = 0;
+  private readonly captureTimes: Float64Array;
+  private readonly accelerations: Float32Array;
+  private readonly angularVelocities: Float32Array;
+
+  public constructor(capacity: number) {
+    this.captureTimes = new Float64Array(capacity);
+    this.accelerations = new Float32Array(capacity * VECTOR3_COMPONENTS);
+    this.angularVelocities = new Float32Array(capacity * VECTOR3_COMPONENTS);
+  }
+
+  public push(sample: GyroSample): void {
+    this.captureTimes[this.length] = sample.captureTime;
+    this.accelerations.set(sample.acceleration, this.length * VECTOR3_COMPONENTS);
+    this.angularVelocities.set(sample.angularVelocity, this.length * VECTOR3_COMPONENTS);
+    this.length += 1;
+  }
+
+  public toTrack(): GyroTrack {
+    const vectors = this.length * VECTOR3_COMPONENTS;
+    return new GyroTrack(
+      this.captureTimes.subarray(0, this.length),
+      this.accelerations.subarray(0, vectors),
+      this.angularVelocities.subarray(0, vectors),
+    );
+  }
 }
 
 /**

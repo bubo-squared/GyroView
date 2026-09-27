@@ -98,6 +98,20 @@ describe('parseGyroRecord with the raw X5 layout', () => {
     );
   });
 
+  it('leaves out and counts samples whose bytes cannot be a reading, keeping the rest', () => {
+    const unsafeStamp = encodeFloatSample(20, [0, 1, 0], [0, 0, 0]);
+    unsafeStamp[7] = 0xff;
+    const payload = new Uint8Array([
+      ...encodeFloatSample(10, [0, 1, 0], [0, 0, 0]),
+      ...unsafeStamp,
+      ...encodeFloatSample(30, [0, NaN, 0], [0, 0, 0]),
+      ...encodeFloatSample(40, [0, 1, 0], [0, 0, 0]),
+    ]);
+    const { track, damagedSamples } = read(payload, { isRawGyro: false, ranges: undefined });
+    expect(damagedSamples).toBe(2);
+    expect([0, 1].map((index) => track.sampleAt(index).captureTime)).toEqual([10_000, 40_000]);
+  });
+
   it('tolerates and reports a partial trailing sample, as ONE R recordings have', () => {
     const payload = new Uint8Array(RAW_SAMPLE_SIZE * 3 + 1);
     payload.set(encodeRawSample(1000), 0);

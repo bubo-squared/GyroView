@@ -48,8 +48,8 @@ export class TrailerRecords {
   }
 
   /**
-   * Undefined when the camera wrote no exposure record. Its stamps are in the gyro layout's unit,
-   * so a layout that cannot be told refuses it as it refuses the gyro record.
+   * Undefined when the camera wrote no exposure record, or a damaged one. Its stamps are in the
+   * gyro layout's unit, so a layout that cannot be told refuses it as it refuses the gyro record.
    */
   public async readExposure(): Promise<ExposureRecord | undefined> {
     const location = this.parts.trailer.locationOf(RecordType.Exposure);

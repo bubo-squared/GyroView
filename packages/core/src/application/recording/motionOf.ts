@@ -1,4 +1,5 @@
 import type { Recording } from './Recording';
+import type { ParsedGyroRecord } from '../../domain/format/records/gyro/parseGyroRecord';
 import { imuFrameFor, type ImuFrame } from '../../domain/motion/imu/ImuFrame';
 import { OrientationTrack } from '../../domain/motion/orientation/OrientationTrack';
 import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
@@ -32,7 +33,13 @@ export async function motionOf(
   if (!gyro) return { setup: undefined, warnings: [NO_GYRO_WARNING] };
   const imuFrame = imuFrameFor(recording.info);
   const orientations = OrientationTrack.integrate({ gyro: gyro.track, clock, frame: imuFrame });
-  return { setup: { orientations, imuFrame }, warnings: unverifiedWarningsOf(imuFrame, recording) };
+  const warnings = [...unverifiedWarningsOf(imuFrame, recording), ...damageWarningsOf(gyro)];
+  return { setup: { orientations, imuFrame }, warnings };
+}
+
+function damageWarningsOf(gyro: ParsedGyroRecord): readonly string[] {
+  const warning = `${gyro.damagedSamples} damaged gyro samples were left out of stabilization`;
+  return gyro.damagedSamples > 0 ? [warning] : [];
 }
 
 function unverifiedWarningsOf(imuFrame: ImuFrame, recording: Recording): readonly string[] {

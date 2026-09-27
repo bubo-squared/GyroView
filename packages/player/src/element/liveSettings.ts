@@ -33,6 +33,20 @@ export interface LiveSettings {
 type Accessors = { readonly [Name in keyof LiveSettings]: Accessor };
 
 /**
+ * Every name of {@link LiveSettings}, for what must know them before the element defines them.
+ */
+export const LIVE_SETTING_NAMES: readonly (keyof LiveSettings)[] = [
+  'stabilization',
+  'viewMode',
+  'fov',
+  'yaw',
+  'pitch',
+  'muted',
+  'loop',
+  'volume',
+];
+
+/**
  * Properties that read and change the player's settings as they are now, the way
  * `HTMLMediaElement.muted` does: the attribute of the same name configures the setting, the
  * property reports what is in effect however it was last changed (attribute, menu, keyboard,

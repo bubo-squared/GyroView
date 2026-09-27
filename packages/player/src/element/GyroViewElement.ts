@@ -20,8 +20,13 @@ import { elementSourceOf, type FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
 import { IdleWatcher } from './IdleWatcher';
 import { applyPlaybackAttribute } from './playbackAttributes';
-import { defineLiveSettings, type LiveSettings } from './liveSettings';
-import { defineBooleanProperties, defineStringProperties } from './reflectedProperties';
+import { takeEarlyProperties } from './earlyProperties';
+import { defineLiveSettings, LIVE_SETTING_NAMES, type LiveSettings } from './liveSettings';
+import {
+  defineBooleanProperties,
+  defineStringProperties,
+  propertyNameOf,
+} from './reflectedProperties';
 import { ELEMENT_TEMPLATE } from './template';
 import { createBrowserPlayer } from '../browserPlayer';
 import { queryShadow } from '../controls/controlParts';
@@ -45,6 +50,14 @@ const STRING_ATTRIBUTES = [
 ];
 const BOOLEAN_ATTRIBUTES = [PlaybackAttribute.Autoplay, PlaybackAttribute.Controls];
 const SOURCE_ATTRIBUTES: readonly string[] = Object.values(SourceAttribute);
+/**
+ * The properties a page may set before the element is defined, all kept for it.
+ */
+const PUBLIC_PROPERTIES: readonly string[] = [
+  ...[...STRING_ATTRIBUTES, ...BOOLEAN_ATTRIBUTES].map((name) => propertyNameOf(name)),
+  ...LIVE_SETTING_NAMES,
+  'currentTime',
+];
 const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);
 /**
  * What assistive technology calls the element when the page names it nothing else; the embed
@@ -76,6 +89,10 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   declare public loop: boolean;
   declare public volume: number;
   /**
+   * Properties the page set before the element was defined, kept until it is connected.
+   */
+  private readonly earlyProperties: Map<string, unknown>;
+  /**
    * A seek asked for with the attributes set just now, where the recording they load starts.
    */
   private startTime: Seconds | undefined;
@@ -90,6 +107,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
 
   public constructor() {
     super();
+    this.earlyProperties = takeEarlyProperties(this, PUBLIC_PROPERTIES);
     defineStringProperties(this, STRING_ATTRIBUTES);
     defineBooleanProperties(this, BOOLEAN_ATTRIBUTES);
     const shadow = this.attachShadow({ mode: 'open' });
@@ -157,6 +175,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
 
   public connectedCallback(): void {
     this.describeUnlessTheAuthorDid();
+    this.applyEarlyProperties();
     this.dataset['status'] = this.player.status;
     this.idle.start();
     this.scheduleLoad();
@@ -281,6 +300,14 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   public loadFiles(files: FileSource): void {
     this.files = files;
     this.scheduleLoad();
+  }
+
+  /**
+   * Sets what the page assigned before the element was defined, now through its accessors.
+   */
+  private applyEarlyProperties(): void {
+    for (const [name, value] of this.earlyProperties) Reflect.set(this, name, value);
+    this.earlyProperties.clear();
   }
 
   /**

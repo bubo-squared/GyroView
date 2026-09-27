@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 
 import { defineGyroView } from './defineGyroView';
-import type { GyroViewElement } from './GyroViewElement';
+import { GyroViewElement } from './GyroViewElement';
 import { queryShadow } from '../controls/controlParts';
 import { choiceMenuClasses, type ChoiceMenuName } from '../controls/controlsMarkup';
 import { expectIconOnly } from '../test/controls';
@@ -179,6 +179,20 @@ describe('<gyro-view>', () => {
     expect(element.view.yaw).toBe(20);
     expect(element.stabilization).toBe('horizon');
     expect(element.muted).toBe(true);
+  });
+
+  it('keeps the properties a page set before the element was defined', async () => {
+    const element = document.createElement('gyro-view-defined-late');
+    Object.assign(element, { src: X5_RECORDING_URL, muted: true, controls: true });
+    element.style.width = '256px';
+    document.body.append(element);
+    customElements.define('gyro-view-defined-late', class extends GyroViewElement {});
+    const upgraded = element as GyroViewElement;
+    elements.push(upgraded);
+    expect(upgraded.getAttribute('src')).toBe(X5_RECORDING_URL);
+    expect(upgraded.controls).toBe(true);
+    await nextEvent(upgraded, 'ready');
+    expect(upgraded.muted).toBe(true);
   });
 
   it('plays and seeks what src names in the same task, as a media element does', async () => {

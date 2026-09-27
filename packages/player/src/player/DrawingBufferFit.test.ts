@@ -32,7 +32,7 @@ describe('DrawingBufferFit', () => {
     vi.restoreAllMocks();
   });
 
-  it('fits the buffer again when the window moves to a screen of another pixel ratio', () => {
+  it('fits the buffer again when the window moves to a screen of another pixel ratio, until disposed', () => {
     const canvas = document.createElement('canvas');
     canvas.style.cssText = 'width: 100px; height: 50px';
     document.body.append(canvas);
@@ -61,6 +61,9 @@ describe('DrawingBufferFit', () => {
       { width: 100, height: 50 },
     ]);
     fit.dispose();
+    ratio.mockReturnValue(2);
+    ratioQueries.at(-1)?.dispatchEvent(new Event('change'));
+    expect(sizes).toHaveLength(3);
     canvas.remove();
   });
 });

@@ -135,8 +135,10 @@ describe('PlaybackSession lifecycle', () => {
 
   it('fails with the error of a sink that cannot draw instead of freezing', async () => {
     const refusal = new GyroViewError('render-unavailable', 'the stitching shader did not compile');
+    let attempts = 0;
     class RefusingSink extends FakeFrameSink<FakeFrameHandle> {
       public override present(): void {
+        attempts += 1;
         throw refusal;
       }
     }
@@ -149,10 +151,10 @@ describe('PlaybackSession lifecycle', () => {
     for (let step = 0; step < 3; step += 1) await advance(0);
     expect(session.state).toBe('error');
     expect(errors).toEqual([refusal]);
-    // A change of how the picture is drawn asks for no drawing from a failed session.
-    expect(() => {
-      session.redraw();
-    }).not.toThrow();
+    // A change of how the picture is drawn asks a failed session for no drawing.
+    const attemptsBefore = attempts;
+    session.redraw();
+    expect(attempts).toBe(attemptsBefore);
   });
 
   it('fails as render-unavailable when a sink first refuses on a redraw', async () => {

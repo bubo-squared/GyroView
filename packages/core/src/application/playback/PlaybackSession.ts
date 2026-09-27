@@ -185,7 +185,7 @@ export class PlaybackSession<Handle = unknown> {
    * picture stands still; while playing, the next pair shows it soon enough.
    */
   public redraw(): void {
-    if (!this.presented || this.machine.isOneOf('playing', 'error', 'disposed')) return;
+    if (!this.presented || this.machine.isOneOf('playing', 'error')) return;
     this.draw(this.presented);
   }
 

@@ -11,6 +11,10 @@ Studio export step.
 npm install gyroview
 ```
 
+It brings Three.js 0.186 and mediabunny 1 along. A page that uses Three.js 0.186 itself shares
+that copy; any other version means two copies in the bundle, about 128 KB gzipped. The package is
+ES modules only: CommonJS code loads it with `import()`.
+
 ## Use
 
 Register the element once, then use it like a video element:
@@ -96,7 +100,18 @@ metadata, events and inspection.
   decoder (Apple Silicon, recent NVIDIA and Intel). A recording the browser cannot decode fails
   with the `codec-unsupported` error.
 
-Desktop Chrome, Edge and Safari, and iOS Safari, are the supported browsers.
+The supported browsers, with the oldest versions that have what the player uses (WebCodecs,
+WebGL 2, container queries, and on iPhone `ManagedMediaSource` for the sound):
+
+| Browser               | From | Notes                                                    |
+| --------------------- | ---- | -------------------------------------------------------- |
+| Chrome, Edge desktop  | 107  | HEVC is decoded in hardware from this version on.        |
+| Safari on macOS       | 16.4 |                                                          |
+| Safari on iPhone/iPad | 17.1 | 16.4 to 17.0 play without sound, with a `warning` event. |
+
+Firefox and Chrome on Android are untested: they play what their decoders accept.
+
+Until 1.0, a minor version may change the API; [CHANGELOG.md](./CHANGELOG.md) says what changed.
 
 ## Reference
 

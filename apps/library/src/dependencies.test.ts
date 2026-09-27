@@ -30,8 +30,19 @@ function thirdPartyOfTheAdapters(): Record<string, string> {
   return Object.fromEntries(ranges.filter(([, range]) => !range.startsWith(WORKSPACE)));
 }
 
+/**
+ * The range a page may resolve a library to: from the version the adapters are built against up
+ * to its next breaking release. For a 0.x version, as Three.js's, that is its patches only.
+ */
+function caretRangeOf(range: string): string {
+  return range.startsWith('^') ? range : `^${range}`;
+}
+
 describe('the npm package manifest', () => {
-  it('depends on the libraries the bundled adapters are built against, at their versions', () => {
-    expect(manifestAt('../package.json').dependencies).toEqual(thirdPartyOfTheAdapters());
+  it('depends on the libraries the bundled adapters are built against, up to a breaking release', () => {
+    const expected = Object.fromEntries(
+      Object.entries(thirdPartyOfTheAdapters()).map(([name, range]) => [name, caretRangeOf(range)]),
+    );
+    expect(manifestAt('../package.json').dependencies).toEqual(expected);
   });
 });

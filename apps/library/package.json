@@ -22,6 +22,8 @@
   },
   "bugs": "https://github.com/pericamilosevic/GyroView/issues",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "sideEffects": [
     "./dist/define.js"
   ],
@@ -37,7 +39,8 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "vite build && dts-bundle-generator --silent --config dts-bundle-generator.config.json && cp types/define.d.ts dist/ && tsc -p tsconfig.consumer.json && node consumer/server.mjs && publint --strict",
@@ -47,7 +50,7 @@
   },
   "dependencies": {
     "mediabunny": "^1.58.0",
-    "three": "0.186.0"
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@gyroview/core": "workspace:*",

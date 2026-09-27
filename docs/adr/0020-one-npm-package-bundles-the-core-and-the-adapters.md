@@ -1,6 +1,7 @@
 # ADR 0020: One npm package, `gyroview`, bundles the core and the adapters
 
-Status: accepted (2026-09-27)
+Status: accepted (2026-09-27); amended (2026-09-28): the third-party dependencies are caret
+ranges, since an exact version gave a page on any other patch a second Three.js.
 
 ## Context
 
@@ -15,9 +16,11 @@ users: a page needs the element, the player without the element, and the types t
 
 - Vite bundles the player with the core and the adapters into unminified ES modules:
   `dist/index.js` and `dist/define.js`, sharing `dist/player.js`. Three.js and mediabunny stay
-  `dependencies` at the versions the adapters are built against (a test compares them), so a
-  page that uses Three.js itself shares one copy, and mediabunny's MPL-2.0 files stay in their
-  own package.
+  `dependencies`, from the versions the adapters are built against up to their next breaking
+  release (a caret range, which for Three.js's 0.x versions admits patches only; a test compares
+  them). A page whose own Three.js falls in that range shares one copy; a page on another minor
+  version carries two, about 128 KB gzipped. mediabunny's MPL-2.0 files stay in their own
+  package.
 - `dts-bundle-generator` inlines the workspace packages' declarations into one `index.d.ts`
   that exports only the names `src/index.ts` chooses; the types those need are declared, not
   exported. The build type-checks a consumer (`consumer/usage.ts`, with `skipLibCheck` off)
@@ -37,6 +40,11 @@ users: a page needs the element, the player without the element, and the types t
   the name or the dependencies.
 - Bundling Three.js and mediabunny too: one file, but a page using Three.js would ship it
   twice, and MPL-2.0 files would sit inside an MIT package.
+- Three.js as a peer dependency: every page would install it by hand, although most pages that
+  embed a player use no Three.js of their own; and a peer range wide enough to help would admit
+  minor versions the renderer was never tested against, since Three.js breaks between them.
+- An exact version, as the adapters pin it: a page on any other patch of the same minor gets a
+  second copy.
 - api-extractor (through `vite-plugin-dts`) for the declarations: the same result with a
   heavier toolchain and a report file to maintain.
 

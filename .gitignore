@@ -1,7 +1,7 @@
 # Local sample recordings (symlinks to large files outside the repo)
 samples/
 
-# Local-only working documents and assistant configuration
+# Personal notes and editor-assistant settings, not part of the project
 CLAUDE.md
 CLAUDE.local.md
 PLAN.md
@@ -18,8 +18,9 @@ PLAN.md
 # Dependencies and build output
 node_modules/
 dist/
-# The root LICENSE, copied in when the npm package is packed
+# The root LICENSE, copied in when the npm package is packed, and the packed tarball
 apps/library/LICENSE
+*.tgz
 .vite/
 *.tsbuildinfo
 

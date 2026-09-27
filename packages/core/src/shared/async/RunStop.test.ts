@@ -33,6 +33,32 @@ describe('RunStop', () => {
     stop.stop();
   });
 
+  it('ends a wait whose own start stopped the run', async () => {
+    const stop = new RunStop();
+    const waiting = stop.race(() => {
+      stop.stop();
+      return new Promise<string>(() => {
+        // Never settles: only the stop can end this wait.
+      });
+    });
+    await expect(waiting).resolves.toBe(STOPPED);
+  });
+
+  it('refuses a second wait while one is under way', async () => {
+    const stop = new RunStop();
+    const first = stop.race(
+      () =>
+        new Promise<string>(() => {
+          // Never settles.
+        }),
+    );
+    await expect(stop.race(() => Promise.resolve('second'))).rejects.toMatchObject({
+      code: 'invariant-violation',
+    });
+    stop.stop();
+    await expect(first).resolves.toBe(STOPPED);
+  });
+
   it('starts no work once the run has stopped', async () => {
     const stop = new RunStop();
     stop.stop();

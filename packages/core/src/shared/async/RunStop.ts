@@ -1,3 +1,5 @@
+import { ensureInvariant } from '../errors/GyroViewError';
+
 export const STOPPED = Symbol('stopped');
 
 /**
@@ -19,16 +21,20 @@ export class RunStop {
     this.wakeWaiter?.();
   }
 
+  /**
+   * The waiter is in place before `start` runs, so a stop that `start` itself causes (a decoder
+   * failing at once) ends the wait too.
+   */
   public async race<Value>(start: () => Promise<Value>): Promise<Value | typeof STOPPED> {
     if (this.isStopped) return STOPPED;
-    const work = start();
+    ensureInvariant(this.wakeWaiter === undefined, 'a run stop races one wait at a time');
     const stopped = new Promise<typeof STOPPED>((resolve) => {
       this.wakeWaiter = (): void => {
         resolve(STOPPED);
       };
     });
     try {
-      return await Promise.race([work, stopped]);
+      return await Promise.race([start(), stopped]);
     } finally {
       this.wakeWaiter = undefined;
     }

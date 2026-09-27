@@ -4,6 +4,8 @@ import { playwright } from '@vitest/browser-playwright';
 import type { BrowserCommand } from 'vitest/node';
 import { defineProject } from 'vitest/config';
 
+import { AUTOPLAY_WITHOUT_GESTURE, chromiumArguments } from '../../test/browserLaunch.mjs';
+
 import { embedPagePlugin } from './dev/embedPagePlugin.ts';
 
 const EMBED_PAGE = fileURLToPath(new URL('embed.html', import.meta.url));
@@ -47,7 +49,7 @@ export default defineProject({
         {
           browser: 'chromium',
           provider: playwright({
-            launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] },
+            launchOptions: { args: chromiumArguments(AUTOPLAY_WITHOUT_GESTURE) },
           }),
         },
         { browser: 'webkit' },

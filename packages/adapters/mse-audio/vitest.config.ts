@@ -1,6 +1,8 @@
 import { playwright } from '@vitest/browser-playwright';
 import { defineProject } from 'vitest/config';
 
+import { AUTOPLAY_WITHOUT_GESTURE, chromiumArguments } from '../../../test/browserLaunch.mjs';
+
 /**
  * Media Source Extensions and audio elements exist only in browsers, so this project runs in
  * real Chromium and WebKit builds through Playwright, like the WebCodecs adapter. Headless
@@ -28,7 +30,7 @@ export default defineProject({
         {
           browser: 'chromium',
           provider: playwright({
-            launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] },
+            launchOptions: { args: chromiumArguments(AUTOPLAY_WITHOUT_GESTURE) },
           }),
         },
         { browser: 'webkit' },

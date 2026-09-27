@@ -1,6 +1,8 @@
 import { playwright } from '@vitest/browser-playwright';
 import { defineProject } from 'vitest/config';
 
+import { AUTOPLAY_WITHOUT_GESTURE, chromiumArguments } from '../../test/browserLaunch.mjs';
+
 /**
  * The player is DOM code over WebCodecs and WebGL, so every test runs in real Chromium and
  * WebKit builds through Playwright. The autoplay flag lets Chromium start the audio clock
@@ -22,7 +24,7 @@ export default defineProject({
         {
           browser: 'chromium',
           provider: playwright({
-            launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] },
+            launchOptions: { args: chromiumArguments(AUTOPLAY_WITHOUT_GESTURE) },
           }),
         },
         { browser: 'webkit' },

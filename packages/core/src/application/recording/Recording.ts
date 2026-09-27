@@ -43,7 +43,7 @@ export class Recording {
   }
 
   /**
-   * Undefined when the camera wrote no exposure record.
+   * Undefined when the camera wrote no exposure record, or a damaged one.
    */
   public readExposureRecord(): Promise<ExposureRecord | undefined> {
     return this.parts.records.readExposure();

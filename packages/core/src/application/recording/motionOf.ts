@@ -38,7 +38,7 @@ export async function motionOf(
 }
 
 function damageWarningsOf(gyro: ParsedGyroRecord): readonly string[] {
-  const warning = `${gyro.damagedSamples} damaged gyro samples were left out of stabilization`;
+  const warning = `damaged gyro samples left out of stabilization: ${gyro.damagedSamples}`;
   return gyro.damagedSamples > 0 ? [warning] : [];
 }
 

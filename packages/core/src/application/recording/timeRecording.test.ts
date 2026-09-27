@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { timeRecording } from './timeRecording';
 import { PtsType } from '../../domain/format/info/infoFields';
+import { RAW_SAMPLE_SIZE } from '../../domain/format/records/gyro/gyroLayouts';
 import { GYRO_LAYOUT_PROBE_SIZE } from '../../domain/format/records/gyro/parseGyroRecord';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import { minimalInfoRecord } from '../../testing/minimalInfoRecord';
 import { seconds, type Seconds } from '../../shared/units/time';
+import { loadFixture } from '../../../test/support/fixtures';
 import { officeRecording } from '../../../test/support/officeRecording';
 
 /**
@@ -101,6 +103,15 @@ describe('timeRecording', () => {
     expect(timing.motion?.imuFrame.name).toBe('X5');
     expect(timing.motion?.orientations.length).toBe(2000);
     expect(timing.warnings).toEqual([]);
+  });
+
+  it('leaves damaged gyro samples out of stabilization and says how many', async () => {
+    const gyro = Uint8Array.from(loadFixture('x5/office/record-03-gyro-first2000.bin'));
+    // The high byte of one stamp: past the safe integers, as a flipped bit leaves it.
+    gyro[RAW_SAMPLE_SIZE * 1000 + 7] = 0xff;
+    const timing = await timeRecording(await officeRecording({ gyro }), trackOf(10));
+    expect(timing.motion?.orientations.length).toBe(1999);
+    expect(timing.warnings).toEqual(['damaged gyro samples left out of stabilization: 1']);
   });
 
   it('still stabilizes an unknown camera but warns that its IMU frame is a guess', async () => {

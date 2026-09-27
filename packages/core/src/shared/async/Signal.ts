@@ -5,7 +5,6 @@
  */
 export class Signal {
   public readonly promise: Promise<void>;
-  private isTriggered = false;
   private resolvePromise: (() => void) | undefined;
 
   public constructor() {
@@ -14,12 +13,7 @@ export class Signal {
     });
   }
 
-  public get wasTriggered(): boolean {
-    return this.isTriggered;
-  }
-
   public trigger(): void {
-    this.isTriggered = true;
     this.resolvePromise?.();
   }
 }

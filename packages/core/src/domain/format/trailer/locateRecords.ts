@@ -53,11 +53,10 @@ async function locateByWalkingBackwards(
   layout: TrailerLayout,
 ): Promise<readonly RecordLocation[]> {
   const records: RecordLocation[] = [];
+  const chunks = new BackwardChunks(source, layout.payloadStart);
   let recordEnd = layout.fileSize - TRAILER_FOOTER_SIZE;
   while (recordEnd > layout.payloadStart) {
-    const header = RecordHeader.parse(
-      await source.read(ByteRange.of(recordEnd - RECORD_HEADER_SIZE, RECORD_HEADER_SIZE)),
-    );
+    const header = RecordHeader.parse(await chunks.bytesEndingAt(recordEnd, RECORD_HEADER_SIZE));
     const payloadOffset = recordEnd - RECORD_HEADER_SIZE - header.payloadSize;
     ensureNotBeforePayloadStart(payloadOffset, header, layout.payloadStart);
     records.push({
@@ -68,6 +67,44 @@ async function locateByWalkingBackwards(
     recordEnd = payloadOffset;
   }
   return records.toReversed();
+}
+
+/**
+ * How much of the trailer one read of the backward walk takes: the headers of the small records
+ * near the footer share one, and only a large payload (the gyro record) sends the walk past it.
+ */
+const WALK_CHUNK_SIZE = 65_536;
+
+/**
+ * Reads the trailer backwards a chunk at a time, so walking a bare trailer costs a round trip
+ * per chunk rather than per record, each read being an HTTP request.
+ */
+class BackwardChunks {
+  private chunkStart = 0;
+  private chunk: Uint8Array = new Uint8Array();
+
+  public constructor(
+    private readonly source: RandomAccessSource,
+    private readonly trailerStart: number,
+  ) {}
+
+  public async bytesEndingAt(end: number, length: number): Promise<Uint8Array> {
+    const start = end - length;
+    if (start < this.trailerStart) {
+      throw new GyroViewError(
+        'invalid-trailer',
+        `a record header at ${start} lies before the trailer`,
+      );
+    }
+    const isInChunk = start >= this.chunkStart && end <= this.chunkStart + this.chunk.byteLength;
+    if (!isInChunk) await this.readChunkEndingAt(end);
+    return this.chunk.subarray(start - this.chunkStart, end - this.chunkStart);
+  }
+
+  private async readChunkEndingAt(end: number): Promise<void> {
+    this.chunkStart = Math.max(this.trailerStart, end - WALK_CHUNK_SIZE);
+    this.chunk = await this.source.read(ByteRange.of(this.chunkStart, end - this.chunkStart));
+  }
 }
 
 function ensureNotBeforePayloadStart(

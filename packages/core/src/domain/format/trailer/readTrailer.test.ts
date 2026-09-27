@@ -139,6 +139,13 @@ describe('readTrailer with synthetic layouts', () => {
     }
   });
 
+  it('walks the headers of a bare trailer in one read after the tail', async () => {
+    const file = syntheticRecords().buildContiguous();
+    const source = new SparseRandomAccessSource(file.bytes.byteLength).place(0, file.bytes);
+    await readTrailer(source);
+    expect(source.reads).toHaveLength(2);
+  });
+
   it('accepts a trailer that spans the whole file', async () => {
     const file = new TrailerFixtureBuilder()
       .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: INFO_PAYLOAD })

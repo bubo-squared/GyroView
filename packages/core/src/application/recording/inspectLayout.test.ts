@@ -1,29 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import { inspectLayout } from './inspectLayout';
-import { InfoRecordFormat, RecordType } from '../../domain/format/constants';
+import { RecordType } from '../../domain/format/constants';
 import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSource';
-import { TrailerFixtureBuilder } from '../../testing/TrailerFixtureBuilder';
 import { loadFixture } from '../../../test/support/fixtures';
-import { minimalMp4Prefix } from '../../../test/support/mp4Prefix';
-
-function officeRecords(): TrailerFixtureBuilder {
-  return new TrailerFixtureBuilder()
-    .withPrefix(minimalMp4Prefix())
-    .addRecord({
-      id: RecordType.Info,
-      format: InfoRecordFormat.Protobuf,
-      payload: loadFixture('x5/office/record-01-info.bin'),
-    })
-    .addRecord({
-      id: RecordType.Gyro,
-      payload: loadFixture('x5/office/record-03-gyro-first2000.bin'),
-    });
-}
+import { officeRecords } from '../../../test/support/officeRecording';
 
 describe('inspectLayout', () => {
   it('maps an inst-wrapped indexed file: boxes, trailer version, payload start and records', async () => {
-    const file = officeRecords().buildIndexed({ alignment: 4096, wrapInInstBox: true });
+    const file = officeRecords({ hasExposure: false }).buildIndexed({
+      alignment: 4096,
+      wrapInInstBox: true,
+    });
     const layout = await inspectLayout(new InMemoryRandomAccessSource(file.bytes));
     expect(layout).toMatchObject({
       fileSize: file.bytes.byteLength,
@@ -36,7 +24,7 @@ describe('inspectLayout', () => {
   });
 
   it('reports a trailer appended bare after the boxes', async () => {
-    const file = officeRecords().buildContiguous();
+    const file = officeRecords({ hasExposure: false }).buildContiguous();
     const layout = await inspectLayout(new InMemoryRandomAccessSource(file.bytes));
     expect(layout.trailerWrapper).toBe('bare');
   });

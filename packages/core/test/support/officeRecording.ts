@@ -24,6 +24,14 @@ export interface OfficeRecordingParts {
  * samples and the first 16 exposure entries, behind a minimal MP4.
  */
 export function officeRecording(parts: OfficeRecordingParts = {}): Promise<Recording> {
+  const file = officeRecords(parts).buildContiguous();
+  return readRecording(new InMemoryRandomAccessSource(file.bytes));
+}
+
+/**
+ * The trailer records of {@link officeRecording}, for a test that lays the file out itself.
+ */
+export function officeRecords(parts: OfficeRecordingParts = {}): TrailerFixtureBuilder {
   const builder = new TrailerFixtureBuilder().withPrefix(minimalMp4Prefix()).addRecord({
     id: RecordType.Info,
     format: InfoRecordFormat.Protobuf,
@@ -41,5 +49,5 @@ export function officeRecording(parts: OfficeRecordingParts = {}): Promise<Recor
       payload: loadFixture('x5/office/record-04-exposure-first16.bin'),
     });
   }
-  return readRecording(new InMemoryRandomAccessSource(builder.buildContiguous().bytes));
+  return builder;
 }

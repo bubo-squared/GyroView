@@ -8,29 +8,12 @@ import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSo
 import { TrailerFixtureBuilder } from '../../testing/TrailerFixtureBuilder';
 import { loadFixture } from '../../../test/support/fixtures';
 import { minimalMp4Prefix } from '../../../test/support/mp4Prefix';
+import { officeRecords } from '../../../test/support/officeRecording';
 import {
   OFFICE_FIRST_GYRO_SAMPLE,
   RAW_FULL_SCALE,
   RAW_ZERO_POINT,
 } from '../../../test/support/officeGyroSample';
-
-function officeRecords(): TrailerFixtureBuilder {
-  return new TrailerFixtureBuilder()
-    .withPrefix(minimalMp4Prefix())
-    .addRecord({
-      id: RecordType.Info,
-      format: InfoRecordFormat.Protobuf,
-      payload: loadFixture('x5/office/record-01-info.bin'),
-    })
-    .addRecord({
-      id: RecordType.Gyro,
-      payload: loadFixture('x5/office/record-03-gyro-first2000.bin'),
-    })
-    .addRecord({
-      id: RecordType.Exposure,
-      payload: loadFixture('x5/office/record-04-exposure-first16.bin'),
-    });
-}
 
 describe('readRecording on synthetic X5 files', () => {
   it('assembles the info and calibration from an inst-wrapped indexed file', async () => {

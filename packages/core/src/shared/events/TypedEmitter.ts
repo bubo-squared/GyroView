@@ -47,7 +47,12 @@ export class TypedEmitter<Events extends object> {
     }
   }
 
+  /**
+   * The listeners of an event under way are dropped too, as an unsubscribe drops one: whoever
+   * removed them is past hearing from them.
+   */
   public removeAll(): void {
+    for (const set of this.listeners.values()) set.clear();
     this.listeners.clear();
   }
 }

@@ -41,6 +41,19 @@ describe('TypedEmitter', () => {
     expect(calls).toBe(1);
   });
 
+  it('stops an event under way once a listener removes everything', () => {
+    const emitter = new TypedEmitter<Events>();
+    const heard: string[] = [];
+    emitter.on('greeted', () => {
+      emitter.removeAll();
+    });
+    emitter.on('greeted', (name) => {
+      heard.push(name);
+    });
+    emitter.emit('greeted', 'late');
+    expect(heard).toEqual([]);
+  });
+
   it('reports a listener that throws and still reaches the others, the emitter unharmed', () => {
     const failures: unknown[] = [];
     const emitter = new TypedEmitter<Events>((error) => {

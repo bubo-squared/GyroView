@@ -1,7 +1,8 @@
 # ADR 0020: One npm package, `gyroview`, bundles the core and the adapters
 
 Status: accepted (2026-09-27); amended (2026-09-28): the third-party dependencies are caret
-ranges, since an exact version gave a page on any other patch a second Three.js.
+ranges, since an exact version gave a page on any other patch a second Three.js; the build
+keeps one file per module, since one shared chunk kept whatever its bundler could not prove pure.
 
 ## Context
 
@@ -14,8 +15,11 @@ users: a page needs the element, the player without the element, and the types t
 
 `apps/library` builds and publishes one package, `gyroview`, under the MIT license:
 
-- Vite bundles the player with the core and the adapters into unminified ES modules:
-  `dist/index.js` and `dist/define.js`, sharing `dist/player.js`. Three.js and mediabunny stay
+- Vite bundles the player with the core and the adapters into unminified ES modules, one file
+  per source module under its path in the repository, beside the entries `dist/index.js` and
+  `dist/define.js`. A page's bundler drops every module the page does not reach, since
+  `sideEffects` names `define.js` alone: a page importing only `inspectRecording` carries no
+  element, no controls and no Three.js. Three.js and mediabunny stay
   `dependencies`, from the versions the adapters are built against up to their next breaking
   release (a caret range, which for Three.js's 0.x versions admits patches only; a test compares
   them). A page whose own Three.js falls in that range shares one copy; a page on another minor

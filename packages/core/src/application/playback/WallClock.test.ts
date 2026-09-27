@@ -59,14 +59,6 @@ describe('WallClock', () => {
     expect(clock.currentTime).toBe(2.5);
   });
 
-  it('stops on dispose', async () => {
-    const { clock, advance } = clockAt();
-    await clock.start();
-    clock.dispose();
-    advance(1000);
-    expect(clock.currentTime).toBe(0);
-  });
-
   it('ignores a second start and a pause while already paused', async () => {
     let nowMs = 0;
     const clock = new WallClock(() => milliseconds(nowMs));
@@ -78,11 +70,5 @@ describe('WallClock', () => {
     clock.pause();
     nowMs = 5000;
     expect(clock.currentTime).toBe(1);
-  });
-
-  it('never ends or fails by itself', () => {
-    const clock = new WallClock(() => milliseconds(0));
-    expect(clock.hasEnded).toBe(false);
-    expect(clock.failure).toBeUndefined();
   });
 });

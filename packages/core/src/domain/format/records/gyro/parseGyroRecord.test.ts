@@ -41,7 +41,8 @@ const ANGULAR_Y_HIGH_BYTE = 32 + 8 + 7;
 
 /**
  * The sample with one bit of one byte flipped, as damage leaves it: bit 62 of a small float64
- * turns it into about 1e307, finite and far past anything a gyroscope measures.
+ * turns it into about 1e307, finite and far past anything a gyroscope measures; bit 15 or 14 of
+ * a raw word moves the reading by its range or half of it.
  */
 function bitFlipped(sample: Uint8Array, byte: number, mask: number): Uint8Array {
   const flipped = Uint8Array.from(sample);
@@ -173,11 +174,20 @@ describe('parseGyroRecord with the raw X5 layout', () => {
     ['acceleration about x, its highest bit', RAW_ACCELERATION_OFFSET + 1, 0x80],
     ['angular velocity about z, its second highest bit', RAW_ANGULAR_VELOCITY_OFFSET + 5, 0x40],
   ])('leaves out a raw reading whose %s flipped', (_component, highByte, mask) => {
-    const samples = [10, 20, 30, 40, 50].map((ms) => encodeRawReading(ms * 1000, [0, 1, 0], 0));
+    const samples = [0, 1, 2, 3, 4].map((index) =>
+      encodeRawReading((index + 1) * 10_000, [0, 1, index / 4], index * 10),
+    );
     samples[2] = bitFlipped(samples[2] ?? new Uint8Array(), highByte, mask);
     const { track, damagedSamples } = read(new Uint8Array(samples.flatMap((s) => [...s])), RAW_X5);
     expect(damagedSamples).toBe(1);
     expect([...track.captureTimes]).toEqual([10_000, 20_000, 40_000, 50_000]);
+    // Each kept sample's readings moved with its stamp.
+    const rawPerRadianPerSecond = RAW_FULL_SCALE / degreesToRadians(degrees(2000));
+    const kept = [0, 1, 2, 3].map((index) => track.sampleAt(index));
+    expect(kept.map((sample) => Math.round(sample.acceleration[2] * 4))).toEqual([0, 1, 3, 4]);
+    expect(
+      kept.map((sample) => Math.round((sample.angularVelocity[0] * rawPerRadianPerSecond) / 10)),
+    ).toEqual([0, 1, 3, 4]);
   });
 
   it('keeps a knock and a vibration, whose leaps no flipped bit explains', () => {

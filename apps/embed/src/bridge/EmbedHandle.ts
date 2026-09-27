@@ -5,6 +5,7 @@ import {
   GyroViewError,
   isFlowing,
   isGyroViewErrorCode,
+  messageOf,
   TypedEmitter,
 } from '@gyroview/core';
 import type { PlayerStatus } from '@gyroview/player';
@@ -175,8 +176,24 @@ export class EmbedHandle {
         },
         reject,
       });
-      if (this.isConnected) this.endpoint.send(message);
+      if (this.isConnected) this.send(id);
     });
+  }
+
+  /**
+   * Sends a command still waiting. One whose arguments the channel cannot carry (a URL object, a
+   * function) is refused as a bad argument and forgotten, and the others still go.
+   */
+  private send(id: number): void {
+    const pending = this.pending.get(id);
+    if (!pending) return;
+    try {
+      this.endpoint.send(pending.message);
+    } catch (error) {
+      this.pending.delete(id);
+      const refusal = `embed command arguments cannot be sent to the frame: ${messageOf(error)}`;
+      pending.reject(new GyroViewError('invalid-argument', refusal, { cause: error }));
+    }
   }
 
   private onMessage(message: ProtocolMessage): void {
@@ -186,7 +203,7 @@ export class EmbedHandle {
         // sends none, and the mirror keeps the defaults.
         if (message.state !== undefined) this.stateValue = message.state as EmbedState;
         this.isConnected = true;
-        for (const { message: command } of this.pending.values()) this.endpoint.send(command);
+        for (const id of this.pending.keys()) this.send(id);
         break;
       }
       case 'result': {

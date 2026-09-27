@@ -52,6 +52,25 @@ describe('the embed bridge over a message channel', () => {
     }
   });
 
+  it('refuses a command the channel cannot carry, before the hello, and still sends the rest', async () => {
+    const { handle } = bridge();
+    const uncloneable = handle.load({
+      src: new URL('clip.insv', location.href) as unknown as string,
+    });
+    const pausing = handle.pause();
+    await expect(uncloneable).rejects.toMatchObject({ code: 'invalid-argument' });
+    await expect(pausing).resolves.toBeUndefined();
+  });
+
+  it('refuses a command the channel cannot carry once connected, and answers the next', async () => {
+    const { handle } = bridge();
+    await handle.getState();
+    await expect(
+      handle.load({ src: new URL('clip.insv', location.href) as unknown as string }),
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    await expect(handle.pause()).resolves.toBeUndefined();
+  });
+
   it('starts its mirror from the settings the frame was configured with', async () => {
     const { handle } = bridge({ yaw: '45', 'view-mode': 'equirectangular', stabilization: 'off' });
     await waitFor(() => handle.state.viewMode === 'equirectangular', 'the hello');

@@ -82,7 +82,8 @@ Every failure is a `GyroViewError` with a stable `code`; the `error` event carri
 | Code                    | Meaning and what to do                                                       |
 | ----------------------- | ---------------------------------------------------------------------------- |
 | `cors`                  | The media server answered but forbade this origin: add the CORS headers.     |
-| `source-unreadable`     | The URL could not be fetched (network, DNS, wrong URL), asked twice more.    |
+| `source-unreadable`     | The URL could not be fetched (network, DNS, wrong URL). During playback a    |
+|                         | range that broke off or met a 5xx was asked for twice more first (ADR 0019). |
 | `range-unsupported`     | The server ignores `Range`: enable byte-range serving.                       |
 | `source-truncated`      | Fewer bytes came back than asked: the file changed or the server misbehaves. |
 | `codec-unsupported`     | This browser cannot decode the tracks (no HEVC hardware, or not a secure     |

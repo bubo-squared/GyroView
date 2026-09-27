@@ -189,6 +189,7 @@ export class Player {
    * there, as a media element's default playback start position has it.
    */
   public seek(time: Seconds): void {
+    ensureFinite(time, 'time');
     const session = this.loaded?.pipeline.session;
     if (session) session.seek(time);
     else this.pendingStartTime = time;
@@ -198,6 +199,7 @@ export class Player {
    * Seeks to the key frame at or before `time`: quick to show while a seek bar is dragged.
    */
   public async scrub(time: Seconds): Promise<void> {
+    ensureFinite(time, 'time');
     await this.loaded?.pipeline.session.scrub(time);
   }
 
@@ -206,6 +208,8 @@ export class Player {
   }
 
   public lookAt(yaw: Degrees, pitch: Degrees): void {
+    ensureFinite(yaw, 'yaw');
+    ensureFinite(pitch, 'pitch');
     this.viewing.lookAt(yaw, pitch);
   }
 
@@ -228,6 +232,7 @@ export class Player {
    * size; about the centre when none is given.
    */
   public zoom(steps: number, focus?: ScreenPoint): void {
+    ensureFinite(steps, 'zoom steps');
     this.viewing.zoom(steps, focus);
   }
 
@@ -372,5 +377,15 @@ export class Player {
     if (status === this.lastStatus) return;
     this.lastStatus = status;
     this.events.emit('statuschange', status);
+  }
+}
+
+/**
+ * A number from the page: NaN from an empty field or an undefined value would reach the clock
+ * and the view, which cannot take it.
+ */
+function ensureFinite(value: number, name: string): void {
+  if (!Number.isFinite(value)) {
+    throw new GyroViewError('invalid-argument', `${name} must be a finite number`);
   }
 }

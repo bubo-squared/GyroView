@@ -359,6 +359,21 @@ describe('Player over the synthetic X5 recording', () => {
     expect(player.isPaused).toBe(true);
   });
 
+  it('refuses times and view changes that are not finite numbers', async () => {
+    const { player } = open();
+    const refusal = { code: 'invalid-argument' };
+    expect(() => {
+      player.seek(seconds(NaN));
+    }).toThrow(expect.objectContaining(refusal));
+    await expect(player.scrub(seconds(NaN))).rejects.toMatchObject(refusal);
+    expect(() => {
+      player.lookAt(degrees(NaN), degrees(0));
+    }).toThrow(expect.objectContaining(refusal));
+    expect(() => {
+      player.zoom(Infinity);
+    }).toThrow(expect.objectContaining(refusal));
+  });
+
   it('lets a newer load supersede an older one quietly and ignores transport before a load', async () => {
     const { player, events, errors } = open();
     await player.play();

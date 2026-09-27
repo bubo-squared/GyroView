@@ -12,6 +12,7 @@ import {
 import { rowMeansOf } from './rowMeans';
 import { createFullscreenTriangle, createPassMaterial } from '../fullscreenPass';
 import { RGBA_CHANNELS } from '../readback';
+import { renderInto } from '../renderInto';
 import { MAX_LENSES, type RendererUniforms } from '../rendererUniforms';
 import { SEAM_ANALYSIS } from '../shaderPrograms';
 
@@ -90,13 +91,9 @@ export class SeamMeterPass implements SeamMeter {
    * drawing ends.
    */
   private draw(): void {
-    const previousTarget = this.renderer.getRenderTarget();
-    this.renderer.setRenderTarget(this.target);
-    try {
+    renderInto(this.renderer, this.target, () => {
       this.renderer.render(this.scene, this.camera);
-    } finally {
-      this.renderer.setRenderTarget(previousTarget);
-    }
+    });
   }
 
   private async readSeam(): Promise<void> {

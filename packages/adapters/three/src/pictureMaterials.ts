@@ -10,6 +10,7 @@ import {
 } from 'three';
 
 import { createPassMaterial } from './fullscreenPass';
+import { renderInto } from './renderInto';
 import type { RendererUniforms } from './rendererUniforms';
 import { PICTURE_PROGRAMS } from './shaderPrograms';
 
@@ -42,23 +43,12 @@ export function compilePictureMaterials(
     scene.add(new Mesh(geometry, material));
     return scene;
   });
-  drawOffScreen(renderer, () => {
-    for (const scene of scenes) renderer.render(scene, camera);
-  });
-}
-
-/**
- * Runs `draw` with a 1-by-1 target bound, the renderer's own target restored afterwards however
- * the drawing ends.
- */
-function drawOffScreen(renderer: WebGLRenderer, draw: () => void): void {
-  const previous = renderer.getRenderTarget();
   const target = new WebGLRenderTarget(1, 1, { depthBuffer: false, stencilBuffer: false });
-  renderer.setRenderTarget(target);
   try {
-    draw();
+    renderInto(renderer, target, () => {
+      for (const scene of scenes) renderer.render(scene, camera);
+    });
   } finally {
-    renderer.setRenderTarget(previous);
     target.dispose();
   }
 }

@@ -261,6 +261,8 @@ function assembleParts(renderer: WebGLRenderer, setup: StitchingSetup): Renderer
   const pass = new Mesh(createFullscreenTriangle(), materials.rectilinear);
   try {
     compilePictureMaterials(renderer, pass.geometry, materials);
+    // The seam meter's program too: gain matching asks for one at every load.
+    new SeamMeterPass(renderer, uniforms, setup.lenses.length).dispose();
   } catch (error) {
     disposePictureMaterials(materials);
     pass.geometry.dispose();

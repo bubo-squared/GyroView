@@ -66,7 +66,7 @@ export class SeekBar {
     });
     seek.addEventListener('change', () => {
       this.isScrubbing = false;
-      void this.seekExactly(Number(seek.value));
+      this.seekExactly(Number(seek.value));
     });
     seek.addEventListener('keydown', (event) => {
       const direction = ARROW_DIRECTIONS.get(event.key);
@@ -113,11 +113,10 @@ export class SeekBar {
   }
 
   /**
-   * The exact seek waits for a scrub still in flight, which would otherwise land after it.
+   * A scrub still in flight yields to the seek: the session drops a scrub a seek overtook.
    */
-  private async seekExactly(time: number): Promise<void> {
+  private seekExactly(time: number): void {
     this.scrubTarget = undefined;
-    await this.scrubbing;
     this.host.player.seek(seconds(time));
   }
 

@@ -124,16 +124,15 @@ describe('SeekBar', () => {
     expect(transport.scrubs).toEqual([1, 3]);
   });
 
-  it('seeks exactly on release, once the scrub in flight has landed', async () => {
+  it('seeks exactly on release at once, and scrubs no position still waiting', async () => {
     const { transport, drag, release } = seekBar();
     transport.becomeReady(10);
     drag(1);
+    drag(3);
     release(2);
-    await settle();
-    expect(transport.seeks).toEqual([]);
+    expect(transport.seeks).toEqual([2]);
     transport.landScrub();
     await settle();
-    expect(transport.seeks).toEqual([2]);
     expect(transport.scrubs).toEqual([1]);
   });
 

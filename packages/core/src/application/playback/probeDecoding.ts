@@ -45,28 +45,30 @@ const TIMED_OUT: Outcome = {
  * trusted: platforms answer yes and then fail, and hardware decoders can stall, hence the real
  * decode under a deadline. The host triggers `deadline` once the probe has taken too long (the
  * core has no timers); sources still undecided then report `timed-out` and their decoders are
- * closed. A track that cannot be read rejects the probe with its own failure.
+ * closed. A track that cannot be read rejects the probe with its own failure, and the other
+ * sources' decoders are closed then, not at the deadline.
  */
 export async function probeDecoding<Handle>(
   frameSources: readonly VideoTrackReader[],
   decoderPort: VideoDecoderPort<Handle>,
   deadline: Signal,
 ): Promise<DecodeProbeReport> {
-  const sources = await Promise.all(
-    frameSources.map((track) => probeFrameSource(track, decoderPort, deadline)),
-  );
-  return { canDecode: sources.every((source) => source.verdict === 'decodes'), sources };
+  const probes = frameSources.map((track) => new SourceProbe(track, decoderPort));
+  try {
+    const sources = await Promise.all(probes.map((probe) => probeFrameSource(probe, deadline)));
+    return { canDecode: sources.every((source) => source.verdict === 'decodes'), sources };
+  } finally {
+    for (const probe of probes) probe.close();
+  }
 }
 
 async function probeFrameSource<Handle>(
-  track: VideoTrackReader,
-  decoderPort: VideoDecoderPort<Handle>,
+  probe: SourceProbe<Handle>,
   deadline: Signal,
 ): Promise<SourceProbeResult> {
-  const probe = new SourceProbe(track, decoderPort);
   try {
     const outcome = await Promise.race([probe.run(), afterDeadline(deadline)]);
-    return { track: track.description, ...outcome };
+    return { track: probe.track.description, ...outcome };
   } finally {
     probe.close();
   }
@@ -85,7 +87,7 @@ class SourceProbe<Handle> {
   private isClosed = false;
 
   public constructor(
-    private readonly track: VideoTrackReader,
+    public readonly track: VideoTrackReader,
     private readonly decoderPort: VideoDecoderPort<Handle>,
   ) {}
 

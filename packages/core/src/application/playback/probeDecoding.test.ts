@@ -189,6 +189,22 @@ describe('probeDecoding', () => {
     await expect(probing).rejects.toMatchObject({ code: 'source-unreadable' });
   });
 
+  it('closes the other decoders at once when a track that cannot be read fails the probe', async () => {
+    const port = new StalledPort();
+    const [readable] = tracks([30]);
+    const unreadable = new UnreadableTrack({
+      trackIndex: 1,
+      frameRate: 30,
+      frameCount: 30,
+      framesPerGop: 30,
+    });
+    const probing = probeDecoding([readable ?? unreadable, unreadable], port, new Signal());
+    await expect(probing).rejects.toMatchObject({ code: 'source-unreadable' });
+    await settle();
+    expect(port.decoders).toHaveLength(1);
+    expect(port.decoders[0]?.isClosed).toBe(true);
+  });
+
   it('maps a refused decoder creation onto the codec verdicts', async () => {
     const unsupported = new RefusingPort(new GyroViewError('codec-unsupported', 'no hevc here'));
     const broken = new RefusingPort(new Error('out of decoder instances'));

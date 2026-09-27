@@ -391,7 +391,8 @@ export class Player {
         : new GyroViewError('invariant-violation', 'the player failed unexpectedly', {
             cause: error,
           });
-    // A failure after the recording was attached (the seam meter's shader) lets it go too.
+    // Lets go of what the failed load holds: its reads, which only this abort ends, and the
+    // recording, when it failed after attaching it.
     this.release();
     const failed: FailedPhase = { kind: 'failed', failure };
     this.phase = failed;

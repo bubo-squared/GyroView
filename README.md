@@ -106,7 +106,8 @@ Styling: the host element sizes the player (a block with a 16:9 aspect ratio by 
 writes its state on itself for a page's selectors, and a page never sets these: `data-status`
 (the status, as in `gyro-view[data-status='error']`), `data-has-frame` once a picture is drawn,
 `data-idle` while the controls have faded, `data-fill` while it is pinned over the page in
-place of fullscreen.
+place of fullscreen. Under `prefers-reduced-motion` the spinner turns slower and the controls
+do not fade.
 
 Words: every label, menu choice and failure message is in English until the page gives its own
 through `messages`, table by table, and `null` brings the defaults back:

@@ -212,3 +212,10 @@ canvas[data-draggable] {
 canvas[data-draggable]:active {
   cursor: grabbing;
 }
+
+/* A viewer who asked for less motion sees the controls come and go without fading. */
+@media (prefers-reduced-motion: reduce) {
+  .controls {
+    transition: none;
+  }
+}

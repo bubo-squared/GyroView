@@ -30,6 +30,12 @@ const KEEP_BEHIND_SECONDS = 30;
  */
 const EVICT_BEHIND_SECONDS = 60;
 /**
+ * How far before its time a run starts feeding. The decoder gets the frames before the playhead
+ * (each AAC frame overlaps the one before), and a seek to the very end appends more than the lone
+ * last frame, of which WebKit on Linux buffers nothing, failing the element once the stream ends.
+ */
+const LEAD_IN_SECONDS = 1;
+/**
  * Events on which the feeder re-checks whether the buffer needs more data.
  */
 const WAKE_EVENTS = ['timeupdate', 'seeking', 'waiting', 'play'] as const;
@@ -79,7 +85,8 @@ export class SourceBufferFeeder {
   }
 
   private async feed(from: Seconds, stop: RunStop): Promise<void> {
-    const segments = this.parts.source.segmentsFrom(from)[Symbol.asyncIterator]();
+    const leadIn = seconds(Math.max(0, from - LEAD_IN_SECONDS));
+    const segments = this.parts.source.segmentsFrom(leadIn)[Symbol.asyncIterator]();
     try {
       await this.settlePendingAppend();
       const hasReachedEnd = await this.pump(segments, stop);

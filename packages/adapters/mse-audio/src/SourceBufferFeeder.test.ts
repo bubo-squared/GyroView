@@ -12,7 +12,7 @@ import { SourceBufferFeeder } from './SourceBufferFeeder';
 const AAC_IN_MP4 = 'audio/mp4; codecs="mp4a.40.2"';
 
 /**
- * A source the test never reads: the feeder under test is disposed before any run starts.
+ * A source with nothing to append; the first test disposes its feeder before any run starts.
  */
 const UNREAD_SOURCE: AudioSegmentSource = {
   mimeType: AAC_IN_MP4,
@@ -47,6 +47,34 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
     expect(() => {
       feeder.dispose();
     }).not.toThrow();
+    attached.detach();
+    element.remove();
+  });
+
+  it('feeds a second before the time it restarts from, and from the start before that', async () => {
+    const element = document.createElement('audio');
+    document.body.append(element);
+    const attached = await openMediaSource(element);
+    const { mediaSource } = attached;
+    const sourceBuffer = mediaSource.addSourceBuffer(AAC_IN_MP4);
+    const asked: number[] = [];
+    const feeder = new SourceBufferFeeder({
+      element,
+      mediaSource,
+      sourceBuffer,
+      source: {
+        ...UNREAD_SOURCE,
+        segmentsFrom: (time): AsyncIterable<Uint8Array<ArrayBuffer>> => {
+          asked.push(time);
+          return UNREAD_SOURCE.segmentsFrom(time);
+        },
+      },
+    });
+    feeder.restartFrom(seconds(2.5));
+    feeder.restartFrom(seconds(0.5));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(asked).toEqual([1.5, 0]);
+    feeder.dispose();
     attached.detach();
     element.remove();
   });

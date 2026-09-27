@@ -9,11 +9,6 @@ export type HttpMethod = 'GET' | 'HEAD';
 export const FIRST_BYTE_RANGE = 'bytes=0-0';
 
 /**
- * The status of a server that does not allow HEAD; the first byte then answers what HEAD would.
- */
-export const HTTP_METHOD_NOT_ALLOWED = 405;
-
-/**
  * The response headers a cross-origin page must be let read, as the fix a CORS failure names.
  */
 export const EXPOSED_HEADERS_ADVICE =

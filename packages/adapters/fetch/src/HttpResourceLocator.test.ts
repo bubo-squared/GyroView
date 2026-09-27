@@ -17,7 +17,9 @@ afterAll(async () => {
   await Promise.all(servers.map((server) => server.stop()));
 });
 
+const HTTP_FORBIDDEN = 403;
 const HTTP_NOT_FOUND = 404;
+const HTTP_METHOD_NOT_ALLOWED = 405;
 
 describeResourceLocatorContract(async () => {
   const existing = await serve();
@@ -51,8 +53,11 @@ describe('HttpResourceLocator', () => {
     expect(calls).toBe(1);
   });
 
-  it('falls back to a one-byte GET when HEAD is not allowed', async () => {
-    const server = await serve({ answersHeadWith: 405 });
+  it.each([
+    ['not allowed', HTTP_METHOD_NOT_ALLOWED],
+    ['forbidden to a URL signed for GET alone', HTTP_FORBIDDEN],
+  ])('falls back to a one-byte GET when HEAD is %s', async (_refusal, status) => {
+    const server = await serve({ answersHeadWith: status });
     await expect(new HttpResourceLocator().exists(server.url)).resolves.toBe(true);
   });
 

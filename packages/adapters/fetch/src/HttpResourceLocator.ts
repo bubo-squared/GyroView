@@ -3,14 +3,20 @@ import type { ResourceLocator } from '@gyroview/core';
 import {
   discardBody,
   FIRST_BYTE_RANGE,
-  HTTP_METHOD_NOT_ALLOWED,
   plainHttpRequest,
   type HttpRequestOptions,
 } from './httpRequest';
 
+const HTTP_FORBIDDEN = 403;
+const HTTP_METHOD_NOT_ALLOWED = 405;
 /**
- * ResourceLocator over HTTP: one HEAD request, or a one-byte GET when the server does not allow
- * HEAD. Every failure, including a missing CORS header, means "not available"; the file looked
+ * How a server refuses HEAD: a 405, or a 403 from a URL signed for GET alone. The first byte
+ * then answers what HEAD would.
+ */
+const REFUSED_HEAD: ReadonlySet<number> = new Set([HTTP_METHOD_NOT_ALLOWED, HTTP_FORBIDDEN]);
+
+/**
+ * ResourceLocator over HTTP: one HEAD request, or a one-byte GET when the server refuses HEAD. Every failure, including a missing CORS header, means "not available"; the file looked
  * for is optional, so nothing here throws, and no request is spent explaining a failure.
  */
 export class HttpResourceLocator implements ResourceLocator {
@@ -20,7 +26,7 @@ export class HttpResourceLocator implements ResourceLocator {
     try {
       const head = await plainHttpRequest(url, { method: 'HEAD' }, this.options);
       discardBody(head);
-      if (head.status !== HTTP_METHOD_NOT_ALLOWED) return head.ok;
+      if (!REFUSED_HEAD.has(head.status)) return head.ok;
       const firstByte = await plainHttpRequest(
         url,
         { method: 'GET', headers: { Range: FIRST_BYTE_RANGE } },

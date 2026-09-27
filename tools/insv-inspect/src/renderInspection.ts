@@ -91,14 +91,17 @@ function renderGyro(inspection: Inspection): string {
   if (gyro === undefined) return 'Gyro: none';
   if ('unreadable' in gyro) return `Gyro: unreadable (${gyro.unreadable})`;
   const stray = gyro.strayBytes > 0 ? `, ${gyro.strayBytes} stray byte(s)` : '';
+  const damaged =
+    gyro.damagedSamples > 0 ? `, ${gyro.damagedSamples} damaged sample(s) left out` : '';
   return (
     `Gyro: ${gyro.layout} layout, ${gyro.samples.toLocaleString('en-US')} samples over ${fixed(gyro.spanSeconds)} s, ` +
-    `mean interval ${showFixed(gyro.meanIntervalUs)} us, mean |a| ${fixed(gyro.meanAccelerationMagnitudeG)} g${stray}`
+    `mean interval ${showFixed(gyro.meanIntervalUs)} us, mean |a| ${fixed(gyro.meanAccelerationMagnitudeG)} g${stray}${damaged}`
   );
 }
 
 function renderExposure(inspection: Inspection): string {
   const { exposure } = inspection;
+  if (exposure !== undefined && 'damaged' in exposure) return 'Exposure: damaged, left out';
   return exposure === undefined
     ? 'Exposure: none'
     : `Exposure: ${exposure.entries.toLocaleString('en-US')} entries from ${exposure.firstCaptureTimeUs} to ${exposure.lastCaptureTimeUs} us, ` +

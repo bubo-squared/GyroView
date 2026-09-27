@@ -34,6 +34,7 @@ export {
   type LensSource,
 } from './domain/stitching/LensLayout';
 export type { ParsedGyroRecord } from './domain/format/records/gyro/parseGyroRecord';
+export { RecordType } from './domain/format/constants';
 export type { GyroSample, GyroTrack } from './domain/motion/gyro/GyroTrack';
 export {
   isProperRotation,

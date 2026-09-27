@@ -7,6 +7,7 @@ import {
   microsecondsToSeconds,
   inspectLayout,
   readRecording,
+  RecordType,
   type ExposureRecord,
   type ParsedGyroRecord,
   type Recording,
@@ -15,6 +16,7 @@ import {
 
 import type {
   CalibrationSummary,
+  DamagedExposure,
   ExposureSummary,
   GyroSummary,
   Inspection,
@@ -30,20 +32,14 @@ export async function inspectFile(file: string): Promise<Inspection> {
   const source = await FileRandomAccessSource.open(file);
   try {
     const [layout, recording] = await Promise.all([inspectLayout(source), readRecording(source)]);
-    const [gyro, exposure] = await Promise.all([
-      gyroOf(recording),
-      unlessGyroUnreadable(recording.readExposureRecord()),
-    ]);
+    const [gyro, exposure] = await Promise.all([gyroOf(recording), exposureOf(recording, layout)]);
     return {
       ...summarizeStructure(file, layout),
       info: recording.info,
       calibration: summarizeCalibration(recording),
       calibrationWarnings: recording.calibration.warnings,
       gyro,
-      exposure:
-        exposure === undefined
-          ? undefined
-          : summarizeExposure(exposure, await firstEncodedFrameEntry(exposure, recording)),
+      exposure,
     };
   } finally {
     await source.close();
@@ -93,7 +89,12 @@ function summarizeCalibration(recording: Recording): CalibrationSummary | undefi
       };
 }
 
-function summarizeGyro({ track, layout, strayBytes }: ParsedGyroRecord): GyroSummary {
+function summarizeGyro({
+  track,
+  layout,
+  strayBytes,
+  damagedSamples,
+}: ParsedGyroRecord): GyroSummary {
   const leading = Math.min(GRAVITY_SAMPLE_COUNT, track.length);
   let magnitudeSum = 0;
   for (let index = 0; index < leading; index += 1)
@@ -105,6 +106,7 @@ function summarizeGyro({ track, layout, strayBytes }: ParsedGyroRecord): GyroSum
     layout,
     samples: track.length,
     strayBytes,
+    damagedSamples,
     spanSeconds: microsecondsToSeconds(microseconds(span)),
     meanIntervalUs: track.meanSampleInterval,
     meanAccelerationMagnitudeG: leading > 0 ? magnitudeSum / leading : NaN,
@@ -141,6 +143,22 @@ async function gyroOf(recording: Recording): Promise<GyroSummary | UnreadableGyr
     if (!hasErrorCode(error, 'unsupported-gyro-record')) throw error;
     return { unreadable: messageOf(error) };
   }
+}
+
+/**
+ * The exposure summary; damaged when the trailer lists a record that did not parse, and nothing
+ * where the gyro layout cannot be told (the gyro line says why).
+ */
+async function exposureOf(
+  recording: Recording,
+  layout: RecordingLayout,
+): Promise<ExposureSummary | DamagedExposure | undefined> {
+  const exposure = await unlessGyroUnreadable(recording.readExposureRecord());
+  if (exposure)
+    return summarizeExposure(exposure, await firstEncodedFrameEntry(exposure, recording));
+  const isListed = layout.records.some((record) => record.id === RecordType.Exposure);
+  const isGyroReadable = (await unlessGyroUnreadable(recording.captureClock())) !== undefined;
+  return isListed && isGyroReadable ? { damaged: true } : undefined;
 }
 
 /**

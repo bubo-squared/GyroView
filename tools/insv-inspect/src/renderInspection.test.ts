@@ -1,8 +1,18 @@
 import { milliseconds, seconds } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
-import type { Inspection } from './Inspection';
+import type { GyroSummary, Inspection } from './Inspection';
 import { renderInspection } from './renderInspection';
+
+const GYRO: GyroSummary = {
+  layout: 'raw',
+  samples: 261_872,
+  strayBytes: 1,
+  damagedSamples: 0,
+  spanSeconds: 262.232013,
+  meanIntervalUs: 1001.3,
+  meanAccelerationMagnitudeG: 0.998,
+};
 
 const inspection: Inspection = {
   file: 'sample.insv',
@@ -48,14 +58,7 @@ const inspection: Inspection = {
     ],
   },
   calibrationWarnings: ['offset_v2 skipped: example'],
-  gyro: {
-    layout: 'raw',
-    samples: 261_872,
-    strayBytes: 1,
-    spanSeconds: 262.232013,
-    meanIntervalUs: 1001.3,
-    meanAccelerationMagnitudeG: 0.998,
-  },
+  gyro: GYRO,
   exposure: {
     entries: 15_720,
     firstCaptureTimeUs: 921_651_739,
@@ -103,5 +106,12 @@ describe('renderInspection', () => {
     const bare = renderInspection({ ...inspection, gyro: undefined, exposure: undefined });
     expect(bare).toContain('Gyro: none');
     expect(bare).toContain('Exposure: none');
+  });
+
+  it('says what damage it left out', () => {
+    const gyro = { ...GYRO, damagedSamples: 3 };
+    const damaged = renderInspection({ ...inspection, gyro, exposure: { damaged: true } });
+    expect(damaged).toContain('1 stray byte(s), 3 damaged sample(s) left out');
+    expect(damaged).toContain('Exposure: damaged, left out');
   });
 });

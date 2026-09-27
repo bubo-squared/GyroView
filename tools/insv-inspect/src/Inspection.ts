@@ -35,6 +35,10 @@ export interface GyroSummary {
   readonly layout: string;
   readonly samples: number;
   readonly strayBytes: number;
+  /**
+   * Samples left out because their bytes cannot be a reading; a wrong layout guess shows here.
+   */
+  readonly damagedSamples: number;
   readonly spanSeconds: number;
   readonly meanIntervalUs: number | undefined;
   /**
@@ -48,6 +52,14 @@ export interface GyroSummary {
  */
 export interface UnreadableGyro {
   readonly unreadable: string;
+}
+
+/**
+ * An exposure record the trailer lists that did not parse: an entry no clock could have stamped
+ * or no shutter could take, which a wrong stamp unit shows as too.
+ */
+export interface DamagedExposure {
+  readonly damaged: true;
 }
 
 export interface ExposureSummary {
@@ -79,5 +91,5 @@ export interface Inspection {
    */
   readonly calibrationWarnings: readonly string[];
   readonly gyro: GyroSummary | UnreadableGyro | undefined;
-  readonly exposure: ExposureSummary | undefined;
+  readonly exposure: ExposureSummary | DamagedExposure | undefined;
 }

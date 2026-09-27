@@ -44,6 +44,26 @@ describe('httpRequest', () => {
     expect(calls).toHaveLength(1);
   });
 
+  it('ends the diagnosing probe with the request it diagnoses when the caller aborts', async () => {
+    const load = new AbortController();
+    const hanging: typeof fetch = (_input, init) => {
+      if (init?.mode !== 'no-cors') return Promise.reject(new TypeError('Failed to fetch'));
+      load.abort();
+      return init.signal?.aborted === true
+        ? Promise.reject(new DOMException('the caller gave up', 'AbortError'))
+        : new Promise<Response>(() => {
+            // A server that accepts the probe and never answers.
+          });
+    };
+    await expect(
+      httpRequest(
+        URL_UNDER_TEST,
+        { method: 'GET' },
+        { fetch: hanging, requestInit: { signal: load.signal } },
+      ),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
   it('passes the shared request settings and the request headers through', async () => {
     const seen: RequestInit[] = [];
     const recording: typeof fetch = (_input, init) => {

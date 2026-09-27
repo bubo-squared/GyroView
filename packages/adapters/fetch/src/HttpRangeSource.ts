@@ -7,6 +7,7 @@ import {
 
 import {
   discardBody,
+  EXPOSED_HEADERS_ADVICE,
   FIRST_BYTE_RANGE,
   httpRequest,
   isAbort,
@@ -229,7 +230,7 @@ export class HttpRangeSource implements RandomAccessSource {
   private hiddenContentRange(): GyroViewError {
     return new GyroViewError(
       'cors',
-      `${this.url} answered a byte range but hides its Content-Range from this origin; add Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges`,
+      `${this.url} answered a byte range but hides its Content-Range from this origin; add ${EXPOSED_HEADERS_ADVICE}`,
     );
   }
 

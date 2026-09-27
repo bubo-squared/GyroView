@@ -13,6 +13,12 @@ export const FIRST_BYTE_RANGE = 'bytes=0-0';
  */
 export const HTTP_METHOD_NOT_ALLOWED = 405;
 
+/**
+ * The response headers a cross-origin page must be let read, as the fix a CORS failure names.
+ */
+export const EXPOSED_HEADERS_ADVICE =
+  'Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges';
+
 export interface HttpRequestOptions {
   /**
    * Extra request settings, for example credentials or headers. `Range` is set by the caller.
@@ -124,7 +130,7 @@ async function diagnoseFailure(
   return isServerReachable
     ? new GyroViewError(
         'cors',
-        `${url} answered, but its server does not allow this page's origin to read it; add CORS headers (Access-Control-Allow-Origin, Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges)`,
+        `${url} answered, but its server does not allow this page's origin to read it; add CORS headers (Access-Control-Allow-Origin, ${EXPOSED_HEADERS_ADVICE})`,
         { cause },
       )
     : new GyroViewError(

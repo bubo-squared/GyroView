@@ -137,12 +137,7 @@ export class EmbedHandle {
    * Resolves once the recording is ready; rejects with the failure.
    */
   public load(request: LoadRequest): Promise<void> {
-    const { src2 } = request;
-    return this.command('load', {
-      ...request,
-      src: absoluteUrl(request.src, this.pageUrl()),
-      ...(src2 !== undefined && { src2: absoluteUrl(src2, this.pageUrl()) }),
-    });
+    return this.command('load', withAbsoluteUrls(request, this.pageUrl()));
   }
 
   public async getState(): Promise<EmbedState> {
@@ -225,6 +220,21 @@ export class EmbedHandle {
     if (result.isOk) pending.resolve(result.value);
     else pending.reject(errorFrom(result.error));
   }
+}
+
+/**
+ * The request with its URLs made absolute against the embedding page. Anything but an object
+ * goes as it is, for the frame to refuse as it refuses every bad argument, rather than throwing
+ * here before there is a promise to reject.
+ */
+function withAbsoluteUrls(request: unknown, pageUrl: string): unknown {
+  if (typeof request !== 'object' || request === null) return request;
+  const { src, src2 } = request as Partial<Record<keyof LoadRequest, unknown>>;
+  return {
+    ...request,
+    src: absoluteUrl(src, pageUrl),
+    ...(src2 !== undefined && { src2: absoluteUrl(src2, pageUrl) }),
+  };
 }
 
 function errorFrom(error: SerializedError): GyroViewError {

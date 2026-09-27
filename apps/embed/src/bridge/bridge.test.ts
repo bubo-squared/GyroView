@@ -152,6 +152,10 @@ describe('the embed bridge over a message channel', () => {
     await expect(handle.load({ src: 5 as unknown as string })).rejects.toMatchObject({
       code: 'invalid-argument',
     });
+    await expect(handle.load(null as unknown as { src: string })).rejects.toMatchObject({
+      code: 'invalid-argument',
+      message: 'embed command argument 0 must be an object',
+    });
     const badSecond = { src: 'a.insv', src2: 7 } as unknown as { src: string };
     await expect(handle.load(badSecond)).rejects.toMatchObject({
       code: 'invalid-argument',

@@ -1,14 +1,6 @@
-type Listener<Payload> = (payload: Payload) => void;
+import { reportLater } from '../errors/reportLater';
 
-/**
- * A listener's failure surfaces as an unhandled rejection, where the platform reports it, and
- * leaves the emitter and the other listeners alone.
- */
-function reportLater(error: unknown): void {
-  const reason =
-    error instanceof Error ? error : new Error('an event listener failed', { cause: error });
-  void Promise.reject(reason);
-}
+type Listener<Payload> = (payload: Payload) => void;
 
 /**
  * Minimal typed observer: one payload type per event name, unsubscribe through the returned

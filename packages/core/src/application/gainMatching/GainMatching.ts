@@ -1,6 +1,7 @@
 import { GainMatcher } from '../../domain/optics/gainMatch';
 import type { SeamMeter } from '../../ports/SeamMeter';
 import type { Vector3 } from '../../shared/math/Vector3';
+import { reportLater } from '../../shared/errors/reportLater';
 import type { Seconds } from '../../shared/units/time';
 
 /**
@@ -12,7 +13,9 @@ const MEASURE_INTERVAL_SECONDS = 0.5;
 /**
  * Keeps the lens gains matched over time: measures the seam after a presented frame every so
  * often, feeds the matcher and applies what it says. One measurement in flight at a time; one
- * that lands after `stop` changes nothing. The meter is borrowed: whoever created it disposes it.
+ * that lands after `stop` changes nothing. A meter that fails stops the matching, the gains left
+ * as they are, and the failure is reported once. The meter is borrowed: whoever created it
+ * disposes it.
  */
 export class GainMatching {
   private readonly matcher = new GainMatcher();
@@ -23,13 +26,14 @@ export class GainMatching {
   public constructor(
     private readonly meter: SeamMeter,
     private readonly applyGains: (gains: readonly Vector3[]) => void,
+    private readonly reportFailure: (error: unknown) => void = reportLater,
   ) {}
 
   public afterPresent(mediaTime: Seconds): void {
     const isDue =
       this.lastMeasuredAt === undefined ||
       Math.abs(mediaTime - this.lastMeasuredAt) >= MEASURE_INTERVAL_SECONDS;
-    if (isDue) void this.matchNow(mediaTime);
+    if (isDue && !this.isStopped) void this.matchReporting(mediaTime);
   }
 
   /**
@@ -44,11 +48,25 @@ export class GainMatching {
     this.isStopped = true;
   }
 
+  private async matchReporting(mediaTime: Seconds): Promise<void> {
+    try {
+      await this.matchNow(mediaTime);
+    } catch (error) {
+      this.reportFailure(error);
+    }
+  }
+
+  /**
+   * Counted from its start, so a failing meter is not asked again at every frame.
+   */
   private async measureAt(mediaTime: Seconds): Promise<void> {
+    this.lastMeasuredAt = mediaTime;
     try {
       const means = await this.meter.measure();
-      this.lastMeasuredAt = mediaTime;
       if (means && !this.isStopped) this.applyGains(this.matcher.update(means, mediaTime));
+    } catch (error) {
+      this.isStopped = true;
+      throw error;
     } finally {
       this.inFlight = undefined;
     }

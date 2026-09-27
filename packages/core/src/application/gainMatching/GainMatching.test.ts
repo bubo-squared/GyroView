@@ -42,6 +42,10 @@ function matching(): {
   return { meter, applied, subject };
 }
 
+function ignoreGains(): void {
+  // The test watches the meter, not the gains.
+}
+
 describe('GainMatching', () => {
   it('measures after the first presented frame and applies the gains the matcher gives', async () => {
     const { meter, applied, subject } = matching();
@@ -76,6 +80,21 @@ describe('GainMatching', () => {
     meter.pending[0]?.resolve(undefined);
     await measured;
     expect(applied).toEqual([]);
+  });
+
+  it('stops matching when the meter fails, and reports that once', async () => {
+    const meter = new ControlledMeter();
+    const failures: unknown[] = [];
+    const subject = new GainMatching(meter, ignoreGains, (error) => {
+      failures.push(error);
+    });
+    subject.afterPresent(seconds(0));
+    meter.pending[0]?.reject(new Error('read-back failed'));
+    await Promise.resolve();
+    await Promise.resolve();
+    for (let time = 0.1; time < 2; time += 0.1) subject.afterPresent(seconds(time));
+    expect(meter.pending).toHaveLength(1);
+    expect(failures).toEqual([new Error('read-back failed')]);
   });
 
   it('ignores a measurement that lands after it stopped, and leaves the meter to its owner', async () => {

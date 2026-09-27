@@ -91,7 +91,8 @@ the embed handle's promises.
 | `cors`                  | The media server answered but forbade this origin: add the CORS headers.     |
 | `source-unreadable`     | The URL could not be fetched (network, DNS, wrong URL). A range read that    |
 |                         | failed on the way (no connection, a body broken off, a 5xx) was asked for    |
-|                         | twice more first (ADR 0019); the first size request is not.                  |
+|                         | twice more first (ADR 0019); the first size request is not. Also when the    |
+|                         | first frames did not arrive before the decode check's deadline.              |
 | `range-unsupported`     | The server ignores `Range`: enable byte-range serving.                       |
 | `source-truncated`      | Fewer bytes came back than asked: the file changed or the server misbehaves. |
 | `codec-unsupported`     | This browser cannot decode the tracks (no HEVC hardware, or not a secure     |

@@ -17,7 +17,7 @@ interface ProbeFailure {
 
 /**
  * Probes that this platform decodes every frame source, and refuses the recording with the
- * cause when it does not: the browser's or the file's.
+ * cause when it does not: the browser's, the file's or the network's.
  */
 export async function ensureDecodable(
   frameSources: readonly VideoTrackReader[],
@@ -31,12 +31,16 @@ export async function ensureDecodable(
 
 /**
  * The failures that are not the browser's, by the verdict every failed track shares: a file
- * without a key frame to start from.
+ * without a key frame to start from, or a network too slow to bring one before the deadline.
  */
 const FAILURES_NOT_OF_THE_BROWSER: Partial<Record<ProbeVerdict, ProbeFailure>> = {
   'no-key-frame': {
     code: 'no-key-frame',
     message: 'the recording has no key frame to start decoding from',
+  },
+  'key-frame-late': {
+    code: 'source-unreadable',
+    message: "the recording's first frames did not arrive in time",
   },
 };
 

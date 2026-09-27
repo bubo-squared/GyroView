@@ -2,6 +2,8 @@ import {
   CalibrationVersion,
   Deferred,
   GyroViewError,
+  Signal,
+  type EncodedVideoPacket,
   type VideoDecoderHandle,
   type VideoDecoderPort,
 } from '@gyroview/core';
@@ -11,6 +13,7 @@ import {
   FakeVideoDecoderPort,
   FakeVideoTrack,
   minimalInfoRecord,
+  type FakeVideoTrackOptions,
 } from '@gyroview/core/testing';
 import { seconds } from '@gyroview/core';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -40,6 +43,23 @@ const SPLIT_FILES = 1;
 const AVC = 'avc1.fake';
 
 const fixture: { x5Bytes: Uint8Array } = { x5Bytes: new Uint8Array() };
+
+/**
+ * A track whose key frame is still on its way when the probe's deadline passes.
+ */
+class LateKeyframeTrack extends FakeVideoTrack {
+  public constructor(
+    options: FakeVideoTrackOptions,
+    private readonly deadline: Signal,
+  ) {
+    super(options);
+  }
+
+  public override firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
+    this.deadline.trigger();
+    return new Deferred<EncodedVideoPacket | undefined>().promise;
+  }
+}
 
 beforeAll(async () => {
   fixture.x5Bytes = await fetchBytes(X5_RECORDING_URL);
@@ -198,6 +218,31 @@ describe('openRecording', () => {
 
     expect(failure).toMatchObject({ code: 'no-key-frame' });
     expect((failure as Error).message).toContain('track 0 no-key-frame');
+  });
+
+  it('blames the network, not the browser, when the first frames do not arrive in time', async () => {
+    const opener = new MapSourceOpener();
+    const main = opener.register(MAIN_URL, fixture.x5Bytes);
+    const deadline = new Signal();
+    const videoTracks = [0, 1].map(
+      (trackIndex) =>
+        new LateKeyframeTrack(
+          { trackIndex, frameRate: 10, frameCount: 30, framesPerGop: 10, codedSize: 64 },
+          deadline,
+        ),
+    );
+    const demuxer = new FakeDemuxer([{ source: main, duration: seconds(3), videoTracks }]);
+    const ports = {
+      ...fakePorts({ sources: opener, demuxer }),
+      probeDeadline: (): Signal => deadline,
+    };
+
+    const failure = await captureRejection(
+      openRecording(sourceOf(), ports, new AbortController().signal),
+    );
+
+    expect(failure).toMatchObject({ code: 'source-unreadable' });
+    expect((failure as Error).message).toContain('track 0 key-frame-late');
   });
 
   it('opens a recording whose one track packs both lenses', async () => {

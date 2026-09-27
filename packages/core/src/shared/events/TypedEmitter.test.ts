@@ -7,6 +7,10 @@ interface Events {
   readonly counted: number;
 }
 
+function nothingToUndo(): void {
+  // Nothing subscribed yet.
+}
+
 describe('TypedEmitter', () => {
   it('delivers payloads to listeners of the same event only', () => {
     const emitter = new TypedEmitter<Events>();
@@ -72,5 +76,25 @@ describe('TypedEmitter', () => {
     }).not.toThrow();
     expect(counts).toEqual([1]);
     expect(failures).toEqual([broken]);
+  });
+
+  it('lets a listener added during an emit wait for the next, so one that subscribes itself again runs once', () => {
+    const emitter = new TypedEmitter<{ ping: number }>();
+    const heard: string[] = [];
+    let unsubscribe = nothingToUndo;
+    const resubscribing = (): void => {
+      heard.push('resubscribing');
+      unsubscribe();
+      unsubscribe = emitter.on('ping', resubscribing);
+    };
+    unsubscribe = emitter.on('ping', resubscribing);
+    emitter.on('ping', () => {
+      heard.push('adding');
+      emitter.on('ping', () => {
+        heard.push('added');
+      });
+    });
+    emitter.emit('ping', 1);
+    expect(heard).toEqual(['resubscribing', 'adding']);
   });
 });

@@ -28,9 +28,17 @@ export class TypedEmitter<Events extends object> {
     };
   }
 
+  /**
+   * The listeners there when the emit began hear it, as `dispatchEvent` delivers: one added
+   * meanwhile waits for the next emit, so a listener that subscribes itself again runs once, and
+   * one removed meanwhile hears no more.
+   */
   public emit<Name extends keyof Events>(name: Name, payload: Events[Name]): void {
-    const listeners = this.listeners.get(name) ?? [];
-    for (const listener of listeners) {
+    const listeners = this.listeners.get(name);
+    if (!listeners) return;
+    const listening = [...listeners];
+    for (const listener of listening) {
+      if (!listeners.has(listener)) continue;
       try {
         (listener as Listener<Events[Name]>)(payload);
       } catch (error) {

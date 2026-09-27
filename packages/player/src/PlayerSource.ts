@@ -19,11 +19,11 @@ export type MediaInput = UrlInput | BlobInput;
 
 /**
  * Everything that names what to play. The second input is the other lens's file of a
- * split-file recording.
+ * split-file recording, found beside the main one by itself when left out.
  */
 export interface PlayerSource {
   readonly main: MediaInput;
-  readonly second: MediaInput | undefined;
+  readonly second?: MediaInput | undefined;
 }
 
 export function isUrlInput(input: MediaInput): input is UrlInput {

@@ -220,7 +220,8 @@ The composition root and the user-facing element, in three layers.
   blob through the same sources into the core's `RecordingInspection`, without playing it. Dependency rules keep the adapters
   inside the composition and the composition below the player, and the player below the
   element and the controls.
-- **`player`**: `Player`, the headless facade over one loaded recording. It loads, unloads,
+- **`player`**: `Player`, the headless facade over one loaded recording. Its methods take plain
+  seconds and degrees, as a page gives them; the core's unit types start inside it. It loads, unloads,
   relays the session's states as media-element events (`SessionRelay`, `transportEventsFor`),
   ticks the session
   from a `FrameLoop`, keeps the canvas sized (`DrawingBufferFit`), and owns the settings (view and view

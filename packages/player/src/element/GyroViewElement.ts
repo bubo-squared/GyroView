@@ -1,9 +1,6 @@
 import {
   Deferred,
-  degrees,
   messageOf,
-  seconds,
-  type Seconds,
   type StabilizationMode,
   type ViewMode,
   type ViewState,
@@ -99,7 +96,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   /**
    * A seek asked for with the attributes set just now, where the recording they load starts.
    */
-  private startTime: Seconds | undefined;
+  private startTime: number | undefined;
   private readonly player: Player;
   private readonly fullscreen = new FullscreenToggle(this);
   private readonly idle: IdleWatcher;
@@ -243,15 +240,15 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
    */
   public seek(time: number): void {
     ensureFinite(time, 'time');
-    if (this.scheduledLoad) this.startTime = seconds(time);
-    else this.player.seek(seconds(time));
+    if (this.scheduledLoad) this.startTime = time;
+    else this.player.seek(time);
   }
 
   /**
    * Seeks to the key frame at or before `time`: quick to show while a seek bar is dragged.
    */
   public scrub(time: number): Promise<void> {
-    return this.player.scrub(seconds(time));
+    return this.player.scrub(time);
   }
 
   /**
@@ -259,7 +256,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
    * positive up.
    */
   public lookAt(yaw: number, pitch: number): void {
-    this.player.lookAt(degrees(yaw), degrees(pitch));
+    this.player.lookAt(yaw, pitch);
   }
 
   /**

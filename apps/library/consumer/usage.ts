@@ -57,5 +57,11 @@ const player = createBrowserPlayer({
   audio: document.createElement('audio'),
 });
 player.events.on('ready', (ready) => ready.model);
+await player.load({ main: { url: 'https://media.example/VID_20260814_132640_00_013.insv' } });
+player.seek(12.5);
+player.lookAt(90, -10);
+player.turn(5, 0);
+player.setView({ ...player.view, fieldOfView: 75 });
+const position: number = player.currentTime;
 
-export { fromUrl, metadata, samples, status };
+export { fromUrl, metadata, position, samples, status };

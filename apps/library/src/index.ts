@@ -26,6 +26,7 @@ export type {
   PlayerStatus,
   SoundLevel,
   UrlInput,
+  ViewAngles,
 } from '@gyroview/player';
 export {
   GyroViewError,

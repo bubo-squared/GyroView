@@ -1,4 +1,4 @@
-import { messageOf, seconds } from '@gyroview/core';
+import { messageOf } from '@gyroview/core';
 
 import type { ControlParts } from './controlParts';
 import type { ControlsHost } from './ControlsHost';
@@ -80,7 +80,7 @@ export class SeekBar {
       if (direction === undefined) return;
       event.preventDefault();
       const { player } = this.host;
-      player.seek(seconds(player.currentTime + direction * SEEK_STEP_SECONDS));
+      player.seek(player.currentTime + direction * SEEK_STEP_SECONDS);
     });
   }
 
@@ -110,7 +110,7 @@ export class SeekBar {
       while (this.scrubTarget !== undefined) {
         const target = this.scrubTarget;
         this.scrubTarget = undefined;
-        await this.host.player.scrub(seconds(target));
+        await this.host.player.scrub(target);
       }
     } catch (error) {
       this.host.warn(`the seek bar could not show that moment: ${messageOf(error)}`);
@@ -127,7 +127,7 @@ export class SeekBar {
     if (!this.isScrubbing) return;
     this.isScrubbing = false;
     this.scrubTarget = undefined;
-    this.host.player.seek(seconds(Number(this.parts.seek.value)));
+    this.host.player.seek(Number(this.parts.seek.value));
   }
 
   /**

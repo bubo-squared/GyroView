@@ -1,5 +1,3 @@
-import { degrees, seconds } from '@gyroview/core';
-
 import type { ControlsHost } from './ControlsHost';
 import type { Player } from '../player/Player';
 
@@ -89,13 +87,13 @@ const LOOK_STEP_DEGREES = 5;
 
 function seekBy(delta: number): Action {
   return ({ player }): void => {
-    player.seek(seconds(player.currentTime + delta));
+    player.seek(player.currentTime + delta);
   };
 }
 
 function lookBy(yawDelta: number, pitchDelta: number): Action {
   return ({ player }): void => {
-    player.turn(degrees(yawDelta), degrees(pitchDelta));
+    player.turn(yawDelta, pitchDelta);
   };
 }
 

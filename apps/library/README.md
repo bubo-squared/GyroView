@@ -61,9 +61,22 @@ const fromFile = await inspectRecording(file);
 const fromUrl = await inspectRecording('https://media.example/VID_20260814_132640_00_013.insv');
 ```
 
-`gyroview` also exports `createBrowserPlayer` (the player without the element, drawing on your
-own canvas and audio element), `GyroViewError` with its codes, and the types of the element's
-settings, metadata, events and inspection.
+For an interface of your own, `createBrowserPlayer` gives the player without the element: it
+draws on your canvas, sounds through your audio element and has the same events.
+
+```ts
+import { createBrowserPlayer } from 'gyroview';
+
+const player = createBrowserPlayer({ canvas, audio });
+player.events.on('timeupdate', (time) => console.log(time));
+await player.load({ main: { url: 'https://media.example/VID_20260814_132640_00_013.insv' } });
+await player.play();
+player.seek(30);
+player.lookAt(90, 0);
+```
+
+`gyroview` also exports `GyroViewError` with its codes, and the types of the element's settings,
+metadata, events and inspection.
 
 ## Requirements
 

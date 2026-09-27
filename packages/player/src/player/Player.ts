@@ -1,11 +1,11 @@
 import {
+  degrees,
   GyroViewError,
   hasErrorCode,
   isFlowing,
   messageOf,
   seconds,
   TypedEmitter,
-  type Degrees,
   type DragDelta,
   type ScreenPoint,
   type Seconds,
@@ -19,7 +19,7 @@ import { ensureFinite } from './ensureFinite';
 import { FrameLoop } from './FrameLoop';
 import { loadRecording, type LoadedRecording } from './loadRecording';
 import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
-import type { LoadOptions, PlayerParts } from './PlayerOptions';
+import type { LoadOptions, PlayerParts, ViewAngles } from './PlayerOptions';
 import {
   IDLE,
   loadingPhase,
@@ -188,35 +188,43 @@ export class Player {
   }
 
   /**
-   * Seeks exactly to `time`; while a recording is loading, or before one is, the next one starts
-   * there, as a media element's default playback start position has it.
+   * Seeks exactly to `time` seconds; while a recording is loading, or before one is, the next one
+   * starts there, as a media element's default playback start position has it.
    */
-  public seek(time: Seconds): void {
+  public seek(time: number): void {
     ensureFinite(time, 'time');
     const session = this.loaded?.pipeline.session;
-    if (session) session.seek(time);
-    else this.pendingStartTime = time;
+    if (session) session.seek(seconds(time));
+    else this.pendingStartTime = seconds(time);
   }
 
   /**
-   * Seeks to the key frame at or before `time`: quick to show while a seek bar is dragged.
+   * Seeks to the key frame at or before `time` seconds: quick to show while a seek bar is dragged.
    */
-  public async scrub(time: Seconds): Promise<void> {
+  public async scrub(time: number): Promise<void> {
     ensureFinite(time, 'time');
-    await this.loaded?.pipeline.session.scrub(time);
+    await this.loaded?.pipeline.session.scrub(seconds(time));
   }
 
-  public setView(view: ViewState): void {
+  public setView(view: ViewAngles): void {
     ensureFinite(view.yaw, 'yaw');
     ensureFinite(view.pitch, 'pitch');
     ensureFinite(view.fieldOfView, 'fieldOfView');
-    this.viewing.set(view);
+    this.viewing.set({
+      yaw: degrees(view.yaw),
+      pitch: degrees(view.pitch),
+      fieldOfView: degrees(view.fieldOfView),
+    });
   }
 
-  public lookAt(yaw: Degrees, pitch: Degrees): void {
+  /**
+   * Points the normal view at `yaw` and `pitch`, in degrees: yaw positive to the right, pitch
+   * positive up.
+   */
+  public lookAt(yaw: number, pitch: number): void {
     ensureFinite(yaw, 'yaw');
     ensureFinite(pitch, 'pitch');
-    this.viewing.lookAt(yaw, pitch);
+    this.viewing.lookAt(degrees(yaw), degrees(pitch));
   }
 
   /**
@@ -227,12 +235,12 @@ export class Player {
   }
 
   /**
-   * The viewer turned by the given angles, as the arrow keys do.
+   * The viewer turned by the given angles in degrees, as the arrow keys do.
    */
-  public turn(yawDelta: Degrees, pitchDelta: Degrees): void {
+  public turn(yawDelta: number, pitchDelta: number): void {
     ensureFinite(yawDelta, 'yaw turn');
     ensureFinite(pitchDelta, 'pitch turn');
-    this.viewing.turn(yawDelta, pitchDelta);
+    this.viewing.turn(degrees(yawDelta), degrees(pitchDelta));
   }
 
   /**

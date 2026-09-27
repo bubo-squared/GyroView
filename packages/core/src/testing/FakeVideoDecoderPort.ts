@@ -39,7 +39,6 @@ interface PendingWaiter {
 }
 
 interface FakeVideoDecoderParts {
-  readonly configuration: VideoDecoderConfiguration;
   readonly callbacks: VideoDecoderCallbacks<FakeFrameHandle>;
   readonly latencyTicks: number;
   readonly failAtPacket: number | undefined;
@@ -85,7 +84,6 @@ export class FakeVideoDecoderPort implements VideoDecoderPort<FakeFrameHandle> {
       );
     }
     const decoder = new FakeVideoDecoder({
-      configuration,
       callbacks,
       latencyTicks: this.options.latencyTicks ?? DEFAULT_LATENCY_TICKS,
       failAtPacket: this.options.failAtPacket,

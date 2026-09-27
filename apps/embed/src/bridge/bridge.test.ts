@@ -1,7 +1,8 @@
 import { defineGyroView, type GyroViewElement } from '@gyroview/player';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
-import { portEndpoint, windowEndpoint } from './Endpoint';
+import { windowEndpoint } from './Endpoint';
+import { portEndpoint } from '../test/portEndpoint';
 import { EmbedHandle } from './EmbedHandle';
 import { EmbedHost } from '../frame/EmbedHost';
 import {

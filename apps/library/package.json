@@ -40,7 +40,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "vite build && dts-bundle-generator --silent --config dts-bundle-generator.config.json && cp types/define.d.ts dist/ && tsc -p tsconfig.consumer.json && publint --strict",
+    "build": "vite build && dts-bundle-generator --silent --config dts-bundle-generator.config.json && cp types/define.d.ts dist/ && tsc -p tsconfig.consumer.json && node consumer/server.mjs && publint --strict",
     "prepack": "cp ../../LICENSE LICENSE",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"

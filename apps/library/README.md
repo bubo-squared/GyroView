@@ -39,9 +39,10 @@ input?.addEventListener('change', () => {
 });
 ```
 
-`gyroview/define` registers `<gyro-view>` when imported. To choose the moment yourself, for
-example in a framework that renders on the server, import `defineGyroView` from `gyroview` and
-call it in the browser. The element is browser-only: it extends `HTMLElement`.
+`gyroview/define` registers `<gyro-view>` when imported. To choose the moment yourself, import
+`defineGyroView` from `gyroview` and call it. Both are safe to import in a framework that renders
+on the server: there they register nothing, and the element comes alive once the page runs in the
+browser.
 
 The element's events are typed: each is a `CustomEvent` with its payload in `detail`, and
 `document.querySelector('gyro-view')` is a `GyroViewElement`.

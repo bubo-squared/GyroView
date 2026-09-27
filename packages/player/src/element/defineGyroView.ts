@@ -10,8 +10,9 @@ declare global {
 
 /**
  * Registers `<gyro-view>` once; a page that loads the bundle twice keeps the first definition.
+ * Without a custom element registry (a server rendering the page) there is nothing to register.
  */
 export function defineGyroView(): void {
-  if (customElements.get(GYRO_VIEW_TAG)) return;
+  if (typeof customElements === 'undefined' || customElements.get(GYRO_VIEW_TAG)) return;
   customElements.define(GYRO_VIEW_TAG, GyroViewElement);
 }

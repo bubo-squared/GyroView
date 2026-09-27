@@ -10,11 +10,19 @@ export type GyroViewElementEventMap = Omit<HTMLElementEventMap, keyof PlayerEven
 };
 
 /**
+ * `HTMLElement` in a browser; elsewhere a stand-in, so that a server rendering the page, or a
+ * script importing the package for `inspectRecording`, can evaluate this module. The element is
+ * only ever constructed where `customElements` defined it: in a browser.
+ */
+const ElementBase: typeof HTMLElement =
+  typeof HTMLElement === 'function' ? HTMLElement : (Object as unknown as typeof HTMLElement);
+
+/**
  * The HTMLElement `<gyro-view>` builds on, whose `addEventListener` and `removeEventListener`
  * know the events it fires, where the DOM's own map would name other types. The overrides only
  * pass through.
  */
-export class TypedEventElement extends HTMLElement {
+export class TypedEventElement extends ElementBase {
   public override addEventListener<Name extends keyof GyroViewElementEventMap>(
     type: Name,
     listener: (this: this, event: GyroViewElementEventMap[Name]) => unknown,

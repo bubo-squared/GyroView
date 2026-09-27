@@ -1,6 +1,7 @@
 # ADR 0007: The audio element, fed through Media Source Extensions, is the master clock
 
-Status: accepted (2026-09-18)
+Status: accepted (2026-09-18); amended (2026-09-27): a seek within the buffered audio appends
+from where the buffer ends, and nothing at all once the ended stream holds the rest of the track
 
 ## Context
 

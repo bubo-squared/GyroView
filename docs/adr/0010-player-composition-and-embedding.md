@@ -70,7 +70,7 @@ Errors cross the boundary as `{ code, message }`, so the codes stay stable on bo
 
 ## Consequences
 
-`packages/player` is the only package that imports several adapters; `apps/*` import the
+`packages/player` is the only production package that imports several adapters; `apps/*` import the
 player, never the adapters (dependency-cruiser). The player tests need Chromium and WebKit,
 like the adapters'. The embed protocol is public API: an incompatible change is a new protocol
 name, and a field added under the same name is optional on receipt.

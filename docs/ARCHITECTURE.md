@@ -245,8 +245,9 @@ The composition root and the user-facing element, in three layers.
   promises with a state mirror; both talk through an `Endpoint` (a window pair in production, a
   `MessagePort` in tests). What `embed.js` bundles (`snippet/`, `protocol/`, `bridge/`) never
   imports the player's code or the frame side (dependency-cruiser). ADR 0010.
-- `snippet/embedSnippet` builds `embed.js`: `GyroView.embed(container, options)` creates the
-  iframe and returns a handle. `component.ts` builds `gyro-view.js`, the element as one module.
+- `snippet/embedSnippet` builds `embed.js`: `GyroView.embed(container, options, settings?)`
+  creates the iframe and returns `{ iframe, handle, destroy }`; `settings.embedPageUrl` names
+  `embed.html` where the script cannot tell (inlined). `component.ts` builds `gyro-view.js`, the element as one module.
 - `index.html` (`pages/developmentPage`) is the developer page; `dev/samplesPlugin` lists the
   local sample recordings for it.
 
@@ -286,8 +287,9 @@ validated commands on its element and forwards the element's events as plain dat
 
 - The dependency rule is enforced by `.dependency-cruiser.cjs`; `core` may not import anything.
 - Variants of the format (trailer wrapper, record locator, gyro layout, calibration version,
-  lens layout, frame-time source, stabilization mode, IMU frame) are strategies selected from
-  data in the file, never from the camera model string alone (ADR 0004).
+  lens layout, frame-time source) are strategies selected from data in the file, never from the
+  camera model string alone (ADR 0004). The IMU frame alone comes from the model string,
+  reported as unverified until measured (ADR 0009).
 - Units are branded types; rotations have one convention module; errors are `GyroViewError`s
   with stable codes; optional data is modelled as absence, required data missing is an error.
 - Every decision that is not obvious from the code has an ADR; every concept has one name, in

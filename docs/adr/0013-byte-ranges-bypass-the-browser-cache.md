@@ -1,6 +1,8 @@
 # ADR 0013: Byte-range reads bypass the browser's HTTP cache
 
-Status: accepted (2026-09-21)
+Status: accepted (2026-09-21); amended (2026-09-27): only a host that composes the player itself
+(`createBrowserPlayer` with `http.requestInit`) can choose another cache mode; the element and
+the embed always read with `no-store`
 
 ## Context
 

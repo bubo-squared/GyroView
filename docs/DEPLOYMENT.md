@@ -99,9 +99,10 @@ the embed handle's promises.
 |                         | context).                                                                    |
 | `missing-second-file`   | One lens of a split-file pair without the other lens's file: set `src2`.     |
 | `no-calibration`        | The file carries no lens calibration; it cannot be stitched.                 |
-| `no-info-record`        | Not an Insta360 recording (or a truncated one).                              |
+| `invalid-trailer`       | Not an Insta360 recording (a plain MP4, a Studio export), or one cut short.  |
+| `no-info-record`        | The trailer holds no info record: a damaged or unusual recording.            |
 | `no-key-frame`          | A video track has no key frame to start decoding from.                       |
-| `unsupported-container` | Not a media file the demuxer can read (or not an MP4 at all).                |
+| `unsupported-container` | The Insta360 trailer reads, but the demuxer cannot read the media tracks.    |
 | `unsupported-layout`    | The tracks do not form two lens images the player understands.               |
 | `playback-blocked`      | The browser wants a user gesture before sound starts (autoplay policy).      |
 | `decode`                | A decoder or the audio buffer failed mid-stream.                             |

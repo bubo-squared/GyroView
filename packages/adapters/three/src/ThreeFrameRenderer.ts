@@ -66,6 +66,11 @@ interface RendererParts {
   readonly textures: readonly VideoFrameTexture[];
   readonly uniforms: RendererUniforms;
   readonly lensCount: number;
+  /**
+   * The seam meter drawn once at creation to prove its program, kept so the program stays
+   * compiled for the meter gain matching asks for at every load.
+   */
+  readonly seamProof: SeamMeterPass;
 }
 
 /**
@@ -203,6 +208,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     this.isDisposed = true;
     this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
     for (const meter of this.meters) meter.dispose();
+    this.parts.seamProof.dispose();
     for (const texture of this.parts.textures) texture.dispose();
     disposePictureMaterials(this.parts.materials);
     this.parts.pass.geometry.dispose();
@@ -259,10 +265,11 @@ function assembleParts(renderer: WebGLRenderer, setup: StitchingSetup): Renderer
   const uniforms = createRendererUniforms(setup, textures);
   const materials = createPictureMaterials(uniforms);
   const pass = new Mesh(createFullscreenTriangle(), materials.rectilinear);
+  let seamProof: SeamMeterPass;
   try {
     compilePictureMaterials(renderer, pass.geometry, materials);
     // The seam meter's program too: gain matching asks for one at every load.
-    new SeamMeterPass(renderer, uniforms, setup.lenses.length).dispose();
+    seamProof = new SeamMeterPass(renderer, uniforms, setup.lenses.length);
   } catch (error) {
     disposePictureMaterials(materials);
     pass.geometry.dispose();
@@ -280,6 +287,7 @@ function assembleParts(renderer: WebGLRenderer, setup: StitchingSetup): Renderer
     textures,
     uniforms,
     lensCount: setup.lenses.length,
+    seamProof,
   };
 }
 

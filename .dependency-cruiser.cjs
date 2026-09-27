@@ -116,7 +116,7 @@ module.exports = {
     {
       name: 'production-code-does-not-use-test-support',
       comment:
-        "The core's fakes, contracts and fixture builders serve tests and the fixtures tool only.",
+        "The core's fakes, contracts and fixture builders, and every package's test support, serve tests and the fixtures tool only.",
       severity: 'error',
       from: {
         path: '^(packages|apps)/[^/]+/(src|[^/]+/src)/',
@@ -127,7 +127,7 @@ module.exports = {
           '^packages/core/src/testing/',
         ],
       },
-      to: { path: '^packages/core/src/testing/' },
+      to: { path: ['^packages/core/src/testing/', '/src/test/'] },
     },
     {
       name: 'ports-do-not-know-use-cases',

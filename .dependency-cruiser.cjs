@@ -261,7 +261,8 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
-    exclude: { path: '(^|/)dist/' },
+    // The npm package's consumer check and type stub import the built package, not the sources.
+    exclude: { path: ['(^|/)dist/', '^apps/library/(consumer|types)/'] },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.base.json' },
     enhancedResolveOptions: {

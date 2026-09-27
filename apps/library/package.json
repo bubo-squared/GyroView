@@ -1,0 +1,61 @@
+{
+  "name": "gyroview",
+  "version": "0.1.0",
+  "description": "Play raw Insta360 .insv recordings (X3, X4, X5) in the browser: a <gyro-view> web component that stitches and gyro-stabilizes the camera's dual-fisheye video on the GPU.",
+  "keywords": [
+    "insta360",
+    "insv",
+    "360",
+    "video",
+    "player",
+    "web-component",
+    "webcodecs",
+    "stabilization"
+  ],
+  "license": "MIT",
+  "author": "Perica Milošević",
+  "homepage": "https://github.com/pericamilosevic/GyroView#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pericamilosevic/GyroView.git",
+    "directory": "apps/library"
+  },
+  "bugs": "https://github.com/pericamilosevic/GyroView/issues",
+  "type": "module",
+  "sideEffects": [
+    "./dist/define.js"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./define": {
+      "types": "./dist/define.d.ts",
+      "default": "./dist/define.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build && dts-bundle-generator --silent --config dts-bundle-generator.config.json && cp types/define.d.ts dist/ && tsc -p tsconfig.consumer.json && publint --strict",
+    "prepack": "cp ../../LICENSE LICENSE",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "mediabunny": "^1.58.0",
+    "three": "0.186.0"
+  },
+  "devDependencies": {
+    "@gyroview/core": "workspace:*",
+    "@gyroview/player": "workspace:*",
+    "@types/node": "26.6.1",
+    "dts-bundle-generator": "9.5.1",
+    "publint": "0.3.24",
+    "vite": "8.3.0",
+    "vitest": "4.1.11"
+  }
+}

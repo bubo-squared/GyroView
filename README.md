@@ -14,7 +14,7 @@ on any website as a `<gyro-view>` web component or an iframe. No Insta360 Studio
   exposure matching between the lenses; a normal view to look around in, the whole sphere as
   an equirectangular panorama, or the two lens images raw, side by side or stacked.
 - Stabilizes from the gyro: lock, horizon or follow, sampled at each frame's mid-exposure.
-- Ships as an element (`gyro-view.js`) and as an iframe (`embed.html` plus `embed.js`) with
+- Ships as the npm package `gyroview`, as an element (`gyro-view.js`) and as an iframe (`embed.html` plus `embed.js`) with
   the same API and events, plus a developer page for trying recordings.
 
 Verified on Insta360 X5 recordings; other cameras' format variants are implemented from
@@ -27,6 +27,18 @@ Both ways play a recording from a URL whose server answers byte ranges (see "Ser
 recordings").
 
 ### As an element
+
+In a project with a bundler, install the npm package (`apps/library/README.md`):
+
+```sh
+npm install gyroview
+```
+
+```ts
+import 'gyroview/define'; // registers <gyro-view>
+```
+
+Without a bundler, host `gyro-view.js` and load it as a module:
 
 ```html
 <script type="module" src="https://your-host/gyro-view.js"></script>
@@ -143,6 +155,7 @@ pnpm verify       # typecheck, lint, format check, dependency rules, tests, buil
 pnpm test:watch
 pnpm --filter @gyroview/embed dev     # developer page at http://localhost:5180 with the local samples
 pnpm --filter @gyroview/embed build   # static site, embed.js and gyro-view.js in apps/embed/dist
+pnpm --filter gyroview build          # the npm package in apps/library/dist
 pnpm inspect <file.insv>              # print what the core understands about a recording
 pnpm fixtures:build                   # regenerate the synthetic recordings in test/fixtures
 pnpm measure                          # renders of the local samples in .artifacts, IMU frame ranking
@@ -186,7 +199,7 @@ composition and embedding, 0011 sound follows the picture, 0012 gain matching al
 0013 byte-range reads bypass the browser cache, 0014 the frame shows the whole calibration
 square, 0015 view modes replace projections, 0016 the player owns its settings, 0017 the
 recording itself or an error, 0018 every view mode zooms toward the pointer, 0019 a range that
-fails on the way is asked for again.
+fails on the way is asked for again, 0020 one npm package bundles the core and the adapters.
 
 ## License
 

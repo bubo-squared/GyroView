@@ -15,6 +15,8 @@ and `dependency-cruiser` fails the build on a violation.
  apps/embed ─────────────▶ packages/player ─────────────▶ packages/adapters/* ─────▶ packages/core
  (site, iframe bridge)     (composition root,            (one external technology     (domain, use cases,
                             <gyro-view>, controls)        each, implementing ports)    ports; no dependencies)
+ apps/library ───────────▶ packages/player
+ (the npm package gyroview: the player bundled with the core and the adapters)
 
  tools/insv-inspect ──▶ adapters/node + core        tools/fixtures ──▶ core        tools/integration ──▶ everything
 ```
@@ -24,7 +26,7 @@ and `dependency-cruiser` fails the build on a violation.
 | Domain, application | `packages/core`                                                            | nothing outside itself                                                                                           |
 | Infrastructure      | `packages/adapters/{node,fetch,blob,mediabunny,webcodecs,mse-audio,three}` | `core` and one library each                                                                                      |
 | Composition, UI     | `packages/player`                                                          | `core`, every adapter                                                                                            |
-| Sites               | `apps/embed`                                                               | `player`, and `core`'s shared vocabulary (errors, modes, events, file names); the snippet carries no player code |
+| Sites, npm package  | `apps/embed`, `apps/library`                                               | `player`, and `core`'s shared vocabulary (errors, modes, events, file names); the snippet carries no player code |
 | Tools               | `tools/*`                                                                  | `core`; `insv-inspect` also the node adapter; `integration` also the other adapters and the player               |
 
 Everything the core needs from the outside world is a **port**: a TypeScript interface it owns
@@ -250,6 +252,17 @@ The composition root and the user-facing element, in three layers.
   `embed.html` where the script cannot tell (inlined). `component.ts` builds `gyro-view.js`, the element as one module.
 - `index.html` (`pages/developmentPage`) is the developer page; `dev/samplesPlugin` lists the
   local sample recordings for it.
+
+## The npm package: `apps/library`
+
+- `src/index.ts` is the package's public API: the element, `createBrowserPlayer` and `Player`,
+  `GyroViewError`, the view and stabilization modes, and the types of the metadata, settings and
+  events; it also types `<gyro-view>` in `HTMLElementTagNameMap`. `src/define.ts` registers the
+  element when imported (`gyroview/define`).
+- The build bundles the player, the core and the adapters and leaves Three.js and mediabunny to
+  the page's install; `dts-bundle-generator` writes one self-contained `index.d.ts`,
+  `consumer/usage.ts` is type-checked against it and publint checks the manifest. A test keeps
+  the manifest's Three.js and mediabunny versions those of the adapters. ADR 0020.
 
 ## Tools and tests
 

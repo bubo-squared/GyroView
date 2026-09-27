@@ -36,6 +36,9 @@ export default defineConfig(
     '**/coverage/',
     '**/.stryker-tmp/',
     'test/fixtures/',
+    // Checked against the built npm package by its tsconfig.consumer.json, outside the sources.
+    'apps/library/consumer/',
+    'apps/library/types/',
   ]),
   {
     files: ['packages/**/*.ts', 'apps/**/*.ts', 'tools/**/*.ts', 'test/**/*.ts'],

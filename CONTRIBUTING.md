@@ -5,7 +5,7 @@
 - Node 24 LTS (`.nvmrc`; run `nvm use`). dependency-cruiser refuses odd-numbered Node releases.
 - pnpm 11 (`packageManager` in `package.json`).
 - `pnpm install`, then `pnpm verify` runs everything CI runs: typecheck, lint, format check,
-  dependency rules, tests and the build of the embed site and scripts.
+  dependency rules, tests, and the builds of the embed site, its scripts and the npm package.
 
 ## Layout and dependency rule
 
@@ -20,6 +20,7 @@ describes the components layer by layer:
   `Player` and the `<gyro-view>` element with its controls and gestures.
 - `apps/embed`: the static site: embed page, `embed.js` snippet with the postMessage bridge,
   `gyro-view.js` bundle, developer page. Apps import the player, never the adapters.
+- `apps/library`: the npm package `gyroview` (ADR 0020); its public API is `src/index.ts`.
 - `tools/*`: developer CLIs (`insv-inspect`), the fixture builder (`fixtures`) and the
   end-to-end tests over the real recordings (`integration`).
 

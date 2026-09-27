@@ -18,6 +18,8 @@ PLAN.md
 # Dependencies and build output
 node_modules/
 dist/
+# The root LICENSE, copied in when the npm package is packed
+apps/library/LICENSE
 .vite/
 *.tsbuildinfo
 

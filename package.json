@@ -1,5 +1,5 @@
 {
-  "name": "gyroview",
+  "name": "gyroview-workspace",
   "version": "0.0.0",
   "private": true,
   "description": "Browser player for raw Insta360 .insv recordings",
@@ -19,7 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "build": "pnpm --filter @gyroview/embed build",
+    "build": "pnpm --filter @gyroview/embed --filter gyroview build",
     "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm depcruise && pnpm test && pnpm build",
     "inspect": "pnpm --filter @gyroview/insv-inspect exec tsx src/main.ts",
     "fixtures:build": "pnpm --filter @gyroview/fixtures build",

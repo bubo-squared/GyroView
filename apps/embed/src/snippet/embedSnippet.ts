@@ -56,8 +56,7 @@ export function embed(
   const embedPageUrl = absoluteUrl(settings.embedPageUrl ?? defaultEmbedPageUrl(), pageUrl);
   const frameUrl = embedUrlFor(embedPageUrl, withAbsoluteUrls(options, pageUrl), location.origin);
   const iframe = createFrame(frameUrl, settings);
-  container.append(iframe);
-  ensureFrameWindow(iframe);
+  attachFrame(container, iframe);
   const frameOrigin = new URL(embedPageUrl).origin;
   const handle = new EmbedHandle(
     windowEndpoint({
@@ -77,13 +76,18 @@ export function embed(
   };
 }
 
-function ensureFrameWindow(iframe: HTMLIFrameElement): void {
-  if (!iframe.contentWindow) {
-    throw new GyroViewError(
-      'invalid-argument',
-      'the iframe has no window; is the container in the document?',
-    );
-  }
+/**
+ * A container outside the document gives the frame no window: it is taken out again, rather than
+ * left to load, and play, with no handle once the container is put in the page.
+ */
+function attachFrame(container: Element, iframe: HTMLIFrameElement): void {
+  container.append(iframe);
+  if (iframe.contentWindow) return;
+  iframe.remove();
+  throw new GyroViewError(
+    'invalid-argument',
+    'the iframe has no window; is the container in the document?',
+  );
 }
 
 function createFrame(url: string, settings: EmbedSettings): HTMLIFrameElement {

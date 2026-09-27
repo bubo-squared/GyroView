@@ -60,6 +60,14 @@ describe('GyroView.embed', () => {
     embedded.destroy();
   });
 
+  it('refuses a container outside the document and leaves no frame in it to load later', () => {
+    const container = document.createElement('div');
+    expect(() => embed(container, { src: recordingUrl }, { embedPageUrl: EMBED_PAGE })).toThrow(
+      expect.objectContaining({ code: 'invalid-argument' }),
+    );
+    expect(container.querySelector('iframe')).toBeNull();
+  });
+
   it('needs to know where the embed page is when the script has no URL', () => {
     const container = document.createElement('div');
     document.body.append(container);

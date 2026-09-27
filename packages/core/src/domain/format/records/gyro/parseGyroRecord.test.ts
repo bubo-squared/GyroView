@@ -142,6 +142,18 @@ describe('parseGyroRecord with the raw X5 layout', () => {
     );
   });
 
+  it('takes a range the info record states as zero for none, keeping every sample', () => {
+    const parsed = read(loadFixture('x5/office/record-03-gyro-first2000.bin'), {
+      isRawGyro: true,
+      ranges: { accelerometerG: 0, gyroscopeDps: 0 },
+    });
+    expect(parsed.damagedSamples).toBe(0);
+    expect(parsed.track.sampleAt(0).acceleration[0]).toBeCloseTo(
+      scaledRaw(OFFICE_FIRST_GYRO_SAMPLE.rawAcceleration[0], 16),
+      5,
+    );
+  });
+
   it('leaves out and counts samples whose bytes cannot be a reading, keeping the rest', () => {
     const unsafeStamp = encodeFloatSample(20, [0, 1, 0], [0, 0, 0]);
     unsafeStamp[7] = 0xff;

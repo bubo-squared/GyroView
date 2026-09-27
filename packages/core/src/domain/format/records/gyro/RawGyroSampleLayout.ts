@@ -28,8 +28,8 @@ export class RawGyroSampleLayout implements GyroSampleLayout {
   private readonly angularVelocityScale: number;
 
   public constructor(ranges: Partial<SensorRanges> = {}) {
-    const accelerometerG = ranges.accelerometerG ?? DEFAULT_ACCELEROMETER_RANGE_G;
-    const gyroscopeDps = ranges.gyroscopeDps ?? DEFAULT_GYROSCOPE_RANGE_DPS;
+    const accelerometerG = statedRange(ranges.accelerometerG, DEFAULT_ACCELEROMETER_RANGE_G);
+    const gyroscopeDps = statedRange(ranges.gyroscopeDps, DEFAULT_GYROSCOPE_RANGE_DPS);
     this.accelerationScale = accelerometerG / RAW_FULL_SCALE;
     this.angularVelocityScale = degreesToRadians(degrees(gyroscopeDps)) / RAW_FULL_SCALE;
     this.flipSteps = {
@@ -65,4 +65,12 @@ export class RawGyroSampleLayout implements GyroSampleLayout {
   private componentAt(reader: ByteReader, offset: number, scale: number): number {
     return (reader.uint16LeAt(offset) - RAW_ZERO_POINT) * scale;
   }
+}
+
+/**
+ * The stated range, or the default where none is stated. A range of zero, as a flipped bit or a
+ * field left unset writes, would scale every reading to nothing.
+ */
+function statedRange(range: number | undefined, fallback: number): number {
+  return range !== undefined && range > 0 ? range : fallback;
 }

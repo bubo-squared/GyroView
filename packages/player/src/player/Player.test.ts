@@ -345,6 +345,20 @@ describe('Player over the synthetic X5 recording', () => {
     await expect(player.play()).rejects.toMatchObject({ code: 'source-unreadable' });
   });
 
+  it("leaves a load made on ready its own start time and no autoplay of the older load's", async () => {
+    const { player } = open();
+    const loadsOnReady: Promise<void>[] = [];
+    const stopListening = player.events.on('ready', () => {
+      stopListening();
+      loadsOnReady.push(player.load(sourceOf(X5_RECORDING_URL)));
+      player.seek(seconds(1.5));
+    });
+    await player.load(sourceOf(X5_RECORDING_URL), { autoplay: true });
+    await Promise.all(loadsOnReady);
+    expect(player.currentTime).toBeCloseTo(1.5, 6);
+    expect(player.isPaused).toBe(true);
+  });
+
   it('lets a newer load supersede an older one quietly and ignores transport before a load', async () => {
     const { player, events, errors } = open();
     await player.play();

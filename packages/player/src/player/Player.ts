@@ -295,6 +295,8 @@ export class Player {
       return;
     }
     this.attach(loaded);
+    // A listener of `ready` may have loaded something else already; the rest is that load's.
+    if (this.loaded !== loaded) return;
     this.startAtPendingTime(loaded);
     if (options.preload !== false) loaded.pipeline.session.preload();
     if (options.autoplay) await this.autoplay();

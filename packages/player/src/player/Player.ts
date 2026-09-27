@@ -157,8 +157,6 @@ export class Player {
       await this.complete(loading, source, options);
     } catch (error) {
       if (loading.controller.signal.aborted) return;
-      // What the failed load still reads ahead is of no use to anyone.
-      loading.controller.abort();
       throw this.failWith(error);
     } finally {
       loading.settled.resolve();
@@ -169,6 +167,7 @@ export class Player {
     this.release();
     this.announceStatus();
   }
+
   /**
    * Starts playback, after a load in progress is ready, as a media element's `play()` does.
    * Rejects with the load's failure, or with `playback-blocked` when the browser wants a user

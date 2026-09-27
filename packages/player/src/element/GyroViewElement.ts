@@ -411,6 +411,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   }
 
   private reload(): Promise<void> {
+    this.isLoadOwed = false;
     const read = (attribute: string): string | null => this.getAttribute(attribute);
     const source = elementSourceOf(read, document.baseURI, this.files);
     delete this.dataset['hasFrame'];

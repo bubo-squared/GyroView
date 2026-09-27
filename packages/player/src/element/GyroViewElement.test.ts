@@ -747,6 +747,18 @@ describe('<gyro-view>', () => {
     box.remove();
   });
 
+  it('loads once when told to load before it is connected', async () => {
+    const element = document.createElement('gyro-view') as GyroViewElement;
+    element.style.width = '256px';
+    element.src = X5_RECORDING_URL;
+    const loaded = element.load();
+    document.body.append(element);
+    elements.push(element);
+    await loaded;
+    expect(element.status).toBe('ready');
+    expect(element.metadata).toBeDefined();
+  });
+
   it('loads a src set while out of the document once back in it', async () => {
     const element = await createReady();
     element.remove();

@@ -87,6 +87,7 @@ export class SourceBufferFeeder {
   private async feed(from: Seconds, stop: RunStop): Promise<void> {
     try {
       await this.settlePendingAppend();
+      if (this.hasAllAudioFrom(from)) return;
       await this.feedFrom(this.startOf(from), stop);
     } catch (error) {
       this.failureValue ??=
@@ -104,6 +105,17 @@ export class SourceBufferFeeder {
     } finally {
       void segments.return?.();
     }
+  }
+
+  /**
+   * The stream ended and `from` lies in the range that runs to its end: nothing is left to
+   * append, and a run would only append the last frame again and reopen the stream.
+   */
+  private hasAllAudioFrom(from: Seconds): boolean {
+    const { buffered } = this.parts.element;
+    const end = this.bufferedEndAt(from);
+    const isEnded = this.parts.mediaSource.readyState === 'ended';
+    return isEnded && end > from && end === buffered.end(buffered.length - 1);
   }
 
   /**

@@ -114,6 +114,15 @@ describe('timeRecording', () => {
     expect(timing.warnings).toEqual(['damaged gyro samples left out of stabilization: 1']);
   });
 
+  it('mends a gyro stamp far off its neighbours and says so', async () => {
+    const gyro = Uint8Array.from(loadFixture('x5/office/record-03-gyro-first2000.bin'));
+    // One bit of one stamp flipped: about 71 minutes off, a safe integer still.
+    gyro[RAW_SAMPLE_SIZE * 1000 + 4] = (gyro[RAW_SAMPLE_SIZE * 1000 + 4] ?? 0) ^ 0x01;
+    const timing = await timeRecording(await officeRecording({ gyro }), trackOf(10));
+    expect(timing.motion?.orientations.length).toBe(2000);
+    expect(timing.warnings).toEqual(['gyro stamps off their neighbours mended: 1']);
+  });
+
   it('still stabilizes an unknown camera but warns that its IMU frame is a guess', async () => {
     const info = minimalInfoRecord({ model: 'Insta360 X3', firstFrameTimestamp: 1_000_000 });
     const timing = await timeRecording(await officeRecording({ info }), trackOf(10));

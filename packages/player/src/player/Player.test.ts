@@ -163,8 +163,11 @@ describe('Player over the synthetic X5 recording', () => {
     expect(player.currentTime).toBe(0);
     expect(player.status).toBe('paused');
     // Whether play found the preloaded frames already primed decides if a `waiting` precedes
-    // `playing`; the transport sequence around it does not depend on decode timing.
-    const transport = events.filter((name) => name !== 'waiting');
+    // `playing`, and a slow machine may stall again later (`waiting`, then `playing` once more);
+    // the transport sequence around them does not depend on decode timing.
+    const transport = events
+      .filter((name) => name !== 'waiting')
+      .filter((name, index, all) => !(name === 'playing' && all[index - 1] === 'playing'));
     expect(transport).toEqual([
       'ready',
       'play',

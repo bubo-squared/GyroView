@@ -4,11 +4,9 @@ import {
   GyroViewError,
   hasErrorCode,
   lensFrameOrder,
-  probeDecoding,
   readRecording,
   seconds,
   timeRecording,
-  type DecodeProbeReport,
   type DemuxedInput,
   type FrameSourceKey,
   type LayoutHints,
@@ -16,28 +14,16 @@ import {
   type Recording,
   type RecordingTiming,
   type Seconds,
-  type Signal,
   type VideoTrackReader,
 } from '@gyroview/core';
 
 import { Disposables } from './Disposables';
+import { ensureDecodable } from './ensureDecodable';
+import type { OpenAttempt } from './OpenAttempt';
 import type { OpenedRecording } from './OpenedRecording';
 import type { RecordingPorts } from './ports';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import { inputName, type MediaInput } from '../PlayerSource';
-
-/**
- * What opening a recording works with: the ports it reads through and the signal that aborts it.
- */
-export interface OpenAttempt {
-  readonly ports: RecordingPorts;
-  readonly signal: AbortSignal;
-  /**
-   * Where the other lens file of a lone file is, when the server has it; absent where there is
-   * nothing to look for (a pair given whole, a local file).
-   */
-  readonly findSecondFile?: () => Promise<string | undefined>;
-}
 
 interface Opening {
   readonly input: MediaInput;
@@ -192,60 +178,6 @@ function calibrationOf(recording: Recording): OpenedRecording['calibration'] {
     'no-calibration',
     `the recording carries no usable lens calibration, so it cannot be stitched${detail}`,
   );
-}
-
-async function ensureDecodable(
-  frameSources: readonly VideoTrackReader[],
-  attempt: OpenAttempt,
-): Promise<void> {
-  const { ports, signal } = attempt;
-  const report = await probeDecoding(frameSources, ports.decoderPort, probeDeadlineOf(attempt));
-  signal.throwIfAborted();
-  if (!report.canDecode) throw probeFailure(report);
-}
-
-/**
- * The browser's shortcoming, unless every track that failed simply has no key frame to start
- * from: that is the file's.
- */
-function probeFailure(report: DecodeProbeReport): GyroViewError {
-  const failed = report.sources.filter((source) => source.verdict !== 'decodes');
-  const hasOnlyTracksWithoutKeyFrames = failed.every((source) => source.verdict === 'no-key-frame');
-  return hasOnlyTracksWithoutKeyFrames
-    ? new GyroViewError(
-        'no-key-frame',
-        `the recording has no key frame to start decoding from: ${describeProbe(report)}`,
-      )
-    : new GyroViewError(
-        'codec-unsupported',
-        `this browser cannot decode the recording: ${describeProbe(report)}`,
-      );
-}
-
-/**
- * The probe's deadline, brought forward by an abort: a superseded load lets its probe decoders
- * go at once, which matters where decoders are few (iOS Safari).
- */
-function probeDeadlineOf(attempt: OpenAttempt): Signal {
-  const deadline = attempt.ports.probeDeadline();
-  attempt.signal.addEventListener(
-    'abort',
-    () => {
-      deadline.trigger();
-    },
-    { once: true },
-  );
-  return deadline;
-}
-
-function describeProbe(report: DecodeProbeReport): string {
-  return report.sources
-    .filter((lens) => lens.verdict !== 'decodes')
-    .map(
-      (lens) =>
-        `track ${lens.track.trackIndex} ${lens.verdict}${lens.detail ? ` (${lens.detail})` : ''}`,
-    )
-    .join('; ');
 }
 
 interface AssemblyParts {

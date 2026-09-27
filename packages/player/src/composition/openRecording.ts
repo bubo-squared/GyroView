@@ -1,7 +1,8 @@
 import { hasErrorCode, locateOtherLensFile } from '@gyroview/core';
 
 import type { OpenedRecording } from './OpenedRecording';
-import { openInputs, type OpenAttempt } from './openInputs';
+import type { OpenAttempt } from './OpenAttempt';
+import { openInputs } from './openInputs';
 import type { RecordingPorts } from './ports';
 import { isUrlInput, type PlayerSource } from '../PlayerSource';
 

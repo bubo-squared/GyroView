@@ -3,6 +3,7 @@ import { ClockWatch } from './ClockWatch';
 import { SeekOrder } from './SeekOrder';
 import { TimeUpdates } from './TimeUpdates';
 import { DecodeRun, type DecodeRunParts } from './DecodeRun';
+import { keyframeTimeAt } from './keyframeTimeAt';
 import { PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
@@ -136,10 +137,10 @@ export class PlaybackSession<Handle = unknown> {
     if (!track || this.machine.isOneOf('disposed', 'error')) return;
     const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
     const ticket = this.seeks.claimScrub();
-    const keyPacket = await track.keyPacketAt(target);
+    const keyframeTime = await keyframeTimeAt(track, target);
     // A seek or scrub made meanwhile is newer: this scrub lands no more.
     if (!this.seeks.isScrubCurrent(ticket) || this.machine.isOneOf('disposed', 'error')) return;
-    this.seek(keyPacket?.timestamp ?? target);
+    this.seek(keyframeTime);
   }
 
   /**

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { Deferred } from '../../shared/async/Deferred';
 import { seconds } from '../../shared/units/time';
+import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import { FakePlaybackClock } from '../../testing/FakePlaybackClock';
 import { sessionHarness } from '../../../test/support/sessionHarness';
 import { settle } from '../../../test/support/settle';
@@ -134,6 +136,25 @@ describe('PlaybackSession buffering', () => {
     expect(sink.lastTimestamp).toBe(2);
     expect(session.state).toBe('paused');
     session.dispose();
+  });
+
+  it('lets a scrub whose key frame could not be looked up go quietly once disposed', async () => {
+    const lookup = new Deferred<void>();
+    class LetGoTrack extends FakeVideoTrack {
+      public override async keyPacketAt(): Promise<undefined> {
+        await lookup.promise;
+        return undefined;
+      }
+    }
+    const frameSources = [0, 1].map(
+      (trackIndex) =>
+        new LetGoTrack({ trackIndex, frameRate: 10, frameCount: 30, framesPerGop: 10 }),
+    );
+    const { session } = sessionHarness({ parts: { frameSources } });
+    const scrubbing = session.scrub(seconds(1.5));
+    session.dispose();
+    lookup.reject(new Error('input disposed'));
+    await expect(scrubbing).resolves.toBeUndefined();
   });
 
   it('lands the newest of overlapping scrubs', async () => {

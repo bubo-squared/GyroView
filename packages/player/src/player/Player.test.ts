@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import { Player } from './Player';
 import type { PlayerStatus } from './PlayerEvents';
+import type { PlayerMetadata } from '../PlayerMetadata';
 import { browserPorts } from '../composition/browserPorts';
 import { buildPipeline } from '../composition/buildPipeline';
 import type { PipelineFactory, RecordingPorts, SourceOpener } from '../composition/ports';
@@ -418,6 +419,52 @@ describe('Player over the synthetic X5 recording', () => {
     await settle();
     expect(readies).toHaveLength(1);
     expect(player.metadata?.hasAudio).toBe(true);
+  });
+
+  describe('with a listener that loads again on the status a load announces', () => {
+    it('hears no ready of the recording that load replaced', async () => {
+      const { player } = open();
+      const readies: PlayerMetadata[] = [];
+      player.events.on('ready', (metadata) => {
+        readies.push(metadata);
+      });
+      const loadsOnReady: Promise<void>[] = [];
+      const stopListening = player.events.on('statuschange', (status) => {
+        if (status !== 'ready') return;
+        stopListening();
+        loadsOnReady.push(player.load(sourceOf(X5_RECORDING_WITH_AUDIO_URL)));
+      });
+      await player.load(sourceOf(X5_RECORDING_URL));
+      await Promise.all(loadsOnReady);
+      expect(readies.map((metadata) => metadata.hasAudio)).toEqual([true]);
+    });
+
+    it('hears no error of the load it gave up on', async () => {
+      const { player, errors } = open();
+      const loadsOnError: Promise<void>[] = [];
+      const stopListening = player.events.on('statuschange', (status) => {
+        if (status !== 'error') return;
+        stopListening();
+        loadsOnError.push(player.load(sourceOf(X5_RECORDING_URL)));
+      });
+      await expect(player.load(sourceOf(`${X5_RECORDING_URL}.missing`))).rejects.toMatchObject({
+        code: 'source-unreadable',
+      });
+      await Promise.all(loadsOnError);
+      expect(errors).toEqual([]);
+      expect(player.status).toBe('ready');
+    });
+
+    it('loads nothing once disposed', async () => {
+      const { player } = open();
+      await player.load(sourceOf(X5_RECORDING_URL));
+      player.events.on('statuschange', (status) => {
+        if (status === 'idle') void player.load(sourceOf(X5_RECORDING_URL));
+      });
+      player.dispose();
+      await settle();
+      expect(player.status).toBe('idle');
+    });
   });
 
   it('lets a newer load supersede an older one quietly and ignores transport before a load', async () => {

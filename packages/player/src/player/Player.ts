@@ -20,7 +20,13 @@ import { FrameLoop } from './FrameLoop';
 import { loadRecording, type LoadedRecording } from './loadRecording';
 import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
 import type { LoadOptions, PlayerParts } from './PlayerOptions';
-import { IDLE, statusOf, type LoadingPhase, type PlayerPhase } from './PlayerPhase';
+import {
+  IDLE,
+  statusOf,
+  type FailedPhase,
+  type LoadingPhase,
+  type PlayerPhase,
+} from './PlayerPhase';
 import { PictureSettings } from './PictureSettings';
 import { PlayerSound } from './PlayerSound';
 import { PlayerView } from './PlayerView';
@@ -56,6 +62,10 @@ export class Player {
     },
   });
   private isLoopingValue = false;
+  /**
+   * Past `dispose`: a listener of the idle it announces must not load again.
+   */
+  private isDisposed = false;
   private lastStatus: PlayerStatus = 'idle';
 
   public constructor(private readonly parts: PlayerParts) {
@@ -135,6 +145,7 @@ export class Player {
    * newer load or `unload` supersedes resolves quietly.
    */
   public async load(source: PlayerSource, options: LoadOptions = {}): Promise<void> {
+    if (this.isDisposed) return;
     this.unload();
     // A listener of the `idle` just announced may have loaded something else: that load is newer.
     if (this.phase.kind !== 'idle') return;
@@ -279,6 +290,7 @@ export class Player {
   }
 
   public dispose(): void {
+    this.isDisposed = true;
     this.unload();
     this.parts.host.audio.removeEventListener('ended', this.tick);
     this.sound.dispose();
@@ -332,6 +344,8 @@ export class Player {
     this.relay.attach(session);
     this.loop.start();
     this.announceStatus();
+    // A listener of that status may have loaded something else: this recording's news is stale.
+    if (this.loaded !== loaded) return;
     for (const warning of [...loaded.opened.warnings, ...loaded.pipeline.warnings]) {
       this.events.emit('warning', warning);
     }
@@ -374,9 +388,10 @@ export class Player {
         : new GyroViewError('invariant-violation', 'the player failed unexpectedly', {
             cause: error,
           });
-    this.phase = { kind: 'failed', failure };
+    const failed: FailedPhase = { kind: 'failed', failure };
+    this.phase = failed;
     this.announceStatus();
-    this.events.emit('error', failure);
+    if (this.phase === failed) this.events.emit('error', failure);
     return failure;
   }
 

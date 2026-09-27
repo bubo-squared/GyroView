@@ -15,7 +15,7 @@ import { buildPipeline } from '../composition/buildPipeline';
 import type { PipelineFactory } from '../composition/ports';
 import type { PlayerSource } from '../PlayerSource';
 import { X5_RECORDING_URL, X5_RECORDING_WITH_AUDIO_URL } from '../test/recordings';
-import { waitFor } from '../test/waiting';
+import { settle, waitFor } from '../test/waiting';
 
 const CANVAS_WIDTH = 128;
 const CANVAS_HEIGHT = 64;
@@ -372,6 +372,26 @@ describe('Player over the synthetic X5 recording', () => {
     expect(() => {
       player.zoom(Infinity);
     }).toThrow(expect.objectContaining(refusal));
+  });
+
+  it('leaves a load made on the idle of a reload to that load alone', async () => {
+    const { player } = open();
+    await player.load(sourceOf(X5_RECORDING_URL));
+    const readies: unknown[] = [];
+    player.events.on('ready', (metadata) => {
+      readies.push(metadata);
+    });
+    const loadsOnIdle: Promise<void>[] = [];
+    const stopListening = player.events.on('statuschange', (status) => {
+      if (status !== 'idle') return;
+      stopListening();
+      loadsOnIdle.push(player.load(sourceOf(X5_RECORDING_WITH_AUDIO_URL)));
+    });
+    await player.load(sourceOf(X5_RECORDING_URL));
+    await Promise.all(loadsOnIdle);
+    await settle();
+    expect(readies).toHaveLength(1);
+    expect(player.metadata?.hasAudio).toBe(true);
   });
 
   it('lets a newer load supersede an older one quietly and ignores transport before a load', async () => {

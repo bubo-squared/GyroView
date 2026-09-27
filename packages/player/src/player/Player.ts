@@ -136,6 +136,8 @@ export class Player {
    */
   public async load(source: PlayerSource, options: LoadOptions = {}): Promise<void> {
     this.unload();
+    // A listener of the `idle` just announced may have loaded something else: that load is newer.
+    if (this.phase.kind !== 'idle') return;
     const loading: LoadingPhase = {
       kind: 'loading',
       controller: new AbortController(),

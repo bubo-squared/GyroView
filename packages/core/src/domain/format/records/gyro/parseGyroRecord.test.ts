@@ -173,6 +173,11 @@ describe('parseGyroRecord with the raw X5 layout', () => {
   it.each([
     ['acceleration about x, its highest bit', RAW_ACCELERATION_OFFSET + 1, 0x80],
     ['angular velocity about z, its second highest bit', RAW_ANGULAR_VELOCITY_OFFSET + 5, 0x40],
+    [
+      'acceleration about y, gravity at 1 g, its second highest bit',
+      RAW_ACCELERATION_OFFSET + 3,
+      0x40,
+    ],
   ])('leaves out a raw reading whose %s flipped', (_component, highByte, mask) => {
     const samples = [0, 1, 2, 3, 4].map((index) =>
       encodeRawReading((index + 1) * 10_000, [0, 1, index / 4], index * 10),

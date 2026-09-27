@@ -14,6 +14,12 @@ export const RAW_ANGULAR_VELOCITY_OFFSET = 14;
 export const RAW_COMPONENT_SIZE = 2;
 export const RAW_ZERO_POINT = 32_768;
 export const RAW_FULL_SCALE = 32_768;
+/**
+ * The weights of a raw component's two highest bits: a flip there moves a reading by its full
+ * range or half of it, still within the plausible bounds. A flip lower down moves it too little
+ * to matter.
+ */
+export const RAW_HIGH_BIT_WEIGHTS: readonly number[] = [RAW_FULL_SCALE, RAW_FULL_SCALE / 2];
 
 /**
  * Float layout: u64 LE timestamp in milliseconds, then accelerometer x y z in g and gyroscope

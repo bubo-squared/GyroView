@@ -1,4 +1,4 @@
-import type { GyroSampleLayout } from './GyroSampleLayout';
+import type { FlipSteps, GyroSampleLayout } from './GyroSampleLayout';
 import {
   FLOAT_ACCELERATION_OFFSET,
   FLOAT_ANGULAR_VELOCITY_OFFSET,
@@ -17,6 +17,11 @@ import type { Microseconds } from '../../../../shared/units/time';
 export class FloatGyroSampleLayout implements GyroSampleLayout {
   public readonly name = 'float';
   public readonly sampleSize = FLOAT_SAMPLE_SIZE;
+  /**
+   * A flipped exponent bit leaves a float64 far beyond any reading, or next to zero; a flipped
+   * fraction bit changes it by less than half.
+   */
+  public readonly flipSteps: FlipSteps = { acceleration: [], angularVelocity: [] };
 
   public captureTimeOf(stamp: number): Microseconds {
     return millisecondsToMicroseconds(milliseconds(stamp));

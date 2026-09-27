@@ -2,10 +2,11 @@ import { FloatGyroSampleLayout } from './FloatGyroSampleLayout';
 import { FLOAT_SAMPLE_SIZE } from './gyroLayouts';
 import type { GyroSampleLayout } from './GyroSampleLayout';
 import { RawGyroSampleLayout } from './RawGyroSampleLayout';
+import { SampleColumns } from './SampleColumns';
 import { ByteReader } from '../../../../shared/binary/ByteReader';
 import { GyroViewError, hasErrorCode } from '../../../../shared/errors/GyroViewError';
-import { VECTOR3_COMPONENTS, type Vector3 } from '../../../../shared/math/Vector3';
-import { GyroTrack, type GyroSample } from '../../../motion/gyro/GyroTrack';
+import type { Vector3 } from '../../../../shared/math/Vector3';
+import type { GyroSample, GyroTrack } from '../../../motion/gyro/GyroTrack';
 import { medianStep } from '../../../motion/gyro/medianStep';
 import { repairedTimeline } from '../../../motion/gyro/repairedTimeline';
 import type { SensorRanges } from '../../info/RecordingInfo';
@@ -27,12 +28,6 @@ const MIN_SAMPLES_TO_GUESS_FROM = 2;
  */
 const MAX_PLAUSIBLE_ACCELERATION_G = 64;
 const MAX_PLAUSIBLE_ANGULAR_VELOCITY_RAD_S = 100;
-/**
- * No motion changes this much from one sample to the next and back: a raw reading's high bits
- * (2000 and 1000 degrees a second, 32 and 16 g on the X5) leap further, inside the bounds.
- */
-const MAX_ANGULAR_VELOCITY_STEP_RAD_S = 10;
-const MAX_ACCELERATION_STEP_G = 8;
 
 export interface GyroLayoutHints {
   /**
@@ -93,8 +88,8 @@ export function selectGyroSampleLayout(
 /**
  * Decodes the gyro record payload into a {@link GyroTrack} with the given layout. Whole samples
  * only: a partial sample at the end is tolerated and reported, never rejected. So is a sample
- * whose bytes cannot be a reading (a stamp past the safe integers, a value no camera measures,
- * as a flipped bit leaves): each sample carries its own time, so the others still count. Stamps
+ * whose bytes cannot be a reading (a stamp past the safe integers, a value no camera measures, a
+ * component a flipped bit moved): each sample carries its own time, so the others still count. Stamps
  * that stray from their neighbours are mended (see {@link repairedTimeline}).
  */
 export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): ParsedGyroRecord {
@@ -105,7 +100,7 @@ export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): 
     const sample = readableSampleAt(reader, layout, index * layout.sampleSize);
     if (sample) columns.push(sample);
   }
-  columns.dropSpikes();
+  columns.dropFlippedBits(layout.flipSteps);
   const timeline = repairedTimeline(columns.captureTimes());
   return {
     track: columns.toTrack(timeline.times),
@@ -142,80 +137,6 @@ function isWithin(vector: Vector3, bound: number): boolean {
 }
 
 /**
- * The samples kept so far, in the columns a {@link GyroTrack} stores them in.
- */
-class SampleColumns {
-  public length = 0;
-  private readonly recordedTimes: Float64Array;
-  private readonly accelerations: Float32Array;
-  private readonly angularVelocities: Float32Array;
-
-  public constructor(capacity: number) {
-    this.recordedTimes = new Float64Array(capacity);
-    this.accelerations = new Float32Array(capacity * VECTOR3_COMPONENTS);
-    this.angularVelocities = new Float32Array(capacity * VECTOR3_COMPONENTS);
-  }
-
-  public push(sample: GyroSample): void {
-    this.recordedTimes[this.length] = sample.captureTime;
-    this.accelerations.set(sample.acceleration, this.length * VECTOR3_COMPONENTS);
-    this.angularVelocities.set(sample.angularVelocity, this.length * VECTOR3_COMPONENTS);
-    this.length += 1;
-  }
-
-  /**
-   * Leaves out samples whose reading leaps away from both neighbours while they agree: a flipped
-   * high bit in a raw reading stays within the bounds, but no motion changes that fast for one
-   * sample and back. Compacts in place; each check reads only samples not yet moved over.
-   */
-  public dropSpikes(): void {
-    let kept = 0;
-    for (let index = 0; index < this.length; index += 1) {
-      if (this.isSpikeAt(index)) continue;
-      this.moveSample(index, kept);
-      kept += 1;
-    }
-    this.length = kept;
-  }
-
-  /**
-   * The stamps as recorded, to be mended before they make a track.
-   */
-  public captureTimes(): Float64Array {
-    return this.recordedTimes.subarray(0, this.length);
-  }
-
-  public toTrack(captureTimes: Float64Array): GyroTrack {
-    const vectors = this.length * VECTOR3_COMPONENTS;
-    return new GyroTrack(
-      captureTimes,
-      this.accelerations.subarray(0, vectors),
-      this.angularVelocities.subarray(0, vectors),
-    );
-  }
-  private isSpikeAt(index: number): boolean {
-    const hasNeighbours = index > 0 && index < this.length - 1;
-    return (
-      hasNeighbours &&
-      (isSpike(this.angularVelocities, index, MAX_ANGULAR_VELOCITY_STEP_RAD_S) ||
-        isSpike(this.accelerations, index, MAX_ACCELERATION_STEP_G))
-    );
-  }
-
-  private moveSample(from: number, to: number): void {
-    if (from === to) return;
-    this.recordedTimes[to] = this.recordedTimes[from] ?? 0;
-    for (const vectors of [this.accelerations, this.angularVelocities]) {
-      vectors.copyWithin(
-        to * VECTOR3_COMPONENTS,
-        from * VECTOR3_COMPONENTS,
-        (from + 1) * VECTOR3_COMPONENTS,
-      );
-    }
-  }
-}
-
-/**
  * A layout fits when the stamps it decodes step by a plausible IMU interval: the median step,
  * so a few stamps left at zero or glitched at the start do not decide.
  */
@@ -247,25 +168,4 @@ function stampAt(reader: ByteReader, layout: GyroSampleLayout, offset: number): 
     if (hasErrorCode(error, 'binary-unsafe-integer')) return undefined;
     throw error;
   }
-}
-
-/**
- * The reading at `index` leaps from both neighbours by more than `step`, which agree within it.
- */
-function isSpike(vectors: Float32Array, index: number, step: number): boolean {
-  const distance = (a: number, b: number): number => {
-    let largest = 0;
-    for (let axis = 0; axis < VECTOR3_COMPONENTS; axis += 1) {
-      const difference =
-        (vectors[a * VECTOR3_COMPONENTS + axis] ?? 0) -
-        (vectors[b * VECTOR3_COMPONENTS + axis] ?? 0);
-      largest = Math.max(largest, Math.abs(difference));
-    }
-    return largest;
-  };
-  return (
-    distance(index, index - 1) > step &&
-    distance(index, index + 1) > step &&
-    distance(index - 1, index + 1) <= step
-  );
 }

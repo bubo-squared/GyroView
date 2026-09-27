@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { FLOAT_SAMPLE_SIZE, RAW_SAMPLE_SIZE } from './gyroLayouts';
+import {
+  FLOAT_SAMPLE_SIZE,
+  RAW_ACCELERATION_OFFSET,
+  RAW_ANGULAR_VELOCITY_OFFSET,
+  RAW_COMPONENT_SIZE,
+  RAW_SAMPLE_SIZE,
+} from './gyroLayouts';
 import { parseGyroRecord, selectGyroSampleLayout, type GyroLayoutHints } from './parseGyroRecord';
 import { degrees, degreesToRadians } from '../../../../shared/units/angle';
 import { captureError } from '../../../../../test/support/errors';
@@ -46,6 +52,29 @@ function bitFlipped(sample: Uint8Array, byte: number, mask: number): Uint8Array 
 function encodeRawSample(timestampUs: number): Uint8Array {
   const bytes = new Uint8Array(RAW_SAMPLE_SIZE);
   new DataView(bytes.buffer).setBigUint64(0, BigInt(timestampUs), true);
+  return bytes;
+}
+
+/**
+ * A raw sample reading `acceleration` in g on the X5's 32 g range, and the same raw value
+ * `angularVelocity` on every gyroscope axis.
+ */
+function encodeRawReading(
+  timestampUs: number,
+  acceleration: readonly number[],
+  angularVelocity: number,
+): Uint8Array {
+  const bytes = encodeRawSample(timestampUs);
+  const view = new DataView(bytes.buffer);
+  const rawPerG = RAW_FULL_SCALE / RAW_X5.ranges.accelerometerG;
+  for (const [axis, g] of acceleration.entries()) {
+    const word = RAW_ZERO_POINT + Math.round(g * rawPerG);
+    view.setUint16(RAW_ACCELERATION_OFFSET + axis * RAW_COMPONENT_SIZE, word, true);
+  }
+  for (let axis = 0; axis < 3; axis += 1) {
+    const word = RAW_ZERO_POINT + angularVelocity;
+    view.setUint16(RAW_ANGULAR_VELOCITY_OFFSET + axis * RAW_COMPONENT_SIZE, word, true);
+  }
   return bytes;
 }
 
@@ -128,24 +157,29 @@ describe('parseGyroRecord with the raw X5 layout', () => {
     expect([0, 1].map((index) => track.sampleAt(index).captureTime)).toEqual([10_000, 50_000]);
   });
 
-  it('leaves out a reading that leaps from its agreeing neighbours, as a flipped high bit does', () => {
-    const payload = new Uint8Array(
-      [10, 20, 30, 40, 50].flatMap((stamp, index) => [
-        ...encodeFloatSample(stamp, [0, 1, 0], [0, index === 2 ? 34.9 : 0.1, 0]),
-      ]),
-    );
-    const { track, damagedSamples } = read(payload, { isRawGyro: false, ranges: undefined });
+  it.each([
+    ['acceleration about x, its highest bit', RAW_ACCELERATION_OFFSET + 1, 0x80],
+    ['angular velocity about z, its second highest bit', RAW_ANGULAR_VELOCITY_OFFSET + 5, 0x40],
+  ])('leaves out a raw reading whose %s flipped', (_component, highByte, mask) => {
+    const samples = [10, 20, 30, 40, 50].map((ms) => encodeRawReading(ms * 1000, [0, 1, 0], 0));
+    samples[2] = bitFlipped(samples[2] ?? new Uint8Array(), highByte, mask);
+    const { track, damagedSamples } = read(new Uint8Array(samples.flatMap((s) => [...s])), RAW_X5);
     expect(damagedSamples).toBe(1);
     expect([...track.captureTimes]).toEqual([10_000, 20_000, 40_000, 50_000]);
   });
 
-  it('keeps a fast turn that the next sample carries on', () => {
+  it('keeps a knock and a vibration, whose leaps no flipped bit explains', () => {
+    const knock = [1, 1, 5, 23, 9, 3, 1];
+    const vibration = Array.from(
+      { length: 40 },
+      (_unused, index) => 10 * Math.sin(index * (Math.PI / 2) + 0.3),
+    );
     const payload = new Uint8Array(
-      [10, 20, 30, 40].flatMap((stamp, index) => [
-        ...encodeFloatSample(stamp, [0, 1, 0], [0, index >= 2 ? 30 : 0, 0]),
+      [...knock, ...vibration].flatMap((g, index) => [
+        ...encodeRawReading((index + 1) * 1000, [g, 1, 0], 0),
       ]),
     );
-    expect(read(payload, { isRawGyro: false, ranges: undefined }).damagedSamples).toBe(0);
+    expect(read(payload, RAW_X5).damagedSamples).toBe(0);
   });
 
   it('mends a stamp far off its neighbours and counts it', () => {

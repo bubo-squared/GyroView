@@ -1,4 +1,4 @@
-import type { GyroSampleLayout } from './GyroSampleLayout';
+import type { FlipSteps, GyroSampleLayout } from './GyroSampleLayout';
 import {
   DEFAULT_ACCELEROMETER_RANGE_G,
   DEFAULT_GYROSCOPE_RANGE_DPS,
@@ -6,6 +6,7 @@ import {
   RAW_ANGULAR_VELOCITY_OFFSET,
   RAW_COMPONENT_SIZE,
   RAW_FULL_SCALE,
+  RAW_HIGH_BIT_WEIGHTS,
   RAW_SAMPLE_SIZE,
   RAW_TIMESTAMP_OFFSET,
   RAW_ZERO_POINT,
@@ -22,6 +23,7 @@ import type { SensorRanges } from '../../info/RecordingInfo';
 export class RawGyroSampleLayout implements GyroSampleLayout {
   public readonly name = 'raw';
   public readonly sampleSize = RAW_SAMPLE_SIZE;
+  public readonly flipSteps: FlipSteps;
   private readonly accelerationScale: number;
   private readonly angularVelocityScale: number;
 
@@ -30,6 +32,10 @@ export class RawGyroSampleLayout implements GyroSampleLayout {
     const gyroscopeDps = ranges.gyroscopeDps ?? DEFAULT_GYROSCOPE_RANGE_DPS;
     this.accelerationScale = accelerometerG / RAW_FULL_SCALE;
     this.angularVelocityScale = degreesToRadians(degrees(gyroscopeDps)) / RAW_FULL_SCALE;
+    this.flipSteps = {
+      acceleration: RAW_HIGH_BIT_WEIGHTS.map((weight) => weight * this.accelerationScale),
+      angularVelocity: RAW_HIGH_BIT_WEIGHTS.map((weight) => weight * this.angularVelocityScale),
+    };
   }
 
   public captureTimeOf(stamp: number): Microseconds {

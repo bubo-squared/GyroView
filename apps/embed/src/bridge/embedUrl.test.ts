@@ -1,38 +1,42 @@
+import { OBSERVED_ATTRIBUTES } from '@gyroview/player/attributes';
 import { describe, expect, it } from 'vitest';
 
-import { embedAttributesOf, embedUrlFor, withAbsoluteUrls } from './embedUrl';
+import { embedAttributesOf, embedUrlFor, withAbsoluteUrls, type EmbedOptions } from './embedUrl';
 
 const PAGE = 'https://player.example/embed.html';
+const SITE = 'https://site.example';
+
+/**
+ * Every option set: `Required` makes the compiler ask for an option added later.
+ */
+const EVERY_OPTION: Required<EmbedOptions> = {
+  src: 'https://cdn.example/clip.insv',
+  src2: 'https://cdn.example/clip2.insv',
+  fov: 75,
+  yaw: -30,
+  pitch: 10,
+  stabilization: 'horizon',
+  viewMode: 'equirectangular',
+  preload: 'none',
+  gainMatch: 'off',
+  poster: 'https://cdn.example/poster.jpg',
+  autoplay: true,
+  muted: true,
+  loop: true,
+  controls: false,
+};
 
 describe('embedUrlFor and embedAttributesOf', () => {
   it('carries every option as a query parameter and reads it back as attributes', () => {
-    const url = embedUrlFor(
-      PAGE,
-      {
-        src: 'https://cdn.example/clip.insv',
-        src2: 'https://cdn.example/clip2.insv',
-        fov: 75,
-        yaw: -30,
-        stabilization: 'horizon',
-        viewMode: 'equirectangular',
-        preload: 'none',
-        gainMatch: 'off',
-        poster: 'https://cdn.example/poster.jpg',
-        autoplay: true,
-        muted: true,
-        controls: false,
-      },
-      'https://site.example',
-    );
-
-    const parsed = new URL(url);
+    const parsed = new URL(embedUrlFor(PAGE, EVERY_OPTION, SITE));
     expect(parsed.origin + parsed.pathname).toBe(PAGE);
-    expect(parsed.searchParams.get('origin')).toBe('https://site.example');
+    expect(parsed.searchParams.get('origin')).toBe(SITE);
     expect(embedAttributesOf(parsed.searchParams)).toEqual({
       src: 'https://cdn.example/clip.insv',
       src2: 'https://cdn.example/clip2.insv',
       fov: '75',
       yaw: '-30',
+      pitch: '10',
       stabilization: 'horizon',
       'view-mode': 'equirectangular',
       preload: 'none',
@@ -40,7 +44,13 @@ describe('embedUrlFor and embedAttributesOf', () => {
       poster: 'https://cdn.example/poster.jpg',
       autoplay: '',
       muted: '',
+      loop: '',
     });
+  });
+
+  it('has a query parameter for every attribute of the element', () => {
+    const parsed = new URL(embedUrlFor(PAGE, EVERY_OPTION, SITE));
+    expect(OBSERVED_ATTRIBUTES.filter((name) => !parsed.searchParams.has(name))).toEqual([]);
   });
 
   it('shows controls unless told not to and accepts several spellings of a flag', () => {

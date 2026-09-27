@@ -33,18 +33,23 @@ export interface LiveSettings {
 type Accessors = { readonly [Name in keyof LiveSettings]: Accessor };
 
 /**
- * Every name of {@link LiveSettings}, for what must know them before the element defines them.
+ * Every name of {@link LiveSettings} once; the record makes the compiler reject a missing one.
  */
-export const LIVE_SETTING_NAMES: readonly (keyof LiveSettings)[] = [
-  'stabilization',
-  'viewMode',
-  'fov',
-  'yaw',
-  'pitch',
-  'muted',
-  'loop',
-  'volume',
-];
+const SETTING_NAMES: Readonly<Record<keyof LiveSettings, true>> = {
+  stabilization: true,
+  viewMode: true,
+  fov: true,
+  yaw: true,
+  pitch: true,
+  muted: true,
+  loop: true,
+  volume: true,
+};
+
+/**
+ * For what must know the settings before the element defines them.
+ */
+export const LIVE_SETTING_NAMES = Object.keys(SETTING_NAMES) as readonly (keyof LiveSettings)[];
 
 /**
  * Properties that read and change the player's settings as they are now, the way

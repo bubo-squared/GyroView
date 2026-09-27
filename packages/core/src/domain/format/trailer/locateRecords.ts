@@ -73,7 +73,7 @@ async function locateByWalkingBackwards(
  * How much of the trailer one read of the backward walk takes: the headers of the small records
  * near the footer share one, and only a large payload (the gyro record) sends the walk past it.
  */
-const WALK_CHUNK_SIZE = 65_536;
+export const WALK_CHUNK_SIZE = 65_536;
 
 /**
  * Reads the trailer backwards a chunk at a time, so walking a bare trailer costs a round trip

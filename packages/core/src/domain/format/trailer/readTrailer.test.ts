@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { WALK_CHUNK_SIZE } from './locateRecords';
 import { readTrailer as readTrailerWithSize } from './readTrailer';
 import type { RandomAccessSource } from '../../../ports/RandomAccessSource';
 import {
@@ -144,6 +145,24 @@ describe('readTrailer with synthetic layouts', () => {
     const source = new SparseRandomAccessSource(file.bytes.byteLength).place(0, file.bytes);
     await readTrailer(source);
     expect(source.reads).toHaveLength(2);
+  });
+
+  it('walks a record header that straddles the start of a read chunk', async () => {
+    // The gyro payload ends the info record's header two bytes into the walk's first chunk.
+    const straddlingGyro = new Uint8Array(
+      WALK_CHUNK_SIZE - EXPOSURE_PAYLOAD.byteLength - 2 * RECORD_HEADER_SIZE - 2,
+    );
+    const file = new TrailerFixtureBuilder()
+      .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: INFO_PAYLOAD })
+      .addRecord({ id: RecordType.Gyro, payload: straddlingGyro })
+      .addRecord({ id: RecordType.Exposure, payload: EXPOSURE_PAYLOAD })
+      .buildContiguous();
+    const trailer = await readTrailer(new InMemoryRandomAccessSource(file.bytes));
+    for (const expected of file.records) {
+      expect(trailer.locationOf(expected.id)).toMatchObject({
+        payload: { offset: expected.offset, length: expected.size },
+      });
+    }
   });
 
   it('accepts a trailer that spans the whole file', async () => {

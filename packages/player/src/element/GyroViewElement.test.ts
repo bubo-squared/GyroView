@@ -212,6 +212,14 @@ describe('<gyro-view>', () => {
     await nextEvent(upgraded, 'ready');
   });
 
+  it('refuses a time that is not a finite number, even while a load waits', () => {
+    const element = create({ controls: '' });
+    element.src = X5_RECORDING_URL;
+    expect(() => {
+      element.currentTime = NaN;
+    }).toThrow(expect.objectContaining({ code: 'invalid-argument' }));
+  });
+
   it('plays and seeks what src names in the same task, as a media element does', async () => {
     const element = create({ controls: '' });
     element.src = X5_RECORDING_URL;

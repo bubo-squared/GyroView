@@ -16,6 +16,7 @@ import {
 } from '@gyroview/core';
 
 import { cssSizeOf } from './DrawingBufferFit';
+import { ensureFinite } from './ensureFinite';
 import { FrameLoop } from './FrameLoop';
 import { loadRecording, type LoadedRecording } from './loadRecording';
 import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
@@ -403,15 +404,5 @@ export class Player {
     if (status === this.lastStatus) return;
     this.lastStatus = status;
     this.events.emit('statuschange', status);
-  }
-}
-
-/**
- * A number from the page: NaN from an empty field or an undefined value would reach the clock
- * and the view, which cannot take it.
- */
-function ensureFinite(value: number, name: string): void {
-  if (!Number.isFinite(value)) {
-    throw new GyroViewError('invalid-argument', `${name} must be a finite number`);
   }
 }

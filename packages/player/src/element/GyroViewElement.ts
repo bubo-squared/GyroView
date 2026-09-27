@@ -34,6 +34,7 @@ import { bindControlsBar } from '../controls/controlsBar';
 import type { ControlsHost } from '../controls/ControlsHost';
 import { bindKeyboard, type KeyboardHost } from '../controls/keyboard';
 import { ViewGestures } from '../controls/ViewGestures';
+import { ensureFinite } from '../player/ensureFinite';
 import type { Player } from '../player/Player';
 import { PLAYER_EVENT_NAMES, type PlayerStatus } from '../player/PlayerEvents';
 import type { PlayerMetadata } from '../PlayerMetadata';
@@ -234,6 +235,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
    * Seeks exactly to `time` seconds; right after a new `src`, the new recording starts there.
    */
   public seek(time: number): void {
+    ensureFinite(time, 'time');
     if (this.scheduledLoad) this.startTime = seconds(time);
     else this.player.seek(seconds(time));
   }

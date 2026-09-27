@@ -27,7 +27,9 @@ Recordings are read in byte ranges straight from the camera's file layout. The s
 bucket) hosting the `.insv` files must:
 
 - answer `Range` requests with `206 Partial Content` and `Accept-Ranges: bytes`; a server that
-  answers `200` with the whole file shows as `range-unsupported`;
+  answers `200` with the whole file shows as `range-unsupported`, or as `source-unreadable`
+  when `HEAD` gave no length either (a `200` to the one-byte range is as often a fallback page
+  as a server that ignores ranges);
 - answer `HEAD` with `Content-Length`, which saves a request; a server that refuses `HEAD` (a
   `405`, or a `403` from a URL signed for `GET` alone) or omits the length is asked for a
   one-byte range instead;
@@ -80,8 +82,9 @@ with a warning), `img-src` for a poster, and no `worker-src` (the player uses no
 Every failure is a `GyroViewError` with a stable `code`. A failed load or playback arrives as
 the `error` event (and as the rejection of `load()`); the rest arrive where they happen:
 `playback-blocked` rejects `play()`, and becomes a `warning` event when autoplay, a tap or the
-loop meets it; `invalid-argument` is thrown by the call that got the value; `embed-destroyed`
-rejects the embed handle's promises.
+loop meets it; `invalid-argument` is thrown by the call that got the value, or rejects its
+promise when it returns one (`scrub()`, every embed handle method); `embed-destroyed` rejects
+the embed handle's promises.
 
 | Code                    | Meaning and what to do                                                       |
 | ----------------------- | ---------------------------------------------------------------------------- |

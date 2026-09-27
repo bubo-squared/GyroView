@@ -29,10 +29,12 @@ export function cssSizeOf(element: Element): ViewportSize {
 }
 
 /**
- * Keeps the renderer's drawing buffer matched to the canvas's layout size.
+ * Keeps the renderer's drawing buffer matched to the canvas's layout size and the screen's pixel
+ * ratio.
  */
 export class DrawingBufferFit {
   private readonly observer: ResizeObserver;
+  private readonly ratioWatch = new AbortController();
 
   public constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -42,15 +44,30 @@ export class DrawingBufferFit {
       this.fit();
     });
     this.observer.observe(canvas);
+    this.watchPixelRatio();
     this.fit();
   }
 
   public dispose(): void {
     this.observer.disconnect();
+    this.ratioWatch.abort();
+  }
+
+  /**
+   * A window moved to a screen of another pixel ratio keeps its layout size, so the resize
+   * observer stays quiet: a query for the ratio it has now says when that changes.
+   */
+  private watchPixelRatio(): void {
+    const query = globalThis.matchMedia(`(resolution: ${globalThis.devicePixelRatio}dppx)`);
+    const onChange = (): void => {
+      this.fit();
+      this.watchPixelRatio();
+    };
+    query.addEventListener('change', onChange, { once: true, signal: this.ratioWatch.signal });
   }
 
   private fit(): void {
-    const size = drawingBufferSizeFor(cssSizeOf(this.canvas), window.devicePixelRatio);
+    const size = drawingBufferSizeFor(cssSizeOf(this.canvas), globalThis.devicePixelRatio);
     if (size.width === this.canvas.width && size.height === this.canvas.height) return;
     this.renderer.resize(size);
   }

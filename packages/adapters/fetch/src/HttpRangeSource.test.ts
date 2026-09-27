@@ -42,6 +42,20 @@ function firstRangeFailing(isServerGone: boolean): typeof fetch {
   };
 }
 
+/**
+ * A fetch whose byte-range answers come as a cross-origin response that exposes no headers.
+ */
+async function hidingRangeHeaders(
+  input: Parameters<typeof fetch>[0],
+  init?: RequestInit,
+): Promise<Response> {
+  const response = await fetch(input, init);
+  if (init?.method !== 'GET') return response;
+  const hidden = new Response(null, { status: response.status });
+  Object.defineProperty(hidden, 'type', { value: 'cors' });
+  return hidden;
+}
+
 interface CountingFetch {
   readonly fetch: typeof fetch;
   /**
@@ -186,6 +200,34 @@ describe('HttpRangeSource', () => {
     const source = new HttpRangeSource(server.url, { fetch: refusing, retryDelaysMs: NO_WAIT });
     await expect(source.read(ByteRange.of(0, 10))).rejects.toMatchObject({ code: 'cors' });
     expect(ranges).toBe(1);
+  });
+
+  it('says cors when a server that refuses HEAD hides Content-Range from this origin', async () => {
+    const server = await serve(content, { answersHeadWith: 403 });
+    await expect(
+      new HttpRangeSource(server.url, { fetch: hidingRangeHeaders }).size(),
+    ).rejects.toMatchObject({
+      code: 'cors',
+      message: expect.stringContaining('Access-Control-Expose-Headers') as string,
+    });
+  });
+
+  it('takes the one-byte size lookup as proof of CORS for the reads after it', async () => {
+    const server = await serve(content, { answersHeadWith: 405 });
+    const answered = firstRangeFailing(false);
+    let probes = 0;
+    let isSized = false;
+    const source = new HttpRangeSource(server.url, {
+      fetch: (input, init): Promise<Response> => {
+        if (init?.mode === 'no-cors') probes += 1;
+        return isSized ? answered(input, init) : fetch(input, init);
+      },
+      retryDelaysMs: NO_WAIT,
+    });
+    await source.size();
+    isSized = true;
+    await expect(source.read(ByteRange.of(0, 10))).resolves.toEqual(content.subarray(0, 10));
+    expect(probes).toBe(0);
   });
 
   it('asks again for a range whose request did not get through', async () => {

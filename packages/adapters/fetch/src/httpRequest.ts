@@ -49,7 +49,7 @@ export async function httpRequest(
     return await plainHttpRequest(url, request, options);
   } catch (error) {
     if (isAbort(error)) throw error;
-    throw await diagnoseFailure(url, options.fetch ?? fetch, error);
+    throw await diagnoseFailure(url, options, error);
   }
 }
 
@@ -117,10 +117,10 @@ export function isAbort(error: unknown): boolean {
  */
 async function diagnoseFailure(
   url: string,
-  doFetch: typeof fetch,
+  options: HttpRequestOptions,
   cause: unknown,
 ): Promise<GyroViewError> {
-  const isServerReachable = await isReachableWithoutCors(url, doFetch);
+  const isServerReachable = await isReachableWithoutCors(url, options);
   return isServerReachable
     ? new GyroViewError(
         'cors',
@@ -134,12 +134,18 @@ async function diagnoseFailure(
       );
 }
 
-async function isReachableWithoutCors(url: string, doFetch: typeof fetch): Promise<boolean> {
+/**
+ * The probe ends with the request it diagnoses: an abort of the load ends it too.
+ */
+async function isReachableWithoutCors(url: string, options: HttpRequestOptions): Promise<boolean> {
+  const doFetch = options.fetch ?? fetch;
+  const signal = options.requestInit?.signal ?? null;
   try {
-    const probe = await doFetch(url, { method: 'HEAD', mode: 'no-cors' });
+    const probe = await doFetch(url, { method: 'HEAD', mode: 'no-cors', signal });
     discardBody(probe);
     return true;
-  } catch {
+  } catch (error) {
+    if (isAbort(error)) throw error;
     return false;
   }
 }

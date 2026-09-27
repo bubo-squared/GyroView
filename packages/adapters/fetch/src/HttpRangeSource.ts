@@ -213,7 +213,10 @@ export class HttpRangeSource implements RandomAccessSource {
       );
     }
     this.hasReadRange = true;
-    const total = CONTENT_RANGE_TOTAL.exec(response.headers.get('content-range') ?? '')?.[1];
+    const contentRange = response.headers.get('content-range');
+    // Across origins the header is hidden unless the server exposes it.
+    if (contentRange === null && response.type === 'cors') throw this.hiddenContentRange();
+    const total = CONTENT_RANGE_TOTAL.exec(contentRange ?? '')?.[1];
     if (total === undefined) {
       throw new GyroViewError(
         'source-unreadable',
@@ -221,6 +224,13 @@ export class HttpRangeSource implements RandomAccessSource {
       );
     }
     return Number(total);
+  }
+
+  private hiddenContentRange(): GyroViewError {
+    return new GyroViewError(
+      'cors',
+      `${this.url} answered a byte range but hides its Content-Range from this origin; add Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges`,
+    );
   }
 
   private request(method: HttpMethod, headers?: Record<string, string>): Promise<Response> {

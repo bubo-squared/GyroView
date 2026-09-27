@@ -3,14 +3,13 @@ import {
   Camera,
   Mesh,
   Scene,
-  WebGLRenderTarget,
   type BufferGeometry,
   type RawShaderMaterial,
   type WebGLRenderer,
 } from 'three';
 
+import { compileAndProve } from './compileAndProve';
 import { createPassMaterial } from './fullscreenPass';
-import { renderInto } from './renderInto';
 import type { RendererUniforms } from './rendererUniforms';
 import { PICTURE_PROGRAMS } from './shaderPrograms';
 
@@ -28,9 +27,8 @@ export function createPictureMaterials(uniforms: RendererUniforms): PictureMater
 }
 
 /**
- * Draws every program once, off screen: a broken shader then fails here rather than at the first
- * presented frame or the first change of view mode (three checks a program only at its first
- * use, which `compile` is not), and a change of mode is instant.
+ * Compiles and proves every program now: a broken shader then fails here rather than at the first
+ * presented frame or the first change of view mode, and a change of mode is instant.
  */
 export function compilePictureMaterials(
   renderer: WebGLRenderer,
@@ -38,18 +36,10 @@ export function compilePictureMaterials(
   materials: PictureMaterials,
 ): void {
   const camera = new Camera();
-  const scenes = Object.values(materials).map((material) => {
+  for (const material of Object.values(materials)) {
     const scene = new Scene();
     scene.add(new Mesh(geometry, material));
-    return scene;
-  });
-  const target = new WebGLRenderTarget(1, 1, { depthBuffer: false, stencilBuffer: false });
-  try {
-    renderInto(renderer, target, () => {
-      for (const scene of scenes) renderer.render(scene, camera);
-    });
-  } finally {
-    target.dispose();
+    compileAndProve(renderer, scene, camera);
   }
 }
 

@@ -10,6 +10,7 @@ import {
 } from 'three';
 
 import { rowMeansOf } from './rowMeans';
+import { compileAndProve } from '../compileAndProve';
 import { createFullscreenTriangle, createPassMaterial } from '../fullscreenPass';
 import { RGBA_CHANNELS } from '../readback';
 import { renderInto } from '../renderInto';
@@ -25,8 +26,8 @@ const SEAM_SAMPLES = 64;
 /**
  * SeamMeter over the GPU: renders what each lens sees along the seam ring into one row of a tiny
  * target and reads the rows back, sharing the stitch's uniforms so it always looks at the frames
- * on screen. Drawn once when created (three checks a program only at its first use), so a broken
- * shader fails there and not mid-playback.
+ * on screen. Compiled and proven when created, so a broken shader fails there and not
+ * mid-playback.
  */
 export class SeamMeterPass implements SeamMeter {
   private readonly target = new WebGLRenderTarget(SEAM_SAMPLES, MAX_LENSES, {
@@ -48,7 +49,7 @@ export class SeamMeterPass implements SeamMeter {
     this.material = createPassMaterial(uniforms, SEAM_ANALYSIS);
     this.scene.add(new Mesh(this.geometry, this.material));
     try {
-      this.draw();
+      compileAndProve(renderer, this.scene, this.camera);
     } catch (error) {
       this.dispose();
       throw error;

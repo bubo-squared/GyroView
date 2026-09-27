@@ -118,8 +118,7 @@ class SourceProbe<Handle> {
       return TIMED_OUT;
     }
     this.decoder = decoder;
-    decoder.decode(keyPacket);
-    void this.flushInto(decoder, first);
+    void this.decodeInto(decoder, keyPacket, first);
     return first.promise;
   }
 
@@ -148,10 +147,17 @@ class SourceProbe<Handle> {
   }
 
   /**
-   * Forces the picture out of decoders that buffer; a flush that ends without one is a failure.
+   * Decodes the key frame and forces its picture out of decoders that buffer. A decoder that
+   * refuses the packet (one that is no real key frame), or a flush that ends without a picture,
+   * is a failure.
    */
-  private async flushInto(decoder: VideoDecoderHandle, first: Deferred<Outcome>): Promise<void> {
+  private async decodeInto(
+    decoder: VideoDecoderHandle,
+    keyPacket: EncodedVideoPacket,
+    first: Deferred<Outcome>,
+  ): Promise<void> {
     try {
+      decoder.decode(keyPacket);
       await decoder.flush();
       first.resolve(NO_FRAME_OUT);
     } catch (error) {

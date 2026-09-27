@@ -114,6 +114,24 @@ class ErroringPort implements VideoDecoderPort<never> {
   }
 }
 
+/**
+ * A decoder that refuses the first packet on the spot, as WebCodecs does with a key frame that
+ * is none.
+ */
+class PacketRefusingPort implements VideoDecoderPort<never> {
+  public isSupported(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
+  public create(): Promise<VideoDecoderHandle> {
+    const decoder = new StalledDecoder();
+    decoder.decode = (): void => {
+      throw new GyroViewError('decode', 'a key frame is required after configure()');
+    };
+    return Promise.resolve(decoder);
+  }
+}
+
 describe('probeDecoding', () => {
   it('reports that every lens decodes, leaving no frame open and every decoder closed', async () => {
     const port = new FakeVideoDecoderPort({ latencyTicks: 2 });
@@ -187,6 +205,12 @@ describe('probeDecoding', () => {
       verdict: 'decode-failed',
       detail: 'out of decoder instances',
     });
+  });
+
+  it('reports a first packet the decoder refuses on the spot as a failed decode', async () => {
+    const report = await probeDecoding(tracks([30, 30]), new PacketRefusingPort(), new Signal());
+    expect(report.sources.map((lens) => lens.verdict)).toEqual(['decode-failed', 'decode-failed']);
+    expect(report.sources[0]?.detail).toBe('a key frame is required after configure()');
   });
 
   it('reports a decoder error on the first packet as a failed decode', async () => {

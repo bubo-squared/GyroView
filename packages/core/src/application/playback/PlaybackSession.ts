@@ -95,9 +95,11 @@ export class PlaybackSession<Handle = unknown> {
   public pause(): void {
     this.parts.clock.pause();
     if (!this.machine.canTransitionTo('paused')) return;
+    // Taken first: a listener's `play` on `paused` makes an attempt of its own.
+    const attempt = this.takeStartAttempt();
     this.setState('paused');
-    this.timeUpdates.announce(this.parts.clock.currentTime);
-    this.settleStartAttempt();
+    attempt?.resolve();
+    if (this.isIn('paused')) this.timeUpdates.announce(this.parts.clock.currentTime);
   }
 
   /**
@@ -133,10 +135,10 @@ export class PlaybackSession<Handle = unknown> {
     const [track] = this.parts.frameSources;
     if (!track || this.machine.isOneOf('disposed', 'error')) return;
     const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
-    const generation = this.seeks.current;
+    const ticket = this.seeks.claimScrub();
     const keyPacket = await track.keyPacketAt(target);
-    // A seek made meanwhile is newer: the scrub lands no more.
-    if (!this.isSeekCurrent(generation)) return;
+    // A seek or scrub made meanwhile is newer: this scrub lands no more.
+    if (!this.seeks.isScrubCurrent(ticket) || this.machine.isOneOf('disposed', 'error')) return;
     this.seek(keyPacket?.timestamp ?? target);
   }
 
@@ -284,21 +286,14 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   /**
-   * Follows the clock where the platform moved it: decodes from there, restarting the clock's
-   * own feed at that time, and waits for the frames if playing. A start that came with it is
-   * followed on the next tick.
+   * Follows the clock where the platform moved it, as a seek there: a stop that came with the
+   * move is followed first and a start after it, as each would be followed alone.
    */
   private followMoveFromOutside(now: Seconds): void {
-    const wasPlaying = this.isIn('playing');
     const wasRunning = this.parts.clock.isRunning;
-    this.parts.clock.seek(now);
-    this.startRun(now);
-    if (wasPlaying) {
-      this.parts.clock.pause();
-      this.setState('buffering');
-    } else if (!wasRunning) {
-      this.timeUpdates.announce(now);
-    }
+    if (!wasRunning && this.isIn('playing')) this.pause();
+    this.seek(now);
+    if (wasRunning && this.isIn('paused')) void this.followStartFromOutside();
   }
 
   /**
@@ -347,7 +342,7 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   private isPrimed(): boolean {
-    return this.run?.isPrimed === true;
+    return this.run?.isPrimedAt(this.parts.clock.currentTime) === true;
   }
 
   /**
@@ -362,8 +357,7 @@ export class PlaybackSession<Handle = unknown> {
    * first start) lands `paused` and is reported to the waiting `play`.
    */
   private async resume(): Promise<void> {
-    const attempt = this.startAttempt;
-    this.startAttempt = undefined;
+    const attempt = this.takeStartAttempt();
     this.enterPlaying();
     if (!this.isIn('playing')) {
       attempt?.resolve();
@@ -387,8 +381,13 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   private settleStartAttempt(): void {
-    this.startAttempt?.resolve();
+    this.takeStartAttempt()?.resolve();
+  }
+
+  private takeStartAttempt(): Deferred<void> | undefined {
+    const attempt = this.startAttempt;
     this.startAttempt = undefined;
+    return attempt;
   }
 
   /**
@@ -434,6 +433,8 @@ export class PlaybackSession<Handle = unknown> {
     if (!this.machine.canTransitionTo('ended')) return;
     this.parts.clock.pause();
     this.setState('ended');
+    // A listener may have started over on `ended`: the end is past then.
+    if (!this.isIn('ended')) return;
     this.timeUpdates.announce(this.parts.clock.currentTime);
     this.events.emit('ended', undefined);
   }

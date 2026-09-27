@@ -57,6 +57,26 @@ describe('PlaybackSession buffering', () => {
     session.dispose();
   });
 
+  it('resumes only once decoding has caught up with the clock, instead of flapping', async () => {
+    const clock = new FakePlaybackClock();
+    const { session, sink, states, advance } = sessionHarness({ clock });
+    await session.play();
+    await advance(0);
+    // Further than a full queue reaches, yet short of what counts as missed ticks.
+    clock.advance(seconds(0.95));
+    session.tick();
+    expect(session.state).toBe('buffering');
+
+    // The queue fills with pairs the clock has passed: no start on those.
+    await settle();
+    expect(session.state).toBe('buffering');
+    for (let step = 0; step < 6; step += 1) await advance(0);
+    expect(session.state).toBe('playing');
+    expect(sink.lastTimestamp).toBeCloseTo(0.9, 6);
+    expect(states).toEqual(['buffering', 'playing', 'buffering', 'playing']);
+    session.dispose();
+  });
+
   it('does not buffer for a frame that is merely not due yet', async () => {
     const clock = new FakePlaybackClock();
     const { session, advance } = sessionHarness({ clock });
@@ -113,6 +133,13 @@ describe('PlaybackSession buffering', () => {
     await advance(0);
     expect(sink.lastTimestamp).toBe(2);
     expect(session.state).toBe('paused');
+    session.dispose();
+  });
+
+  it('lands the newest of overlapping scrubs', async () => {
+    const { session } = sessionHarness();
+    await Promise.all([session.scrub(seconds(1.5)), session.scrub(seconds(2.5))]);
+    expect(session.currentTime).toBe(2);
     session.dispose();
   });
 

@@ -55,6 +55,34 @@ describe('PlaybackSession following what the platform does to its clock', () => 
       session.dispose();
     });
 
+    it('stays paused where it moved a playing clock it also stopped', async () => {
+      const clock = new FakePlaybackClock();
+      const { session, sink, advance } = sessionHarness({ clock });
+      await session.play();
+      for (let step = 0; step < 10; step += 1) await advance(100);
+      clock.pause();
+      clock.seek(seconds(0.3));
+      for (let step = 0; step < 3; step += 1) await advance(0);
+      expect(session.state).toBe('paused');
+      expect(clock.isRunning).toBe(false);
+      expect(sink.lastTimestamp).toBeCloseTo(0.3, 6);
+      session.dispose();
+    });
+
+    it('leaves the end for where it moved the clock, and plays on from there', async () => {
+      const clock = new FakePlaybackClock();
+      const { session, advance } = sessionHarness({ clock });
+      await session.play();
+      for (let step = 0; step < 40 && session.state !== 'ended'; step += 1) await advance(100);
+      expect(session.state).toBe('ended');
+      clock.seek(seconds(1.5));
+      await advance(0);
+      expect(session.state).toBe('paused');
+      await session.play();
+      expect(session.currentTime).toBeCloseTo(1.5, 6);
+      session.dispose();
+    });
+
     it('shows the frame where it moved a paused clock, and announces the time there', async () => {
       const clock = new FakePlaybackClock();
       const { session, sink, advance } = sessionHarness({ clock });

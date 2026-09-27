@@ -55,7 +55,7 @@ describe('DecodeRun', () => {
     });
     await settle();
     expect(progress).toBeGreaterThanOrEqual(3);
-    expect(run.isPrimed).toBe(true);
+    expect(run.isPrimedAt(seconds(0))).toBe(true);
     expect(run.takePairAt(seconds(0))?.timestamp).toBe(0);
     expect(run.isDrained).toBe(false);
     expect(run.takePairAt(seconds(1))?.timestamp).toBeCloseTo(0.2, 9);
@@ -83,14 +83,14 @@ describe('DecodeRun', () => {
     run.abort();
     await settle();
     expect(progress).toBe(0);
-    expect(run.isPrimed).toBe(false);
+    expect(run.isPrimedAt(seconds(0))).toBe(false);
     expect(run.isDrained).toBe(false);
   });
 
   it('is primed by a full queue that holds fewer pairs than priming asks for', async () => {
     const run = DecodeRun.start(partsQueuing(10, { queueCapacity: 1 }), seconds(0), QUIET);
     await settle();
-    expect(run.isPrimed).toBe(true);
+    expect(run.isPrimedAt(seconds(0))).toBe(true);
     run.abort();
   });
 

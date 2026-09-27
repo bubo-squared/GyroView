@@ -51,6 +51,22 @@ describe('PlaybackSession with listeners that act on what it announces', () => {
       session.dispose();
     });
 
+    it('settles the play it paused and leaves a play made on paused to start the clock', async () => {
+      const { session, advance } = sessionHarness();
+      const plays: Promise<void>[] = [];
+      const firstPlay = session.play();
+      onFirst(session, 'paused', () => {
+        plays.push(session.play());
+      });
+      session.pause();
+      await firstPlay;
+      expect(session.state).toBe('buffering');
+      for (let step = 0; step < 3; step += 1) await advance(0);
+      await Promise.all(plays);
+      expect(session.state).toBe('playing');
+      session.dispose();
+    });
+
     it('stays paused when paused on seeking', async () => {
       const { session, advance } = sessionHarness();
       await session.play();
@@ -62,6 +78,24 @@ describe('PlaybackSession with listeners that act on what it announces', () => {
       expect(session.state).toBe('paused');
       session.dispose();
     });
+  });
+
+  it('announces no end once a listener started over on ended', async () => {
+    const { session, states, advance } = sessionHarness();
+    const ends: string[] = [];
+    session.events.on('ended', () => {
+      ends.push('ended');
+    });
+    onFirst(session, 'ended', () => {
+      void session.play();
+    });
+    await session.play();
+    for (let step = 0; step < 40 && !states.includes('ended'); step += 1) await advance(100);
+    await advance(0);
+    expect(states).toContain('ended');
+    expect(ends).toEqual([]);
+    expect(session.state).not.toBe('ended');
+    session.dispose();
   });
 
   describe('with a listener that seeks as the session announces a change', () => {

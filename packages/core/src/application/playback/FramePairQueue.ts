@@ -82,6 +82,13 @@ export class FramePairQueue<Handle = unknown> {
   }
 
   /**
+   * The time of the pair queued last, the furthest decoding has come.
+   */
+  public newestTimestamp(): Seconds | undefined {
+    return this.pairs.at(-1)?.timestamp;
+  }
+
+  /**
    * Drops and closes everything held, and every pair pushed from now on.
    */
   public close(): void {

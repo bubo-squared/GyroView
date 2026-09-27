@@ -89,11 +89,13 @@ export class DecodeRun<Handle> {
   }
 
   /**
-   * Enough frames are decoded to start moving: a couple queued, or the run is over and what is
+   * Enough frames are decoded to start moving at `now`: a couple queued, reaching the clock's time
+   * (pairs it has already passed would leave it starved at once), or the run is over and what is
    * left is already there.
    */
-  public get isPrimed(): boolean {
-    return this.hasReachedEnd || this.queue.length >= this.primingPairs;
+  public isPrimedAt(now: Seconds): boolean {
+    const hasCaughtUp = (this.queue.newestTimestamp() ?? -Infinity) >= now;
+    return this.hasReachedEnd || (hasCaughtUp && this.queue.length >= this.primingPairs);
   }
 
   /**

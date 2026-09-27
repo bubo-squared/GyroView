@@ -62,9 +62,12 @@ export class SourceBufferFeeder {
     this.run = this.feedAfter(this.run, time, stop);
   }
 
+  /**
+   * Stops feeding. An append or eviction under way is left to the media source's detachment,
+   * which ends it; `abort` would throw while old audio is being evicted.
+   */
   public dispose(): void {
     this.stop.stop();
-    this.abortPendingAppend();
   }
 
   /**
@@ -161,11 +164,6 @@ export class SourceBufferFeeder {
   private async settlePendingAppend(): Promise<void> {
     if (this.parts.sourceBuffer.updating)
       await nextOfEvents(this.parts.sourceBuffer, ['updateend']);
-  }
-
-  private abortPendingAppend(): void {
-    const { sourceBuffer, mediaSource } = this.parts;
-    if (sourceBuffer.updating && mediaSource.readyState === 'open') sourceBuffer.abort();
   }
 
   private endStream(): void {

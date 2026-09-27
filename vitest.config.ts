@@ -8,6 +8,13 @@ import { defineConfig } from 'vitest/config';
  */
 const hasSamples = existsSync(new URL('samples', import.meta.url));
 
+/**
+ * Each browser instance of each project adds a SIGTERM listener to this process, to close its
+ * browser: a dozen are expected, and Node warns of a leak past ten.
+ */
+const EXPECTED_SIGTERM_LISTENERS = 32;
+process.setMaxListeners(EXPECTED_SIGTERM_LISTENERS);
+
 export default defineConfig({
   test: {
     projects: [
@@ -18,11 +25,20 @@ export default defineConfig({
       'apps/*/vitest.node.config.ts',
       ...(hasSamples ? ['tools/integration/vitest.browser.config.ts'] : []),
     ],
+    // Istanbul instruments the code itself, so it counts in WebKit as in Chromium and Node; v8
+    // coverage exists in Chromium only and refuses a run with several browsers.
     coverage: {
-      provider: 'v8',
-      include: ['packages/**/src/**/*.ts'],
-      exclude: ['**/*.test.ts', '**/index.ts'],
-      reporter: ['text', 'lcov'],
+      provider: 'istanbul',
+      include: ['packages/**/src/**/*.ts', 'apps/*/src/**/*.ts'],
+      exclude: [
+        '**/*.test.ts',
+        '**/*.contract.ts',
+        '**/index.ts',
+        '**/test/**',
+        '**/testing/**',
+        '**/*.d.ts',
+      ],
+      reporter: ['text-summary', 'lcov'],
     },
   },
 });

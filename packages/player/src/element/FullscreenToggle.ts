@@ -9,7 +9,7 @@ export class FullscreenToggle {
   public constructor(private readonly element: HTMLElement) {}
 
   public get isActive(): boolean {
-    return document.fullscreenElement === this.element || this.element.hasAttribute(FILL_ATTRIBUTE);
+    return this.isNativelyFullscreen() || this.element.hasAttribute(FILL_ATTRIBUTE);
   }
 
   public async toggle(): Promise<void> {
@@ -17,8 +17,16 @@ export class FullscreenToggle {
   }
 
   public async exit(): Promise<void> {
-    if (document.fullscreenElement === this.element) await document.exitFullscreen();
+    if (this.isNativelyFullscreen()) await document.exitFullscreen();
     this.element.removeAttribute(FILL_ATTRIBUTE);
+  }
+
+  /**
+   * Asked of the element itself: `document.fullscreenElement` names the outermost shadow host
+   * instead when the player sits inside another component.
+   */
+  private isNativelyFullscreen(): boolean {
+    return this.element.matches(':fullscreen');
   }
 
   private async enter(): Promise<void> {

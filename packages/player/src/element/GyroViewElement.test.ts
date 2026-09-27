@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 
 import { defineGyroView } from './defineGyroView';
 import { GyroViewElement } from './GyroViewElement';
@@ -754,6 +754,25 @@ describe('<gyro-view>', () => {
 
     element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await waitFor(() => !isFillingTheScreen(element), 'leaving fullscreen');
+  });
+
+  it('leaves the fullscreen it entered from its button when it sits inside another component', async () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const element = document.createElement('gyro-view') as GyroViewElement;
+    element.setAttribute('controls', '');
+    element.style.cssText = 'width: 480px; height: 270px';
+    host.attachShadow({ mode: 'open' }).append(element);
+    elements.push(element);
+    const ready = nextEvent(element, 'ready');
+    element.src = X5_RECORDING_URL;
+    await ready;
+    const button = control(element, '.fullscreen', HTMLButtonElement);
+    await userEvent.click(button);
+    await waitFor(() => element.matches(':fullscreen'), 'entering fullscreen');
+    await userEvent.click(button);
+    await waitFor(() => document.fullscreenElement === null, 'leaving fullscreen');
+    host.remove();
   });
 
   it('lets an open menu take the Escape and stays in fullscreen until the next one', async () => {

@@ -173,23 +173,7 @@ describe('probeDecoding', () => {
     expect(report.sources.map((lens) => lens.verdict)).toEqual(['decodes', 'no-key-frame']);
   });
 
-  it('rejects with a failure to read a track as it is, rather than blaming the codec', async () => {
-    const [readable] = tracks([30]);
-    const unreadable = new UnreadableTrack({
-      trackIndex: 1,
-      frameRate: 30,
-      frameCount: 30,
-      framesPerGop: 30,
-    });
-    const probing = probeDecoding(
-      [readable ?? unreadable, unreadable],
-      new FakeVideoDecoderPort(),
-      new Signal(),
-    );
-    await expect(probing).rejects.toMatchObject({ code: 'source-unreadable' });
-  });
-
-  it('closes the other decoders at once when a track that cannot be read fails the probe', async () => {
+  it('rejects with the read failure of a track, not a codec verdict, and closes the other decoders at once', async () => {
     const port = new StalledPort();
     const [readable] = tracks([30]);
     const unreadable = new UnreadableTrack({
@@ -241,7 +225,8 @@ describe('probeDecoding', () => {
     const port = new StalledPort();
     const deadline = new Signal();
     const pending = probeDecoding(tracks([30, 30]), port, deadline);
-    await Promise.resolve();
+    await settle();
+    expect(port.decoders).toHaveLength(2);
     deadline.trigger();
     const report = await pending;
     expect(report.canDecode).toBe(false);
@@ -253,13 +238,25 @@ describe('probeDecoding', () => {
     const port = new LatePort();
     const deadline = new Signal();
     const pending = probeDecoding(tracks([30]), port, deadline);
-    await Promise.resolve();
+    await settle();
     deadline.trigger();
     const report = await pending;
     expect(report.sources[0]?.verdict).toBe('timed-out');
     port.gate.resolve();
     await settle();
     expect(port.decoders.map((decoder) => decoder.isClosed)).toEqual([true]);
+  });
+
+  it('reads no key frame and opens no decoder once the deadline passed while support was asked', async () => {
+    const port = new SlowSupportPort();
+    const deadline = new Signal();
+    const pending = probeDecoding(tracks([30]), port, deadline);
+    deadline.trigger();
+    const report = await pending;
+    expect(report.sources[0]?.verdict).toBe('timed-out');
+    port.gate.resolve();
+    await settle();
+    expect(port.decoders).toEqual([]);
   });
 
   it('reports a decoder that accepts the key frame but never produces a picture as a failed decode', async () => {
@@ -287,6 +284,18 @@ class LatePort implements VideoDecoderPort<never> {
     const decoder = new StalledDecoder();
     this.decoders.push(decoder);
     return decoder;
+  }
+}
+
+/**
+ * A platform that takes its time to say it supports the configuration.
+ */
+class SlowSupportPort extends StalledPort {
+  public readonly gate = new Deferred<void>();
+
+  public override async isSupported(): Promise<boolean> {
+    await this.gate.promise;
+    return true;
   }
 }
 

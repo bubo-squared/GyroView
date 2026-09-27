@@ -93,11 +93,13 @@ class SourceProbe<Handle> {
 
   /**
    * The decoder's answers make the verdict; a failure to read the track rejects as it is, since
-   * a connection that dropped is no codec's fault.
+   * a connection that dropped is no codec's fault. A probe closed meanwhile reads no key frame and
+   * opens no decoder: decoders are few on some platforms, and the next load may need them.
    */
   public async run(): Promise<Outcome> {
     const configuration = await this.track.decoderConfiguration();
     if (!(await this.decoderPort.isSupported(configuration))) return unsupported(configuration);
+    if (this.isClosed) return TIMED_OUT;
     const keyPacket = await this.track.firstKeyPacket();
     return keyPacket ? await this.decodeFirst(configuration, keyPacket) : NO_KEY_FRAME;
   }

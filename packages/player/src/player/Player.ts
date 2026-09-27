@@ -161,6 +161,8 @@ export class Player {
       await this.complete(loading, source, options);
     } catch (error) {
       if (loading.controller.signal.aborted) return;
+      // What the failed load still reads ahead is of no use to anyone.
+      loading.controller.abort();
       throw this.failWith(error);
     } finally {
       loading.settled.resolve();

@@ -77,6 +77,24 @@ function harness(pipelines: PipelineFactory, ports: RecordingPorts = browserPort
   return { player, canvas, audio, statuses, events, frames, warnings, errors };
 }
 
+/**
+ * The browser's ports, remembering the signal each byte source was opened with.
+ */
+function capturingSignals(): {
+  readonly ports: RecordingPorts;
+  readonly signals: AbortSignal[];
+} {
+  const browser = browserPorts();
+  const signals: AbortSignal[] = [];
+  const sources: SourceOpener = {
+    open: (input, signal) => {
+      signals.push(signal);
+      return browser.sources.open(input, signal);
+    },
+  };
+  return { ports: { ...browser, sources }, signals };
+}
+
 describe('Player over the synthetic X5 recording', () => {
   const harnesses: Harness[] = [];
 
@@ -346,21 +364,26 @@ describe('Player over the synthetic X5 recording', () => {
     await expect(player.play()).rejects.toMatchObject({ code: 'source-unreadable' });
   });
 
-  it('ends the reads of a recording it unloads', async () => {
-    const browser = browserPorts();
-    const signals: AbortSignal[] = [];
-    const sources: SourceOpener = {
-      open: (input, signal) => {
-        signals.push(signal);
-        return browser.sources.open(input, signal);
-      },
-    };
-    const { player } = open(buildPipeline, { ...browser, sources });
-    await player.load(sourceOf(X5_RECORDING_URL));
-    expect(signals.some((signal) => signal.aborted)).toBe(false);
-    player.unload();
-    expect(signals.length).toBeGreaterThan(0);
-    expect(signals.every((signal) => signal.aborted)).toBe(true);
+  describe('ends the reads of a recording', () => {
+    it('it unloads', async () => {
+      const { ports, signals } = capturingSignals();
+      const { player } = open(buildPipeline, ports);
+      await player.load(sourceOf(X5_RECORDING_URL));
+      expect(signals.some((signal) => signal.aborted)).toBe(false);
+      player.unload();
+      expect(signals.length).toBeGreaterThan(0);
+      expect(signals.every((signal) => signal.aborted)).toBe(true);
+    });
+
+    it('that failed to load', async () => {
+      const { ports, signals } = capturingSignals();
+      const { player } = open(buildPipeline, ports);
+      await expect(player.load(sourceOf(`${X5_RECORDING_URL}.missing`))).rejects.toMatchObject({
+        code: 'source-unreadable',
+      });
+      expect(signals.length).toBeGreaterThan(0);
+      expect(signals.every((signal) => signal.aborted)).toBe(true);
+    });
   });
 
   it("leaves a load made on ready its own start time and no autoplay of the older load's", async () => {

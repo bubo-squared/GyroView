@@ -55,6 +55,9 @@ export class ViewGestures {
     surface.addEventListener('pointermove', this.onPointerMove);
     surface.addEventListener('pointerup', this.onPointerUp);
     surface.addEventListener('pointercancel', this.onPointerCancel);
+    // Capture lost another way (the element moved or removed mid-touch) ends the press as well:
+    // its pointerup goes elsewhere, and a touch's id never comes back to clear it.
+    surface.addEventListener('lostpointercapture', this.onPointerCancel);
     surface.addEventListener('wheel', this.onWheel, { passive: false });
   }
 

@@ -133,6 +133,20 @@ function pointer(type: string, at: { x: number; y: number }): PointerEvent {
   });
 }
 
+/**
+ * A touch of finger `pointerId` at `x` along a line across the picture.
+ */
+function fingerAt(type: string, pointerId: number, x: number): PointerEvent {
+  return new PointerEvent(type, {
+    pointerId,
+    pointerType: 'touch',
+    clientX: x,
+    clientY: 50,
+    bubbles: true,
+    isPrimary: true,
+  });
+}
+
 describe('<gyro-view>', () => {
   const elements: GyroViewElement[] = [];
 
@@ -433,6 +447,19 @@ describe('<gyro-view>', () => {
     await settle();
     expect(element.view.yaw).toBe(0);
     expect(element.status).toBe('ready');
+  });
+
+  it('forgets a finger whose capture was lost, so the next one drags instead of pinching', () => {
+    const element = create({ controls: '' });
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    canvas.setPointerCapture = (): void => undefined;
+    canvas.dispatchEvent(fingerAt('pointerdown', 5, 100));
+    canvas.dispatchEvent(fingerAt('lostpointercapture', 5, 100));
+    const { fieldOfView } = element.view;
+    canvas.dispatchEvent(fingerAt('pointerdown', 6, 100));
+    canvas.dispatchEvent(fingerAt('pointermove', 6, 160));
+    expect(element.view.yaw).not.toBe(0);
+    expect(element.view.fieldOfView).toBe(fieldOfView);
   });
 
   it('zooms a pinch toward the point between the fingers', () => {

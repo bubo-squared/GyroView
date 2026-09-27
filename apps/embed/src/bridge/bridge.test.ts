@@ -4,7 +4,13 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { portEndpoint, windowEndpoint } from './Endpoint';
 import { EmbedHandle } from './EmbedHandle';
 import { EmbedHost } from '../frame/EmbedHost';
-import { eventMessage, helloMessage, PROTOCOL, type ProtocolMessage } from '../protocol/messages';
+import {
+  commandMessage,
+  eventMessage,
+  helloMessage,
+  PROTOCOL,
+  type ProtocolMessage,
+} from '../protocol/messages';
 import { waitFor } from '../test/waiting';
 import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
 
@@ -222,6 +228,31 @@ describe('an embed handle whose frame loads anew', () => {
     hostSide.send({ protocol: PROTOCOL, kind: 'result', id: 1, isOk: true, value: undefined });
     await pausing;
     handle.destroy();
+  });
+});
+
+describe('an embed host asked again', () => {
+  it('runs a command it hears twice only once', async () => {
+    const element = document.createElement('gyro-view') as GyroViewElement;
+    document.body.append(element);
+    const channel = new MessageChannel();
+    const host = new EmbedHost(element, portEndpoint(channel.port1));
+    const pageSide = portEndpoint(channel.port2);
+    const results: ProtocolMessage[] = [];
+    pageSide.receive((message) => {
+      if (message.kind === 'result') results.push(message);
+    });
+    const zoomIn = commandMessage(1, 'zoom', [1]);
+    pageSide.send(zoomIn);
+    pageSide.send(zoomIn);
+    pageSide.send(commandMessage(2, 'getState', []));
+    await waitFor(
+      () => results.some((result) => result.kind === 'result' && result.id === 2),
+      'the last result',
+    );
+    expect(results.filter((result) => result.kind === 'result' && result.id === 1)).toHaveLength(1);
+    host.dispose();
+    element.remove();
   });
 });
 

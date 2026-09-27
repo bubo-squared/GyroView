@@ -45,8 +45,9 @@ const INITIAL_STATE: EmbedState = {
 /**
  * The embedding page's side of the bridge: the player API as promises over the channel, the
  * player's events, and a state mirror kept current from them. Commands sent before the frame
- * says hello wait for it. A frame that says hello again has loaded anew (moved within its page,
- * or reloaded), from its URL's options: what the old document left unanswered is asked again.
+ * first says hello wait for it. A frame that says hello again has loaded anew (moved within its
+ * page, or reloaded), from its URL's options: what the old document left unanswered is asked
+ * again, and the frame runs a command it may have had already only once.
  */
 export class EmbedHandle {
   public readonly events = new TypedEmitter<EmbedEvents>();

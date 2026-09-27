@@ -24,6 +24,11 @@ import {
 export class EmbedHost {
   private readonly stopReceiving: () => void;
   private readonly listeners: (readonly [string, EventListener])[] = [];
+  /**
+   * The ids of the commands run: a page that sees this frame say hello asks again what it has
+   * not heard back about, which may be a command this frame is running already.
+   */
+  private readonly commandsRun = new Set<number>();
 
   public constructor(
     private readonly element: GyroViewElement,
@@ -54,7 +59,9 @@ export class EmbedHost {
   }
 
   private onMessage(message: ProtocolMessage): void {
-    if (message.kind === 'command') void this.run(message);
+    if (message.kind !== 'command' || this.commandsRun.has(message.id)) return;
+    this.commandsRun.add(message.id);
+    void this.run(message);
   }
 
   private async run(command: CommandMessage): Promise<void> {

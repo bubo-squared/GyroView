@@ -44,10 +44,12 @@ codes against the known ones. An event's payload from the pinned frame is truste
 message has passed those checks. The frame trusts one origin: the one the snippet names in the URL, or
 the referrer's, never `*`; a frame with neither plays standalone without a bridge. The page
 trusts only the frame's origin and window, looked up at each message: an iframe moved within
-its page loads anew in a window of its own. Commands sent before the frame's `hello` wait for it;
-the `hello` carries the element's state, which the page's mirror starts from (a frame of an
-earlier build sends none, and the mirror starts from the defaults). A second `hello` is a frame
-that loaded anew from its URL's options: the page asks it again what the old one left unanswered.
+its page loads anew in a window of its own. Commands sent before the frame's first `hello` wait
+for it; the `hello` carries the element's state, which the page's mirror starts from (a frame of
+an earlier build sends none, and the mirror starts from the defaults). A second `hello` is a
+frame that loaded anew from its URL's options: the page asks it again what the old one left
+unanswered, and the frame runs each command id once, since a command sent just before that
+`hello` may have reached it already.
 Errors cross the boundary as `{ code, message }`, so the codes stay stable on both sides.
 
 ## Alternatives considered

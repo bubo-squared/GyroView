@@ -25,7 +25,13 @@ describe.skipIf(!hasSamples())('reading the real X5 recordings', () => {
         expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
 
         const gyro = await recording.readGyroRecord();
-        expect(gyro).toMatchObject({ layout: 'raw', strayBytes: 0 });
+        // Real stamps have jitter and no glitches: nothing is left out or mended.
+        expect(gyro).toMatchObject({
+          layout: 'raw',
+          strayBytes: 0,
+          damagedSamples: 0,
+          mendedStamps: 0,
+        });
         expect(gyro?.track.length).toBe(261_872);
         expect(gyro?.track.sampleAt(0).captureTime).toBe(921_648_752);
 
@@ -51,6 +57,8 @@ describe.skipIf(!hasSamples())('reading the real X5 recordings', () => {
         expect(recording.info.dimension).toEqual({ width: 3840, height: 3840 });
         const exposure = await recording.readExposureRecord();
         expect(exposure?.length).toBeGreaterThan(5800);
+        const gyro = await recording.readGyroRecord();
+        expect(gyro).toMatchObject({ damagedSamples: 0, mendedStamps: 0 });
       } finally {
         await source.close();
       }

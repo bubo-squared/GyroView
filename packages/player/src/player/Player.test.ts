@@ -372,6 +372,15 @@ describe('Player over the synthetic X5 recording', () => {
     expect(() => {
       player.zoom(Infinity);
     }).toThrow(expect.objectContaining(refusal));
+    expect(() => {
+      player.setView({ ...player.view, fieldOfView: degrees(NaN) });
+    }).toThrow(expect.objectContaining(refusal));
+    expect(() => {
+      player.turn(degrees(0), degrees(NaN));
+    }).toThrow(expect.objectContaining(refusal));
+    expect(() => {
+      player.setVolume(NaN);
+    }).toThrow(expect.objectContaining(refusal));
   });
 
   it('leaves a load made on the idle of a reload to that load alone', async () => {

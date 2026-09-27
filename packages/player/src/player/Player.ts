@@ -206,6 +206,9 @@ export class Player {
   }
 
   public setView(view: ViewState): void {
+    ensureFinite(view.yaw, 'yaw');
+    ensureFinite(view.pitch, 'pitch');
+    ensureFinite(view.fieldOfView, 'fieldOfView');
     this.viewing.set(view);
   }
 
@@ -226,6 +229,8 @@ export class Player {
    * The viewer turned by the given angles, as the arrow keys do.
    */
   public turn(yawDelta: Degrees, pitchDelta: Degrees): void {
+    ensureFinite(yawDelta, 'yaw turn');
+    ensureFinite(pitchDelta, 'pitch turn');
     this.viewing.turn(yawDelta, pitchDelta);
   }
 
@@ -262,6 +267,7 @@ export class Player {
   }
 
   public setVolume(volume: number): void {
+    ensureFinite(volume, 'volume');
     this.sound.setVolume(volume);
   }
 

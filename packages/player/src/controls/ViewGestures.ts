@@ -40,6 +40,7 @@ const TAP_TOLERANCE_PIXELS = 4;
  */
 export class ViewGestures {
   private readonly pointers = new Map<number, Point>();
+  private readonly listening = new AbortController();
   private dragDistance = 0;
 
   public constructor(
@@ -50,15 +51,25 @@ export class ViewGestures {
      */
     private readonly onTap: (pointerType: string) => void,
   ) {
-    surface.addEventListener('pointerenter', this.reflectDraggable);
-    surface.addEventListener('pointerdown', this.onPointerDown);
-    surface.addEventListener('pointermove', this.onPointerMove);
-    surface.addEventListener('pointerup', this.onPointerUp);
-    surface.addEventListener('pointercancel', this.onPointerCancel);
+    const { signal } = this.listening;
+    surface.addEventListener('pointerenter', this.reflectDraggable, { signal });
+    surface.addEventListener('pointerdown', this.onPointerDown, { signal });
+    surface.addEventListener('pointermove', this.onPointerMove, { signal });
+    surface.addEventListener('pointerup', this.onPointerUp, { signal });
+    surface.addEventListener('pointercancel', this.onPointerCancel, { signal });
     // Capture lost another way (the element moved or removed mid-touch) ends the press as well:
     // its pointerup goes elsewhere, and a touch's id never comes back to clear it.
-    surface.addEventListener('lostpointercapture', this.onPointerCancel);
-    surface.addEventListener('wheel', this.onWheel, { passive: false });
+    surface.addEventListener('lostpointercapture', this.onPointerCancel, { signal });
+    surface.addEventListener('wheel', this.onWheel, { passive: false, signal });
+  }
+
+  /**
+   * Stops answering the surface's gestures.
+   */
+  public detach(): void {
+    this.listening.abort();
+    this.pointers.clear();
+    this.surface.removeAttribute(DRAGGABLE_ATTRIBUTE);
   }
 
   private readonly onPointerDown = (event: PointerEvent): void => {

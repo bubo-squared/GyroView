@@ -2,6 +2,8 @@
 // tsconfig.consumer.json: they must stand alone, naming nothing that stayed in the monorepo.
 import 'gyroview/define';
 import {
+  attachKeyboard,
+  attachViewGestures,
   createBrowserPlayer,
   GYRO_VIEW_ERROR_CODES,
   GyroViewError,
@@ -67,6 +69,10 @@ const player = createBrowserPlayer({
   audio: document.createElement('audio'),
 });
 player.events.on('ready', (ready) => ready.model);
+const detachGestures = attachViewGestures(document.createElement('canvas'), player);
+const detachKeyboard = attachKeyboard(document.body, player, { toggleFullscreen: () => undefined });
+detachGestures();
+detachKeyboard();
 await player.load({ main: { url: 'https://media.example/VID_20260814_132640_00_013.insv' } });
 player.seek(12.5);
 player.lookAt(90, -10);

@@ -11,7 +11,8 @@ The first release:
   server renders the page. It runs under a strict CSP (`trusted-types gyroview`, no inline
   styles), speaks the page's language through `messages`, shows visitors plain failure texts
   and names its overlays as parts.
-- `createBrowserPlayer`, the player without the element, for an interface of your own.
+- `createBrowserPlayer`, the player without the element, for an interface of your own, with
+  `attachViewGestures` and `attachKeyboard` for the element's gestures and shortcuts.
 - `inspectRecording`, which reads what a recording holds from a file or a URL.
 - `gyroview/standalone`, one file with Three.js and mediabunny inside, for a page without a
   bundler.

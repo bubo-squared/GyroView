@@ -67,7 +67,11 @@ are covered by synthetic fixtures built from the documented format variants.
   degrees of relative shift at the seam) remains until another camera's window record or a Studio export
   settles it (ADR 0014).
 - Recordings split into several `_NNN` segment files play one segment at a time.
-- Playback speed is 1x; no buffered-ranges display (decoding is on demand).
+- Playback speed is 1x: another speed needs the decoders to keep up with it, which an 8K
+  recording's barely do at 1x, and the sound to follow at that rate.
+- No buffered ranges: the player reads the recording in byte ranges as it plays and decodes a
+  few frames ahead, so nothing lies downloaded ahead for a seek bar to show.
+- The iframe embed speaks English: the element's `messages` do not cross the embed protocol.
 - Firefox and Android are best effort: Firefox has WebCodecs only on desktop, Android
   decoders vary.
 

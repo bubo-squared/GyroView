@@ -1,6 +1,12 @@
 export type { BlobInput, MediaInput, PlayerSource, UrlInput } from './PlayerSource';
 export type { ImuFrameSummary, PlayerMetadata } from './PlayerMetadata';
 export { choiceOf } from './choices';
+export {
+  attachKeyboard,
+  attachViewGestures,
+  type KeyboardOptions,
+  type ViewGestureOptions,
+} from './controls/customControls';
 export { createBrowserPlayer } from './browserPlayer';
 export { inspectRecording, type InspectOptions } from './inspectRecording';
 export { Player } from './player/Player';

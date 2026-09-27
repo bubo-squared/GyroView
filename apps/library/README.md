@@ -95,17 +95,26 @@ const fromUrl = await inspectRecording('https://media.example/VID_20260814_13264
 
 For an interface of your own, `createBrowserPlayer` gives the player without the element: it
 draws on your canvas, sounds through your audio element and has the same events.
+`attachViewGestures` and `attachKeyboard` give your canvas the element's drags, pinches, wheel
+zoom and taps, and its keyboard shortcuts; each returns what removes them.
 
 ```ts
 import { createBrowserPlayer } from 'gyroview';
 
 const player = createBrowserPlayer({ canvas, audio });
 player.events.on('timeupdate', (time) => console.log(time));
+attachViewGestures(canvas, player);
+attachKeyboard(canvas, player);
 await player.load({ main: { url: 'https://media.example/VID_20260814_132640_00_013.insv' } });
 await player.play();
 player.seek(30);
 player.lookAt(90, 0);
 ```
+
+The canvas keeps no picture once the browser has shown it: a snapshot (`drawImage`, `toBlob`)
+is taken in a `frame` listener, which runs right after each picture is drawn. There are no
+buffered ranges to show, since the player reads the recording as it plays, and no playback
+rates other than 1.
 
 `gyroview` also exports `GyroViewError`, the list of its codes (`GYRO_VIEW_ERROR_CODES`, with
 `isGyroViewErrorCode` to check a string against it), and the types of the element's settings,

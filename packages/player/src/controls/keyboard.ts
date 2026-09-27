@@ -131,24 +131,32 @@ const ACTIONS: Readonly<Record<ShortcutCommand, Action>> = {
 };
 
 /**
- * Turns key presses on the element into player commands for as long as the element lives,
+ * Turns key presses on the element into player commands until the returned function is called,
  * leaving the keys a focused control handles itself and the browser's shortcuts alone.
  */
-export function bindKeyboard(element: HTMLElement, host: KeyboardHost): void {
-  element.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && host.isFullscreen()) {
-      host.exitFullscreen();
-      return;
-    }
-    const command = shortcutFor({
-      key: event.key,
-      isShiftPressed: event.shiftKey,
-      hasSystemModifier: event.ctrlKey || event.altKey || event.metaKey,
-    });
-    if (!command || isControlsOwnKey(event)) return;
-    event.preventDefault();
-    ACTIONS[command](host);
-  });
+export function bindKeyboard(element: HTMLElement, host: KeyboardHost): () => void {
+  const listening = new AbortController();
+  element.addEventListener(
+    'keydown',
+    (event) => {
+      if (event.key === 'Escape' && host.isFullscreen()) {
+        host.exitFullscreen();
+        return;
+      }
+      const command = shortcutFor({
+        key: event.key,
+        isShiftPressed: event.shiftKey,
+        hasSystemModifier: event.ctrlKey || event.altKey || event.metaKey,
+      });
+      if (!command || isControlsOwnKey(event)) return;
+      event.preventDefault();
+      ACTIONS[command](host);
+    },
+    { signal: listening.signal },
+  );
+  return (): void => {
+    listening.abort();
+  };
 }
 
 const SLIDER_KEYS: ReadonlySet<string> = new Set([

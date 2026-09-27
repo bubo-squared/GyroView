@@ -3,6 +3,8 @@
  * events speak. The core and the adapters are bundled in; nothing else of theirs is public.
  */
 export {
+  attachKeyboard,
+  attachViewGestures,
   createBrowserPlayer,
   defineGyroView,
   GYRO_VIEW_TAG,
@@ -20,6 +22,7 @@ export type {
   GyroViewMessages,
   ImuFrameSummary,
   InspectOptions,
+  KeyboardOptions,
   LoadOptions,
   MediaInput,
   PipelineHost,
@@ -31,6 +34,7 @@ export type {
   SoundLevel,
   UrlInput,
   ViewAngles,
+  ViewGestureOptions,
   WarningCode,
 } from '@gyroview/player';
 export {

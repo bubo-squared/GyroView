@@ -8,8 +8,8 @@ import {
 } from '../../shared/units/time';
 
 /**
- * PlaybackClock that advances with real time and never ends or fails by itself. Used for
- * recordings without an audio track and in tests, where `now` (milliseconds) is injected.
+ * PlaybackClock that advances with `now` (milliseconds of real time, from a monotonic source)
+ * and never ends or fails by itself: for recordings without a playable audio track, and tests.
  */
 export class WallClock implements PlaybackClock {
   public readonly hasEnded = false;
@@ -18,7 +18,7 @@ export class WallClock implements PlaybackClock {
   private positionAtAnchor: Seconds = seconds(0);
   private anchorMs = 0;
 
-  public constructor(private readonly now: () => Milliseconds = () => milliseconds(Date.now())) {}
+  public constructor(private readonly now: () => Milliseconds) {}
 
   public get isRunning(): boolean {
     return this.isRunningNow;

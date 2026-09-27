@@ -3,6 +3,8 @@ import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
   GainMatchingFrameSink,
+  messageOf,
+  milliseconds,
   PlaybackSession,
   seconds,
   stabilizerFor,
@@ -12,7 +14,6 @@ import {
   type FrameSink,
   type PlaybackClock,
   type StitchingSetup,
-  messageOf,
 } from '@gyroview/core';
 
 import { Disposables } from './Disposables';
@@ -144,8 +145,11 @@ async function clockFor(parts: PipelineParts): Promise<ChosenClock> {
   }
 }
 
+/**
+ * A clock over the monotonic page time, which a change of the system clock does not move.
+ */
 function wallClock(warning: string): ChosenClock {
-  return { clock: new WallClock(), warnings: [warning] };
+  return { clock: new WallClock(() => milliseconds(performance.now())), warnings: [warning] };
 }
 
 function stitchingSetupOf(opened: OpenedRecording): StitchingSetup {

@@ -51,10 +51,12 @@ export function describePlaybackClockContract(
       expect(clock.currentTime).toBe(0);
     });
 
-    it('runs from a start until a pause, and not before', async () => {
+    it('runs from the call to start until a pause, and not before', async () => {
       const { clock } = await open();
       expect(clock.isRunning).toBe(false);
-      await clock.start();
+      const starting = clock.start();
+      expect(clock.isRunning).toBe(true);
+      await starting;
       expect(clock.isRunning).toBe(true);
       clock.pause();
       expect(clock.isRunning).toBe(false);

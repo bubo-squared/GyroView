@@ -23,8 +23,10 @@ export interface PlaybackClock {
    */
   readonly failure: GyroViewError | undefined;
   /**
-   * Starts advancing. Rejects with `playback-blocked` when the platform refuses (autoplay
-   * policy); the caller then waits for a user gesture.
+   * Starts advancing, and counts as running from the call on, before the promise settles: the
+   * session plays on at once, and a tick in between must not find a stopped clock and pause.
+   * Rejects with `playback-blocked` when the platform refuses (autoplay policy); the caller then
+   * waits for a user gesture.
    */
   start(): Promise<void>;
   pause(): void;

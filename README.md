@@ -54,11 +54,12 @@ cut at the frame's edges, where the two tiles meet as well) and `stabilization` 
 property does, however it was last changed. The other attributes are mirrored by properties
 (`gainMatch` for `gain-match`).
 
-API: `load()` (resolves once the recording is ready), `play()` (waits for a load in progress),
-`pause()`, `stop()`, `seek(seconds)`, `scrub(seconds)` (to the key frame at or
-before the time, for a dragged seek bar), `currentTime`, `duration`, `paused`, `status`,
-`metadata`, `view`, `lookAt(yaw, pitch)`, `resetView()`, `zoom(steps)`, `setViewMode(mode)`,
-`setStabilization(mode)`, `volume`, `toggleFullscreen()`, `loadFiles({ main, second })`.
+API: `load()` (resolves once the recording is ready; an element out of the page loads once
+connected), `play()` (waits for a load in progress), `pause()`, `stop()`, `seek(seconds)`,
+`scrub(seconds)` (to the key frame at or before the time, for a dragged seek bar),
+`currentTime`, `duration`, `paused`, `status`, `metadata`, `view`, `lookAt(yaw, pitch)`,
+`resetView()`, `zoom(steps)`, `setViewMode(mode)`, `setStabilization(mode)`, `volume`,
+`toggleFullscreen()`, `loadFiles({ main, second })`.
 
 Events (`CustomEvent`s, payload in `detail`): `ready` (metadata: camera, layout, calibration
 version, frame time source, gyro and IMU frame, audio), `statuschange` (`idle`,

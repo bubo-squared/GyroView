@@ -772,11 +772,14 @@ describe('<gyro-view>', () => {
     box.remove();
   });
 
-  it('loads once when told to load before it is connected', async () => {
+  it('loads once connected when told to load before, and not before', async () => {
     const element = document.createElement('gyro-view') as GyroViewElement;
     element.style.width = '256px';
     element.src = X5_RECORDING_URL;
     const loaded = element.load();
+    await settle();
+    // Out of the document nothing could let the recording go again.
+    expect(element.status).toBe('idle');
     document.body.append(element);
     elements.push(element);
     await loaded;

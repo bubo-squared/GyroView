@@ -1,4 +1,5 @@
 import {
+  Deferred,
   degrees,
   messageOf,
   seconds,
@@ -20,6 +21,7 @@ import { elementSourceOf, type FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
 import { IdleWatcher } from './IdleWatcher';
 import { applyPlaybackAttribute } from './playbackAttributes';
+import { describeUnlessTheAuthorDid } from './accessibleRegion';
 import { applyEarlyProperties, takeEarlyProperties } from './earlyProperties';
 import { defineLiveSettings, LIVE_SETTING_NAMES, type LiveSettings } from './liveSettings';
 import {
@@ -60,12 +62,6 @@ const PUBLIC_PROPERTIES: readonly string[] = [
   'currentTime',
 ];
 const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);
-/**
- * What assistive technology calls the element when the page names it nothing else; the embed
- * snippet titles its frame the same.
- */
-const ACCESSIBLE_NAME = '360° video player';
-
 /**
  * `<gyro-view>`: the player as an element. Attributes name what to play and configure the
  * settings; the settings' properties report what is in effect now, as a media element's `muted`
@@ -109,6 +105,10 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
    * removal let it go, and after a change of source while out of the document.
    */
   private isLoadOwed = true;
+  /**
+   * A `load()` asked for out of the document, waiting for the connection.
+   */
+  private awaitedConnection: Deferred<void> | undefined;
   private files: FileSource | undefined;
 
   public constructor() {
@@ -180,11 +180,13 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   }
 
   public connectedCallback(): void {
-    this.describeUnlessTheAuthorDid();
+    describeUnlessTheAuthorDid(this);
     applyEarlyProperties(this, this.earlyProperties, this.warn);
     this.dataset['status'] = this.player.status;
     this.idle.start();
     if (this.isLoadOwed) this.scheduleLoad();
+    this.awaitedConnection?.resolve();
+    this.awaitedConnection = undefined;
   }
 
   public disconnectedCallback(): void {
@@ -294,10 +296,11 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
 
   /**
    * Loads what the attributes (or the files handed in) name: the change already waiting to be
-   * read, or else now. Resolves once the recording is ready; rejects with the failure, which is
-   * dispatched as an `error` event too.
+   * read, or else now; out of the document, once connected. Resolves once the recording is
+   * ready; rejects with the failure, which is dispatched as an `error` event too.
    */
-  public load(): Promise<void> {
+  public async load(): Promise<void> {
+    if (!this.isConnected) await this.connection();
     return this.scheduledLoad ?? this.reload();
   }
 
@@ -307,17 +310,6 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   public loadFiles(files: FileSource): void {
     this.files = files;
     this.scheduleLoad();
-  }
-
-  /**
-   * The element takes focus and keys, so assistive technology needs to know what it is: a named
-   * region, unless the page gave it a role, a name or a tab order of its own.
-   */
-  private describeUnlessTheAuthorDid(): void {
-    if (!this.hasAttribute('tabindex')) this.tabIndex = 0;
-    if (!this.hasAttribute('role')) this.setAttribute('role', 'region');
-    const isNamed = this.hasAttribute('aria-label') || this.hasAttribute('aria-labelledby');
-    if (!isNamed) this.setAttribute('aria-label', ACCESSIBLE_NAME);
   }
 
   /**
@@ -373,6 +365,16 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     } catch {
       // Reported as an `error` event.
     }
+  }
+
+  /**
+   * Resolves when the element is next connected, owing the load until then: only a connected
+   * element can let its recording go again.
+   */
+  private connection(): Promise<void> {
+    this.isLoadOwed = true;
+    this.awaitedConnection ??= new Deferred<void>();
+    return this.awaitedConnection.promise;
   }
 
   /**

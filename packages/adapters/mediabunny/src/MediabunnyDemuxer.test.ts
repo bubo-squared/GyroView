@@ -30,6 +30,16 @@ describe('MediabunnyDemuxer on the synthetic dual-track fixture', () => {
     input.dispose();
   });
 
+  it("passes a caller's abort on as it is, not as an unreadable file", async () => {
+    const aborting = {
+      size: (): Promise<number> => Promise.resolve(1_000_000),
+      read: (): Promise<Uint8Array> => Promise.reject(new DOMException('aborted', 'AbortError')),
+    };
+    await expect(new MediabunnyDemuxer().open(aborting, 'aborted.insv')).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+  });
+
   it('describes both video tracks and the duration', () => {
     expect(input.name).toBe('synthetic');
     expect(input.duration).toBeCloseTo(3, 3);

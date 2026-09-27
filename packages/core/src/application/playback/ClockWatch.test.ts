@@ -13,6 +13,17 @@ describe('ClockWatch', () => {
     expect(watch.wasMovedFromOutside(seconds(1), false)).toBe(true);
   });
 
+  it('takes a stop ahead of the last tick for playback, and one behind it for a move', () => {
+    const ranOn = new ClockWatch();
+    ranOn.placedAt(seconds(1));
+    ranOn.stoppedAt(seconds(2));
+    expect(ranOn.wasMovedFromOutside(seconds(2), false)).toBe(false);
+    const movedBack = new ClockWatch();
+    movedBack.placedAt(seconds(2));
+    movedBack.stoppedAt(seconds(1));
+    expect(movedBack.wasMovedFromOutside(seconds(1), false)).toBe(true);
+  });
+
   it('sees no move before it knows where the clock is', () => {
     expect(new ClockWatch().wasMovedFromOutside(seconds(5), false)).toBe(false);
   });

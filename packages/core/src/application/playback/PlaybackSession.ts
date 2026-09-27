@@ -93,10 +93,13 @@ export class PlaybackSession<Handle = unknown> {
 
   /**
    * Stops the clock, whatever the state says: a listener may have paused the session while it
-   * was starting it.
+   * was starting it. A running clock stops where it ran to, which no tick takes for a move from
+   * outside.
    */
   public pause(): void {
+    const wasRunning = this.parts.clock.isRunning;
     this.parts.clock.pause();
+    if (wasRunning) this.clockWatch.stoppedAt(this.parts.clock.currentTime);
     if (!this.machine.canTransitionTo('paused')) return;
     // Taken first: a listener's `play` on `paused` makes an attempt of its own.
     const attempt = this.takeStartAttempt();

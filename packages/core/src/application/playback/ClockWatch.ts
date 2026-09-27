@@ -29,6 +29,14 @@ export class ClockWatch {
   }
 
   /**
+   * The session stopped the running clock here: however far it ran on since the last tick, that
+   * was playback. A move back is still one from outside, for the next tick to notice.
+   */
+  public stoppedAt(time: Seconds): void {
+    if (this.position === undefined || time >= this.position) this.position = time;
+  }
+
+  /**
    * Playing starts from here: ticks that never come from now on are missed ticks too, as when
    * playback starts in a hidden tab.
    */

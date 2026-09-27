@@ -53,6 +53,22 @@ describe('PlaybackSession following what the platform does to its clock', () => 
     session.dispose();
   });
 
+  it('takes its own pause for no move of the clock, however far apart the ticks came', async () => {
+    const clock = new FakePlaybackClock();
+    const { session, states, advance } = sessionHarness({ clock });
+    await session.play();
+    await advance(100);
+    // A slow device: the clock runs on for half a second between two ticks, and the pause
+    // falls between them.
+    clock.advance(seconds(0.5));
+    session.pause();
+    const pausedAt = states.length;
+    for (let step = 0; step < 3; step += 1) await advance(0);
+    expect(states.slice(pausedAt)).toEqual([]);
+    expect(session.state).toBe('paused');
+    session.dispose();
+  });
+
   describe('when the platform moves the clock by itself (a lock screen scrubber)', () => {
     it('decodes anew from where it moved a playing clock back, buffering meanwhile', async () => {
       const clock = new FakePlaybackClock();
@@ -79,6 +95,19 @@ describe('PlaybackSession following what the platform does to its clock', () => 
       for (let step = 0; step < 3; step += 1) await advance(0);
       expect(session.state).toBe('paused');
       expect(clock.isRunning).toBe(false);
+      expect(sink.lastTimestamp).toBeCloseTo(0.3, 6);
+      session.dispose();
+    });
+
+    it('follows where it moved a playing clock back just before a pause', async () => {
+      const clock = new FakePlaybackClock();
+      const { session, sink, advance } = sessionHarness({ clock });
+      await session.play();
+      for (let step = 0; step < 10; step += 1) await advance(100);
+      clock.seek(seconds(0.3));
+      session.pause();
+      for (let step = 0; step < 3; step += 1) await advance(0);
+      expect(session.state).toBe('paused');
       expect(sink.lastTimestamp).toBeCloseTo(0.3, 6);
       session.dispose();
     });

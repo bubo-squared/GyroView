@@ -4,7 +4,7 @@ import type { GyroSampleLayout } from './GyroSampleLayout';
 import { RawGyroSampleLayout } from './RawGyroSampleLayout';
 import { ByteReader } from '../../../../shared/binary/ByteReader';
 import { GyroViewError, hasErrorCode } from '../../../../shared/errors/GyroViewError';
-import { isFiniteVector, VECTOR3_COMPONENTS } from '../../../../shared/math/Vector3';
+import { VECTOR3_COMPONENTS, type Vector3 } from '../../../../shared/math/Vector3';
 import { GyroTrack, type GyroSample } from '../../../motion/gyro/GyroTrack';
 import type { SensorRanges } from '../../info/RecordingInfo';
 
@@ -14,6 +14,12 @@ import type { SensorRanges } from '../../info/RecordingInfo';
 const MIN_PLAUSIBLE_INTERVAL_US = 100;
 const MAX_PLAUSIBLE_INTERVAL_US = 10_000;
 const SAMPLES_NEEDED_TO_GUESS = 2;
+/**
+ * Readings past these are no motion a camera makes: the X5 measures up to 16 g and 2000 degrees a
+ * second (35 rad/s). A flipped bit in a float64 reading lands far beyond them, or at NaN.
+ */
+const MAX_PLAUSIBLE_ACCELERATION_G = 64;
+const MAX_PLAUSIBLE_ANGULAR_VELOCITY_RAD_S = 100;
 
 export interface GyroLayoutHints {
   /**
@@ -70,7 +76,7 @@ export function selectGyroSampleLayout(
 /**
  * Decodes the gyro record payload into a {@link GyroTrack} with the given layout. Whole samples
  * only: a partial sample at the end is tolerated and reported, never rejected. So is a sample
- * whose bytes cannot be a reading (a stamp past the safe integers, a value that is not finite,
+ * whose bytes cannot be a reading (a stamp past the safe integers, a value no camera measures,
  * as a flipped bit leaves): each sample carries its own time, so the others still count.
  */
 export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): ParsedGyroRecord {
@@ -100,12 +106,18 @@ function readableSampleAt(
       acceleration: layout.accelerationAt(reader, offset),
       angularVelocity: layout.angularVelocityAt(reader, offset),
     };
-    const isReading = isFiniteVector(sample.acceleration) && isFiniteVector(sample.angularVelocity);
-    return isReading && Number.isFinite(sample.captureTime) ? sample : undefined;
+    const isReading =
+      isWithin(sample.acceleration, MAX_PLAUSIBLE_ACCELERATION_G) &&
+      isWithin(sample.angularVelocity, MAX_PLAUSIBLE_ANGULAR_VELOCITY_RAD_S);
+    return isReading ? sample : undefined;
   } catch (error) {
     if (hasErrorCode(error, 'binary-unsafe-integer')) return undefined;
     throw error;
   }
+}
+
+function isWithin(vector: Vector3, bound: number): boolean {
+  return vector.every((component) => Math.abs(component) <= bound);
 }
 
 /**

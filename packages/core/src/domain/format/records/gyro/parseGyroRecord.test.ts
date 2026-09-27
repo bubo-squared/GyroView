@@ -28,6 +28,21 @@ function encodeFloatSample(
   return bytes;
 }
 
+/**
+ * The highest byte of the float64 angular velocity about y; bit 62 lives there.
+ */
+const ANGULAR_Y_HIGH_BYTE = 32 + 8 + 7;
+
+/**
+ * The sample with one bit of one byte flipped, as damage leaves it: bit 62 of a small float64
+ * turns it into about 1e307, finite and far past anything a gyroscope measures.
+ */
+function bitFlipped(sample: Uint8Array, byte: number, mask: number): Uint8Array {
+  const flipped = Uint8Array.from(sample);
+  flipped[byte] = (flipped[byte] ?? 0) ^ mask;
+  return flipped;
+}
+
 function encodeRawSample(timestampUs: number): Uint8Array {
   const bytes = new Uint8Array(RAW_SAMPLE_SIZE);
   new DataView(bytes.buffer).setBigUint64(0, BigInt(timestampUs), true);
@@ -105,11 +120,12 @@ describe('parseGyroRecord with the raw X5 layout', () => {
       ...encodeFloatSample(10, [0, 1, 0], [0, 0, 0]),
       ...unsafeStamp,
       ...encodeFloatSample(30, [0, NaN, 0], [0, 0, 0]),
-      ...encodeFloatSample(40, [0, 1, 0], [0, 0, 0]),
+      ...bitFlipped(encodeFloatSample(40, [0, 1, 0], [0, 0.5, 0]), ANGULAR_Y_HIGH_BYTE, 0x40),
+      ...encodeFloatSample(50, [0, 1, 0], [0, 0, 0]),
     ]);
     const { track, damagedSamples } = read(payload, { isRawGyro: false, ranges: undefined });
-    expect(damagedSamples).toBe(2);
-    expect([0, 1].map((index) => track.sampleAt(index).captureTime)).toEqual([10_000, 40_000]);
+    expect(damagedSamples).toBe(3);
+    expect([0, 1].map((index) => track.sampleAt(index).captureTime)).toEqual([10_000, 50_000]);
   });
 
   it('tolerates and reports a partial trailing sample, as ONE R recordings have', () => {

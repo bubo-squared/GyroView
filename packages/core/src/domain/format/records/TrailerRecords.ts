@@ -34,6 +34,13 @@ export class TrailerRecords {
   public constructor(private readonly parts: TrailerRecordsParts) {}
 
   /**
+   * Whether the trailer lists an exposure record, parsed or not.
+   */
+  public get listsExposure(): boolean {
+    return this.parts.trailer.locationOf(RecordType.Exposure) !== undefined;
+  }
+
+  /**
    * Undefined when the camera wrote no gyro record.
    */
   public async readGyro(): Promise<ParsedGyroRecord | undefined> {

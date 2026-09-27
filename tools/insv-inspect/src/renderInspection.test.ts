@@ -9,6 +9,7 @@ const GYRO: GyroSummary = {
   samples: 261_872,
   strayBytes: 1,
   damagedSamples: 0,
+  mendedStamps: 0,
   spanSeconds: 262.232013,
   meanIntervalUs: 1001.3,
   meanAccelerationMagnitudeG: 0.998,
@@ -109,9 +110,9 @@ describe('renderInspection', () => {
   });
 
   it('says what damage it left out', () => {
-    const gyro = { ...GYRO, damagedSamples: 3 };
+    const gyro = { ...GYRO, damagedSamples: 3, mendedStamps: 2 };
     const damaged = renderInspection({ ...inspection, gyro, exposure: { damaged: true } });
-    expect(damaged).toContain('1 stray byte(s), 3 damaged sample(s) left out');
+    expect(damaged).toContain('1 stray byte(s), 3 damaged sample(s) left out, 2 stamp(s) mended');
     expect(damaged).toContain('Exposure: damaged, left out');
   });
 });

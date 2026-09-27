@@ -27,6 +27,14 @@ export class Recording {
   }
 
   /**
+   * Whether the camera wrote an exposure record, whether or not it reads: what tells a damaged
+   * record from none.
+   */
+  public get listsExposureRecord(): boolean {
+    return this.parts.records.listsExposure;
+  }
+
+  /**
    * The camera's capture clock related to video time; undefined when the info record does not
    * say when the first frame was captured, the one field everything time-related hangs on.
    */

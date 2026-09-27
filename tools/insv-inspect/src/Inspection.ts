@@ -39,6 +39,10 @@ export interface GyroSummary {
    * Samples left out because their bytes cannot be a reading; a wrong layout guess shows here.
    */
   readonly damagedSamples: number;
+  /**
+   * Stamps put back where their neighbours say they belong; a wrong stamp unit shows here.
+   */
+  readonly mendedStamps: number;
   readonly spanSeconds: number;
   readonly meanIntervalUs: number | undefined;
   /**
@@ -56,7 +60,7 @@ export interface UnreadableGyro {
 
 /**
  * An exposure record the trailer lists that did not parse: an entry no clock could have stamped
- * or no shutter could take, which a wrong stamp unit shows as too.
+ * or no shutter could take.
  */
 export interface DamagedExposure {
   readonly damaged: true;

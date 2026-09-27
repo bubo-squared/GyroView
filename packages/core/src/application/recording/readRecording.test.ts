@@ -69,6 +69,7 @@ describe('readRecording on synthetic X5 files', () => {
       new InMemoryRandomAccessSource(officeRecords().buildContiguous().bytes),
     );
     const exposure = await recording.readExposureRecord();
+    expect(recording.listsExposureRecord).toBe(true);
     expect(exposure?.length).toBe(16);
     const clock = await recording.captureClock();
     expect(clock?.firstFrameCaptureTime).toBe(921_751_839);
@@ -88,6 +89,7 @@ describe('readRecording on synthetic X5 files', () => {
     const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
     await expect(recording.readGyroRecord()).resolves.toBeUndefined();
     await expect(recording.readExposureRecord()).resolves.toBeUndefined();
+    expect(recording.listsExposureRecord).toBe(false);
   });
 
   it('fails with a typed error when the trailer has no info record', async () => {

@@ -296,7 +296,7 @@ describe('DecodePipeline', () => {
     expect(decoderPort.openFrames).toBe(0);
   });
 
-  it('aborted before running, it ends at once without decoding and closes its decoders', async () => {
+  it('aborted before running, it ends at once without opening a decoder', async () => {
     const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
     const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     pipeline.abort();
@@ -304,10 +304,10 @@ describe('DecodePipeline', () => {
     const report = await pipeline.run(seconds(0), new FramePairQueue<FakeFrameHandle>(4));
 
     expect(report).toMatchObject({ packetsDecoded: 0, pairsDelivered: 0, hasReachedEnd: false });
-    expect(decoderPort.openDecoders).toBe(0);
+    expect(decoderPort.decodersCreated).toEqual([]);
   });
 
-  it('an abort resets the decoders instead of draining them', async () => {
+  it('an abort closes the decoders without draining them', async () => {
     const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 6 });
     const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
@@ -318,10 +318,21 @@ describe('DecodePipeline', () => {
     const report = await run;
 
     expect(report.hasReachedEnd).toBe(false);
-    expect(decoderPort.decodersCreated.every((decoder) => decoder.resetCount === 1)).toBe(true);
     expect(decoderPort.openDecoders).toBe(0);
     queue.close();
     expect(decoderPort.openFrames).toBe(0);
+  });
+
+  it('ends at once when aborted while draining its decoders', async () => {
+    const decoderPort = new NeverDrainingPort();
+    const pipeline = new DecodePipeline(twoLensTracks(3), decoderPort, OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+    const run = pipeline.run(seconds(0), queue);
+    await settle();
+    pipeline.abort();
+    await run;
+    expect(decoderPort.inner.openDecoders).toBe(0);
+    queue.close();
   });
 
   it('keeps nothing of the packets it fed, however long the run', async () => {
@@ -356,6 +367,30 @@ describe('DecodePipeline', () => {
     ).rejects.toMatchObject({ code: 'invariant-violation' });
   });
 });
+
+/**
+ * The fake port's decoders, except that a flush never ends, as on a stalled hardware decoder.
+ */
+class NeverDrainingPort implements VideoDecoderPort<FakeFrameHandle> {
+  public readonly inner = new FakeVideoDecoderPort(DECODER_LATENCY);
+
+  public isSupported(configuration: VideoDecoderConfiguration): Promise<boolean> {
+    return this.inner.isSupported(configuration);
+  }
+
+  public async create(
+    configuration: VideoDecoderConfiguration,
+    callbacks: VideoDecoderCallbacks<FakeFrameHandle>,
+  ): Promise<VideoDecoderHandle> {
+    const decoder = await this.inner.create(configuration, callbacks);
+    return Object.assign(decoder, {
+      flush: (): Promise<void> =>
+        new Promise<void>(() => {
+          // Never settles.
+        }),
+    });
+  }
+}
 
 /**
  * Opens the first lens through the fake port and refuses the second, like a platform out of

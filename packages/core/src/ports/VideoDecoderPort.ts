@@ -24,8 +24,9 @@ export interface VideoDecoderCallbacks<Handle = unknown> {
 
 /**
  * One configured decoder instance. Contract (see the shared contract suite in `testing`):
- * the first packet after creation or `reset` must be a key packet and `decode` throws
- * otherwise; `decode` and `flush` fail once the decoder is closed, by `close` or by an error.
+ * the first packet after creation must be a key packet and `decode` throws otherwise; `decode`
+ * and `flush` fail once the decoder is closed, by `close` or by an error, and `close` discards
+ * whatever is pending: no picture comes after it.
  */
 export interface VideoDecoderHandle {
   /**
@@ -43,10 +44,6 @@ export interface VideoDecoderHandle {
    * Resolves when every submitted packet has produced its frame; rejects if the decoder failed.
    */
   flush(): Promise<void>;
-  /**
-   * Discards pending packets and decoder state; the next packet must be a key frame.
-   */
-  reset(): void;
   close(): void;
 }
 

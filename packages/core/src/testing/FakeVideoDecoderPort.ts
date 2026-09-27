@@ -100,7 +100,6 @@ export class FakeVideoDecoderPort implements VideoDecoderPort<FakeFrameHandle> {
 
 export class FakeVideoDecoder implements VideoDecoderHandle {
   public maxPendingSeen = 0;
-  public resetCount = 0;
   private pending = 0;
   private decodedCount = 0;
   private generation = 0;
@@ -150,11 +149,6 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
       throw this.failure ?? new GyroViewError('decode', 'flush on a closed decoder');
     await this.waitForPendingBelow(1);
     if (this.failure) throw this.failure;
-  }
-
-  public reset(): void {
-    this.resetCount += 1;
-    this.discardPending();
   }
 
   public close(): void {

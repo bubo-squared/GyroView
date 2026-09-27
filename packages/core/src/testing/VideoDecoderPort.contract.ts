@@ -91,14 +91,8 @@ export function describeVideoDecoderPortContract<Handle>(
       closeAll(opened);
     });
 
-    it('refuses a delta packet as the first packet after creation and after a reset', async () => {
+    it('refuses a delta packet as the first packet after creation', async () => {
       const opened = await openDecoder(await setup());
-      expect(() => {
-        opened.decoder.decode(opened.delta);
-      }).toThrow(DECODE_FAILURE);
-      opened.decoder.decode(opened.key);
-      opened.decoder.reset();
-      expect(opened.decoder.pendingCount).toBe(0);
       expect(() => {
         opened.decoder.decode(opened.delta);
       }).toThrow(DECODE_FAILURE);

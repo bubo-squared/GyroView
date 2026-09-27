@@ -37,7 +37,6 @@ function forever(): Promise<void> {
 class StalledDecoder implements VideoDecoderHandle {
   public isClosed = false;
   public packetsAccepted = 0;
-  public resets = 0;
 
   public get pendingCount(): number {
     return this.packetsAccepted;
@@ -53,10 +52,6 @@ class StalledDecoder implements VideoDecoderHandle {
 
   public flush(): Promise<void> {
     return forever();
-  }
-
-  public reset(): void {
-    this.resets += 1;
   }
 
   public close(): void {

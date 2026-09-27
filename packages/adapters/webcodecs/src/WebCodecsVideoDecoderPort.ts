@@ -87,10 +87,7 @@ class WebCodecsDecoderHandle implements VideoDecoderHandle {
   private readonly decoder: VideoDecoder;
   private failure: GyroViewError | undefined;
 
-  public constructor(
-    private readonly config: VideoDecoderConfig,
-    callbacks: VideoDecoderCallbacks<VideoFrame>,
-  ) {
+  public constructor(config: VideoDecoderConfig, callbacks: VideoDecoderCallbacks<VideoFrame>) {
     this.decoder = new VideoDecoder({
       output: (frame): void => {
         callbacks.onFrame(wrapFrame(frame));
@@ -160,16 +157,6 @@ class WebCodecsDecoderHandle implements VideoDecoderHandle {
         new GyroViewError('decode', 'the decoder could not be flushed', { cause: error })
       );
     }
-  }
-
-  /**
-   * WebCodecs leaves a reset decoder unconfigured, so the configuration is applied again to
-   * keep the port's promise that decoding may continue with a key frame.
-   */
-  public reset(): void {
-    if (this.decoder.state !== 'configured') return;
-    this.decoder.reset();
-    this.decoder.configure(this.config);
   }
 
   public close(): void {

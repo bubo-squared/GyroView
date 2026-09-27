@@ -127,13 +127,14 @@ export class DecodePipeline<Handle = unknown> {
         gate.push(pair);
       },
     );
-    const iterators = await this.packetIteratorsFrom(from);
+    // A run aborted before it opened, as a seek overtaken by the next one is, opens nothing.
+    const iterators = stop.wasStopped ? [] : await this.packetIteratorsFrom(from);
     const onError = (error: Error): void => {
       failure.resolve(error);
       stop.stop();
     };
     try {
-      const decoders = await this.createDecoders(pairer, onError);
+      const decoders = stop.wasStopped ? [] : await this.createDecoders(pairer, onError);
       return { output, stop, failure, tally, gate, pairer, iterators, decoders };
     } catch (error) {
       closeIterators(iterators);
@@ -219,22 +220,27 @@ function shouldStop<Handle>(run: Run<Handle>): boolean {
 }
 
 /**
- * After the feed: an aborted run throws away what is still pending; a finished run drains the
- * decoders and, having reached the end, releases the pair the gate held back. A decoder that
- * fails while draining has already aborted the run and settled its failure.
+ * After the feed: a finished run drains the decoders and, having reached the end, releases the
+ * pair the gate held back. An abort, before or while draining, leaves what is pending to the
+ * decoders' closing.
  */
 async function settle<Handle>(run: Run<Handle>, hasReachedEnd: boolean): Promise<void> {
-  if (run.stop.wasStopped) {
-    for (const decoder of run.decoders) decoder.reset();
-    return;
-  }
+  const drained = await run.stop.race(() => drain(run.decoders, run.failure));
+  if (drained !== STOPPED && hasReachedEnd) run.gate.release();
+}
+
+/**
+ * A decoder that fails while draining has already aborted the run and settled its failure.
+ */
+async function drain(
+  decoders: readonly VideoDecoderHandle[],
+  failure: Deferred<Error>,
+): Promise<void> {
   try {
-    await Promise.all(run.decoders.map((decoder) => decoder.flush()));
+    await Promise.all(decoders.map((decoder) => decoder.flush()));
   } catch (error) {
-    if (!run.failure.isSettled) throw error;
-    return;
+    if (!failure.isSettled) throw error;
   }
-  if (hasReachedEnd) run.gate.release();
 }
 
 function closeRun<Handle>(run: Run<Handle>): void {

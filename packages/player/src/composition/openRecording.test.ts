@@ -60,7 +60,6 @@ class StallingDecoderPort implements VideoDecoderPort {
       decode: (): void => undefined,
       waitForPendingBelow: (): Promise<void> => new Deferred<void>().promise,
       flush: (): Promise<void> => new Deferred<void>().promise,
-      reset: (): void => undefined,
       close: (): void => {
         this.openDecoders -= 1;
       },

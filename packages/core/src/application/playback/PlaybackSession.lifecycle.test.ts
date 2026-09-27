@@ -167,6 +167,7 @@ describe('PlaybackSession lifecycle', () => {
     const port = new GatedPort();
     const { session } = sessionHarness({ parts: { decoderPort: port } });
     const playing = session.play();
+    await settle();
     session.dispose();
     await playing;
     port.gate.resolve();

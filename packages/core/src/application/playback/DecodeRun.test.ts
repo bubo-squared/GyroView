@@ -110,7 +110,10 @@ describe('DecodeRun', () => {
     // Slow decoders: closing takes a few microtasks, a picture two hundred.
     const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 200 });
     const run = DecodeRun.start({ ...parts(30), decoderPort }, seconds(0), QUIET);
-    for (let tick = 0; tick < 60; tick += 1) await Promise.resolve();
+    const decoders = decoderPort.decodersCreated;
+    while (decoders.length < 2 || decoders.some((decoder) => decoder.pendingCount === 0)) {
+      await Promise.resolve();
+    }
     const decodedBeforeAbort = decoderPort.framesCreated.length;
     run.abort();
     await settle();

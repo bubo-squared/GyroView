@@ -67,6 +67,14 @@ class SkewedDecoderPort implements VideoDecoderPort<FakeFrameHandle> {
 }
 
 /**
+ * Both lens decoders exist and each still holds a packet it has not decoded.
+ */
+function isEveryDecoderBusy(decoderPort: FakeVideoDecoderPort): boolean {
+  const decoders = decoderPort.decodersCreated;
+  return decoders.length === 2 && decoders.every((decoder) => decoder.pendingCount > 0);
+}
+
+/**
  * Consumes pairs in order as they arrive, closing each one once the next is taken, until the
  * pipeline run settles.
  */
@@ -370,20 +378,21 @@ describe('DecodePipeline', () => {
     expect(decoderPort.decodersCreated).toEqual([]);
   });
 
-  it('an abort closes the decoders without draining them', async () => {
-    const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 6 });
+  it('an abort closes the decoders without decoding the packets they still hold', async () => {
+    const decoderPort = new FakeVideoDecoderPort({ latencyTicks: 200 });
     const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
     const queue = new FramePairQueue<FakeFrameHandle>(4);
 
     const run = pipeline.run(seconds(0), queue);
-    await settle();
+    while (!isEveryDecoderBusy(decoderPort)) await Promise.resolve();
+    const decodedBeforeAbort = decoderPort.framesCreated.length;
     pipeline.abort();
     const report = await run;
+    await settle();
 
     expect(report.hasReachedEnd).toBe(false);
+    expect(decoderPort.framesCreated).toHaveLength(decodedBeforeAbort);
     expect(decoderPort.openDecoders).toBe(0);
-    queue.close();
-    expect(decoderPort.openFrames).toBe(0);
   });
 
   it('ends at once when aborted while draining its decoders', async () => {

@@ -98,18 +98,17 @@ describe('PlaybackSession transport', () => {
   });
 
   it('settles a second play while buffering with the first, once the clock runs', async () => {
-    const { session } = sessionHarness();
+    const { session, clock } = sessionHarness();
     const first = session.play();
     expect(session.state).toBe('buffering');
-    let isSecondSettled = false;
+    let wasClockRunningWhenSettled = false;
     const second = (async (): Promise<void> => {
       await session.play();
-      isSecondSettled = true;
+      wasClockRunningWhenSettled = clock.isRunning;
     })();
-    await Promise.resolve();
-    expect(isSecondSettled).toBe(false);
     await first;
     await second;
+    expect(wasClockRunningWhenSettled).toBe(true);
     expect(session.state).toBe('playing');
     session.dispose();
   });

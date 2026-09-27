@@ -2,7 +2,7 @@
   "name": "@gyroview/integration",
   "version": "0.0.0",
   "private": true,
-  "description": "Integration tests that combine several adapters against the real recordings, in Node and in real browsers (skipped when the samples are absent).",
+  "description": "Integration tests that combine several adapters against the real recordings, in Node and in real browsers (not run when the samples are absent).",
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

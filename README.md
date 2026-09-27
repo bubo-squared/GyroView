@@ -151,8 +151,9 @@ pnpm --filter @gyroview/core run test:mutation   # Stryker over the core
 
 Browser adapters, the player and the embed site are tested in headless Chromium and WebKit
 through Playwright. The end-to-end tests in `tools/integration/src/browser` play the local
-sample recordings; they skip when the samples are absent (as in CI) and drive the installed
-Google Chrome when there is one, because Playwright's own Chromium build has no HEVC decoder.
+sample recordings; they are not started without the samples (as in CI), and they drive the
+installed Google Chrome when there is one, because Playwright's own Chromium build has no HEVC
+decoder.
 `pnpm measure` runs them again writing their renders to `.artifacts/` for inspection, with the
 measurements too slow for every run, such as the IMU frame ranking of ADR 0009.
 

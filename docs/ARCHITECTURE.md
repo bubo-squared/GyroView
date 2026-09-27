@@ -255,8 +255,8 @@ The composition root and the user-facing element, in three layers.
   two-track MP4s with a real X5 trailer) that the browser tests play.
 - `tools/integration`: end-to-end tests over the real sample recordings, in Node (the core over
   the node adapter) and in real browsers, where they open the samples through the player's
-  `openRecording` with its pipeline settings, so they exercise the real composition; they skip
-  when the samples are absent.
+  `openRecording` with its pipeline settings, so they exercise the real composition. Without the
+  samples the Node tests skip and the browser project is not started.
 
 Tests follow the layers: pure domain tests run in Node in milliseconds and are mutation-tested
 with Stryker; adapters have contract tests against their ports and run in Chromium and WebKit

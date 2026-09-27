@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { playwright } from '@vitest/browser-playwright';
 import { defineProject, type UserWorkspaceConfig } from 'vitest/config';
 
+import { AUTOPLAY_WITHOUT_GESTURE, chromiumArguments } from '../../test/browserLaunch.mjs';
+
 const REPOSITORY_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const ARTIFACTS = path.join(REPOSITORY_ROOT, '.artifacts');
 const DATA_URL_PAYLOAD = /^data:[^,]*;base64,(?<payload>.+)$/su;
@@ -41,7 +43,7 @@ const sampleTargets = SAMPLE_FOLDERS.filter((folder) => existsSync(folder)).map(
  */
 const CHROME_APP = '/Applications/Google Chrome.app';
 const chromiumLaunch = {
-  args: ['--autoplay-policy=no-user-gesture-required'],
+  args: chromiumArguments(AUTOPLAY_WITHOUT_GESTURE),
   ...(existsSync(CHROME_APP) && { channel: 'chrome' }),
 };
 

@@ -5,7 +5,7 @@
 - Node 24 LTS (`.nvmrc`; run `nvm use`). dependency-cruiser refuses odd-numbered Node releases.
 - pnpm 11 (`packageManager` in `package.json`).
 - `pnpm install`, then `pnpm verify` runs everything CI runs: typecheck, lint, format check,
-  dependency rules, tests.
+  dependency rules, tests and the build of the embed site and scripts.
 
 ## Layout and dependency rule
 

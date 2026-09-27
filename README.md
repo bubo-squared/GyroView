@@ -139,7 +139,7 @@ its place (ADR 0017).
 nvm use           # Node 24 LTS from .nvmrc
 pnpm install
 pnpm --filter @gyroview/adapter-webcodecs exec playwright install chromium webkit
-pnpm verify       # typecheck, lint, format check, dependency rules, tests
+pnpm verify       # typecheck, lint, format check, dependency rules, tests, build
 pnpm test:watch
 pnpm --filter @gyroview/embed dev     # developer page at http://localhost:5180 with the local samples
 pnpm --filter @gyroview/embed build   # static site, embed.js and gyro-view.js in apps/embed/dist

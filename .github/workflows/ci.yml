@@ -28,3 +28,4 @@ jobs:
       - run: pnpm format:check
       - run: pnpm depcruise
       - run: pnpm test
+      - run: pnpm build

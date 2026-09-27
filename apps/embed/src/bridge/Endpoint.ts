@@ -16,9 +16,10 @@ export interface Endpoint {
 export interface WindowEndpointParts {
   /**
    * The one window at the other end, and its origin: messages go only there, and only messages
-   * from that window at that origin are believed (ADR 0010).
+   * from that window at that origin are believed (ADR 0010). Looked up at each use: an iframe
+   * moved within its page loads anew in a window of its own.
    */
-  readonly peer: Window;
+  readonly peer: () => Window | null;
   readonly peerOrigin: string;
   /**
    * The window whose `message` events are read.
@@ -29,12 +30,13 @@ export interface WindowEndpointParts {
 export function windowEndpoint(parts: WindowEndpointParts): Endpoint {
   return {
     send: (message): void => {
-      parts.peer.postMessage(message, parts.peerOrigin);
+      parts.peer()?.postMessage(message, parts.peerOrigin);
     },
     receive: (handler): (() => void) => {
       const listener = (event: MessageEvent<unknown>): void => {
+        const peer = parts.peer();
         const isFromPeer =
-          event.source === parts.peer && isTrustedOrigin(event.origin, parts.peerOrigin);
+          peer !== null && event.source === peer && isTrustedOrigin(event.origin, parts.peerOrigin);
         if (isFromPeer && isProtocolMessage(event.data)) handler(event.data);
       };
       parts.listenOn.addEventListener('message', listener);

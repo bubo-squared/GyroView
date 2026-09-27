@@ -1,9 +1,19 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { embed } from './embedSnippet';
+import { waitFor } from '../test/waiting';
 import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
 
 const EMBED_PAGE = `${location.origin}/embed.html`;
+
+async function isServedAsHtml(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url);
+    return response.ok && (response.headers.get('content-type') ?? '').includes('text/html');
+  } catch {
+    return false;
+  }
+}
 
 describe('GyroView.embed', () => {
   const containers: HTMLElement[] = [];
@@ -38,6 +48,28 @@ describe('GyroView.embed', () => {
     embedded.destroy();
     expect(container.querySelector('iframe')).toBeNull();
     await expect(embedded.handle.play()).rejects.toMatchObject({ code: 'embed-destroyed' });
+  });
+
+  it('keeps driving the frame once the page moves it, which loads it anew', async (context) => {
+    if (!(await isServedAsHtml(EMBED_PAGE))) {
+      context.skip('this test server does not serve embed.html');
+    }
+    const container = document.createElement('div');
+    const elsewhere = document.createElement('div');
+    document.body.append(container, elsewhere);
+    containers.push(container, elsewhere);
+    const embedded = embed(
+      container,
+      { src: recordingUrl, muted: true },
+      { embedPageUrl: EMBED_PAGE },
+    );
+    await embedded.handle.getState();
+    const firstWindow = embedded.iframe.contentWindow;
+
+    elsewhere.append(container);
+    await waitFor(() => embedded.iframe.contentWindow !== firstWindow, 'the frame to load anew');
+    await expect(embedded.handle.getState()).resolves.toMatchObject({ isMuted: true });
+    embedded.destroy();
   });
 
   it('needs to know where the embed page is when the script has no URL', () => {

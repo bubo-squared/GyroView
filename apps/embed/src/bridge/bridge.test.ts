@@ -201,13 +201,41 @@ describe('the embed bridge over a message channel', () => {
   });
 });
 
+describe('an embed handle whose frame loads anew', () => {
+  it('asks the new frame what the old one never answered, and mirrors its state', async () => {
+    const channel = new MessageChannel();
+    const handle = new EmbedHandle(portEndpoint(channel.port2), () => location.href);
+    const received: ProtocolMessage[] = [];
+    const hostSide = portEndpoint(channel.port1);
+    hostSide.receive((message) => {
+      received.push(message);
+    });
+    hostSide.send(helloMessage({}));
+    const pausing = handle.pause();
+    await waitFor(() => received.length === 1, 'the command');
+
+    const reloadedState = { status: 'ready', currentTime: 0, duration: 3 };
+    hostSide.send(helloMessage(reloadedState));
+    await waitFor(() => received.length === 2, 'the command asked again');
+    expect(received[1]).toEqual(received[0]);
+    expect(handle.state).toEqual(reloadedState);
+    hostSide.send({ protocol: PROTOCOL, kind: 'result', id: 1, isOk: true, value: undefined });
+    await pausing;
+    handle.destroy();
+  });
+});
+
 describe('windowEndpoint', () => {
   it("delivers protocol messages from its peer's window and origin only, ignoring other data", async () => {
     // A window posting to itself is its own message source.
     const page = globalThis as Window & typeof globalThis;
-    const trusted = windowEndpoint({ peer: page, peerOrigin: location.origin, listenOn: page });
+    const trusted = windowEndpoint({
+      peer: () => page,
+      peerOrigin: location.origin,
+      listenOn: page,
+    });
     const distrustful = windowEndpoint({
-      peer: page,
+      peer: () => page,
       peerOrigin: 'https://someone-else.example',
       listenOn: page,
     });

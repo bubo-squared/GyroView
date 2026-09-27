@@ -57,11 +57,11 @@ export function embed(
   const frameUrl = embedUrlFor(embedPageUrl, withAbsoluteUrls(options, pageUrl), location.origin);
   const iframe = createFrame(frameUrl, settings);
   container.append(iframe);
-  const frameWindow = windowOf(iframe);
+  ensureFrameWindow(iframe);
   const frameOrigin = new URL(embedPageUrl).origin;
   const handle = new EmbedHandle(
     windowEndpoint({
-      peer: frameWindow,
+      peer: () => iframe.contentWindow,
       peerOrigin: frameOrigin,
       listenOn: globalThis as Window & typeof globalThis,
     }),
@@ -77,15 +77,13 @@ export function embed(
   };
 }
 
-function windowOf(iframe: HTMLIFrameElement): Window {
-  const frameWindow = iframe.contentWindow;
-  if (!frameWindow) {
+function ensureFrameWindow(iframe: HTMLIFrameElement): void {
+  if (!iframe.contentWindow) {
     throw new GyroViewError(
       'invalid-argument',
       'the iframe has no window; is the container in the document?',
     );
   }
-  return frameWindow;
 }
 
 function createFrame(url: string, settings: EmbedSettings): HTMLIFrameElement {

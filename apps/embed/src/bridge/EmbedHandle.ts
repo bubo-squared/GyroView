@@ -24,6 +24,7 @@ import {
 } from '../protocol/messages';
 
 interface PendingCommand {
+  readonly message: ProtocolMessage;
   readonly resolve: (value: unknown) => void;
   readonly reject: (error: Error) => void;
 }
@@ -44,12 +45,15 @@ const INITIAL_STATE: EmbedState = {
 /**
  * The embedding page's side of the bridge: the player API as promises over the channel, the
  * player's events, and a state mirror kept current from them. Commands sent before the frame
- * says hello wait for it.
+ * says hello wait for it. A frame that says hello again has loaded anew (moved within its page,
+ * or reloaded), from its URL's options: what the old document left unanswered is asked again.
  */
 export class EmbedHandle {
   public readonly events = new TypedEmitter<EmbedEvents>();
+  /**
+   * Every command not answered yet, in the order sent.
+   */
   private readonly pending = new Map<number, PendingCommand>();
-  private readonly queued: ProtocolMessage[] = [];
   private readonly stopReceiving: () => void;
   private stateValue: EmbedState = INITIAL_STATE;
   private nextId = 1;
@@ -165,20 +169,17 @@ export class EmbedHandle {
     }
     const id = this.nextId;
     this.nextId += 1;
+    const message = commandMessage(id, name, parameters);
     return new Promise<Value>((resolve, reject) => {
       this.pending.set(id, {
+        message,
         resolve: (value): void => {
           resolve(value as Value);
         },
         reject,
       });
-      this.deliver(commandMessage(id, name, parameters));
+      if (this.isConnected) this.endpoint.send(message);
     });
-  }
-
-  private deliver(message: ProtocolMessage): void {
-    if (this.isConnected) this.endpoint.send(message);
-    else this.queued.push(message);
   }
 
   private onMessage(message: ProtocolMessage): void {
@@ -188,7 +189,7 @@ export class EmbedHandle {
         // sends none, and the mirror keeps the defaults.
         if (message.state !== undefined) this.stateValue = message.state as EmbedState;
         this.isConnected = true;
-        for (const queued of this.queued.splice(0)) this.endpoint.send(queued);
+        for (const { message: command } of this.pending.values()) this.endpoint.send(command);
         break;
       }
       case 'result': {

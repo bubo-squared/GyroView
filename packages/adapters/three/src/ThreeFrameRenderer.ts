@@ -67,8 +67,8 @@ interface RendererParts {
   readonly uniforms: RendererUniforms;
   readonly lensCount: number;
   /**
-   * The seam meter drawn once at creation to prove its program, kept so the program stays
-   * compiled for the meter gain matching asks for at every load.
+   * The seam meter made at creation to prove its program, kept so the program stays compiled
+   * for the meter gain matching asks for at every load.
    */
   readonly seamProof: SeamMeterPass;
 }
@@ -308,21 +308,27 @@ function createRenderer(
   }
   const renderer = new WebGLRenderer({ canvas, context });
   renderer.setPixelRatio(1);
-  renderer.debug.onShaderError = (gl, _program, ...shaders): void => {
-    rejectShaders(gl, shaders);
+  renderer.debug.onShaderError = (gl, program, ...shaders): void => {
+    rejectProgram(gl, program, shaders);
   };
   return renderer;
 }
 
 /**
- * A shader that does not compile is a defect, not something to log and draw black over.
+ * A shader that does not compile or link is a defect, not something to log and draw black over.
+ * A compile failure's reason is in its shader's log, a link failure's in the program's.
  */
-function rejectShaders(gl: WebGLRenderingContext, shaders: readonly WebGLShader[]): never {
-  const log = shaders
-    .map((shader) => gl.getShaderInfoLog(shader))
-    .filter(Boolean)
-    .join('\n');
-  throw new GyroViewError('render-unavailable', `the stitching shader did not compile: ${log}`);
+function rejectProgram(
+  gl: WebGLRenderingContext,
+  program: WebGLProgram,
+  shaders: readonly WebGLShader[],
+): never {
+  const logs = [
+    gl.getProgramInfoLog(program),
+    ...shaders.map((shader) => gl.getShaderInfoLog(shader)),
+  ];
+  const log = logs.filter(Boolean).join('\n');
+  throw new GyroViewError('render-unavailable', `a shader did not compile or link: ${log}`);
 }
 
 function createLensTexture(): VideoFrameTexture {

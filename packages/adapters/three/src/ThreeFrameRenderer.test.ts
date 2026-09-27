@@ -528,7 +528,7 @@ describe('ThreeFrameRenderer', () => {
     }).toThrow(/disposed/u);
   });
 
-  it('refuses a shader the GPU will not link when created, not at the first frame', () => {
+  it('refuses a shader the GPU will not link when created, not at the first frame, and says why', () => {
     const canvas = document.createElement('canvas');
     document.body.append(canvas);
     canvases.push(canvas);
@@ -537,9 +537,13 @@ describe('ThreeFrameRenderer', () => {
     const parameterOf = gl.getProgramParameter.bind(gl);
     gl.getProgramParameter = (program: WebGLProgram, name: number): unknown =>
       name === gl.LINK_STATUS ? false : parameterOf(program, name);
+    gl.getProgramInfoLog = (): string => 'too many uniforms';
     const setup = buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
     expect(() => ThreeFrameRenderer.create(canvas, setup)).toThrow(
-      expect.objectContaining({ code: 'render-unavailable' }),
+      expect.objectContaining({
+        code: 'render-unavailable',
+        message: expect.stringContaining('too many uniforms') as unknown,
+      }),
     );
   });
 

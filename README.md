@@ -130,6 +130,13 @@ Without the snippet, an iframe of
 query parameter (`controls=0` hides the controls; the snippet's `viewMode` option is the
 `view-mode` parameter).
 
+### Inspecting a recording
+
+`inspectRecording(fileOrUrl)`, from the npm package, reads what a recording holds without playing
+it, as plain data: the boxes and trailer records, the info record (camera, firmware, frame rate,
+capture mode), the lens calibration and summaries of the gyro and exposure records; `pnpm inspect`
+prints the same for a file on disk.
+
 ## Serving recordings
 
 The player reads the multi-gigabyte file in byte ranges straight from the camera's layout, so

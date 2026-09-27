@@ -32,7 +32,7 @@ export function browserPorts(options: BrowserPortsOptions = {}): RecordingPorts<
   const http = options.http ?? {};
   const probeTimeoutMs = options.probeTimeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
   return {
-    sources: sourcesOver(http),
+    sources: browserSources(http),
     demuxer: new MediabunnyDemuxer(),
     decoderPort: new WebCodecsVideoDecoderPort(),
     locator: new HttpResourceLocator(http),
@@ -43,7 +43,7 @@ export function browserPorts(options: BrowserPortsOptions = {}): RecordingPorts<
 /**
  * URLs are read with HTTP ranges, blobs by slicing.
  */
-function sourcesOver(http: HttpRequestOptions): SourceOpener {
+export function browserSources(http: HttpRequestOptions): SourceOpener {
   return {
     open: (input, signal) =>
       isUrlInput(input)

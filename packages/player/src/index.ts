@@ -2,6 +2,7 @@ export type { BlobInput, MediaInput, PlayerSource, UrlInput } from './PlayerSour
 export type { ImuFrameSummary, PlayerMetadata } from './PlayerMetadata';
 export { choiceOf } from './choices';
 export { createBrowserPlayer } from './browserPlayer';
+export { inspectRecording, type InspectOptions } from './inspectRecording';
 export { Player } from './player/Player';
 export type { LoadOptions, PlayerParts } from './player/PlayerOptions';
 export type { PlayerEvents, PlayerStatus, SoundLevel } from './player/PlayerEvents';

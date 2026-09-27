@@ -216,7 +216,8 @@ The composition root and the user-facing element, in three layers.
   `PipelineFactory` and drives the `Pipeline` contract in `composition/ports`, never the
   adapters or the sinks: it sets the stabilization mode and gain matching as commands, which
   the pipeline routes to its sinks and shows at once; `createBrowserPlayer` joins the browser's ports and `buildPipeline` into a `Player`,
-  for the element and for pages that want the player alone. Dependency rules keep the adapters
+  for the element and for pages that want the player alone. `inspectRecording` reads a URL or a
+  blob through the same sources into the core's `RecordingInspection`, without playing it. Dependency rules keep the adapters
   inside the composition and the composition below the player, and the player below the
   element and the controls.
 - **`player`**: `Player`, the headless facade over one loaded recording. It loads, unloads,
@@ -260,9 +261,9 @@ The composition root and the user-facing element, in three layers.
 ## The npm package: `apps/library`
 
 - `src/index.ts` is the package's public API: the element, `createBrowserPlayer` and `Player`,
-  `GyroViewError`, the view and stabilization modes, and the types of the metadata, settings and
-  events. The player types `<gyro-view>` in `HTMLElementTagNameMap`, and its events in
-  `GyroViewElementEventMap`. `src/define.ts` registers the
+  `inspectRecording`, `GyroViewError`, the view and stabilization modes, and the types of the
+  metadata, settings, events and inspection. The player types `<gyro-view>` in
+  `HTMLElementTagNameMap`, and its events in `GyroViewElementEventMap`. `src/define.ts` registers the
   element when imported (`gyroview/define`).
 - The build bundles the player, the core and the adapters and leaves Three.js and mediabunny to
   the page's install; `dts-bundle-generator` writes one self-contained `index.d.ts`,

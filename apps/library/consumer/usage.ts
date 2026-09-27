@@ -5,10 +5,12 @@ import {
   createBrowserPlayer,
   GyroViewError,
   hasErrorCode,
+  inspectRecording,
   VIEW_MODES,
   type GyroViewErrorCode,
   type PlayerMetadata,
   type PlayerStatus,
+  type RecordingInspection,
   type ViewMode,
 } from 'gyroview';
 
@@ -38,6 +40,12 @@ element.addEventListener('error', (event) => {
 element.addEventListener('timeupdate', (event) => event.detail.toFixed(1));
 element.addEventListener('click', (event) => event.clientX);
 
+const inspected: RecordingInspection = await inspectRecording(new File([], 'clip.insv'));
+const fromUrl = await inspectRecording('https://media.example/clip.insv', {
+  signal: AbortSignal.timeout(10_000),
+});
+const samples = inspected.gyro && 'samples' in inspected.gyro ? inspected.gyro.samples : 0;
+
 try {
   await element.load();
 } catch (error) {
@@ -50,4 +58,4 @@ const player = createBrowserPlayer({
 });
 player.events.on('ready', (ready) => ready.model);
 
-export { metadata, status };
+export { fromUrl, metadata, samples, status };

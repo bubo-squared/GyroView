@@ -51,9 +51,19 @@ player?.addEventListener('ready', (event) => console.log(event.detail.model));
 player?.addEventListener('error', (event) => console.log(event.detail.code));
 ```
 
+Read what a recording holds without playing it: its trailer records, the info record (camera,
+firmware, frame rate), the lens calibration and summaries of the gyro and exposure records.
+
+```ts
+import { inspectRecording } from 'gyroview';
+
+const fromFile = await inspectRecording(file);
+const fromUrl = await inspectRecording('https://media.example/VID_20260814_132640_00_013.insv');
+```
+
 `gyroview` also exports `createBrowserPlayer` (the player without the element, drawing on your
 own canvas and audio element), `GyroViewError` with its codes, and the types of the element's
-settings, metadata and events.
+settings, metadata, events and inspection.
 
 ## Requirements
 

@@ -5,7 +5,7 @@ import type { VideoTrackReader } from '../../ports/Demuxer';
 import type { EncodedVideoPacket } from '../../ports/VideoTrack';
 import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';
-import { Signal } from '../../shared/async/Signal';
+import { RunStop, STOPPED } from '../../shared/async/RunStop';
 import { ensureInvariant, GyroViewError } from '../../shared/errors/GyroViewError';
 import type { Seconds } from '../../shared/units/time';
 
@@ -48,7 +48,11 @@ type PacketIterator = AsyncIterator<EncodedVideoPacket>;
  */
 interface Run<Handle> {
   readonly output: FramePairQueue<Handle>;
-  readonly abort: Signal;
+  /**
+   * Ends every wait of the run at once: remembering only the wait in progress, it keeps nothing
+   * of the rounds already fed, however long the run.
+   */
+  readonly stop: RunStop;
   /**
    * Settled by the first decoder that reports an error; the run is aborted and rejects with it.
    */
@@ -60,8 +64,6 @@ interface Run<Handle> {
   readonly decoders: readonly VideoDecoderHandle[];
 }
 
-const ABORTED = Symbol('aborted');
-
 /**
  * Decodes the frame sources of a recording in lockstep from a chosen time: starts every decoder at
  * the key packet at or before that time (the first one, for a time before it), feeds packets round-robin with bounded decoder queues, pairs
@@ -69,7 +71,7 @@ const ABORTED = Symbol('aborted');
  * instance runs once; each `DecodeRun` creates its own.
  */
 export class DecodePipeline<Handle = unknown> {
-  private readonly abortSignal = new Signal();
+  private readonly stop = new RunStop();
   private hasRun = false;
 
   public constructor(
@@ -107,11 +109,11 @@ export class DecodePipeline<Handle = unknown> {
    * Ends the run early; pending decodes are discarded. Safe before, during and after the run.
    */
   public abort(): void {
-    this.abortSignal.trigger();
+    this.stop.stop();
   }
 
   private async openRun(from: Seconds, output: FramePairQueue<Handle>): Promise<Run<Handle>> {
-    const abort = this.abortSignal;
+    const { stop } = this;
     const failure = new Deferred<Error>();
     const tally: RunTally = { packets: 0, pairs: 0 };
     const gate = new StartGate<Handle>(from, (pair) => {
@@ -128,11 +130,11 @@ export class DecodePipeline<Handle = unknown> {
     const iterators = await this.packetIteratorsFrom(from);
     const onError = (error: Error): void => {
       failure.resolve(error);
-      abort.trigger();
+      stop.stop();
     };
     try {
       const decoders = await this.createDecoders(pairer, onError);
-      return { output, abort, failure, tally, gate, pairer, iterators, decoders };
+      return { output, stop, failure, tally, gate, pairer, iterators, decoders };
     } catch (error) {
       closeIterators(iterators);
       throw error;
@@ -172,10 +174,10 @@ export class DecodePipeline<Handle = unknown> {
    */
   private async feed(run: Run<Handle>): Promise<boolean> {
     while (!shouldStop(run)) {
-      await Promise.race([run.output.waitForRoom(), run.abort.promise]);
+      await run.stop.race(() => run.output.waitForRoom());
       if (shouldStop(run)) return false;
-      const round = await Promise.race([nextRound(run.iterators), afterAbort(run.abort)]);
-      if (round === ABORTED) return false;
+      const round = await run.stop.race(() => nextRound(run.iterators));
+      if (round === STOPPED) return false;
       if (!round) return true;
       await this.decodeRound(run, round);
     }
@@ -189,10 +191,7 @@ export class DecodePipeline<Handle = unknown> {
     for (const [sourceIndex, decoder] of run.decoders.entries()) {
       const packet = packets[sourceIndex];
       if (!packet) continue;
-      await Promise.race([
-        decoder.waitForPendingBelow(this.options.maxPendingPackets),
-        run.abort.promise,
-      ]);
+      await run.stop.race(() => decoder.waitForPendingBelow(this.options.maxPendingPackets));
       if (shouldStop(run)) return;
       decoder.decode(packet);
       run.tally.packets += 1;
@@ -216,12 +215,7 @@ export class DecodePipeline<Handle = unknown> {
 }
 
 function shouldStop<Handle>(run: Run<Handle>): boolean {
-  return run.abort.wasTriggered || run.output.isClosedForGood;
-}
-
-async function afterAbort(abort: Signal): Promise<typeof ABORTED> {
-  await abort.promise;
-  return ABORTED;
+  return run.stop.wasStopped || run.output.isClosedForGood;
 }
 
 /**
@@ -230,7 +224,7 @@ async function afterAbort(abort: Signal): Promise<typeof ABORTED> {
  * fails while draining has already aborted the run and settled its failure.
  */
 async function settle<Handle>(run: Run<Handle>, hasReachedEnd: boolean): Promise<void> {
-  if (run.abort.wasTriggered) {
+  if (run.stop.wasStopped) {
     for (const decoder of run.decoders) decoder.reset();
     return;
   }

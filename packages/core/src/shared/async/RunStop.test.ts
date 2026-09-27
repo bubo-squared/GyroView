@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { RunStop, STOPPED } from './RunStop';
+import { isCollected } from '../../../test/support/garbage';
 
 describe('RunStop', () => {
   it('lets a wait finish with its own value while the run goes on', async () => {
@@ -18,6 +19,18 @@ describe('RunStop', () => {
     stop.stop();
     await expect(waiting).resolves.toBe(STOPPED);
     expect(stop.wasStopped).toBe(true);
+  });
+
+  it('keeps nothing of the waits that finished', async () => {
+    const stop = new RunStop();
+    const references: WeakRef<object>[] = [];
+    for (let wait = 0; wait < 3; wait += 1) {
+      const value = { wait };
+      references.push(new WeakRef(value));
+      await stop.race(() => Promise.resolve(value));
+    }
+    for (const reference of references) expect(await isCollected(reference)).toBe(true);
+    stop.stop();
   });
 
   it('starts no work once the run has stopped', async () => {

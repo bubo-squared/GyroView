@@ -5,7 +5,7 @@ import { FramePairQueue } from './FramePairQueue';
 import { DecodePipeline } from './DecodePipeline';
 import { seconds } from '../../shared/units/time';
 import { fakeFrameNumberOf, FakeVideoTrack } from '../../testing/FakeVideoTrack';
-import type { VideoDecoderConfiguration } from '../../ports/VideoTrack';
+import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../../ports/VideoTrack';
 import type {
   VideoDecoderCallbacks,
   VideoDecoderHandle,
@@ -13,6 +13,7 @@ import type {
 } from '../../ports/VideoDecoderPort';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { FakeVideoDecoderPort, type FakeFrameHandle } from '../../testing/FakeVideoDecoderPort';
+import { isCollected } from '../../../test/support/garbage';
 import { settle } from '../../../test/support/settle';
 
 const FRAME_RATE = 10;
@@ -26,6 +27,22 @@ function twoLensTracks(frameCount = FRAMES): FakeVideoTrack[] {
     (trackIndex) =>
       new FakeVideoTrack({ trackIndex, frameRate: FRAME_RATE, frameCount, framesPerGop: GOP }),
   );
+}
+
+/**
+ * Hands out a fresh copy of every packet and keeps only a weak reference to it, so a test can
+ * tell whether anything still holds the packets fed long ago (the plain fake keeps them all).
+ */
+class WeaklyTrackedTrack extends FakeVideoTrack {
+  public readonly handedOut: WeakRef<EncodedVideoPacket>[] = [];
+
+  public override async *packetsFrom(start: EncodedVideoPacket): AsyncIterable<EncodedVideoPacket> {
+    for await (const packet of super.packetsFrom(start)) {
+      const copy = { ...packet };
+      this.handedOut.push(new WeakRef(copy));
+      yield copy;
+    }
+  }
 }
 
 /**
@@ -305,6 +322,25 @@ describe('DecodePipeline', () => {
     expect(decoderPort.openDecoders).toBe(0);
     queue.close();
     expect(decoderPort.openFrames).toBe(0);
+  });
+
+  it('keeps nothing of the packets it fed, however long the run', async () => {
+    const tracks = [0, 1].map(
+      (trackIndex) =>
+        new WeaklyTrackedTrack({
+          trackIndex,
+          frameRate: FRAME_RATE,
+          frameCount: FRAMES,
+          framesPerGop: GOP,
+        }),
+    );
+    const pipeline = new DecodePipeline(tracks, new FakeVideoDecoderPort(DECODER_LATENCY), OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+    await drain(queue, pipeline.run(seconds(0), queue));
+    const firstFed = tracks[0]?.handedOut[0];
+    expect(firstFed).toBeDefined();
+    if (firstFed) expect(await isCollected(firstFed)).toBe(true);
+    pipeline.abort();
   });
 
   it('runs only once', async () => {

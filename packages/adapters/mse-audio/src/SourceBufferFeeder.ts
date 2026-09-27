@@ -1,7 +1,13 @@
-import { GyroViewError, seconds, type AudioSegmentSource, type Seconds } from '@gyroview/core';
+import {
+  GyroViewError,
+  RunStop,
+  seconds,
+  STOPPED,
+  type AudioSegmentSource,
+  type Seconds,
+} from '@gyroview/core';
 
 import { nextOfEvents } from './events';
-import { RunStop, STOPPED } from './RunStop';
 
 interface SourceBufferFeederParts {
   readonly element: HTMLMediaElement;

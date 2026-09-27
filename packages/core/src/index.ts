@@ -189,6 +189,7 @@ export {
   type ProbeVerdict,
 } from './application/playback/probeDecoding';
 export { Deferred } from './shared/async/Deferred';
+export { RunStop, STOPPED } from './shared/async/RunStop';
 export { Signal } from './shared/async/Signal';
 export type { PlaybackClock } from './ports/PlaybackClock';
 export type { FrameSink, Presentation } from './ports/FrameSink';

@@ -233,13 +233,19 @@ The composition root and the user-facing element, in three layers.
   `@gyroview/player/attributes`), settings properties live over the player (`liveSettings`),
   events re-dispatched as `CustomEvent`s and typed for listeners (`GyroViewElementEventMap`, over
   the pass-through `TypedEventElement`), a shadow tree with the canvas, the audio element,
-  poster and overlays. `bindControlsBar` binds `TransportButtons`, the view buttons (Reset view,
+  poster and overlays. `ElementLoads` decides when the element loads and what: the attributes
+  read together a microtask after they change, a load owed to the next connection, a recording
+  let go after a removal unless the element only moved. The shadow tree (`template.ts`) is parsed
+  once per page through a Trusted Types policy (`parseMarkup`) and cloned per element, its
+  stylesheets constructed once and adopted. The markup holds no words: `Wording` fills in
+  every label, menu choice and failure text it names, from `messages` (English defaults, the
+  page's own through the element's `messages` property). `bindControlsBar` binds `TransportButtons`, the view buttons (Reset view,
   Fullscreen), `SeekBar` (key-frame
   scrubbing), `SoundControls` and `PictureMenus` (the view mode and stabilization menus, each a
   `ChoiceMenu` behind an icon button; stabilization is offered only for a recording with a gyro
   in a stitched view mode). The bar's markup and styles come from `controlsMarkup` and
-  `controls.css`, which the element's
-  template interpolates, and every icon button draws an SVG from `icons`. `ViewGestures` turns drags,
+  `controls.css`, which the element's template takes in, and every icon button draws an SVG
+  from `icons`, cloned from one parsed copy when a button changes its icon. `ViewGestures` turns drags,
   pinches and wheel turns into view changes; `keyboard` maps keys to commands;
   `FullscreenToggle` and `IdleWatcher` handle filling the screen and fading the controls.
 
@@ -266,8 +272,10 @@ The composition root and the user-facing element, in three layers.
   metadata, settings, events and inspection. The player types `<gyro-view>` in
   `HTMLElementTagNameMap`, and its events in `GyroViewElementEventMap`. `src/define.ts` registers the
   element when imported (`gyroview/define`).
-- The build bundles the player, the core and the adapters and leaves Three.js and mediabunny to
-  the page's install; `dts-bundle-generator` writes one self-contained `index.d.ts`,
+- The build bundles the player, the core and the adapters, one file per module so a page's
+  bundler drops what it does not reach, and leaves Three.js and mediabunny to the page's
+  install; `dts-bundle-generator` writes one self-contained `index.d.ts`, without what is marked
+  `@internal`,
   `consumer/usage.ts` is type-checked against it and publint checks the manifest. A test keeps
   the manifest's Three.js and mediabunny versions those of the adapters. ADR 0020.
 

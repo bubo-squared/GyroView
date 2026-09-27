@@ -1,4 +1,4 @@
-import { Deferred, messageOf, type StabilizationMode, type ViewMode } from '@gyroview/core';
+import { messageOf, type StabilizationMode, type ViewMode } from '@gyroview/core';
 
 import {
   OBSERVED_ATTRIBUTES,
@@ -6,14 +6,9 @@ import {
   SourceAttribute,
   ViewAttribute,
 } from './attributeNames';
-import {
-  GAIN_MATCH,
-  PRELOAD,
-  shouldPreload,
-  unreadableAngleWarning,
-  viewAfterAttribute,
-} from './attributes';
-import { elementSourceOf, type FileSource } from './elementSource';
+import { GAIN_MATCH, PRELOAD, unreadableAngleWarning, viewAfterAttribute } from './attributes';
+import { ElementLoads } from './ElementLoads';
+import type { FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
 import { IdleWatcher } from './IdleWatcher';
 import { applyPlaybackAttribute } from './playbackAttributes';
@@ -98,26 +93,12 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
    * Properties the page set before the element was defined, kept until it is connected.
    */
   private readonly earlyProperties: Map<string, unknown>;
-  /**
-   * A seek asked for with the attributes set just now, where the recording they load starts.
-   */
-  private startTime: number | undefined;
   private readonly player: Player;
+  private readonly loads: ElementLoads;
   private readonly wording = new Wording();
   private readonly fullscreen = new FullscreenToggle(this);
   private readonly idle: IdleWatcher;
   private readonly posterImage: HTMLImageElement;
-  private scheduledLoad: Promise<void> | undefined;
-  /**
-   * The recording the attributes name is still to be loaded once connected: at first, after a
-   * removal let it go, and after a change of source while out of the document.
-   */
-  private isLoadOwed = true;
-  /**
-   * A `load()` asked for out of the document, settled by the load the connection starts.
-   */
-  private awaitedLoad: Deferred<void> | undefined;
-  private files: FileSource | undefined;
 
   public constructor() {
     super();
@@ -132,6 +113,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     const audio = queryShadow(shadow, 'audio', HTMLAudioElement);
     this.posterImage = queryShadow(shadow, '.poster', HTMLImageElement);
     this.player = createBrowserPlayer({ canvas, audio });
+    this.loads = new ElementLoads(this, this.player);
     defineLiveSettings(this, this.player);
     const host = this.controlsHost();
     bindControlsBar(shadow, host);
@@ -209,14 +191,12 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     applyEarlyProperties(this, this.earlyProperties, this.warn);
     this.dataset['status'] = this.player.status;
     this.idle.start();
-    if (this.isLoadOwed) this.scheduleLoad();
-    void this.awaitedLoad?.follow(this.scheduledLoad ?? Promise.resolve());
-    this.awaitedLoad = undefined;
+    this.loads.connected();
   }
 
   public disconnectedCallback(): void {
     this.idle.stop();
-    void this.releaseUnlessMoved();
+    void this.loads.disconnected();
   }
 
   public attributeChangedCallback(
@@ -225,8 +205,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     value: string | null,
   ): void {
     if (SOURCE_ATTRIBUTES.includes(name)) {
-      this.files = undefined;
-      this.scheduleLoad();
+      this.loads.sourceChanged();
     } else if (VIEW_ATTRIBUTES.includes(name)) {
       this.player.setView(viewAfterAttribute(this.player.view, name, value));
       const warning = unreadableAngleWarning(name, value);
@@ -242,11 +221,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
    * for; rejects when the browser refuses to start.
    */
   public async play(): Promise<void> {
-    try {
-      await this.scheduledLoad;
-    } catch {
-      // Dispatched as an `error` event already; the player's play rejects with it below.
-    }
+    await this.loads.settled();
     await this.player.play();
   }
 
@@ -269,8 +244,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
    */
   public seek(time: number): void {
     ensureFinite(time, 'time');
-    if (this.scheduledLoad) this.startTime = time;
-    else this.player.seek(time);
+    this.loads.seek(time);
   }
 
   /**
@@ -333,15 +307,14 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
    * ready; rejects with the failure, which is dispatched as an `error` event too.
    */
   public load(): Promise<void> {
-    return this.isConnected ? (this.scheduledLoad ?? this.reload()) : this.loadOnConnection();
+    return this.loads.load();
   }
 
   /**
    * Plays local files instead of the `src` attributes, until `src` or `src2` change.
    */
   public loadFiles(files: FileSource): void {
-    this.files = files;
-    this.scheduleLoad();
+    this.loads.loadFiles(files);
   }
 
   /**
@@ -391,73 +364,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     });
   };
 
-  /**
-   * The load the element starts when it is next connected, owed until then: only a connected
-   * element can let its recording go again.
-   */
-  private loadOnConnection(): Promise<void> {
-    this.isLoadOwed = true;
-    this.awaitedLoad ??= new Deferred<void>();
-    return this.awaitedLoad.promise;
-  }
-
-  /**
-   * A move within the document disconnects and connects again at once: only an element still out
-   * of it a microtask later lets its recording go.
-   */
-  private async releaseUnlessMoved(): Promise<void> {
-    await Promise.resolve();
-    if (this.isConnected) return;
-    this.player.unload();
-    this.isLoadOwed = true;
-  }
-
-  private scheduleLoad(): void {
-    this.isLoadOwed = !this.isConnected;
-    if (this.scheduledLoad || !this.isConnected) return;
-    const scheduled = this.loadAfterPendingChanges();
-    this.scheduledLoad = scheduled;
-    void scheduled.catch(ignoreReportedFailure);
-  }
-
-  /**
-   * Attribute changes arrive one at a time; a microtask later they are read together, so a `src`
-   * set with its `src2` loads once.
-   */
-  private async loadAfterPendingChanges(): Promise<void> {
-    await Promise.resolve();
-    this.scheduledLoad = undefined;
-    if (this.isConnected) await this.reload();
-  }
-
-  private reload(): Promise<void> {
-    this.isLoadOwed = false;
-    const read = (attribute: string): string | null => this.getAttribute(attribute);
-    const source = elementSourceOf(read, document.baseURI, this.files);
-    delete this.dataset['hasFrame'];
-    const startTime = this.startTime;
-    this.startTime = undefined;
-    if (!source) {
-      this.player.unload();
-      return Promise.resolve();
-    }
-    const loading = this.player.load(source, {
-      autoplay: this.autoplay,
-      preload: shouldPreload(read(PlaybackAttribute.Preload)),
-    });
-    // The player is loading now, so it starts the recording there; a later seek replaces it.
-    if (startTime !== undefined) this.player.seek(startTime);
-    return loading;
-  }
-
   private readonly warn = (warning: PlayerWarning): void => {
     this.dispatchEvent(new CustomEvent('warning', { detail: warning, composed: true }));
   };
-}
-
-/**
- * A failed load has already been dispatched as an `error` event; the promise adds nothing.
- */
-function ignoreReportedFailure(): void {
-  // Intentionally empty.
 }

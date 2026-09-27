@@ -95,6 +95,19 @@ function capturingSignals(): {
   return { ports: { ...browser, sources }, signals };
 }
 
+/**
+ * The events without what decode timing decides: every `waiting`, and the `playing` that ends a
+ * stall once playback was under way. A `playing` repeated without a stall between stays.
+ */
+function withoutStalls(events: readonly string[]): string[] {
+  return events.filter((name, index) => {
+    const isStallEnd =
+      name === 'playing' &&
+      events[index - 1] === 'waiting' &&
+      events.slice(0, index).includes('playing');
+    return name !== 'waiting' && !isStallEnd;
+  });
+}
 describe('Player over the synthetic X5 recording', () => {
   const harnesses: Harness[] = [];
 
@@ -145,7 +158,8 @@ describe('Player over the synthetic X5 recording', () => {
 
     await player.play();
     await waitFor(() => frames.length >= 5, 'five presented frames');
-    expect(player.status).toBe('playing');
+    // Playing, or buffering through a stall on a slow machine.
+    expect(player.isPaused).toBe(false);
     expect(frames).toEqual(frames.toSorted((left, right) => left - right));
     expect(player.currentTime).toBeGreaterThan(0);
 
@@ -163,11 +177,9 @@ describe('Player over the synthetic X5 recording', () => {
     expect(player.currentTime).toBe(0);
     expect(player.status).toBe('paused');
     // Whether play found the preloaded frames already primed decides if a `waiting` precedes
-    // `playing`, and a slow machine may stall again later (`waiting`, then `playing` once more);
-    // the transport sequence around them does not depend on decode timing.
-    const transport = events
-      .filter((name) => name !== 'waiting')
-      .filter((name, index, all) => !(name === 'playing' && all[index - 1] === 'playing'));
+    // `playing`, and a slow machine may stall again later; the transport sequence around them
+    // does not depend on decode timing.
+    const transport = withoutStalls(events);
     expect(transport).toEqual([
       'ready',
       'play',

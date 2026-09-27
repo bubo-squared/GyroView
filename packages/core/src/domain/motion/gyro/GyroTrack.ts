@@ -20,7 +20,9 @@ export interface GyroSample {
 
 /**
  * Structure-of-arrays storage for a whole recording's IMU samples (a 4-minute X5 clip has a
- * quarter of a million), with a per-sample view for callers that prefer objects.
+ * quarter of a million), with a per-sample view for callers that prefer objects. Its times never
+ * go back: the orientation lookup searches them and the estimation windows measure them, so
+ * recorded stamps come through {@link repairedTimeline}.
  */
 export class GyroTrack {
   public constructor(
@@ -33,6 +35,7 @@ export class GyroTrack {
       accelerationStore.length === expected && angularVelocityStore.length === expected,
       'gyro track arrays disagree on the sample count',
     );
+    ensureInvariant(isNonDecreasing(captureTimeStore), 'gyro sample times go back');
   }
 
   public get length(): number {
@@ -69,4 +72,8 @@ export class GyroTrack {
   private vectorAt(store: Float32Array, base: number): Vector3 {
     return [store[base] ?? NaN, store[base + 1] ?? NaN, store[base + 2] ?? NaN];
   }
+}
+
+function isNonDecreasing(times: Float64Array): boolean {
+  return times.every((time, index) => index === 0 || time >= (times[index - 1] ?? time));
 }

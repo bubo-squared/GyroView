@@ -6,6 +6,7 @@ import { ByteReader } from '../../../../shared/binary/ByteReader';
 import { GyroViewError, hasErrorCode } from '../../../../shared/errors/GyroViewError';
 import { VECTOR3_COMPONENTS, type Vector3 } from '../../../../shared/math/Vector3';
 import { GyroTrack, type GyroSample } from '../../../motion/gyro/GyroTrack';
+import { repairedTimeline } from '../../../motion/gyro/repairedTimeline';
 import type { SensorRanges } from '../../info/RecordingInfo';
 
 /**
@@ -77,7 +78,8 @@ export function selectGyroSampleLayout(
  * Decodes the gyro record payload into a {@link GyroTrack} with the given layout. Whole samples
  * only: a partial sample at the end is tolerated and reported, never rejected. So is a sample
  * whose bytes cannot be a reading (a stamp past the safe integers, a value no camera measures,
- * as a flipped bit leaves): each sample carries its own time, so the others still count.
+ * as a flipped bit leaves): each sample carries its own time, so the others still count. Stamps
+ * that stray from their neighbours are mended (see {@link repairedTimeline}).
  */
 export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): ParsedGyroRecord {
   const count = Math.floor(payload.byteLength / layout.sampleSize);
@@ -145,7 +147,7 @@ class SampleColumns {
   public toTrack(): GyroTrack {
     const vectors = this.length * VECTOR3_COMPONENTS;
     return new GyroTrack(
-      this.captureTimes.subarray(0, this.length),
+      repairedTimeline(this.captureTimes.subarray(0, this.length)),
       this.accelerations.subarray(0, vectors),
       this.angularVelocities.subarray(0, vectors),
     );

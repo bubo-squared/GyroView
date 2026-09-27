@@ -5,6 +5,7 @@ import { IDENTITY_QUATERNION, rotateVector } from '../../../shared/math/Quaterni
 import type { Vector3 } from '../../../shared/math/Vector3';
 import { seconds } from '../../../shared/units/time';
 import { GyroTrack } from '../gyro/GyroTrack';
+import { repairedTimeline } from '../gyro/repairedTimeline';
 import { ALIGNED_IMU_FRAME } from '../imu/ImuFrame';
 import { captureError } from '../../../../test/support/errors';
 import {
@@ -45,14 +46,15 @@ function atRest(): { acceleration: Vector3; angularVelocity: Vector3 } {
 }
 
 /**
- * Four seconds of a quarter turn per second about the vertical, one sample optionally stamped
- * `offset` seconds off where it belongs.
+ * Four seconds of a quarter turn per second about the vertical, as recorded: the samples at
+ * `strays` stamped `offset` seconds off where they belong, the timeline then mended as the
+ * parser mends it.
  */
-function turningWithGlitch(glitch?: { index: number; offset: number }): OrientationTrack {
+function turningWithStrays(strays: readonly number[] = [], offset = 0): OrientationTrack {
   const count = 4 * RATE_HZ;
-  const captureTimes = Float64Array.from({ length: count }, (_unused, index) => {
-    const offset = index === glitch?.index ? glitch.offset : 0;
-    return SYNTHETIC_CLOCK.captureTimeOf(seconds(index / RATE_HZ + offset));
+  const recorded = Float64Array.from({ length: count }, (_unused, index) => {
+    const stray = strays.includes(index) ? offset : 0;
+    return SYNTHETIC_CLOCK.captureTimeOf(seconds(index / RATE_HZ + stray));
   });
   const accelerations = new Float32Array(count * 3);
   const angularVelocities = new Float32Array(count * 3);
@@ -60,9 +62,8 @@ function turningWithGlitch(glitch?: { index: number; offset: number }): Orientat
     accelerations.set(RESTING_UPRIGHT, index * 3);
     angularVelocities.set([0, QUARTER_TURN_PER_SECOND, 0], index * 3);
   }
-  return integrate(new GyroTrack(captureTimes, accelerations, angularVelocities), {
-    gravityGain: 0,
-  });
+  const gyro = new GyroTrack(repairedTimeline(recorded), accelerations, angularVelocities);
+  return integrate(gyro, { gravityGain: 0 });
 }
 
 function expectVector(actual: Vector3, expected: Vector3, digits: number): void {
@@ -172,13 +173,16 @@ describe('OrientationTrack', () => {
     expect(turned).toBeGreaterThan(0.05);
   });
 
-  it('keeps its course through a sample stamped far off its neighbours', () => {
-    const clean = turningWithGlitch();
+  it.each([
+    ['the first sample', [0]],
+    ['the middle sample, where a lookup starts searching', [2 * RATE_HZ]],
+    ['a pair of samples', [2 * RATE_HZ, 2 * RATE_HZ + 1]],
+  ])('keeps its course through %s stamped far off', (_where, strays) => {
+    const clean = turningWithStrays();
     for (const offset of [5, -5]) {
-      // The middle sample is where a lookup starts searching: the worst place for a glitch.
-      const glitched = turningWithGlitch({ index: 2 * RATE_HZ, offset });
+      const mended = turningWithStrays(strays, offset);
       for (let time = 0; time < 4; time += 0.1) {
-        expectVector(forwardAt(glitched, time), forwardAt(clean, time), 2);
+        expectVector(forwardAt(mended, time), forwardAt(clean, time), 2);
       }
     }
   });

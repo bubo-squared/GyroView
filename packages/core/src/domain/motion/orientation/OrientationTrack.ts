@@ -168,26 +168,13 @@ interface TimedSample {
 }
 
 /**
- * The samples' video times, never going back, so the lookup's binary search holds: a sample
- * stamped off both its neighbours (a clock glitch, a flipped bit) takes the time between them,
- * and one still behind its predecessor is held at it. A run of glitched samples holds the time
- * where the run began.
+ * The samples' video times, never going back as the track's capture times never do, so the
+ * lookup's binary search holds.
  */
 function sampleVideoTimes(gyro: GyroTrack, clock: CaptureClock): Float64Array {
-  const times = Float64Array.from({ length: gyro.length }, (_unused, index) =>
+  return Float64Array.from({ length: gyro.length }, (_unused, index) =>
     clock.gyroVideoTimeOf(gyro.sampleAt(index).captureTime),
   );
-  for (let index = 1; index < times.length; index += 1) times[index] = restamped(times, index);
-  return times;
-}
-
-function restamped(times: Float64Array, index: number): number {
-  const previous = times[index - 1] ?? -Infinity;
-  const current = times[index] ?? previous;
-  const next = times[index + 1];
-  const isOffItsNeighbours =
-    next !== undefined && next >= previous && (current < previous || current > next);
-  return isOffItsNeighbours ? (previous + next) / 2 : Math.max(current, previous);
 }
 
 function finiteSample(gyro: GyroTrack, index: number): GyroSample {

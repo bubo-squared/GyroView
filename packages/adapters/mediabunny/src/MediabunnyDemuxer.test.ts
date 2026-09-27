@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { DemuxedInput } from '@gyroview/core';
+import { GyroViewError, type DemuxedInput } from '@gyroview/core';
 import { describeDemuxerContract, InMemoryRandomAccessSource } from '@gyroview/core/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -38,6 +38,15 @@ describe('MediabunnyDemuxer on the synthetic dual-track fixture', () => {
     await expect(new MediabunnyDemuxer().open(aborting, 'aborted.insv')).rejects.toMatchObject({
       name: 'AbortError',
     });
+  });
+
+  it("passes the source's own typed failure on as it is", async () => {
+    const unreadable = new GyroViewError('source-unreadable', 'the network went away');
+    const failing = {
+      size: (): Promise<number> => Promise.resolve(1_000_000),
+      read: (): Promise<Uint8Array> => Promise.reject(unreadable),
+    };
+    await expect(new MediabunnyDemuxer().open(failing, 'failing.insv')).rejects.toBe(unreadable);
   });
 
   it('describes both video tracks and the duration', () => {

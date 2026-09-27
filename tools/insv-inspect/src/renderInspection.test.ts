@@ -102,8 +102,13 @@ describe('renderInspection', () => {
   });
 
   it('says so when gyro or exposure are missing', () => {
-    const unreadable = renderInspection({ ...inspection, gyro: { unreadable: 'no layout fits' } });
+    const unreadable = renderInspection({
+      ...inspection,
+      gyro: { unreadable: 'no layout fits' },
+      exposure: { unread: 'gyro layout unknown' },
+    });
     expect(unreadable).toContain('Gyro: unreadable (no layout fits)');
+    expect(unreadable).toContain('Exposure: not read (gyro layout unknown)');
     const bare = renderInspection({ ...inspection, gyro: undefined, exposure: undefined });
     expect(bare).toContain('Gyro: none');
     expect(bare).toContain('Exposure: none');

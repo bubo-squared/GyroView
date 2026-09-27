@@ -15,7 +15,7 @@ import {
 
 import type {
   CalibrationSummary,
-  DamagedExposure,
+  ExposureReport,
   ExposureSummary,
   GyroSummary,
   Inspection,
@@ -143,18 +143,19 @@ async function gyroOf(recording: Recording): Promise<GyroSummary | UnreadableGyr
 }
 
 /**
- * The exposure summary; damaged when the trailer lists a record that did not parse, and nothing
- * where the gyro layout cannot be told (the stamps are in its unit; the gyro line says why).
+ * The exposure summary; damaged when the trailer lists a record that did not parse, and not read
+ * where the gyro layout cannot be told (its stamps are in the gyro's unit).
  */
 async function exposureOf(
   recording: Recording,
   gyro: GyroSummary | UnreadableGyro | undefined,
-): Promise<ExposureSummary | DamagedExposure | undefined> {
-  if (gyro !== undefined && 'unreadable' in gyro) return undefined;
+): Promise<ExposureReport | undefined> {
+  if (!recording.listsExposureRecord) return undefined;
+  if (gyro !== undefined && 'unreadable' in gyro) return { unread: 'gyro layout unknown' };
   const exposure = await recording.readExposureRecord();
-  if (exposure)
-    return summarizeExposure(exposure, await firstEncodedFrameEntry(exposure, recording));
-  return recording.listsExposureRecord ? { damaged: true } : undefined;
+  return exposure
+    ? summarizeExposure(exposure, await firstEncodedFrameEntry(exposure, recording))
+    : { damaged: true };
 }
 
 /**

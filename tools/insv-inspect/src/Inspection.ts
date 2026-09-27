@@ -67,6 +67,13 @@ export interface DamagedExposure {
   readonly damaged: true;
 }
 
+/**
+ * An exposure record the trailer lists that was not read, and why.
+ */
+export interface UnreadExposure {
+  readonly unread: string;
+}
+
 export interface ExposureSummary {
   readonly entries: number;
   readonly firstCaptureTimeUs: number;
@@ -77,6 +84,8 @@ export interface ExposureSummary {
    */
   readonly firstEncodedFrameEntry: number | undefined;
 }
+
+export type ExposureReport = ExposureSummary | DamagedExposure | UnreadExposure;
 
 export interface Inspection {
   readonly file: string;
@@ -96,5 +105,5 @@ export interface Inspection {
    */
   readonly calibrationWarnings: readonly string[];
   readonly gyro: GyroSummary | UnreadableGyro | undefined;
-  readonly exposure: ExposureSummary | DamagedExposure | undefined;
+  readonly exposure: ExposureReport | undefined;
 }

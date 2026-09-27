@@ -1,6 +1,6 @@
 import { secondsToMilliseconds, type Seconds } from '@gyroview/core';
 
-import type { Inspection, LensSummary } from './Inspection';
+import type { ExposureSummary, Inspection, LensSummary } from './Inspection';
 
 const DECIMALS = 3;
 const TRANSLATION_DECIMALS = 6;
@@ -102,12 +102,19 @@ function renderGyro(inspection: Inspection): string {
 
 function renderExposure(inspection: Inspection): string {
   const { exposure } = inspection;
-  if (exposure !== undefined && 'damaged' in exposure) return 'Exposure: damaged, left out';
-  return exposure === undefined
-    ? 'Exposure: none'
-    : `Exposure: ${exposure.entries.toLocaleString('en-US')} entries from ${exposure.firstCaptureTimeUs} to ${exposure.lastCaptureTimeUs} us, ` +
-        `mean shutter 1/${Math.round(1 / exposure.meanShutterTimeSeconds)} s, ` +
-        `first encoded frame at entry ${show(exposure.firstEncodedFrameEntry)}`;
+  if (exposure === undefined) return 'Exposure: none';
+  if ('damaged' in exposure) return 'Exposure: damaged, left out';
+  return 'unread' in exposure
+    ? `Exposure: not read (${exposure.unread})`
+    : renderExposureSummary(exposure);
+}
+
+function renderExposureSummary(exposure: ExposureSummary): string {
+  return (
+    `Exposure: ${exposure.entries.toLocaleString('en-US')} entries from ${exposure.firstCaptureTimeUs} to ${exposure.lastCaptureTimeUs} us, ` +
+    `mean shutter 1/${Math.round(1 / exposure.meanShutterTimeSeconds)} s, ` +
+    `first encoded frame at entry ${show(exposure.firstEncodedFrameEntry)}`
+  );
 }
 
 function show(value: string | number | boolean | undefined): string {

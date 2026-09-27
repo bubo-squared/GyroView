@@ -420,7 +420,6 @@ export class PlaybackSession<Handle = unknown> {
    */
   private startRun(from: Seconds): void {
     this.abortRun();
-    this.clockWatch.forgetTicks();
     this.run = DecodeRun.start(this.parts, from, {
       onProgress: (): void => {
         this.resumeIfPrimed();

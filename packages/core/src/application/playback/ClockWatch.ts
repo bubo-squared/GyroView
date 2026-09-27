@@ -37,13 +37,6 @@ export class ClockWatch {
   }
 
   /**
-   * A new run starts a new timeline, on which no tick has been seen yet.
-   */
-  public forgetTicks(): void {
-    this.previousPlayingTick = undefined;
-  }
-
-  /**
    * Whether the clock is not where it was last seen or put: moved back while playing, or moved at
    * all while standing still. Notes where it is now.
    */

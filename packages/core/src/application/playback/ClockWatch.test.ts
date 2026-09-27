@@ -24,7 +24,5 @@ describe('ClockWatch', () => {
     expect(watch.wereTicksMissed(seconds(2), true)).toBe(true);
     expect(watch.wereTicksMissed(seconds(5), false)).toBe(false);
     expect(watch.wereTicksMissed(seconds(9), true)).toBe(false);
-    watch.forgetTicks();
-    expect(watch.wereTicksMissed(seconds(20), true)).toBe(false);
   });
 });

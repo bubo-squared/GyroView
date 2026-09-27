@@ -123,7 +123,7 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
     const broken: AudioSegmentSource = {
       mimeType: source.mimeType,
       duration: source.duration,
-      // eslint-disable-next-line @typescript-eslint/require-await -- an async generator that fails at once
+      // eslint-disable-next-line @typescript-eslint/require-await -- it fails at once
       async *segmentsFrom(): AsyncGenerator<Uint8Array<ArrayBuffer>> {
         throw new GyroViewError('source-unreadable', 'audio range request failed');
       },

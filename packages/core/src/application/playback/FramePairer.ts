@@ -4,9 +4,9 @@ import { ensureIndexInRange } from '../../shared/errors/GyroViewError';
 import { seconds, type Seconds } from '../../shared/units/time';
 
 /**
- * Buffers decoded frames per frame source and emits a {@link FramePair} as soon as every source has a frame
- * for the same instant. The tracks of one recording share the camera clock, so their timestamps
- * agree exactly; the tolerance only absorbs floating-point conversion noise.
+ * Buffers decoded frames per frame source and emits a {@link FramePair} as soon as every source has
+ * a frame for the same instant. The tracks of one recording share the camera clock, so their
+ * timestamps agree exactly; the tolerance only absorbs floating-point conversion noise.
  */
 export class FramePairer<Handle = unknown> {
   private readonly queues: DecodedFrame<Handle>[][];

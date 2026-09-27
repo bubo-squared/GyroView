@@ -87,10 +87,10 @@ export function selectGyroSampleLayout(
 
 /**
  * Decodes the gyro record payload into a {@link GyroTrack} with the given layout. Whole samples
- * only: a partial sample at the end is tolerated and reported, never rejected. So is a sample
- * whose bytes cannot be a reading (a stamp past the safe integers, a value no camera measures, a
- * component a flipped bit moved): each sample carries its own time, so the others still count. Stamps
- * that stray from their neighbours are mended (see {@link repairedTimeline}).
+ * only: a partial sample at the end is tolerated and reported, never rejected. So is a sample whose
+ * bytes cannot be a reading (a stamp past the safe integers, a value no camera measures, a
+ * component a flipped bit moved): each sample carries its own time, so the others still count.
+ * Stamps that stray from their neighbours are mended (see {@link repairedTimeline}).
  */
 export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): ParsedGyroRecord {
   const count = Math.floor(payload.byteLength / layout.sampleSize);

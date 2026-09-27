@@ -20,8 +20,8 @@ const LAYOUTS: readonly CalibrationStringLayout[] = [
 ];
 
 /**
- * Parses `offset`, `offset_v2` and `offset_v3` strings into a calibration set with its version. The layout
- * is detected from the token count; the v6 layout (13 distortion coefficients per lens) is
+ * Parses `offset`, `offset_v2` and `offset_v3` strings into a calibration set with its version. The
+ * layout is detected from the token count; the v6 layout (13 distortion coefficients per lens) is
  * recognised and rejected explicitly.
  */
 export function parseOffsetString(text: string): VersionedCalibration {

@@ -16,8 +16,9 @@ const HTTP_METHOD_NOT_ALLOWED = 405;
 const REFUSED_HEAD: ReadonlySet<number> = new Set([HTTP_METHOD_NOT_ALLOWED, HTTP_FORBIDDEN]);
 
 /**
- * ResourceLocator over HTTP: one HEAD request, or a one-byte GET when the server refuses HEAD. Every failure, including a missing CORS header, means "not available"; the file looked
- * for is optional, so nothing here throws, and no request is spent explaining a failure.
+ * ResourceLocator over HTTP: one HEAD request, or a one-byte GET when the server refuses HEAD.
+ * Every failure, including a missing CORS header, means "not available"; the file looked for is
+ * optional, so nothing here throws, and no request is spent explaining a failure.
  */
 export class HttpResourceLocator implements ResourceLocator {
   public constructor(private readonly options: HttpRequestOptions = {}) {}

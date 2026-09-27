@@ -24,6 +24,26 @@ describes the components layer by layer:
 - `tools/*`: developer CLIs (`insv-inspect`), the fixture builder (`fixtures`) and the
   end-to-end tests over the real recordings (`integration`).
 
+## Releasing the npm package
+
+`.github/workflows/release.yml` publishes `apps/library` to npm as `gyroview` when a version tag
+is pushed:
+
+1. Set the new version in `apps/library/package.json` (semantic versioning, 0.x while the API
+   settles) and commit it.
+2. Tag that commit `v<version>` and push the tag (`git push origin v<version>`). The workflow
+   checks that the tag names the version, runs `pnpm verify` and publishes with provenance.
+
+Once, for the first version: npm trusts a workflow only for a package that already exists.
+
+1. Publish the first version by hand: `npm login`, `pnpm --filter gyroview build`, then in
+   `apps/library` `pnpm pack` and `npm publish gyroview-<version>.tgz --access public`.
+2. On npmjs.com, in the package's settings, add a trusted publisher: GitHub Actions, owner
+   `pericamilosevic`, repository `GyroView`, workflow `release.yml`.
+
+Releases after it go through the workflow; the tag of the version published by hand needs no
+push.
+
 ## Definition of done for a change
 
 1. Tests came first for parsers, models and use cases; every behaviour has a test named as a sentence.

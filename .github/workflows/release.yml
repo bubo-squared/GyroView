@@ -1,0 +1,42 @@
+name: Release
+
+# Publishes the npm package `gyroview` when a tag `v<version>` is pushed. npm trusts this workflow
+# (trusted publishing): no token is stored, and every version carries a provenance statement
+# linking it to the commit and the run that built it. CONTRIBUTING.md has the steps.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Verify and publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - name: Check that the tag names the package's version
+        run: |
+          version="v$(node -p "require('./apps/library/package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$version" ]; then
+            echo "The tag $GITHUB_REF_NAME does not name the package's version $version."
+            exit 1
+          fi
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @gyroview/adapter-webcodecs exec playwright install --with-deps chromium webkit
+      - run: pnpm verify
+      - name: Pack
+        working-directory: apps/library
+        run: pnpm pack --pack-destination "$RUNNER_TEMP"
+      - name: Publish
+        run: npm publish "$RUNNER_TEMP"/gyroview-*.tgz --access public

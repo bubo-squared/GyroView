@@ -82,6 +82,24 @@ class UnreadableTrack extends FakeVideoTrack {
   }
 }
 
+/**
+ * A track that counts its key frame reads, each answered once its gate opens, as over a slow link.
+ */
+class GatedTrack extends FakeVideoTrack {
+  public readonly keyFrameGate = new Deferred<void>();
+  public keyFrameReads = 0;
+
+  public override async firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
+    this.keyFrameReads += 1;
+    await this.keyFrameGate.promise;
+    return super.firstKeyPacket();
+  }
+}
+
+function gatedTrack(): GatedTrack {
+  return new GatedTrack({ trackIndex: 0, frameRate: 30, frameCount: 30, framesPerGop: 30 });
+}
+
 class RefusingPort implements VideoDecoderPort<never> {
   public constructor(private readonly error: Error) {}
 
@@ -249,12 +267,33 @@ describe('probeDecoding', () => {
 
   it('reads no key frame and opens no decoder once the deadline passed while support was asked', async () => {
     const port = new SlowSupportPort();
+    const track = gatedTrack();
+    track.keyFrameGate.resolve();
     const deadline = new Signal();
-    const pending = probeDecoding(tracks([30]), port, deadline);
+    const pending = probeDecoding([track], port, deadline);
     deadline.trigger();
     const report = await pending;
     expect(report.sources[0]?.verdict).toBe('timed-out');
     port.gate.resolve();
+    await settle();
+    expect(track.keyFrameReads).toBe(0);
+    expect(port.decoders).toEqual([]);
+  });
+
+  it('reports a key frame the deadline passed while it was read as late, and opens no decoder for it', async () => {
+    const port = new StalledPort();
+    const track = gatedTrack();
+    const deadline = new Signal();
+    const pending = probeDecoding([track], port, deadline);
+    await settle();
+    expect(track.keyFrameReads).toBe(1);
+    deadline.trigger();
+    const report = await pending;
+    expect(report.sources[0]).toMatchObject({
+      verdict: 'key-frame-late',
+      detail: 'the first key frame did not arrive before the deadline',
+    });
+    track.keyFrameGate.resolve();
     await settle();
     expect(port.decoders).toEqual([]);
   });

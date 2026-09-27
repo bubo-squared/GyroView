@@ -7,7 +7,12 @@ import type { Signal } from '../../shared/async/Signal';
 import { hasErrorCode, messageOf } from '../../shared/errors/GyroViewError';
 
 export type ProbeVerdict =
-  'decodes' | 'unsupported-configuration' | 'no-key-frame' | 'decode-failed' | 'timed-out';
+  | 'decodes'
+  | 'unsupported-configuration'
+  | 'no-key-frame'
+  | 'key-frame-late'
+  | 'decode-failed'
+  | 'timed-out';
 
 export interface SourceProbeResult {
   readonly track: VideoTrackDescription;
@@ -38,6 +43,10 @@ const TIMED_OUT: Outcome = {
   verdict: 'timed-out',
   detail: 'the decoder produced no picture before the deadline',
 };
+const KEY_FRAME_LATE: Outcome = {
+  verdict: 'key-frame-late',
+  detail: 'the first key frame did not arrive before the deadline',
+};
 
 /**
  * Use case: find out before playback whether this platform decodes the recording, by decoding
@@ -67,16 +76,19 @@ async function probeFrameSource<Handle>(
   deadline: Signal,
 ): Promise<SourceProbeResult> {
   try {
-    const outcome = await Promise.race([probe.run(), afterDeadline(deadline)]);
+    const outcome = await Promise.race([probe.run(), afterDeadline(deadline, probe)]);
     return { track: probe.track.description, ...outcome };
   } finally {
     probe.close();
   }
 }
 
-async function afterDeadline(deadline: Signal): Promise<Outcome> {
+async function afterDeadline<Handle>(
+  deadline: Signal,
+  probe: SourceProbe<Handle>,
+): Promise<Outcome> {
   await deadline.promise;
-  return TIMED_OUT;
+  return probe.outcomeAtDeadline;
 }
 
 /**
@@ -85,11 +97,20 @@ async function afterDeadline(deadline: Signal): Promise<Outcome> {
 class SourceProbe<Handle> {
   private decoder: VideoDecoderHandle | undefined;
   private isClosed = false;
+  private isReadingKeyFrame = false;
 
   public constructor(
     public readonly track: VideoTrackReader,
     private readonly decoderPort: VideoDecoderPort<Handle>,
   ) {}
+
+  /**
+   * What a deadline passing now says: the network did not bring the key frame in time, or the
+   * platform did not answer or decode it in time.
+   */
+  public get outcomeAtDeadline(): Outcome {
+    return this.isReadingKeyFrame ? KEY_FRAME_LATE : TIMED_OUT;
+  }
 
   /**
    * The decoder's answers make the verdict; a failure to read the track rejects as it is, since
@@ -100,7 +121,9 @@ class SourceProbe<Handle> {
     const configuration = await this.track.decoderConfiguration();
     if (!(await this.decoderPort.isSupported(configuration))) return unsupported(configuration);
     if (this.isClosed) return TIMED_OUT;
+    this.isReadingKeyFrame = true;
     const keyPacket = await this.track.firstKeyPacket();
+    this.isReadingKeyFrame = false;
     return keyPacket ? await this.decodeFirst(configuration, keyPacket) : NO_KEY_FRAME;
   }
 
@@ -114,28 +137,25 @@ class SourceProbe<Handle> {
     configuration: VideoDecoderConfiguration,
     keyPacket: EncodedVideoPacket,
   ): Promise<Outcome> {
+    if (this.isClosed) return TIMED_OUT;
     const first = new Deferred<Outcome>();
     const decoder = await this.openDecoder(configuration, first);
     if (decoder === undefined) return first.promise;
-    if (this.isClosed) {
-      decoder.close();
-      return TIMED_OUT;
-    }
     this.decoder = decoder;
     void this.decodeInto(decoder, keyPacket, first);
     return first.promise;
   }
 
   /**
-   * A decoder that reports into `first`; undefined when the port refuses one, the refusal
-   * reported there.
+   * A decoder that reports into `first`; undefined, the outcome reported there, when the port
+   * refuses one or the probe was closed while it was being made.
    */
   private async openDecoder(
     configuration: VideoDecoderConfiguration,
     first: Deferred<Outcome>,
   ): Promise<VideoDecoderHandle | undefined> {
     try {
-      return await this.decoderPort.create(configuration, {
+      const decoder = await this.decoderPort.create(configuration, {
         onFrame: (frame): void => {
           frame.close();
           first.resolve(DECODES);
@@ -144,10 +164,13 @@ class SourceProbe<Handle> {
           first.resolve(failedWith(error));
         },
       });
+      if (!this.isClosed) return decoder;
+      decoder.close();
+      first.resolve(TIMED_OUT);
     } catch (error) {
       first.resolve(failedWith(error));
-      return undefined;
     }
+    return undefined;
   }
 
   /**

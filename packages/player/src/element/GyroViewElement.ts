@@ -75,6 +75,10 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   declare public muted: boolean;
   declare public loop: boolean;
   declare public volume: number;
+  /**
+   * A seek asked for with the attributes set just now, where the recording they load starts.
+   */
+  private startTime: Seconds | undefined;
   private readonly player: Player;
   private readonly fullscreen = new FullscreenToggle(this);
   private readonly idle: IdleWatcher;
@@ -206,7 +210,7 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
    * Seeks exactly to `time` seconds; right after a new `src`, the new recording starts there.
    */
   public seek(time: number): void {
-    if (this.scheduledLoad) void this.seekAfterScheduledLoad(seconds(time));
+    if (this.scheduledLoad) this.startTime = seconds(time);
     else this.player.seek(seconds(time));
   }
 
@@ -322,11 +326,6 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     });
   };
 
-  private async seekAfterScheduledLoad(time: Seconds): Promise<void> {
-    await this.scheduledLoadSettled();
-    this.player.seek(time);
-  }
-
   /**
    * Waits for the load the attributes set just now asked for, if any, however it ends: a
    * failure has been dispatched as an `error` event already.
@@ -353,21 +352,26 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   private async loadAfterPendingChanges(): Promise<void> {
     await Promise.resolve();
     this.scheduledLoad = undefined;
-    await this.reload();
+    if (this.isConnected) await this.reload();
   }
 
   private reload(): Promise<void> {
     const read = (attribute: string): string | null => this.getAttribute(attribute);
     const source = elementSourceOf(read, document.baseURI, this.files);
     delete this.dataset['hasFrame'];
+    const startTime = this.startTime;
+    this.startTime = undefined;
     if (!source) {
       this.player.unload();
       return Promise.resolve();
     }
-    return this.player.load(source, {
+    const loading = this.player.load(source, {
       autoplay: this.autoplay,
       preload: shouldPreload(read(PlaybackAttribute.Preload)),
     });
+    // The player is loading now, so it starts the recording there; a later seek replaces it.
+    if (startTime !== undefined) this.player.seek(startTime);
+    return loading;
   }
 
   /**

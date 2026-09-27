@@ -177,6 +177,31 @@ describe('<gyro-view>', () => {
     expect(element.currentTime).toBeGreaterThanOrEqual(1.5);
   });
 
+  it('autoplays a new src from a time set with it, without playing from the start first', async () => {
+    const element = create({ controls: '', autoplay: '' });
+    const heard: string[] = [];
+    for (const name of ['seeking', 'playing']) {
+      element.addEventListener(name, () => {
+        heard.push(name);
+      });
+    }
+    element.src = X5_RECORDING_URL;
+    element.currentTime = 1.5;
+    await waitFor(() => heard.includes('playing'), 'playback');
+    expect(heard[0]).toBe('seeking');
+    expect(element.currentTime).toBeGreaterThanOrEqual(1.5);
+  });
+
+  it('loads nothing once removed in the task that set its src', async () => {
+    const element = create({ controls: '' });
+    element.src = X5_RECORDING_URL;
+    const playing = element.play();
+    element.remove();
+    await playing;
+    expect(element.status).toBe('idle');
+    expect(element.paused).toBe(true);
+  });
+
   it('starts playing on its own once loaded when told to autoplay', async () => {
     const element = create({ controls: '', autoplay: '' });
     const playing = nextEvent(element, 'play');

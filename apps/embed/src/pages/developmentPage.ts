@@ -99,10 +99,13 @@ function bindDebugPanel(parts: DevelopmentPageParts): void {
   player.addEventListener('frame', () => {
     fps.record(performance.now());
   });
+  // A load's warnings come just before its ready: the list is cleared when the load begins.
+  player.addEventListener('statuschange', (event) => {
+    if (detailOf(event) === 'loading') parts.warnings.replaceChildren();
+  });
   player.addEventListener('ready', (event) => {
     const metadata = detailOf(event) as PlayerMetadata;
     parts.metadata.textContent = JSON.stringify(metadata, undefined, JSON_INDENT);
-    parts.warnings.replaceChildren();
   });
   player.addEventListener('warning', (event) => {
     appendLine(parts.warnings, `warning: ${detailOf(event) as string}`);

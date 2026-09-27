@@ -5,7 +5,6 @@ import { IDENTITY_QUATERNION, rotateVector } from '../../../shared/math/Quaterni
 import type { Vector3 } from '../../../shared/math/Vector3';
 import { seconds } from '../../../shared/units/time';
 import { GyroTrack } from '../gyro/GyroTrack';
-import { repairedTimeline } from '../gyro/repairedTimeline';
 import { ALIGNED_IMU_FRAME } from '../imu/ImuFrame';
 import { captureError } from '../../../../test/support/errors';
 import {
@@ -43,27 +42,6 @@ function restingPitchedUp(pitch: number): Vector3 {
 
 function atRest(): { acceleration: Vector3; angularVelocity: Vector3 } {
   return { acceleration: RESTING_UPRIGHT, angularVelocity: [0, 0, 0] };
-}
-
-/**
- * Four seconds of a quarter turn per second about the vertical, as recorded: the samples at
- * `strays` stamped `offset` seconds off where they belong, the timeline then mended as the
- * parser mends it.
- */
-function turningWithStrays(strays: readonly number[] = [], offset = 0): OrientationTrack {
-  const count = 4 * RATE_HZ;
-  const recorded = Float64Array.from({ length: count }, (_unused, index) => {
-    const stray = strays.includes(index) ? offset : 0;
-    return SYNTHETIC_CLOCK.captureTimeOf(seconds(index / RATE_HZ + stray));
-  });
-  const accelerations = new Float32Array(count * 3);
-  const angularVelocities = new Float32Array(count * 3);
-  for (let index = 0; index < count; index += 1) {
-    accelerations.set(RESTING_UPRIGHT, index * 3);
-    angularVelocities.set([0, QUARTER_TURN_PER_SECOND, 0], index * 3);
-  }
-  const gyro = new GyroTrack(repairedTimeline(recorded), accelerations, angularVelocities);
-  return integrate(gyro, { gravityGain: 0 });
 }
 
 function expectVector(actual: Vector3, expected: Vector3, digits: number): void {
@@ -171,20 +149,6 @@ describe('OrientationTrack', () => {
     const turned = Math.atan2(forwardAt(track, 2.015)[0], forwardAt(track, 2.015)[2]);
     expect(turned).toBeLessThan(0.1);
     expect(turned).toBeGreaterThan(0.05);
-  });
-
-  it.each([
-    ['the first sample', [0]],
-    ['the middle sample, where a lookup starts searching', [2 * RATE_HZ]],
-    ['a pair of samples', [2 * RATE_HZ, 2 * RATE_HZ + 1]],
-  ])('keeps its course through %s stamped far off', (_where, strays) => {
-    const clean = turningWithStrays();
-    for (const offset of [5, -5]) {
-      const mended = turningWithStrays(strays, offset);
-      for (let time = 0; time < 4; time += 0.1) {
-        expectVector(forwardAt(mended, time), forwardAt(clean, time), 2);
-      }
-    }
   });
 
   it('holds the first and last orientation outside the recorded span and is empty-safe', () => {

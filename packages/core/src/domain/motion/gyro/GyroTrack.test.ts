@@ -56,4 +56,12 @@ describe('GyroTrack', () => {
       code: 'invariant-violation',
     });
   });
+
+  it('refuses times that go back, which its readers search and measure', () => {
+    expect(
+      captureError(
+        () => new GyroTrack(Float64Array.from([2, 1]), new Float32Array(6), new Float32Array(6)),
+      ),
+    ).toMatchObject({ code: 'invariant-violation', message: 'gyro sample times go back' });
+  });
 });

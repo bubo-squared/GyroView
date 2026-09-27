@@ -1,6 +1,7 @@
 /**
- * How far a stamp may stray from its neighbourhood, in typical sample intervals, before it is
- * taken for a glitch: far beyond an IMU's jitter, far below what a flipped bit leaves.
+ * How far a stamp may stray from where its neighbours put it, in typical sample intervals,
+ * before it is taken for a glitch: far beyond an IMU's jitter, far below what a flipped bit
+ * leaves.
  */
 const STRAY_INTERVALS = 50;
 /**
@@ -11,33 +12,50 @@ const MIN_STRAY_TOLERANCE_US = 10_000;
  * How many leading intervals the typical interval is measured over.
  */
 const INTERVAL_PROBE = 1024;
-const NEIGHBOURS_EACH_SIDE = 2;
+/**
+ * How far ahead a run of strays may reach before the stamps are taken to have jumped for real (a
+ * gap in the recording): a sample this near that comes back to the line proves a run.
+ */
+const RUN_LOOKAHEAD = 16;
 
-interface Spacing {
+export interface RepairedTimeline {
+  readonly times: Float64Array;
+  /**
+   * How many stamps were moved, for a warning: a wrong stamp unit shows here too.
+   */
+  readonly mended: number;
+}
+
+interface Line {
+  readonly times: Float64Array;
   readonly interval: number;
   readonly tolerance: number;
 }
 
 /**
- * Recorded stamps made fit to integrate over and to search: a stamp far from the median of its
- * neighbourhood (two samples each side), as a clock glitch or a flipped bit leaves, is put back
- * where that median neighbour says it belongs, which mends a lone stray or a pair anywhere, the
- * first sample included; then no stamp is let go back. A longer run of strays is held at the
- * time where it began.
+ * Recorded stamps made fit to integrate over and to search. The walk trusts a stamp in step with
+ * the last trusted one; a stamp off that line is a stray when a sample soon after comes back to
+ * it (a clock glitch, a flipped bit, a short run of them, either way, anywhere) and is put on the
+ * line; one that never comes back starts a real gap. Stamps before the first steady stretch are
+ * placed back from it. No stamp is then let go back.
  */
-export function repairedTimeline(times: Float64Array): Float64Array {
-  const interval = typicalInterval(times);
-  const spacing = {
-    interval,
-    tolerance: Math.max(STRAY_INTERVALS * interval, MIN_STRAY_TOLERANCE_US),
-  };
-  const repaired = times.map((time, index) =>
-    isInStep(times, index, spacing.tolerance) ? time : mended(times, index, spacing),
-  );
-  for (let index = 1; index < repaired.length; index += 1) {
-    repaired[index] = Math.max(repaired[index] ?? 0, repaired[index - 1] ?? 0);
+export function repairedTimeline(recorded: Float64Array): RepairedTimeline {
+  const interval = typicalInterval(recorded);
+  const line = { times: recorded, interval, tolerance: toleranceOf(interval) };
+  const times = Float64Array.from(recorded);
+  const anchor = firstSteadyIndex(line);
+  if (anchor !== undefined) {
+    placeBackFrom(anchor, times, line);
+    walkFrom(anchor, times, line);
   }
-  return repaired;
+  for (let index = 1; index < times.length; index += 1) {
+    times[index] = Math.max(times[index] ?? 0, times[index - 1] ?? 0);
+  }
+  return { times, mended: times.filter((time, index) => time !== recorded[index]).length };
+}
+
+function toleranceOf(interval: number): number {
+  return Math.max(STRAY_INTERVALS * interval, MIN_STRAY_TOLERANCE_US);
 }
 
 /**
@@ -50,33 +68,61 @@ function typicalInterval(times: Float64Array): number {
   return sorted[Math.floor(sorted.length / 2)] ?? 0;
 }
 
-/**
- * Between its neighbours and near both: the common case, which needs no closer look.
- */
-function isInStep(times: Float64Array, index: number, tolerance: number): boolean {
-  const time = times[index] ?? 0;
-  const previous = times[index - 1] ?? time;
-  const next = times[index + 1] ?? time;
-  return time >= previous && next >= time && next - previous <= 2 * tolerance;
+function isStep(from: number | undefined, to: number | undefined, tolerance: number): boolean {
+  return from !== undefined && to !== undefined && to >= from && to - from <= tolerance;
 }
 
 /**
- * A stamp far from its neighbourhood's median takes the median neighbour's time, moved by the
- * typical interval for each sample between them; one near it (either side of a real gap in the
- * recording) is kept.
+ * The first sample that begins three in step, the walk's first trusted stamp.
  */
-function mended(times: Float64Array, index: number, spacing: Spacing): number {
-  const time = times[index] ?? 0;
-  const anchor = medianNeighbourOf(times, index);
-  const anchorTime = times[anchor] ?? time;
-  const isStray = Math.abs(time - anchorTime) > spacing.tolerance;
-  return isStray ? anchorTime + (index - anchor) * spacing.interval : time;
+function firstSteadyIndex({ times, tolerance }: Line): number | undefined {
+  for (let index = 0; index + 2 < times.length; index += 1) {
+    const isSteady =
+      isStep(times[index], times[index + 1], tolerance) &&
+      isStep(times[index + 1], times[index + 2], tolerance);
+    if (isSteady) return index;
+  }
+  return undefined;
 }
 
-function medianNeighbourOf(times: Float64Array, index: number): number {
-  const start = Math.max(0, index - NEIGHBOURS_EACH_SIDE);
-  const end = Math.min(times.length, index + NEIGHBOURS_EACH_SIDE + 1);
-  const neighbourhood = Array.from({ length: end - start }, (_unused, offset) => start + offset);
-  const byTime = neighbourhood.toSorted((a, b) => (times[a] ?? 0) - (times[b] ?? 0));
-  return byTime[Math.floor(byTime.length / 2)] ?? index;
+function placeBackFrom(anchor: number, times: Float64Array, line: Line): void {
+  for (let index = anchor - 1; index >= 0; index -= 1) {
+    const expected = (times[index + 1] ?? 0) - line.interval;
+    if (Math.abs((line.times[index] ?? expected) - expected) > line.tolerance) {
+      times[index] = expected;
+    }
+  }
+}
+
+function walkFrom(anchor: number, times: Float64Array, line: Line): void {
+  let trusted = anchor;
+  for (let index = anchor + 1; index < times.length; index += 1) {
+    const base = { index: trusted, time: times[trusted] ?? 0 };
+    const expected = base.time + (index - base.index) * line.interval;
+    const isOnLine = Math.abs((line.times[index] ?? expected) - expected) <= line.tolerance;
+    if (isOnLine || !willComeBackToLine(index, base, line)) {
+      trusted = index;
+    } else {
+      times[index] = expected;
+    }
+  }
+}
+
+/**
+ * Whether a sample soon after `index` is back on the line through `base`: then `index` is a
+ * stray. Running out of samples counts as coming back, a jump in the last few being no gap to
+ * keep.
+ */
+function willComeBackToLine(
+  index: number,
+  base: { readonly index: number; readonly time: number },
+  line: Line,
+): boolean {
+  const last = Math.min(line.times.length - 1, index + RUN_LOOKAHEAD);
+  if (last < index + RUN_LOOKAHEAD) return true;
+  for (let ahead = index + 1; ahead <= last; ahead += 1) {
+    const expected = base.time + (ahead - base.index) * line.interval;
+    if (Math.abs((line.times[ahead] ?? expected) - expected) <= line.tolerance) return true;
+  }
+  return false;
 }

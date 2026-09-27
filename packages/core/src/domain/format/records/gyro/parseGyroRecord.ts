@@ -16,8 +16,8 @@ const MIN_PLAUSIBLE_INTERVAL_US = 100;
 const MAX_PLAUSIBLE_INTERVAL_US = 10_000;
 const SAMPLES_NEEDED_TO_GUESS = 2;
 /**
- * Readings past these are no motion a camera makes: the X5 measures up to 16 g and 2000 degrees a
- * second (35 rad/s). A flipped bit in a float64 reading lands far beyond them, or at NaN.
+ * Readings past these are no motion a camera makes: the X5 declares a 32 g and a 2000 degrees a
+ * second (35 rad/s) range. A flipped bit in a float64 reading lands far beyond them, or at NaN.
  */
 const MAX_PLAUSIBLE_ACCELERATION_G = 64;
 const MAX_PLAUSIBLE_ANGULAR_VELOCITY_RAD_S = 100;
@@ -45,6 +45,10 @@ export interface ParsedGyroRecord {
    * Samples left out because their bytes cannot be a reading (see {@link parseGyroRecord}).
    */
   readonly damagedSamples: number;
+  /**
+   * Stamps put back where their neighbours say they belong (see {@link repairedTimeline}).
+   */
+  readonly mendedStamps: number;
 }
 
 /**
@@ -89,11 +93,13 @@ export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): 
     const sample = readableSampleAt(reader, layout, index * layout.sampleSize);
     if (sample) columns.push(sample);
   }
+  const timeline = repairedTimeline(columns.captureTimes());
   return {
-    track: columns.toTrack(),
+    track: columns.toTrack(timeline.times),
     layout: layout.name,
     strayBytes: payload.byteLength % layout.sampleSize,
     damagedSamples: count - columns.length,
+    mendedStamps: timeline.mended,
   };
 }
 
@@ -127,27 +133,34 @@ function isWithin(vector: Vector3, bound: number): boolean {
  */
 class SampleColumns {
   public length = 0;
-  private readonly captureTimes: Float64Array;
+  private readonly recordedTimes: Float64Array;
   private readonly accelerations: Float32Array;
   private readonly angularVelocities: Float32Array;
 
   public constructor(capacity: number) {
-    this.captureTimes = new Float64Array(capacity);
+    this.recordedTimes = new Float64Array(capacity);
     this.accelerations = new Float32Array(capacity * VECTOR3_COMPONENTS);
     this.angularVelocities = new Float32Array(capacity * VECTOR3_COMPONENTS);
   }
 
   public push(sample: GyroSample): void {
-    this.captureTimes[this.length] = sample.captureTime;
+    this.recordedTimes[this.length] = sample.captureTime;
     this.accelerations.set(sample.acceleration, this.length * VECTOR3_COMPONENTS);
     this.angularVelocities.set(sample.angularVelocity, this.length * VECTOR3_COMPONENTS);
     this.length += 1;
   }
 
-  public toTrack(): GyroTrack {
+  /**
+   * The stamps as recorded, to be mended before they make a track.
+   */
+  public captureTimes(): Float64Array {
+    return this.recordedTimes.subarray(0, this.length);
+  }
+
+  public toTrack(captureTimes: Float64Array): GyroTrack {
     const vectors = this.length * VECTOR3_COMPONENTS;
     return new GyroTrack(
-      repairedTimeline(this.captureTimes.subarray(0, this.length)),
+      captureTimes,
       this.accelerations.subarray(0, vectors),
       this.angularVelocities.subarray(0, vectors),
     );

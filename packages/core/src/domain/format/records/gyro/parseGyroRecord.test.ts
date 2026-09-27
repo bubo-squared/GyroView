@@ -128,6 +128,16 @@ describe('parseGyroRecord with the raw X5 layout', () => {
     expect([0, 1].map((index) => track.sampleAt(index).captureTime)).toEqual([10_000, 50_000]);
   });
 
+  it('mends a stamp far off its neighbours and counts it', () => {
+    const stamps = [10, 20, 30, 1_000_040, 50, 60, 70];
+    const payload = new Uint8Array(
+      stamps.flatMap((stamp) => [...encodeFloatSample(stamp, [0, 1, 0], [0, 0, 0])]),
+    );
+    const { track, mendedStamps } = read(payload, { isRawGyro: false, ranges: undefined });
+    expect(mendedStamps).toBe(1);
+    expect([...track.captureTimes]).toEqual([10, 20, 30, 40, 50, 60, 70].map((ms) => ms * 1000));
+  });
+
   it('tolerates and reports a partial trailing sample, as ONE R recordings have', () => {
     const payload = new Uint8Array(RAW_SAMPLE_SIZE * 3 + 1);
     payload.set(encodeRawSample(1000), 0);

@@ -38,8 +38,14 @@ export async function motionOf(
 }
 
 function damageWarningsOf(gyro: ParsedGyroRecord): readonly string[] {
-  const warning = `damaged gyro samples left out of stabilization: ${gyro.damagedSamples}`;
-  return gyro.damagedSamples > 0 ? [warning] : [];
+  return [
+    ...(gyro.damagedSamples > 0
+      ? [`damaged gyro samples left out of stabilization: ${gyro.damagedSamples}`]
+      : []),
+    ...(gyro.mendedStamps > 0
+      ? [`gyro stamps off their neighbours mended: ${gyro.mendedStamps}`]
+      : []),
+  ];
 }
 
 function unverifiedWarningsOf(imuFrame: ImuFrame, recording: Recording): readonly string[] {

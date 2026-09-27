@@ -1,4 +1,4 @@
-import type { Deferred, GyroViewError } from '@gyroview/core';
+import { Deferred, type GyroViewError } from '@gyroview/core';
 
 import type { LoadedRecording } from './loadRecording';
 import type { PlayerStatus } from './PlayerEvents';
@@ -41,6 +41,10 @@ export interface FailedPhase {
 }
 
 export const IDLE: IdlePhase = { kind: 'idle' };
+
+export function loadingPhase(): LoadingPhase {
+  return { kind: 'loading', controller: new AbortController(), settled: new Deferred() };
+}
 
 export function statusOf(phase: PlayerPhase): PlayerStatus {
   switch (phase.kind) {

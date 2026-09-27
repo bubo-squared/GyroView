@@ -490,6 +490,29 @@ describe('Player over the synthetic X5 recording', () => {
     });
   });
 
+  it('lets go of a recording whose load failed after it was attached', async () => {
+    let disposals = 0;
+    const refusingSeamMeter: PipelineFactory = async (parts) => {
+      const pipeline = await buildPipeline(parts);
+      return {
+        ...pipeline,
+        setGainMatching: (): void => {
+          throw new GyroViewError('render-unavailable', 'the seam shader did not compile');
+        },
+        dispose: (): void => {
+          disposals += 1;
+          pipeline.dispose();
+        },
+      };
+    };
+    const { player } = open(refusingSeamMeter);
+    await expect(player.load(sourceOf(X5_RECORDING_URL))).rejects.toMatchObject({
+      code: 'render-unavailable',
+    });
+    expect(disposals).toBe(1);
+    expect(player.status).toBe('error');
+  });
+
   it('lets a newer load supersede an older one quietly and ignores transport before a load', async () => {
     const { player, events, errors } = open();
     await player.play();

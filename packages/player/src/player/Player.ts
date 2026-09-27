@@ -1,5 +1,4 @@
 import {
-  Deferred,
   GyroViewError,
   hasErrorCode,
   isFlowing,
@@ -23,6 +22,7 @@ import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
 import type { LoadOptions, PlayerParts } from './PlayerOptions';
 import {
   IDLE,
+  loadingPhase,
   statusOf,
   type FailedPhase,
   type LoadingPhase,
@@ -150,11 +150,7 @@ export class Player {
     this.unload();
     // A listener of the `idle` just announced may have loaded something else: that load is newer.
     if (this.phase.kind !== 'idle') return;
-    const loading: LoadingPhase = {
-      kind: 'loading',
-      controller: new AbortController(),
-      settled: new Deferred(),
-    };
+    const loading = loadingPhase();
     this.phase = loading;
     this.announceStatus();
     try {
@@ -170,20 +166,9 @@ export class Player {
   }
 
   public unload(): void {
-    const previous = this.phase;
-    this.phase = IDLE;
-    if (previous.kind === 'loading') previous.controller.abort();
-    this.loop.stop();
-    this.relay.detach();
-    this.viewing.attach(undefined);
-    this.picture.attach(undefined);
-    if (previous.kind === 'loaded') {
-      previous.loaded.dispose();
-      previous.controller.abort();
-    }
+    this.release();
     this.announceStatus();
   }
-
   /**
    * Starts playback, after a load in progress is ready, as a media element's `play()` does.
    * Rejects with the load's failure, or with `playback-blocked` when the browser wants a user
@@ -384,6 +369,22 @@ export class Player {
     }
   }
 
+  /**
+   * Lets go of whatever is loading or loaded, announcing nothing.
+   */
+  private release(): void {
+    const previous = this.phase;
+    this.phase = IDLE;
+    if (previous.kind === 'loading') previous.controller.abort();
+    this.loop.stop();
+    this.relay.detach();
+    this.viewing.attach(undefined);
+    this.picture.attach(undefined);
+    if (previous.kind !== 'loaded') return;
+    previous.loaded.dispose();
+    previous.controller.abort();
+  }
+
   private failWith(error: unknown): GyroViewError {
     const failure =
       error instanceof GyroViewError
@@ -391,6 +392,8 @@ export class Player {
         : new GyroViewError('invariant-violation', 'the player failed unexpectedly', {
             cause: error,
           });
+    // A failure after the recording was attached (the seam meter's shader) lets it go too.
+    this.release();
     const failed: FailedPhase = { kind: 'failed', failure };
     this.phase = failed;
     this.announceStatus();

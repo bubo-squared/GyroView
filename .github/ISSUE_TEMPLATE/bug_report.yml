@@ -1,0 +1,34 @@
+name: Bug report
+description: A recording that plays wrong, or not at all, or a player that misbehaves.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: input
+    id: camera
+    attributes:
+      label: Camera, mode and firmware
+      description: As the `ready` event's metadata or `pnpm inspect <file>` reports them.
+      placeholder: Insta360 X5, 5.7K 30 fps, firmware 1.2.3
+  - type: input
+    id: browser
+    attributes:
+      label: Browser, version and device
+      placeholder: Safari 26 on an iPhone 16
+  - type: textarea
+    id: events
+    attributes:
+      label: The error or warning events
+      description: Their code and message, from the event's detail or the developer page's log.
+      render: text
+  - type: textarea
+    id: recording
+    attributes:
+      label: How to reproduce
+      description: >-
+        Steps, and the recording if you can share it. A trailer alone often suffices:
+        `pnpm inspect <file> --json` prints what the player reads from it.

@@ -52,40 +52,70 @@ a CDN or your own host; the site build's `gyro-view.js` registers the element th
 ></gyro-view>
 ```
 
-Attributes: `src` (the recording), `src2` (the other lens's file of a split-file recording,
-found by itself when it sits beside `src` under the camera's name), `autoplay`, `muted`,
-`loop`, `controls`, `poster`, `preload` (`none` keeps the decoders idle until play; otherwise
-the first frame shows at once), `gain-match` (`off` leaves the lenses' exposure as recorded),
-`fov` (30 to 120 degrees), `yaw`, `pitch`, `view-mode` (`normal`;
-`equirectangular` for the whole sphere as a level 2:1 panorama; `raw-lenses` for the decoded
-lens images side by side or stacked, whichever shows them larger, unstitched and as recorded;
-the camera records a square a little smaller than each lens's image circle, so the circles show
-cut at the frame's edges, where the two tiles meet as well) and `stabilization` (`off`, `lock`,
-`horizon`, `follow`). The settings (`stabilization`, `view-mode`, `fov`, `yaw`, `pitch`,
-`muted`, `loop`) are applied when their attribute changes, and their properties (`viewMode` for
-`view-mode`, plus `volume`) report and change the setting in effect, as a video's `muted`
-property does, however it was last changed. The other attributes are mirrored by properties
-(`gainMatch` for `gain-match`).
+Attributes:
 
-API: `load()` (resolves once the recording is ready; an element out of the page loads once
-connected), `play()` (waits for a load in progress), `pause()`, `stop()`, `seek(seconds)`,
-`scrub(seconds)` (to the key frame at or before the time, for a dragged seek bar),
-`currentTime`, `duration`, `paused`, `status`, `metadata`, `view`, `lookAt(yaw, pitch)`,
-`resetView()`, `zoom(steps)`, `setViewMode(mode)`, `setStabilization(mode)`, `volume`,
-`toggleFullscreen()`, `loadFiles({ main, second })`.
+| Attribute                   | Values                                    | What it does                                                                                                        |
+| --------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `src`                       | URL                                       | The recording; a relative URL resolves against the page.                                                            |
+| `src2`                      | URL                                       | The other lens's file of a split-file recording; found by itself when it sits beside `src` under the camera's name. |
+| `autoplay`                  | boolean                                   | Starts once ready; a refusal is an `autoplay-blocked` warning.                                                      |
+| `muted`, `loop`, `controls` | boolean                                   | As on a video element; `controls` shows the bar.                                                                    |
+| `poster`                    | URL                                       | Shown until the first picture.                                                                                      |
+| `preload`                   | `auto`, `none`                            | `none` keeps the decoders idle until play; otherwise the first frame shows at once.                                 |
+| `gain-match`                | `on`, `off`                               | `off` leaves the lenses' exposure as recorded.                                                                      |
+| `stabilization`             | `off`, `lock`, `horizon`, `follow`        | How the gyro steadies the picture.                                                                                  |
+| `view-mode`                 | `normal`, `equirectangular`, `raw-lenses` | What the picture shows (below).                                                                                     |
+| `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees.                                                             |
+| `yaw`, `pitch`              | degrees                                   | Where the normal view looks: yaw positive to the right, pitch positive up.                                          |
 
-Events (`CustomEvent`s, payload in `detail`, typed in `GyroViewElementEventMap`): `ready` (metadata: camera, layout, calibration
-version, frame time source, gyro and IMU frame, audio), `statuschange` (`idle`,
-`loading`, `ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`), `play`,
-`waiting`, `playing`, `pause`, `ended`, `timeupdate` (every quarter second of playback, and on
-a pause, a seek or the end, as a media element's), `seeking`, `seeked`, `frame`,
-`viewchange`, `viewmodechange`, `stabilizationchange`, `volumechange` (`{ volume, isMuted }`),
-`warning` (`code` and `message`: something the player worked around; `recording-degraded` for
-missing or damaged data such as no gyro or an unverified IMU frame, `no-sound` for a silent
-clock, `autoplay-blocked`, `playback-failed` for a refused start, a seek bar position it could
-not show or a loop that could not restart, `ignored-attribute` for a value it does not know,
-`refused-property` for a property set before the element was defined) and `error` (`code` and
-`message`; the codes are listed in `docs/DEPLOYMENT.md`).
+`equirectangular` shows the whole sphere as a level 2:1 panorama. `raw-lenses` shows the
+decoded lens images side by side or stacked, whichever shows them larger, unstitched and as
+recorded; the camera records a square a little smaller than each lens's image circle, so the
+circles show cut at the frame's edges, where the two tiles meet as well.
+
+The settings (`stabilization`, `view-mode`, `fov`, `yaw`, `pitch`, `muted`, `loop`) are
+applied when their attribute changes, and their properties (`viewMode` for `view-mode`, plus
+`volume`) report and change the setting in effect, as a video's `muted` property does, however
+it was last changed. The other attributes are mirrored by properties (`gainMatch` for
+`gain-match`); `preload` and `gainMatch` read the keyword in effect.
+
+Methods and properties:
+
+| Member                                        | What it does                                                                                    |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `load()`                                      | Resolves once the recording is ready; an element out of the page loads once connected.          |
+| `loadFiles({ main, second })`                 | Plays local files in place of `src`, until `src` or `src2` change.                              |
+| `play()`, `pause()`, `stop()`                 | As a video's; `play()` waits for a load in progress.                                            |
+| `seek(seconds)`, `currentTime`                | Seeks exactly.                                                                                  |
+| `scrub(seconds)`                              | Seeks to the key frame at or before the time: quick to show while a seek bar is dragged.        |
+| `duration`, `paused`, `status`, `metadata`    | What is loaded and where playback is.                                                           |
+| `view`, `lookAt(yaw, pitch)`, `resetView()`   | Where the normal view looks.                                                                    |
+| `zoom(steps, focus?)`                         | Zooms toward a point of the picture given as fractions of its size, or about the centre.        |
+| `setViewMode(mode)`, `setStabilization(mode)` | As the attributes; an unknown mode is refused.                                                  |
+| `volume`                                      | 0 to 1, where the platform lets a page set it.                                                  |
+| `messages`                                    | Every word the element shows (below).                                                           |
+| `toggleFullscreen()`                          | Fills the screen through the Fullscreen API, or pins the element over the page where it cannot. |
+
+Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewElementEventMap`:
+
+| Event                                                 | `detail`                  | When                                                                                                                 |
+| ----------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `ready`                                               | metadata                  | The recording is ready: camera, layout, calibration version, frame time source, gyro and IMU frame, audio, duration. |
+| `statuschange`                                        | status                    | `idle`, `loading`, `ready`, `playing`, `buffering`, `paused`, `seeking`, `ended` or `error`.                         |
+| `play`, `playing`, `waiting`, `pause`, `ended`        | none                      | As a video's.                                                                                                        |
+| `timeupdate`                                          | seconds                   | Every quarter second of playback, and on a pause, a seek or the end.                                                 |
+| `seeking`, `seeked`                                   | seconds                   | Around a seek.                                                                                                       |
+| `frame`                                               | seconds                   | Right after each picture is drawn.                                                                                   |
+| `viewchange`, `viewmodechange`, `stabilizationchange` | the view, mode or setting | Whatever changed it.                                                                                                 |
+| `volumechange`                                        | `{ volume, isMuted }`     | Whatever changed it.                                                                                                 |
+| `warning`                                             | `{ code, message }`       | Something the player worked around (below).                                                                          |
+| `error`                                               | `GyroViewError`           | The load or playback failed: `code` and `message`; `docs/DEPLOYMENT.md` lists the codes.                             |
+
+A `warning`'s code says what the player worked around: `recording-degraded` for missing or
+damaged data such as no gyro or an unverified IMU frame, `no-sound` for a silent clock,
+`autoplay-blocked`, `playback-failed` for a refused start, a seek bar position it could not
+show or a loop that could not restart, `ignored-attribute` for a value it does not know, and
+`refused-property` for a property set before the element was defined.
 
 Keyboard: space or K play/pause, J and L seek, S stops, arrows look around (Shift + arrows
 seek), plus and minus zoom, 0 resets the view, M mutes, F fills the screen, Escape closes an
@@ -183,7 +213,9 @@ nvm use           # Node 24 LTS from .nvmrc
 pnpm install
 pnpm --filter @gyroview/adapter-webcodecs exec playwright install chromium webkit
 pnpm verify       # typecheck, lint, format check, dependency rules, tests, build
+pnpm test:core    # the domain alone, in 1.5 s; pnpm test --project <name> for one project
 pnpm test:watch
+pnpm test:coverage
 pnpm --filter @gyroview/embed dev     # developer page at http://localhost:5180 with the local samples
 pnpm --filter @gyroview/embed build   # static site, embed.js and gyro-view.js in apps/embed/dist
 pnpm --filter gyroview build          # the npm package in apps/library/dist
@@ -211,16 +243,16 @@ browser tests; `test/fixtures/thirdparty` holds two MIT-licensed trailer fixture
 
 ## Documentation
 
-| Document               | What it answers                                                               |
-| ---------------------- | ----------------------------------------------------------------------------- |
-| `docs/ARCHITECTURE.md` | How the code is organised; every package and key component.                   |
-| `docs/ROADMAP.md`      | What is done and verified, what waits on real files or devices, what is next. |
-| `docs/DEPLOYMENT.md`   | Hosting the bundles and the recordings; every error code.                     |
-| `docs/FORMAT.md`       | The `.insv` byte layout as the player reads it.                               |
-| `docs/GLOSSARY.md`     | The vocabulary used in code and documents.                                    |
-| `docs/FEASIBILITY.md`  | The measurements the design rests on.                                         |
-| `docs/adr/`            | One record per non-obvious decision, with the alternatives considered.        |
-| `CONTRIBUTING.md`      | The dependency rule, the definition of done, the review checklist.            |
+| Document               | What it answers                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| `docs/ARCHITECTURE.md` | How the code is organised; every package and key component.                      |
+| `docs/ROADMAP.md`      | What is done and verified, what waits on real files or devices, what is next.    |
+| `docs/DEPLOYMENT.md`   | Hosting the bundles and the recordings; every error code.                        |
+| `docs/FORMAT.md`       | The `.insv` byte layout as the player reads it.                                  |
+| `docs/GLOSSARY.md`     | The vocabulary used in code and documents.                                       |
+| `docs/FEASIBILITY.md`  | The measurements the design rests on.                                            |
+| `docs/adr/`            | One record per non-obvious decision, with the alternatives considered.           |
+| `CONTRIBUTING.md`      | Fast feedback, proposing a change, recipes, the dependency rule, the checklists. |
 
 Architecture decision records: 0001 hexagonal architecture, 0002 WebCodecs over video
 elements, 0003 mediabunny as the demuxer, 0004 format variants selected from the file, 0005

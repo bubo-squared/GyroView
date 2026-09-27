@@ -1,0 +1,15 @@
+name: Feature request
+description: Something the player or the package should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you want to do, and what stops you today
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How it could work
+      description: An API, an attribute, an event; docs/ROADMAP.md lists what is known to be missing.

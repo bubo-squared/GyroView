@@ -7,6 +7,56 @@
 - `pnpm install`, then `pnpm verify` runs everything CI runs: typecheck, lint, format check,
   dependency rules, tests, and the builds of the embed site, its scripts and the npm package.
 
+## Fast feedback
+
+`pnpm verify` takes about a minute; most changes need a fraction of it while they are made:
+
+```sh
+pnpm test:core                  # the domain and use cases, in Node: about 1.5 s
+pnpm test --project player      # one project; the names are in each vitest.config.ts
+pnpm test:watch --project core  # rerun on save
+pnpm test:coverage              # every project with coverage, in Node, Chromium and WebKit
+```
+
+The browser projects (the player, the WebCodecs, Three.js and MSE adapters, the embed site)
+run in headless Chromium and WebKit through Playwright; `pnpm --filter
+@gyroview/adapter-webcodecs exec playwright install chromium webkit` installs them once.
+
+## Proposing a change
+
+1. Open an issue first for anything larger than a fix, so the approach can be agreed before
+   the work: the issue templates ask for what a reviewer needs.
+2. Work on a branch of your fork, one concern per pull request. Commits follow the
+   conventional-commit style (`fix(core): ...`), each small and single-purpose; the pre-commit
+   hook lints and formats what is staged.
+3. `pnpm verify` is green before you push; CI runs the same on the pull request.
+4. The pull request template's checklist is the definition of done below. A reviewer reads
+   against the review checklist at the end of this file.
+
+## Recipes
+
+**A camera model.** Everything the player reads from a recording (trailer wrapper, record
+locator, gyro layout, calibration version, lens layout, frame times) is detected from the file
+itself (ADR 0004), so a new camera usually plays as it is. The one thing a model decides is the
+IMU's orientation in the body: `IMU_FRAMES_BY_MODEL` in
+`packages/core/src/domain/motion/imu/ImuFrame.ts`. Measure it on a real recording with
+`pnpm measure`, which ranks the 24 candidate frames by how still the world stays (ADR 0009),
+and add the winner there with the measurement in the ADR.
+
+**A stabilization mode.** Add it to `StabilizationMode` and `STABILIZATION_MODES`
+(`domain/motion/stabilization/Stabilizer.ts`), give it a strategy in `STABILIZERS`
+(`stabilizers.ts`) and a menu label in `DEFAULT_MESSAGES`
+(`packages/player/src/controls/messages.ts`). The records keyed by the mode refuse to compile
+until each has its entry; the element, the menus and the embed protocol take the mode from the
+same list.
+
+**A view mode.** Add it to `ViewMode` and `VIEW_MODES` (`domain/view/ViewMode.ts`), write its
+`ViewModeRules` in a module of its own beside `normalView.ts`, register it in `viewModes.ts`
+and label it in `DEFAULT_MESSAGES`. A mode that draws a new kind of picture adds it to
+`Picture.ts`, and the Three.js adapter a shader program for it (`shaderPrograms.ts`,
+`pictureMaterials.ts`, `rendererUniforms.ts`); ADRs 0015 and 0018 explain the split between
+what the core frames and what the renderer draws.
+
 ## Layout and dependency rule
 
 Hexagonal architecture, enforced by `.dependency-cruiser.cjs`; `docs/ARCHITECTURE.md`
@@ -39,7 +89,10 @@ Once, for the first version: npm trusts a workflow only for a package that alrea
 1. Publish the first version by hand: `npm login`, `pnpm --filter gyroview build`, then in
    `apps/library` `pnpm pack` and `npm publish gyroview-<version>.tgz --access public`.
 2. On npmjs.com, in the package's settings, add a trusted publisher: GitHub Actions, owner
-   `pericamilosevic`, repository `GyroView`, workflow `release.yml`.
+   `pericamilosevic`, repository `GyroView`, workflow `release.yml`, environment `npm`.
+3. On GitHub, in the repository's settings, give the `npm` environment (created by the first
+   run of the workflow, or by hand) required reviewers and limit it to `v*` tags, so a pushed
+   tag publishes only once someone approves it.
 
 Releases after it go through the workflow; the tag of the version published by hand needs no
 push.

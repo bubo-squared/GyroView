@@ -175,11 +175,25 @@ async function ensureDecodable(
   const { ports, signal } = attempt;
   const report = await probeDecoding(frameSources, ports.decoderPort, probeDeadlineOf(attempt));
   signal.throwIfAborted();
-  if (report.canDecode) return;
-  throw new GyroViewError(
-    'codec-unsupported',
-    `this browser cannot decode the recording: ${describeProbe(report)}`,
-  );
+  if (!report.canDecode) throw probeFailure(report);
+}
+
+/**
+ * The browser's shortcoming, unless every track that failed simply has no key frame to start
+ * from: that is the file's.
+ */
+function probeFailure(report: DecodeProbeReport): GyroViewError {
+  const failed = report.sources.filter((source) => source.verdict !== 'decodes');
+  const hasOnlyTracksWithoutKeyFrames = failed.every((source) => source.verdict === 'no-key-frame');
+  return hasOnlyTracksWithoutKeyFrames
+    ? new GyroViewError(
+        'no-key-frame',
+        `the recording has no key frame to start decoding from: ${describeProbe(report)}`,
+      )
+    : new GyroViewError(
+        'codec-unsupported',
+        `this browser cannot decode the recording: ${describeProbe(report)}`,
+      );
 }
 
 /**

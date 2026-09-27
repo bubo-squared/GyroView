@@ -178,6 +178,24 @@ describe('openRecording', () => {
     expect(world.demuxer.openCount).toBe(0);
   });
 
+  it('blames the file, not the browser, when its tracks have no key frame to start from', async () => {
+    const opener = new MapSourceOpener();
+    const main = opener.register(MAIN_URL, fixture.x5Bytes);
+    const videoTracks = squareTracks({ codec: HEVC, frameCount: 0 });
+    const demuxer = new FakeDemuxer([{ source: main, duration: seconds(3), videoTracks }]);
+
+    const failure = await captureRejection(
+      openRecording(
+        sourceOf(),
+        fakePorts({ sources: opener, demuxer }),
+        new AbortController().signal,
+      ),
+    );
+
+    expect(failure).toMatchObject({ code: 'no-key-frame' });
+    expect((failure as Error).message).toContain('track 0 no-key-frame');
+  });
+
   it('opens a recording whose one track packs both lenses', async () => {
     const opener = new MapSourceOpener();
     const packed = opener.register(PACKED_URL, fixture.x5Bytes);

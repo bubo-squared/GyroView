@@ -17,7 +17,7 @@ import {
 } from '@gyroview/player/composition';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
-import { saveMeasurement, saveRender } from './artifacts';
+import { drawAndSaveRender, saveMeasurement, saveRender } from './artifacts';
 import { coverageOf, measureCentre, rigidRotationError } from './pictureChecks';
 import { expectPictureFollowsSound, openAudioClock, startTicking } from './playbackChecks';
 import {
@@ -62,7 +62,7 @@ const SILENCED: Vector3 = [0, 0, 0];
  * along the rim account for up to about 0.75 % on the sailing frames.
  */
 const MAX_CENTRE_OFFSET_FRACTION = 0.01;
-const MODES: readonly StabilizationMode[] = ['off', 'lock', 'horizon'];
+const COMPARED_MODES: readonly StabilizationMode[] = ['off', 'lock'];
 /**
  * Mean colour difference (0-255) tolerated between the unstabilized render and the lock render
  * resampled through the orientation: bilinear sampling noise, not a rotation error.
@@ -188,10 +188,12 @@ describe('rendering the real recordings', () => {
       renderer.present({ pair: first, mediaTime: first.timestamp });
       await saveRender(`${slug}-${MOMENT}s-equirect`, canvas);
       expect(coverageOf(renderer.readPixels())).toBeGreaterThan(MIN_COVERAGE);
-      renderer.setLensGains([UNITY_GAIN, SILENCED]);
-      await saveRender(`${slug}-${MOMENT}s-lens0`, canvas);
-      renderer.setLensGains([SILENCED, UNITY_GAIN]);
-      await saveRender(`${slug}-${MOMENT}s-lens1`, canvas);
+      await drawAndSaveRender(`${slug}-${MOMENT}s-lens0`, canvas, () => {
+        renderer.setLensGains([UNITY_GAIN, SILENCED]);
+      });
+      await drawAndSaveRender(`${slug}-${MOMENT}s-lens1`, canvas, () => {
+        renderer.setLensGains([SILENCED, UNITY_GAIN]);
+      });
     });
 
     it(`finds the image circle of each ${name} frame where the core's canvas window puts the principal point, not the sensor window (ADR 0014)`, async (context) => {
@@ -230,12 +232,16 @@ describe('rendering the real recordings', () => {
         frameTimes: undefined,
       });
       const rendered = new Map<StabilizationMode, Uint8ClampedArray>();
-      for (const mode of MODES) {
+      for (const mode of COMPARED_MODES) {
         sink.setStabilizer(stabilizerFor(mode));
         sink.present({ pair: first, mediaTime: first.timestamp });
         rendered.set(mode, renderer.readPixels());
         await saveRender(`${slug}-${MOMENT}s-${mode}`, canvas);
       }
+      await drawAndSaveRender(`${slug}-${MOMENT}s-horizon`, canvas, () => {
+        sink.setStabilizer(stabilizerFor('horizon'));
+        sink.present({ pair: first, mediaTime: first.timestamp });
+      });
       const renders = {
         off: rendered.get('off') ?? new Uint8ClampedArray(),
         lock: rendered.get('lock') ?? new Uint8ClampedArray(),

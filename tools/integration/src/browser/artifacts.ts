@@ -15,6 +15,20 @@ export async function saveRender(name: string, canvas: HTMLCanvasElement): Promi
 }
 
 /**
+ * Draws a picture that only a saved render needs, and saves it, when the run writes artifacts;
+ * otherwise it draws nothing.
+ */
+export async function drawAndSaveRender(
+  name: string,
+  canvas: HTMLCanvasElement,
+  draw: () => void,
+): Promise<void> {
+  if (!inject('savesArtifacts')) return;
+  draw();
+  await saveRender(name, canvas);
+}
+
+/**
  * Saves a measurement as JSON to `.artifacts/`, under the browser's name, when the run writes
  * artifacts.
  */

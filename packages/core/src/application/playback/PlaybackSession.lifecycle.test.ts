@@ -252,4 +252,80 @@ describe('PlaybackSession lifecycle', () => {
       session.dispose();
     });
   });
+
+  describe('when the ticks stop while the clock runs on (a hidden tab, an offscreen frame)', () => {
+    it('ends when the clock ran out meanwhile, despite the stale pairs left queued', async () => {
+      const clock = new FakePlaybackClock({ endsAt: DURATION });
+      const { session, advance } = sessionHarness({ clock });
+      await session.play();
+      await advance(100);
+      clock.advance(DURATION);
+      session.tick();
+      expect(session.state).toBe('ended');
+      session.dispose();
+    });
+
+    it('notices the missed ticks when playback started without any', async () => {
+      const clock = new FakePlaybackClock();
+      const { session, sink, states, advance } = sessionHarness({ clock });
+      session.preload();
+      for (let step = 0; step < 3; step += 1) await advance(0);
+      await session.play();
+      clock.advance(seconds(2));
+      session.tick();
+      expect(session.state).toBe('buffering');
+      for (let step = 0; step < 3; step += 1) await advance(0);
+      expect(session.state).toBe('playing');
+      expect(sink.lastTimestamp).toBeGreaterThanOrEqual(2);
+      expect(states).not.toContain('seeking');
+      session.dispose();
+    });
+
+    it('stays paused when the platform paused the clock meanwhile', async () => {
+      const clock = new FakePlaybackClock();
+      const { session, advance } = sessionHarness({ clock });
+      await session.play();
+      await advance(100);
+      clock.advance(seconds(2));
+      clock.pause();
+      session.tick();
+      for (let step = 0; step < 3; step += 1) await advance(0);
+      expect(session.state).toBe('paused');
+      expect(clock.isRunning).toBe(false);
+      session.dispose();
+    });
+
+    it('ends at the duration on a clock that never ends by itself', async () => {
+      const { session, advance } = sessionHarness();
+      await session.play();
+      await advance(100);
+      await advance(5000);
+      expect(session.state).toBe('ended');
+      expect(session.currentTime).toBe(DURATION);
+      session.dispose();
+    });
+  });
+
+  it('follows a start the platform made by itself, as a media key does', async () => {
+    const clock = new FakePlaybackClock();
+    const { session, advance } = sessionHarness({ clock });
+    await session.play();
+    await advance(100);
+    session.pause();
+    await clock.start();
+    for (let step = 0; step < 3; step += 1) await advance(0);
+    expect(session.state).toBe('playing');
+    session.dispose();
+  });
+
+  it('announces seeking at the time sought', () => {
+    const { session } = sessionHarness();
+    const timesSeeking: number[] = [];
+    session.events.on('statechange', (state) => {
+      if (state === 'seeking') timesSeeking.push(session.currentTime);
+    });
+    session.seek(seconds(2));
+    expect(timesSeeking).toEqual([2]);
+    session.dispose();
+  });
 });

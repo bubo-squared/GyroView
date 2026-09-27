@@ -138,10 +138,10 @@ export class PlaybackSession<Handle = unknown> {
     if (this.machine.isOneOf('disposed', 'error')) return;
     const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
     const wasFlowing = isFlowing(this.machine.state);
-    this.setState('seeking');
-    if (this.machine.isOneOf('disposed', 'error')) return;
     this.parts.clock.pause();
     this.parts.clock.seek(target);
+    this.setState('seeking');
+    if (this.machine.isOneOf('disposed', 'error')) return;
     this.startRun(target);
     // A listener that paused during `seeking` keeps the session paused.
     if (this.isIn('seeking')) this.setState(wasFlowing ? 'buffering' : 'paused');
@@ -172,7 +172,8 @@ export class PlaybackSession<Handle = unknown> {
 
   /**
    * Presents the frame pair due at the clock's time, if a newer one has arrived, and follows
-   * the clock to the end, into `buffering` or into failure.
+   * the clock: to the end, into `buffering`, into failure, and into a start or a stop the
+   * platform made by itself (media keys, an audio interruption).
    */
   public tick(): void {
     if (this.machine.isOneOf('disposed', 'error')) return;
@@ -187,7 +188,8 @@ export class PlaybackSession<Handle = unknown> {
       return;
     }
     this.presentDue(now);
-    if (this.machine.state === 'playing') this.followClock(now);
+    if (this.isIn('playing')) this.followClock(now);
+    else if (this.isStartedFromOutside()) void this.followStartFromOutside();
   }
 
   /**
@@ -211,7 +213,7 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   private async startNow(): Promise<void> {
-    this.setState('playing');
+    this.enterPlaying();
     if (this.isIn('playing')) await this.startClock();
   }
 
@@ -226,6 +228,15 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   /**
+   * Playing from the clock's time now: ticks that never come from here on are missed ticks
+   * too, as when playback starts in a hidden tab or an offscreen frame.
+   */
+  private enterPlaying(): void {
+    this.previousPlayingTick = this.parts.clock.currentTime;
+    this.setState('playing');
+  }
+
+  /**
    * Whether the session is in `state` now: a listener of the last change may have moved it on.
    */
   private isIn(state: PlayerState): boolean {
@@ -237,7 +248,15 @@ export class PlaybackSession<Handle = unknown> {
     if (pair) this.present(pair, now);
   }
 
+  /**
+   * The end first, then a stop from outside, then starvation: a clock that ran out while the
+   * ticks were away leaves stale pairs behind, which must not hold it in `buffering`.
+   */
   private followClock(now: Seconds): void {
+    if (this.isPlayedOut(now)) {
+      this.end();
+      return;
+    }
     if (this.isStoppedFromOutside()) {
       this.setState('paused');
       this.announceTime(now);
@@ -249,7 +268,22 @@ export class PlaybackSession<Handle = unknown> {
       return;
     }
     if (this.isTimeUpdateDue(now)) this.announceTime(now);
-    if (this.isPlayedOut(now)) this.end();
+  }
+
+  /**
+   * The platform started the clock by itself (a media key's play) while the session stood
+   * still: the session follows, as it follows a stop.
+   */
+  private isStartedFromOutside(): boolean {
+    return this.parts.clock.isRunning && this.machine.isOneOf('ready', 'paused', 'ended');
+  }
+
+  private async followStartFromOutside(): Promise<void> {
+    try {
+      await this.play();
+    } catch {
+      // The clock already runs: nothing is left to refuse.
+    }
   }
 
   /**
@@ -267,11 +301,21 @@ export class PlaybackSession<Handle = unknown> {
   /**
    * Decodes anew from the clock's time, holding the clock until the frames there are ready:
    * the seek a page would take for the viewer's is not needed, the clock is where it must be.
+   * A clock past the end ends there; one the platform stopped meanwhile lands `paused`.
    */
   private restartAt(now: Seconds): void {
-    this.parts.clock.pause();
+    const { clock, duration } = this.parts;
+    if (now >= duration) {
+      clock.pause();
+      clock.seek(duration);
+      this.end();
+      return;
+    }
+    const wasRunning = clock.isRunning;
+    clock.pause();
     this.startRun(now);
-    this.setState('buffering');
+    this.setState(wasRunning ? 'buffering' : 'paused');
+    if (!wasRunning) this.announceTime(now);
   }
 
   /**
@@ -339,7 +383,7 @@ export class PlaybackSession<Handle = unknown> {
   private async resume(): Promise<void> {
     const attempt = this.startAttempt;
     this.startAttempt = undefined;
-    this.setState('playing');
+    this.enterPlaying();
     if (!this.isIn('playing')) {
       attempt?.resolve();
       return;

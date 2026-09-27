@@ -103,6 +103,11 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
   private readonly errorMessage: HTMLElement;
   private readonly errorCode: HTMLElement;
   private scheduledLoad: Promise<void> | undefined;
+  /**
+   * The recording the attributes name is still to be loaded once connected: at first, after a
+   * removal let it go, and after a change of source while out of the document.
+   */
+  private isLoadOwed = true;
   private files: FileSource | undefined;
 
   public constructor() {
@@ -178,12 +183,12 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     this.applyEarlyProperties();
     this.dataset['status'] = this.player.status;
     this.idle.start();
-    this.scheduleLoad();
+    if (this.isLoadOwed) this.scheduleLoad();
   }
 
   public disconnectedCallback(): void {
     this.idle.stop();
-    this.player.unload();
+    void this.releaseUnlessMoved();
   }
 
   public attributeChangedCallback(
@@ -376,7 +381,19 @@ export class GyroViewElement extends HTMLElement implements LiveSettings {
     }
   }
 
+  /**
+   * A move within the document disconnects and connects again at once: only an element still out
+   * of it a microtask later lets its recording go.
+   */
+  private async releaseUnlessMoved(): Promise<void> {
+    await Promise.resolve();
+    if (this.isConnected) return;
+    this.player.unload();
+    this.isLoadOwed = true;
+  }
+
   private scheduleLoad(): void {
+    this.isLoadOwed = !this.isConnected;
     if (this.scheduledLoad || !this.isConnected) return;
     const scheduled = this.loadAfterPendingChanges();
     this.scheduledLoad = scheduled;

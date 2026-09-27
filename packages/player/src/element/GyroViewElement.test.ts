@@ -6,7 +6,7 @@ import { GyroViewElement } from './GyroViewElement';
 import { queryShadow } from '../controls/controlParts';
 import { choiceMenuClasses, type ChoiceMenuName } from '../controls/controlsMarkup';
 import { expectIconOnly } from '../test/controls';
-import { fetchBytes, X5_RECORDING_URL } from '../test/recordings';
+import { fetchBytes, X5_RECORDING_URL, X5_RECORDING_WITH_AUDIO_URL } from '../test/recordings';
 import { nextEvent, settle, waitFor } from '../test/waiting';
 
 /**
@@ -723,9 +723,36 @@ describe('<gyro-view>', () => {
     await waitFor(() => !isFillingTheScreen(element), 'the next Escape leaving fullscreen');
   });
 
-  it('unloads when removed from the document', async () => {
+  it('unloads when removed from the document, and loads again once back', async () => {
     const element = await createReady();
     element.remove();
-    expect(element.status).toBe('idle');
+    await waitFor(() => element.status === 'idle', 'the unload');
+    const ready = nextEvent(element, 'ready');
+    document.body.append(element);
+    await ready;
+  });
+
+  it('keeps its recording when moved within the document', async () => {
+    const element = await createReady();
+    const statuses: string[] = [];
+    element.addEventListener('statuschange', (event) => {
+      statuses.push(String((event as CustomEvent).detail));
+    });
+    const box = document.createElement('div');
+    document.body.append(box);
+    box.append(element);
+    await settle();
+    expect(element.status).toBe('ready');
+    expect(statuses).toEqual([]);
+    box.remove();
+  });
+
+  it('loads a src set while out of the document once back in it', async () => {
+    const element = await createReady();
+    element.remove();
+    element.src = X5_RECORDING_WITH_AUDIO_URL;
+    document.body.append(element);
+    await nextEvent(element, 'ready');
+    expect(element.metadata?.hasAudio).toBe(true);
   });
 });

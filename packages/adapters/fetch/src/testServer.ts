@@ -19,6 +19,10 @@ interface TestServerBehaviour {
    * Answer every request with this status.
    */
   readonly failsWith?: number;
+  /**
+   * Cut the connection halfway through every range body, as a dropped network does.
+   */
+  readonly breaksOffRanges?: boolean;
 }
 
 interface Served {
@@ -74,7 +78,9 @@ function respond(request: IncomingMessage, response: ServerResponse, served: Ser
   response.setHeader('Accept-Ranges', 'bytes');
   const range = RANGE_HEADER.exec(request.headers.range ?? '');
   if (range && !served.behaviour.ignoresRanges) {
-    respondWithRange(request, response, { body: served.body, range });
+    const asked = { body: served.body, range };
+    if (served.behaviour.breaksOffRanges === true) breakOffRange(response, asked);
+    else respondWithRange(request, response, asked);
   } else {
     respondWhole(request, response, served);
   }
@@ -107,6 +113,16 @@ function respondWithRange(
   response.setHeader('Content-Length', String(end - start + 1));
   response.writeHead(HTTP_PARTIAL_CONTENT);
   response.end(request.method === 'HEAD' ? undefined : body.subarray(start, end + 1));
+}
+
+function breakOffRange(response: ServerResponse, { body, range }: RangeAsked): void {
+  const start = Number(range[1]);
+  const end = Math.min(Number(range[2]), body.byteLength - 1);
+  response.setHeader('Content-Length', String(end - start + 1));
+  response.writeHead(HTTP_PARTIAL_CONTENT);
+  response.write(body.subarray(start, start + Math.floor((end - start) / 2)), () => {
+    response.destroy();
+  });
 }
 
 function respondWhole(request: IncomingMessage, response: ServerResponse, served: Served): void {

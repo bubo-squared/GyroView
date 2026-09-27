@@ -96,6 +96,16 @@ describe('HttpRangeSource', () => {
     });
   });
 
+  it('reports a range whose body breaks off with the source-unreadable code', async () => {
+    const server = await serve(content, { breaksOffRanges: true });
+    await expect(new HttpRangeSource(server.url).read(ByteRange.of(0, 4000))).rejects.toMatchObject(
+      {
+        code: 'source-unreadable',
+        message: expect.stringContaining('broke off') as string,
+      },
+    );
+  });
+
   it('reads an empty range inside the file with no GET, only the size lookup', async () => {
     const server = await serve(content);
     const methods: string[] = [];

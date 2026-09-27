@@ -71,7 +71,10 @@ export function plainHttpRequest(
   });
 }
 
-function isAbort(error: unknown): boolean {
+/**
+ * A caller's abort, passed on as it is.
+ */
+export function isAbort(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
 }
 

@@ -8,6 +8,7 @@ import {
   INDEX_SLOT_SIZE,
   InfoRecordFormat,
   RECORD_HEADER_SIZE,
+  RECORD_HEADER_SIZE_OFFSET,
   RecordType,
   TRAILER_FOOTER_SIZE,
 } from '../constants';
@@ -106,6 +107,19 @@ describe('readTrailer with synthetic layouts', () => {
     await expect(readTrailer(new InMemoryRandomAccessSource(file.bytes))).rejects.toMatchObject(
       expectedError,
     );
+  });
+
+  it('rejects an index record whose size runs past the trailer start, reading none of it', async () => {
+    const file = syntheticRecords().buildIndexed({ alignment: 4096 });
+    const indexHeader = file.bytes.byteLength - TRAILER_FOOTER_SIZE - RECORD_HEADER_SIZE;
+    new DataView(file.bytes.buffer, file.bytes.byteOffset).setUint32(
+      indexHeader + RECORD_HEADER_SIZE_OFFSET,
+      0xff_ff_ff_ff,
+      true,
+    );
+    await expect(readTrailer(new InMemoryRandomAccessSource(file.bytes))).rejects.toMatchObject({
+      code: 'invalid-trailer',
+    });
   });
 
   it('walks contiguous records backwards when there is no index', async () => {

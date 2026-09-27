@@ -26,10 +26,10 @@ async function locateThroughIndex(
   layout: TrailerLayout,
 ): Promise<readonly RecordLocation[]> {
   const indexEnd = layout.fileSize - TRAILER_FOOTER_SIZE - RECORD_HEADER_SIZE;
-  const indexRange = ByteRange.of(
-    indexEnd - layout.lastHeader.payloadSize,
-    layout.lastHeader.payloadSize,
-  );
+  const indexOffset = indexEnd - layout.lastHeader.payloadSize;
+  // Checked before reading: a damaged size would otherwise read gigabytes into memory.
+  ensureNotBeforePayloadStart(indexOffset, layout.lastHeader, layout.payloadStart);
+  const indexRange = ByteRange.of(indexOffset, layout.lastHeader.payloadSize);
   const records = parseRecordIndex(await source.read(indexRange), layout.payloadStart);
   for (const record of records) ensureInsideTrailer(record, layout.payloadStart, indexRange.offset);
   return records;

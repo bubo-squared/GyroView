@@ -147,7 +147,10 @@ module.exports = {
       comment:
         'Production code of an adapter never imports another adapter; tests may compose them.',
       severity: 'error',
-      from: { path: '^packages/adapters/([^/]+)/src', pathNot: '\\.test\\.ts$' },
+      from: {
+        path: '^packages/adapters/([^/]+)/src',
+        pathNot: ['\\.test\\.ts$', '/src/test/'],
+      },
       to: { path: '^packages/adapters/(?!$1/)', pathNot: '^packages/adapters/$1/' },
     },
     {

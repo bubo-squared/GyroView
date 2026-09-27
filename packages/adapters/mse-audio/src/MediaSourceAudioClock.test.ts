@@ -1,16 +1,14 @@
-import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
 import {
   GyroViewError,
   seconds,
   secondsToMilliseconds,
   type AudioSegmentSource,
-  type DemuxedInput,
 } from '@gyroview/core';
-import { describePlaybackClockContract, InMemoryRandomAccessSource } from '@gyroview/core/testing';
+import { describePlaybackClockContract } from '@gyroview/core/testing';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { MediaSourceAudioClock } from './MediaSourceAudioClock';
-import fixtureUrl from '../../../../test/fixtures/synthetic/dual-track-aac-64px-10fps-3s.mp4?url';
+import { openFixtureAudio, type FixtureAudio } from './test/fixtureAudio';
 
 const AAC_IN_MP4 = 'audio/mp4; codecs="mp4a.40.2"';
 /**
@@ -43,7 +41,7 @@ function waitUntilPast(clock: MediaSourceAudioClock, time: number): Promise<void
 }
 
 describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
-  let input: DemuxedInput;
+  let fixture: FixtureAudio;
   let source: AudioSegmentSource;
   const elements: HTMLAudioElement[] = [];
   const clocks: MediaSourceAudioClock[] = [];
@@ -59,15 +57,8 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
   }
 
   beforeAll(async () => {
-    const response = await fetch(fixtureUrl);
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    input = await new MediabunnyDemuxer().open(
-      new InMemoryRandomAccessSource(bytes),
-      'aac fixture',
-    );
-    const [audio] = input.audioTracks;
-    if (!audio) throw new Error('fixture has no audio track');
-    source = await audio.openSegments();
+    fixture = await openFixtureAudio();
+    source = fixture.source;
   });
 
   afterEach(() => {
@@ -76,7 +67,7 @@ describe.skipIf(!isSupported)('MediaSourceAudioClock', () => {
   });
 
   afterAll(() => {
-    input.dispose();
+    fixture.dispose();
   });
 
   describePlaybackClockContract(

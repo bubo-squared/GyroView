@@ -3,9 +3,11 @@
 import 'gyroview/define';
 import {
   createBrowserPlayer,
+  GYRO_VIEW_ERROR_CODES,
   GyroViewError,
   hasErrorCode,
   inspectRecording,
+  isGyroViewErrorCode,
   VIEW_MODES,
   type GyroViewErrorCode,
   type PlayerMetadata,
@@ -63,5 +65,10 @@ player.lookAt(90, -10);
 player.turn(5, 0);
 player.setView({ ...player.view, fieldOfView: 75 });
 const position: number = player.currentTime;
+const yaw: number = player.view.yaw;
+element.preload = 'none';
+const matching: 'on' | 'off' = element.gainMatch;
+const knownCodes: readonly GyroViewErrorCode[] = GYRO_VIEW_ERROR_CODES;
+const fromMessage = isGyroViewErrorCode('cors') ? 'cors' : undefined;
 
-export { fromUrl, metadata, position, samples, status };
+export { fromMessage, fromUrl, knownCodes, matching, metadata, position, samples, status, yaw };

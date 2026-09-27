@@ -2,7 +2,6 @@ import type {
   CalibrationVersion,
   FrameTimeSourceName,
   LensLayoutKind,
-  Seconds,
   VideoTrackDescription,
 } from '@gyroview/core';
 
@@ -30,5 +29,8 @@ export interface PlayerMetadata {
   readonly hasGyro: boolean;
   readonly imuFrame: ImuFrameSummary | undefined;
   readonly hasAudio: boolean;
-  readonly duration: Seconds;
+  /**
+   * In seconds.
+   */
+  readonly duration: number;
 }

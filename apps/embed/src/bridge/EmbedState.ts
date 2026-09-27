@@ -1,5 +1,5 @@
-import type { StabilizationMode, ViewMode, ViewState } from '@gyroview/core';
-import type { PlayerMetadata, PlayerStatus } from '@gyroview/player';
+import type { StabilizationMode, ViewMode } from '@gyroview/core';
+import type { PlayerMetadata, PlayerStatus, ViewAngles } from '@gyroview/player';
 
 /**
  * The player's state as the embedding page sees it: a snapshot the host answers `getState`
@@ -12,7 +12,7 @@ export interface EmbedState {
   readonly isPaused: boolean;
   readonly volume: number;
   readonly isMuted: boolean;
-  readonly view: ViewState;
+  readonly view: ViewAngles;
   readonly viewMode: ViewMode;
   readonly stabilization: StabilizationMode;
   readonly metadata: PlayerMetadata | undefined;

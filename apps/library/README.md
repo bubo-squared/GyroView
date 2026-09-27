@@ -80,7 +80,8 @@ player.seek(30);
 player.lookAt(90, 0);
 ```
 
-`gyroview` also exports `GyroViewError` with its codes, and the types of the element's settings,
+`gyroview` also exports `GyroViewError`, the list of its codes (`GYRO_VIEW_ERROR_CODES`, with
+`isGyroViewErrorCode` to check a string against it), and the types of the element's settings,
 metadata, events and inspection.
 
 ## Requirements

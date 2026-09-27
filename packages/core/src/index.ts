@@ -147,6 +147,7 @@ export type { CalibrationChoice } from './domain/format/calibration/selectCalibr
 export {
   ensureIndexInRange,
   ensureInvariant,
+  GYRO_VIEW_ERROR_CODES,
   GyroViewError,
   hasErrorCode,
   isGyroViewErrorCode,

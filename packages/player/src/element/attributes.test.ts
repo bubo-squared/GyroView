@@ -44,10 +44,10 @@ describe('sourceFromAttributes', () => {
 });
 
 describe('view and playback attributes', () => {
-  it('changes only the angle the attribute names, clamped, and keeps the others', () => {
+  it('changes only the angle the attribute names and keeps the others', () => {
     const turned = { ...DEFAULT_VIEW, pitch: degrees(-20) };
-    expect(viewAfterAttribute(turned, 'yaw', '370')).toEqual({ ...turned, yaw: 10 });
-    expect(viewAfterAttribute(turned, 'fov', '300').fieldOfView).toBe(120);
+    expect(viewAfterAttribute(turned, 'yaw', '370')).toEqual({ ...turned, yaw: 370 });
+    expect(viewAfterAttribute(turned, 'fov', '75').fieldOfView).toBe(75);
   });
 
   it('keeps the view for an absent or unreadable value or another attribute', () => {
@@ -67,7 +67,8 @@ describe('view and playback attributes', () => {
   it('preloads unless told none', () => {
     expect(shouldPreload(null)).toBe(true);
     expect(shouldPreload('auto')).toBe(true);
-    expect(shouldPreload('None')).toBe(false);
+    expect(shouldPreload('metadata')).toBe(true);
+    expect(shouldPreload(' None ')).toBe(false);
   });
 
   it('matches gains unless told off', () => {

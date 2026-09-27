@@ -1,12 +1,6 @@
-import type {
-  GyroViewError,
-  PlayerState,
-  Seconds,
-  StabilizationMode,
-  ViewMode,
-  ViewState,
-} from '@gyroview/core';
+import type { GyroViewError, PlayerState, StabilizationMode, ViewMode } from '@gyroview/core';
 
+import type { ViewAngles } from './PlayerOptions';
 import type { PlayerMetadata } from '../PlayerMetadata';
 
 /**
@@ -39,14 +33,14 @@ export interface PlayerEvents {
   /**
    * The media time, every quarter second of playback and on a pause, a seek or the end.
    */
-  readonly timeupdate: Seconds;
-  readonly seeking: Seconds;
-  readonly seeked: Seconds;
+  readonly timeupdate: number;
+  readonly seeking: number;
+  readonly seeked: number;
   /**
    * A picture was drawn; the media time it shows.
    */
-  readonly frame: Seconds;
-  readonly viewchange: ViewState;
+  readonly frame: number;
+  readonly viewchange: ViewAngles;
   readonly viewmodechange: ViewMode;
   readonly stabilizationchange: StabilizationMode;
   /**

@@ -4,7 +4,6 @@ import {
   seconds,
   type PictureRenderer,
   type PlaybackSession,
-  type Seconds,
 } from '@gyroview/core';
 import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
@@ -30,7 +29,7 @@ interface Harness {
   readonly audio: HTMLAudioElement;
   readonly statuses: PlayerStatus[];
   readonly events: string[];
-  readonly frames: Seconds[];
+  readonly frames: number[];
   readonly warnings: string[];
   readonly errors: GyroViewError[];
 }
@@ -45,7 +44,7 @@ function harness(pipelines: PipelineFactory, ports: RecordingPorts = browserPort
   const player = new Player({ host: { canvas, audio }, ports, pipelines });
   const statuses: PlayerStatus[] = [];
   const events: string[] = [];
-  const frames: Seconds[] = [];
+  const frames: number[] = [];
   const warnings: string[] = [];
   const errors: GyroViewError[] = [];
   player.events.on('statuschange', (status) => {

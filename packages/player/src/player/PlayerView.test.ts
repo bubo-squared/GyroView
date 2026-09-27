@@ -11,6 +11,7 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import type { PlayerEvents } from './PlayerEvents';
+import type { ViewAngles } from './PlayerOptions';
 import { PlayerView, type ViewSurface } from './PlayerView';
 
 interface Recorded {
@@ -20,7 +21,7 @@ interface Recorded {
    * What the renderer was asked to draw, framings and modes in order.
    */
   readonly drawn: (Framing | ViewMode)[];
-  readonly views: ViewState[];
+  readonly views: ViewAngles[];
   readonly modes: ViewMode[];
   /**
    * The canvas the gestures happen on, in CSS pixels; a test may resize it.
@@ -30,7 +31,7 @@ interface Recorded {
 
 function recordedView(lensCount = 2): Recorded {
   const drawn: (Framing | ViewMode)[] = [];
-  const views: ViewState[] = [];
+  const views: ViewAngles[] = [];
   const modes: ViewMode[] = [];
   const events = new TypedEmitter<PlayerEvents>();
   events.on('viewchange', (state) => {

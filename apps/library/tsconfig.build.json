@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2024", "ESNext.Array", "DOM", "DOM.Iterable"],
+    "stripInternal": true,
     "types": ["vite/client"],
     "paths": {
       "@gyroview/core": ["../../packages/core/src/index.ts"],

@@ -29,8 +29,10 @@ export type {
   ViewAngles,
 } from '@gyroview/player';
 export {
+  GYRO_VIEW_ERROR_CODES,
   GyroViewError,
   hasErrorCode,
+  isGyroViewErrorCode,
   STABILIZATION_MODES,
   VIEW_MODES,
   type BoxSummary,
@@ -48,5 +50,4 @@ export {
   type ViewMode,
   type UnreadableGyro,
   type UnreadExposure,
-  type ViewState,
 } from '@gyroview/core';

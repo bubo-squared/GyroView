@@ -1,10 +1,4 @@
-import {
-  Deferred,
-  messageOf,
-  type StabilizationMode,
-  type ViewMode,
-  type ViewState,
-} from '@gyroview/core';
+import { Deferred, messageOf, type StabilizationMode, type ViewMode } from '@gyroview/core';
 
 import {
   OBSERVED_ATTRIBUTES,
@@ -12,7 +6,13 @@ import {
   SourceAttribute,
   ViewAttribute,
 } from './attributeNames';
-import { shouldPreload, unreadableAngleWarning, viewAfterAttribute } from './attributes';
+import {
+  GAIN_MATCH,
+  PRELOAD,
+  shouldPreload,
+  unreadableAngleWarning,
+  viewAfterAttribute,
+} from './attributes';
 import { elementSourceOf, type FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
 import { IdleWatcher } from './IdleWatcher';
@@ -28,6 +28,7 @@ import {
 } from './liveSettings';
 import {
   defineBooleanProperties,
+  defineKeywordProperties,
   defineStringProperties,
   propertyNameOf,
 } from './reflectedProperties';
@@ -43,25 +44,26 @@ import { ViewGestures } from '../controls/ViewGestures';
 import { ensureFinite } from '../player/ensureFinite';
 import type { Player } from '../player/Player';
 import type { PlayerStatus } from '../player/PlayerEvents';
+import type { ViewAngles } from '../player/PlayerOptions';
 import type { PlayerMetadata } from '../PlayerMetadata';
 /**
  * Attributes whose properties mirror them, as `img.src` does: what to play and how to present
  * it. The live settings (stabilization, view mode, view angles, sound, loop) have properties of
  * their own that report the player's current state.
  */
-const STRING_ATTRIBUTES = [
-  ...Object.values(SourceAttribute),
-  PlaybackAttribute.Poster,
-  PlaybackAttribute.Preload,
-  PlaybackAttribute.GainMatch,
-];
+const STRING_ATTRIBUTES = [...Object.values(SourceAttribute), PlaybackAttribute.Poster];
+const KEYWORD_ATTRIBUTES = [PRELOAD, GAIN_MATCH];
 const BOOLEAN_ATTRIBUTES = [PlaybackAttribute.Autoplay, PlaybackAttribute.Controls];
 const SOURCE_ATTRIBUTES: readonly string[] = Object.values(SourceAttribute);
 /**
  * The properties a page may set before the element is defined, all kept for it.
  */
 const PUBLIC_PROPERTIES: readonly string[] = [
-  ...[...STRING_ATTRIBUTES, ...BOOLEAN_ATTRIBUTES].map((name) => propertyNameOf(name)),
+  ...[
+    ...STRING_ATTRIBUTES,
+    ...KEYWORD_ATTRIBUTES.map(({ name }) => name),
+    ...BOOLEAN_ATTRIBUTES,
+  ].map((name) => propertyNameOf(name)),
   ...LIVE_SETTING_NAMES,
   'currentTime',
 ];
@@ -77,8 +79,8 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   declare public src: string | null;
   declare public src2: string | null;
   declare public poster: string | null;
-  declare public preload: string | null;
-  declare public gainMatch: string | null;
+  declare public preload: 'none' | 'auto';
+  declare public gainMatch: 'on' | 'off';
   declare public autoplay: boolean;
   declare public controls: boolean;
   declare public stabilization: StabilizationMode;
@@ -117,6 +119,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     super();
     this.earlyProperties = takeEarlyProperties(this, PUBLIC_PROPERTIES);
     defineStringProperties(this, STRING_ATTRIBUTES);
+    defineKeywordProperties(this, KEYWORD_ATTRIBUTES);
     defineBooleanProperties(this, BOOLEAN_ATTRIBUTES);
     const shadow = this.attachShadow({ mode: 'open' });
     shadow.innerHTML = ELEMENT_TEMPLATE;
@@ -175,7 +178,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   /**
    * Where the normal view looks: yaw and pitch in degrees, and the horizontal field of view.
    */
-  public get view(): ViewState {
+  public get view(): ViewAngles {
     return this.player.view;
   }
 

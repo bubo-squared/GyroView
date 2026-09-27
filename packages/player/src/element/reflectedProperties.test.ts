@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   defineBooleanProperties,
+  defineKeywordProperties,
   defineStringProperties,
   propertyNameOf,
 } from './reflectedProperties';
@@ -26,6 +27,23 @@ describe('reflected properties', () => {
     mirrored.gainMatch = 'off';
     mirrored.gainMatch = undefined;
     expect(element.hasAttribute('gain-match')).toBe(false);
+  });
+
+  it('reads an enumerated attribute as the keyword in effect, and writes it as given', () => {
+    const element = document.createElement('div');
+    defineKeywordProperties(element, [
+      { name: 'preload', keywords: ['none', 'auto'], fallback: 'auto' },
+    ]);
+    const mirrored = element as unknown as HTMLElement & { preload: string | null | undefined };
+    expect(mirrored.preload).toBe('auto');
+    element.setAttribute('preload', ' NONE ');
+    expect(mirrored.preload).toBe('none');
+    element.setAttribute('preload', 'metadata');
+    expect(mirrored.preload).toBe('auto');
+    mirrored.preload = 'none';
+    expect(element.getAttribute('preload')).toBe('none');
+    mirrored.preload = undefined;
+    expect(element.hasAttribute('preload')).toBe(false);
   });
 
   it('coerces a boolean property as a media element does, so undefined never flips it', () => {

@@ -11,7 +11,6 @@ import {
   type Seconds,
   type StabilizationMode,
   type ViewMode,
-  type ViewState,
 } from '@gyroview/core';
 
 import { cssSizeOf } from './DrawingBufferFit';
@@ -37,10 +36,10 @@ import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
 
 /**
- * Headless player: the facade the element drives (and the embed bridge, through the element).
- * Owns one loaded recording at a time, relays its session's events in media-element terms
- * (`SessionRelay`), and owns the settings (view, view mode, stabilization, gain matching, sound,
- * loop), which carry over from load to load. Everything DOM it touches is handed in.
+ * The player without the element, which `createBrowserPlayer` gives: it plays one recording at a
+ * time on the canvas and audio element it was handed, reports in media-element events, and keeps
+ * its settings (view, view mode, stabilization, gain matching, sound, loop) from load to load.
+ * `<gyro-view>` is a facade over it.
  */
 export class Player {
   public readonly events = new TypedEmitter<PlayerEvents>();
@@ -69,6 +68,9 @@ export class Player {
   private isDisposed = false;
   private lastStatus: PlayerStatus = 'idle';
 
+  /**
+   * @internal A page gets its player from `createBrowserPlayer`, which composes the parts.
+   */
   public constructor(private readonly parts: PlayerParts) {
     this.loop = new FrameLoop(this.tick);
     // A hidden tab or an offscreen frame gets no animation frames: the sound's end ticks the
@@ -87,11 +89,11 @@ export class Player {
     return this.loaded?.opened.metadata;
   }
 
-  public get currentTime(): Seconds {
+  public get currentTime(): number {
     return this.loaded?.pipeline.session.currentTime ?? seconds(0);
   }
 
-  public get duration(): Seconds {
+  public get duration(): number {
     return this.loaded?.opened.duration ?? seconds(0);
   }
 
@@ -102,7 +104,7 @@ export class Player {
     return !isFlowing(this.loaded?.pipeline.session.state);
   }
 
-  public get view(): ViewState {
+  public get view(): ViewAngles {
     return this.viewing.current;
   }
 

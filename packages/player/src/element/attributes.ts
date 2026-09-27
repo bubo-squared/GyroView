@@ -1,6 +1,6 @@
-import { clampView, degrees, type ViewState } from '@gyroview/core';
-
-import { SourceAttribute, ViewAttribute } from './attributeNames';
+import { PlaybackAttribute, SourceAttribute, ViewAttribute } from './attributeNames';
+import { keywordOf, type KeywordAttribute } from './reflectedProperties';
+import type { ViewAngles } from '../player/PlayerOptions';
 import type { MediaInput, PlayerSource } from '../PlayerSource';
 
 /**
@@ -37,7 +37,7 @@ function resolvedOrAsWritten(url: string, baseUrl: string): string {
   }
 }
 
-const VIEW_ANGLES: Readonly<Record<string, keyof ViewState>> = {
+const VIEW_ANGLES: Readonly<Record<string, keyof ViewAngles>> = {
   [ViewAttribute.FieldOfView]: 'fieldOfView',
   [ViewAttribute.Yaw]: 'yaw',
   [ViewAttribute.Pitch]: 'pitch',
@@ -46,14 +46,16 @@ const VIEW_ANGLES: Readonly<Record<string, keyof ViewState>> = {
 /**
  * The view after one view attribute changed: the angle it names replaces the view's; an absent
  * or unreadable value leaves the view as it is. The other angles are not read again, so what the
- * viewer changed since is kept.
+ * viewer changed since is kept. The player clamps the view it is given.
  */
-export function viewAfterAttribute(view: ViewState, name: string, value: string | null): ViewState {
+export function viewAfterAttribute(
+  view: ViewAngles,
+  name: string,
+  value: string | null,
+): ViewAngles {
   const angle = VIEW_ANGLES[name];
   const parsed = parseNumber(value);
-  return angle === undefined || parsed === undefined
-    ? view
-    : clampView({ ...view, [angle]: degrees(parsed) });
+  return angle === undefined || parsed === undefined ? view : { ...view, [angle]: parsed };
 }
 
 /**
@@ -93,14 +95,28 @@ export function unreadableAngleWarning(
     : `ignoring ${attribute}="${value}"; expected a number of degrees`;
 }
 
-const PRELOAD_NONE = 'none';
+/**
+ * `none` keeps the decoders idle until play; `auto`, the default, shows the first frame at once.
+ */
+export const PRELOAD: KeywordAttribute<'none' | 'auto'> = {
+  name: PlaybackAttribute.Preload,
+  keywords: ['none', 'auto'],
+  fallback: 'auto',
+};
+
+/**
+ * `off` leaves the lenses' exposure as recorded; `on`, the default, matches it along the seam.
+ */
+export const GAIN_MATCH: KeywordAttribute<'on' | 'off'> = {
+  name: PlaybackAttribute.GainMatch,
+  keywords: ['on', 'off'],
+  fallback: 'on',
+};
 
 export function shouldPreload(value: string | null): boolean {
-  return value?.trim().toLowerCase() !== PRELOAD_NONE;
+  return keywordOf(PRELOAD, value) === 'auto';
 }
 
-const GAIN_MATCH_OFF = 'off';
-
 export function shouldMatchGains(value: string | null): boolean {
-  return value?.trim().toLowerCase() !== GAIN_MATCH_OFF;
+  return keywordOf(GAIN_MATCH, value) === 'on';
 }

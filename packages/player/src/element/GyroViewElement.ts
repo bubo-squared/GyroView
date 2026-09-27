@@ -1,4 +1,4 @@
-import { messageOf, type StabilizationMode, type ViewMode } from '@gyroview/core';
+import { messageOf, type ScreenPoint, type StabilizationMode, type ViewMode } from '@gyroview/core';
 
 import {
   OBSERVED_ATTRIBUTES,
@@ -270,11 +270,12 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   }
 
   /**
-   * Zooms by `steps` about the centre: positive zooms in, each step by a factor of 1.1, within
-   * each view mode's limits.
+   * Zooms by `steps` (positive zooms in, each step by a factor of 1.1, within each view mode's
+   * limits) toward `focus`, a point of the picture as fractions of its size; about the centre
+   * when none is given.
    */
-  public zoom(steps: number): void {
-    this.player.zoom(steps);
+  public zoom(steps: number, focus?: ScreenPoint): void {
+    this.player.zoom(steps, focus);
   }
 
   /**

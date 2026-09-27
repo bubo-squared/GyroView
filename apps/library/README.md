@@ -32,6 +32,10 @@ import 'gyroview/define';
 ></gyro-view>
 ```
 
+A relative `src` resolves against the document, as an image's does. `timeupdate` comes four
+times a second while playing, as a media element's does; `frame` comes with every picture
+drawn.
+
 Play a file the visitor picks, without any server:
 
 ```ts
@@ -93,6 +97,13 @@ player.lookAt(90, 0);
 `gyroview` also exports `GyroViewError`, the list of its codes (`GYRO_VIEW_ERROR_CODES`, with
 `isGyroViewErrorCode` to check a string against it), and the types of the element's settings,
 metadata, events and inspection.
+
+## Several players on one page
+
+Each player holds a WebGL context and, while a recording is loaded, two hardware video
+decoders. Browsers cap both (about sixteen WebGL contexts in Chrome, fewer decoders on phones),
+so a gallery gives its players `preload="none"`, which keeps the decoders idle until play, and
+loads a recording only for the player in view, removing `src` from the others.
 
 ## Requirements
 

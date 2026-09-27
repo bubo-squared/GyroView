@@ -9,20 +9,35 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Actions are pinned to the commit of the release named beside each, so a moved tag cannot
+# change what runs; Dependabot proposes the updates (.github/dependabot.yml).
 jobs:
   verify:
     name: Typecheck, lint, format, dependency rules, tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @gyroview/adapter-webcodecs exec playwright install --with-deps chromium webkit
+      - name: Find the Playwright version
+        id: playwright
+        run: echo "version=$(pnpm --filter @gyroview/adapter-webcodecs exec playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
+      # The browsers are downloaded once per Playwright version; the system libraries they need
+      # are not cached, and are installed on every run.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - if: steps.browsers.outputs.cache-hit != 'true'
+        run: pnpm --filter @gyroview/adapter-webcodecs exec playwright install --with-deps chromium webkit
+      - if: steps.browsers.outputs.cache-hit == 'true'
+        run: pnpm --filter @gyroview/adapter-webcodecs exec playwright install-deps chromium webkit
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check

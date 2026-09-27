@@ -2,7 +2,9 @@ name: Release
 
 # Publishes the npm package `gyroview` when a tag `v<version>` is pushed. npm trusts this workflow
 # (trusted publishing): no token is stored, and every version carries a provenance statement
-# linking it to the commit and the run that built it. CONTRIBUTING.md has the steps.
+# linking it to the commit and the run that built it. The job runs in the `npm` environment,
+# where the repository's settings can require a reviewer's approval before anything publishes.
+# CONTRIBUTING.md has the steps.
 
 on:
   push:
@@ -17,10 +19,11 @@ jobs:
     name: Verify and publish to npm
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: npm
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm

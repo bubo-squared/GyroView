@@ -1,0 +1,7 @@
+# The workflows pin actions to commits; Dependabot proposes the newer releases as pull requests.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

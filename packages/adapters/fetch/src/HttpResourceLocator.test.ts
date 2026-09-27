@@ -2,7 +2,7 @@ import { describeResourceLocatorContract } from '@gyroview/core/testing';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { HttpResourceLocator } from './HttpResourceLocator';
-import { TestServer } from './testServer';
+import { TestServer } from './test/testServer';
 
 const servers: TestServer[] = [];
 const content = Uint8Array.from({ length: 100 }, (_value, index) => index);

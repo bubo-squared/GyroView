@@ -154,6 +154,17 @@ module.exports = {
       to: { path: '^packages/adapters/(?!$1/)', pathNot: '^packages/adapters/$1/' },
     },
     {
+      name: 'browser-code-imports-no-node-built-ins',
+      comment:
+        'Everything but the node adapter runs in a browser, where Node built-ins do not exist; tests and their support may use them.',
+      severity: 'error',
+      from: {
+        path: '^(packages/(player|adapters/(?!node/)[^/]+)|apps/[^/]+)/src/',
+        pathNot: ['\\.test\\.ts$', '\\.contract\\.ts$', '/src/test/'],
+      },
+      to: { dependencyTypes: ['core'] },
+    },
+    {
       name: 'adapters-do-not-know-player-or-apps',
       severity: 'error',
       from: { path: '^packages/adapters/' },

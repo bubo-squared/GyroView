@@ -3,7 +3,7 @@ import { describeRandomAccessSourceContract } from '@gyroview/core/testing';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import { HttpRangeSource } from './HttpRangeSource';
-import { TestServer } from './testServer';
+import { TestServer } from './test/testServer';
 
 const servers: TestServer[] = [];
 /**

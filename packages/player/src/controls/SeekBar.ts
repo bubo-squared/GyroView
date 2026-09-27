@@ -20,6 +20,12 @@ const ARROW_DIRECTIONS: ReadonlyMap<string, number> = new Map([
 ]);
 
 /**
+ * The events that end a drag of the thumb. A drag released where it began commits no `change`,
+ * so the release ends it too, whichever comes first.
+ */
+const SCRUB_ENDINGS = ['pointerup', 'pointercancel', 'change'] as const;
+
+/**
  * What the seek bar follows and moves.
  */
 export type SeekPlayer = Pick<Player, 'events' | 'currentTime' | 'duration' | 'seek' | 'scrub'>;
@@ -64,10 +70,11 @@ export class SeekBar {
       this.showTime(time);
       this.scrubTo(time);
     });
-    seek.addEventListener('change', () => {
-      this.isScrubbing = false;
-      this.seekExactly(Number(seek.value));
-    });
+    for (const ending of SCRUB_ENDINGS) {
+      seek.addEventListener(ending, () => {
+        this.endScrub();
+      });
+    }
     seek.addEventListener('keydown', (event) => {
       const direction = ARROW_DIRECTIONS.get(event.key);
       if (direction === undefined) return;
@@ -113,11 +120,14 @@ export class SeekBar {
   }
 
   /**
-   * A scrub still in flight yields to the seek: the session drops a scrub a seek overtook.
+   * Seeks exactly where the thumb was let go; a scrub still in flight yields to the seek (the
+   * session drops a scrub a seek overtook).
    */
-  private seekExactly(time: number): void {
+  private endScrub(): void {
+    if (!this.isScrubbing) return;
+    this.isScrubbing = false;
     this.scrubTarget = undefined;
-    this.host.player.seek(seconds(time));
+    this.host.player.seek(seconds(Number(this.parts.seek.value)));
   }
 
   /**

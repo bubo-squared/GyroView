@@ -43,6 +43,7 @@ interface World {
   readonly warnings: string[];
   readonly drag: (time: number) => void;
   readonly release: (time: number) => void;
+  readonly letGo: (ending: string) => void;
 }
 
 function seekBar(): World {
@@ -69,6 +70,9 @@ function seekBar(): World {
     release: (time): void => {
       seek.value = String(time);
       seek.dispatchEvent(new Event('change'));
+    },
+    letGo: (ending): void => {
+      seek.dispatchEvent(new Event(ending));
     },
   };
 }
@@ -134,6 +138,31 @@ describe('SeekBar', () => {
     transport.landScrub();
     await settle();
     expect(transport.scrubs).toEqual([1]);
+  });
+
+  it.each(['pointerup', 'pointercancel'])(
+    'ends a drag back to where it began on %s, which commits no change: it seeks there and follows playback again',
+    (ending) => {
+      const { parts, transport, drag, letGo } = seekBar();
+      transport.becomeReady(10);
+      transport.events.emit('timeupdate', seconds(1));
+      drag(4);
+      drag(1);
+      letGo(ending);
+      expect(transport.seeks).toEqual([1]);
+      transport.events.emit('timeupdate', seconds(2));
+      expect(parts.seek.value).toBe('2');
+    },
+  );
+
+  it('seeks once for a release and the change that follows it, and not for a click that moved nothing', () => {
+    const { transport, drag, release, letGo } = seekBar();
+    transport.becomeReady(10);
+    letGo('pointerup');
+    drag(3);
+    letGo('pointerup');
+    release(3);
+    expect(transport.seeks).toEqual([3]);
   });
 
   it('warns when a scrub fails', async () => {

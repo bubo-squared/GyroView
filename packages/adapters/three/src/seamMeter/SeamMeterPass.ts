@@ -24,7 +24,8 @@ const SEAM_SAMPLES = 64;
 /**
  * SeamMeter over the GPU: renders what each lens sees along the seam ring into one row of a tiny
  * target and reads the rows back, sharing the stitch's uniforms so it always looks at the frames
- * on screen. Compiled when created, so a broken shader fails there and not mid-playback.
+ * on screen. Drawn once when created (three checks a program only at its first use), so a broken
+ * shader fails there and not mid-playback.
  */
 export class SeamMeterPass implements SeamMeter {
   private readonly target = new WebGLRenderTarget(SEAM_SAMPLES, MAX_LENSES, {
@@ -45,7 +46,12 @@ export class SeamMeterPass implements SeamMeter {
   ) {
     this.material = createPassMaterial(uniforms, SEAM_ANALYSIS);
     this.scene.add(new Mesh(this.geometry, this.material));
-    renderer.compile(this.scene, this.camera);
+    try {
+      this.draw();
+    } catch (error) {
+      this.dispose();
+      throw error;
+    }
   }
 
   /**
@@ -79,11 +85,22 @@ export class SeamMeterPass implements SeamMeter {
     return this.isDisposed;
   }
 
-  private async readSeam(): Promise<void> {
+  /**
+   * Renders the seam rows into the meter's target, the renderer's own target restored however the
+   * drawing ends.
+   */
+  private draw(): void {
     const previousTarget = this.renderer.getRenderTarget();
     this.renderer.setRenderTarget(this.target);
-    this.renderer.render(this.scene, this.camera);
-    this.renderer.setRenderTarget(previousTarget);
+    try {
+      this.renderer.render(this.scene, this.camera);
+    } finally {
+      this.renderer.setRenderTarget(previousTarget);
+    }
+  }
+
+  private async readSeam(): Promise<void> {
+    this.draw();
     await this.renderer.readRenderTargetPixelsAsync(
       this.target,
       0,

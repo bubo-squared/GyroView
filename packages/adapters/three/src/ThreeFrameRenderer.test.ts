@@ -528,6 +528,21 @@ describe('ThreeFrameRenderer', () => {
     }).toThrow(/disposed/u);
   });
 
+  it('refuses a shader the GPU will not link when created, not at the first frame', () => {
+    const canvas = document.createElement('canvas');
+    document.body.append(canvas);
+    canvases.push(canvas);
+    const gl = canvas.getContext('webgl2');
+    if (!gl) throw new Error('this browser has no WebGL2 context');
+    const parameterOf = gl.getProgramParameter.bind(gl);
+    gl.getProgramParameter = (program: WebGLProgram, name: number): unknown =>
+      name === gl.LINK_STATUS ? false : parameterOf(program, name);
+    const setup = buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
+    expect(() => ThreeFrameRenderer.create(canvas, setup)).toThrow(
+      expect.objectContaining({ code: 'render-unavailable' }),
+    );
+  });
+
   it('refuses a layout with more decoded frames than the shader samples', () => {
     const setup = buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
     expect(() => open({ ...setup, frameSlotCount: 3 })).toThrow(

@@ -100,17 +100,13 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   ): ThreeFrameRenderer {
     ensureDrawable(setup);
     const renderer = createRenderer(canvas, options);
-    const textures = Array.from({ length: setup.frameSlotCount }, () => createLensTexture());
-    const uniforms = createRendererUniforms(setup, textures);
-    const materials = createPictureMaterials(uniforms);
-    const pass = new Mesh(createFullscreenTriangle(), materials.rectilinear);
-    compilePictureMaterials(renderer, pass.geometry, materials);
-    const scene = new Scene();
-    scene.add(pass);
-    const lensCount = setup.lenses.length;
-    const camera = new Camera();
-    const parts = { renderer, scene, camera, pass, materials, textures, uniforms, lensCount };
-    return new ThreeFrameRenderer(parts, canvas);
+    try {
+      return new ThreeFrameRenderer(assembleParts(renderer, setup), canvas);
+    } catch (error) {
+      // A shader the GPU refuses fails here; what was built goes with it.
+      renderer.dispose();
+      throw error;
+    }
   }
 
   public get lensCount(): number {
@@ -256,6 +252,33 @@ function ensureDrawable(setup: StitchingSetup): void {
     'unsupported-layout',
     `the renderer draws at most ${MAX_LENSES} lenses from ${LENS_TEXTURES} frames; the layout has ${setup.lenses.length} lenses in ${setup.frameSlotCount} frames`,
   );
+}
+
+function assembleParts(renderer: WebGLRenderer, setup: StitchingSetup): RendererParts {
+  const textures = Array.from({ length: setup.frameSlotCount }, () => createLensTexture());
+  const uniforms = createRendererUniforms(setup, textures);
+  const materials = createPictureMaterials(uniforms);
+  const pass = new Mesh(createFullscreenTriangle(), materials.rectilinear);
+  try {
+    compilePictureMaterials(renderer, pass.geometry, materials);
+  } catch (error) {
+    disposePictureMaterials(materials);
+    pass.geometry.dispose();
+    for (const texture of textures) texture.dispose();
+    throw error;
+  }
+  const scene = new Scene();
+  scene.add(pass);
+  return {
+    renderer,
+    scene,
+    camera: new Camera(),
+    pass,
+    materials,
+    textures,
+    uniforms,
+    lensCount: setup.lenses.length,
+  };
 }
 
 function createRenderer(

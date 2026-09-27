@@ -3,6 +3,7 @@ import {
   Camera,
   Mesh,
   Scene,
+  WebGLRenderTarget,
   type BufferGeometry,
   type RawShaderMaterial,
   type WebGLRenderer,
@@ -26,8 +27,9 @@ export function createPictureMaterials(uniforms: RendererUniforms): PictureMater
 }
 
 /**
- * Compiling every program now surfaces a broken shader here rather than at the first presented
- * frame or the first change of view mode, and makes a change of mode instant.
+ * Draws every program once, off screen: a broken shader then fails here rather than at the first
+ * presented frame or the first change of view mode (three checks a program only at its first
+ * use, which `compile` is not), and a change of mode is instant.
  */
 export function compilePictureMaterials(
   renderer: WebGLRenderer,
@@ -35,10 +37,29 @@ export function compilePictureMaterials(
   materials: PictureMaterials,
 ): void {
   const camera = new Camera();
-  for (const material of Object.values(materials)) {
+  const scenes = Object.values(materials).map((material) => {
     const scene = new Scene();
     scene.add(new Mesh(geometry, material));
-    renderer.compile(scene, camera);
+    return scene;
+  });
+  drawOffScreen(renderer, () => {
+    for (const scene of scenes) renderer.render(scene, camera);
+  });
+}
+
+/**
+ * Runs `draw` with a 1-by-1 target bound, the renderer's own target restored afterwards however
+ * the drawing ends.
+ */
+function drawOffScreen(renderer: WebGLRenderer, draw: () => void): void {
+  const previous = renderer.getRenderTarget();
+  const target = new WebGLRenderTarget(1, 1, { depthBuffer: false, stencilBuffer: false });
+  renderer.setRenderTarget(target);
+  try {
+    draw();
+  } finally {
+    renderer.setRenderTarget(previous);
+    target.dispose();
   }
 }
 

@@ -10,6 +10,7 @@ import {
   FIRST_BYTE_RANGE,
   httpRequest,
   isAbort,
+  plainHttpRequest,
   withAbortSignal,
   type HttpMethod,
   type HttpRequestOptions,
@@ -93,7 +94,7 @@ export class HttpRangeSource implements RandomAccessSource {
       } catch (error) {
         if (!(error instanceof PassingFailure)) throw error;
       }
-      await wait(delayMs);
+      await wait(delayMs, this.options.requestInit?.signal);
     }
     return this.readOnce(range);
   }
@@ -120,8 +121,12 @@ export class HttpRangeSource implements RandomAccessSource {
    * refused before any range came through is not.
    */
   private async requestRange(range: ByteRange): Promise<Response> {
+    const headers = { Range: `bytes=${range.offset}-${range.end - 1}` };
     try {
-      return await this.request('GET', { Range: `bytes=${range.offset}-${range.end - 1}` });
+      // Once CORS is proven, a failure needs no diagnosing request to the failing server.
+      return this.hasReadRange
+        ? await plainHttpRequest(this.url, { method: 'GET', headers }, this.options)
+        : await this.request('GET', headers);
     } catch (error) {
       throw this.hasReadRange ? this.passingOnceAnswered(error) : passingIfUnreachable(error);
     }
@@ -129,9 +134,9 @@ export class HttpRangeSource implements RandomAccessSource {
 
   private passingOnceAnswered(error: unknown): unknown {
     const message = `${this.url} could not be reached for a byte range`;
-    return error instanceof GyroViewError
-      ? new PassingFailure('source-unreadable', message, { cause: error.cause ?? error })
-      : error;
+    return isAbort(error)
+      ? error
+      : new PassingFailure('source-unreadable', message, { cause: error });
   }
 
   private refusalOf(status: number): GyroViewError {
@@ -207,6 +212,7 @@ export class HttpRangeSource implements RandomAccessSource {
         `${this.url} answered ${response.status} to a byte range; cannot determine the file size`,
       );
     }
+    this.hasReadRange = true;
     const total = CONTENT_RANGE_TOTAL.exec(response.headers.get('content-range') ?? '')?.[1];
     if (total === undefined) {
       throw new GyroViewError(
@@ -222,9 +228,22 @@ export class HttpRangeSource implements RandomAccessSource {
   }
 }
 
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
+/**
+ * A pause before asking again, which an abort of the source's requests ends at once.
+ */
+function wait(ms: number, signal: AbortSignal | null | undefined): Promise<void> {
+  return new Promise((resolve, reject) => {
+    signal?.throwIfAborted();
+    const settled = new AbortController();
+    const timer = setTimeout(() => {
+      settled.abort();
+      resolve();
+    }, ms);
+    const onAbort = (): void => {
+      clearTimeout(timer);
+      reject(abortErrorOf(signal));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true, signal: settled.signal });
   });
 }
 
@@ -233,4 +252,9 @@ function passingIfUnreachable(error: unknown): unknown {
   return isUnreachable
     ? new PassingFailure('source-unreadable', error.message, { cause: error.cause })
     : error;
+}
+
+function abortErrorOf(signal: AbortSignal | null | undefined): Error {
+  const reason: unknown = signal?.reason;
+  return reason instanceof Error ? reason : new DOMException('the read was aborted', 'AbortError');
 }

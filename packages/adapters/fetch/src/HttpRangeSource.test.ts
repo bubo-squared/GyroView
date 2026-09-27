@@ -1,6 +1,6 @@
 import { ByteRange } from '@gyroview/core';
 import { describeRandomAccessSourceContract } from '@gyroview/core/testing';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import { HttpRangeSource } from './HttpRangeSource';
 import { TestServer } from './testServer';
@@ -173,6 +173,21 @@ describe('HttpRangeSource', () => {
     expect(refusing.ranges()).toBe(1);
   });
 
+  it('fails at once with cors when the first range is refused, asking only once', async () => {
+    const server = await serve(content);
+    let ranges = 0;
+    const refusing: typeof fetch = (input, init) => {
+      if (init?.method === 'GET' && init.mode !== 'no-cors') {
+        ranges += 1;
+        return Promise.reject(new TypeError('CORS preflight refused'));
+      }
+      return fetch(input, init);
+    };
+    const source = new HttpRangeSource(server.url, { fetch: refusing, retryDelaysMs: NO_WAIT });
+    await expect(source.read(ByteRange.of(0, 10))).rejects.toMatchObject({ code: 'cors' });
+    expect(ranges).toBe(1);
+  });
+
   it('asks again for a range whose request did not get through', async () => {
     const server = await serve(content);
     const source = new HttpRangeSource(server.url, {
@@ -182,18 +197,39 @@ describe('HttpRangeSource', () => {
     await expect(source.read(ByteRange.of(0, 10))).resolves.toEqual(content.subarray(0, 10));
   });
 
-  it('asks again once a range came through, though the failure looks like CORS', async () => {
+  it('asks again once a range came through, with no diagnosing request to the server', async () => {
     const server = await serve(content);
     const answered: typeof fetch = firstRangeFailing(false);
     let hasReadOnce = false;
+    let probes = 0;
     const source = new HttpRangeSource(server.url, {
-      fetch: (input, init): Promise<Response> =>
-        hasReadOnce ? answered(input, init) : fetch(input, init),
+      fetch: (input, init): Promise<Response> => {
+        if (init?.mode === 'no-cors') probes += 1;
+        return hasReadOnce ? answered(input, init) : fetch(input, init);
+      },
       retryDelaysMs: NO_WAIT,
     });
     await source.read(ByteRange.of(0, 10));
     hasReadOnce = true;
     await expect(source.read(ByteRange.of(10, 10))).resolves.toEqual(content.subarray(10, 20));
+    expect(probes).toBe(0);
+  });
+
+  it('ends a wait before asking again as soon as its requests are aborted', async () => {
+    const server = await serve(content);
+    const load = new AbortController();
+    const busy = firstRangeAnswered(503);
+    const source = new HttpRangeSource(
+      server.url,
+      { fetch: busy.fetch, retryDelaysMs: [60_000] },
+      load.signal,
+    );
+    const reading = source.read(ByteRange.of(0, 10));
+    await vi.waitFor(() => {
+      expect(busy.ranges()).toBe(1);
+    });
+    load.abort();
+    await expect(reading).rejects.toMatchObject({ name: 'AbortError' });
   });
 
   it("stops reading once its signal or the host's aborts", async () => {

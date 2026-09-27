@@ -23,6 +23,7 @@ export class MediabunnyDemuxer implements Demuxer {
         getSize: (): Promise<number> => source.size(),
         read: (start, end): Promise<Uint8Array> => source.read(ByteRange.of(start, end - start)),
         prefetchProfile: 'network',
+        handleUnhandledError: ignoreFailedPrefetch,
       }),
     });
     try {
@@ -38,6 +39,14 @@ export class MediabunnyDemuxer implements Demuxer {
           );
     }
   }
+}
+
+/**
+ * A read ahead that fails while no read waits for it: left unhandled it would reach the host
+ * page's error reporting. The read that needs those bytes asks again and fails through the port.
+ */
+function ignoreFailedPrefetch(): void {
+  // Reported by the read that needs the bytes.
 }
 
 async function describeInput(input: Input, name: string | undefined): Promise<DemuxedInput> {

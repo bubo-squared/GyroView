@@ -31,7 +31,8 @@ export async function inspectFile(file: string): Promise<Inspection> {
   const source = await FileRandomAccessSource.open(file);
   try {
     const [layout, recording] = await Promise.all([inspectLayout(source), readRecording(source)]);
-    const [gyro, exposure] = await Promise.all([gyroOf(recording), exposureOf(recording)]);
+    const gyro = await gyroOf(recording);
+    const exposure = await exposureOf(recording, gyro);
     return {
       ...summarizeStructure(file, layout),
       info: recording.info,
@@ -147,29 +148,13 @@ async function gyroOf(recording: Recording): Promise<GyroSummary | UnreadableGyr
  */
 async function exposureOf(
   recording: Recording,
+  gyro: GyroSummary | UnreadableGyro | undefined,
 ): Promise<ExposureSummary | DamagedExposure | undefined> {
-  try {
-    const exposure = await recording.readExposureRecord();
-    if (exposure)
-      return summarizeExposure(exposure, await firstEncodedFrameEntry(exposure, recording));
-  } catch (error) {
-    if (hasErrorCode(error, 'unsupported-gyro-record')) return undefined;
-    throw error;
-  }
+  if (gyro !== undefined && 'unreadable' in gyro) return undefined;
+  const exposure = await recording.readExposureRecord();
+  if (exposure)
+    return summarizeExposure(exposure, await firstEncodedFrameEntry(exposure, recording));
   return recording.listsExposureRecord ? { damaged: true } : undefined;
-}
-
-/**
- * What `read` finds, or nothing where the gyro layout cannot be told: the exposure stamps and
- * the first frame's are in its unit, so they are as unreadable as the gyro record.
- */
-async function unlessGyroUnreadable<Value>(read: Promise<Value>): Promise<Value | undefined> {
-  try {
-    return await read;
-  } catch (error) {
-    if (hasErrorCode(error, 'unsupported-gyro-record')) return undefined;
-    throw error;
-  }
 }
 
 /**
@@ -179,6 +164,6 @@ async function firstEncodedFrameEntry(
   exposure: ExposureRecord,
   recording: Recording,
 ): Promise<number | undefined> {
-  const clock = await unlessGyroUnreadable(recording.captureClock());
+  const clock = await recording.captureClock();
   return clock === undefined ? undefined : exposure.indexAtOrAfter(clock.firstFrameCaptureTime);
 }

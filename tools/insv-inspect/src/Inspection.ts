@@ -40,7 +40,8 @@ export interface GyroSummary {
    */
   readonly damagedSamples: number;
   /**
-   * Stamps put back where their neighbours say they belong; a wrong stamp unit shows here.
+   * Stamps put back where their neighbours say they belong: glitched stamps. A wrong stamp unit
+   * scales them all alike and shows in the mean interval and the span instead.
    */
   readonly mendedStamps: number;
   readonly spanSeconds: number;

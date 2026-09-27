@@ -28,6 +28,9 @@ function sampleTargets(): string[] {
  */
 export default defineConfig({
   root: APP_ROOT,
+  // Pages that find their scripts next to themselves, so the site works under any path, as
+  // DEPLOYMENT has it: a versioned folder on a CDN, beside embed.js.
+  base: './',
   plugins: [samplesPlugin(SAMPLES_ROOT)],
   server: {
     fs: { allow: [REPOSITORY_ROOT, ...sampleTargets()] },

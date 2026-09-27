@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { httpRequest } from './httpRequest';
+import { discardBody, httpRequest } from './httpRequest';
 
 const URL_UNDER_TEST = 'https://media.example/clip.insv';
 
@@ -104,5 +104,26 @@ describe('httpRequest', () => {
       { fetch: recording, requestInit: { cache: 'default' } },
     );
     expect(seen[0]?.cache).toBe('default');
+  });
+});
+
+describe('discardBody', () => {
+  it("lets go of a body its request's abort already ended, leaving no rejection unhandled", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    const aborted = new Response(
+      new ReadableStream({
+        start: (controller): void => {
+          controller.error(new DOMException('Fetch is aborted', 'AbortError'));
+        },
+      }),
+    );
+    discardBody(aborted);
+    await new Promise((resolve) => setImmediate(resolve));
+    process.off('unhandledRejection', onUnhandled);
+    expect(unhandled).toEqual([]);
   });
 });

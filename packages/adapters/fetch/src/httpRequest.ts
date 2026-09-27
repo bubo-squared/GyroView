@@ -156,7 +156,19 @@ async function isReachableWithoutCors(url: string, options: HttpRequestOptions):
  * answered to a byte range.
  */
 export function discardBody(response: Response): void {
-  void response.body?.cancel();
+  void cancelBody(response);
+}
+
+/**
+ * A body the request's abort already ended refuses the cancel with that abort: there is nothing
+ * left to stop, and the abort reaches the caller through the request itself.
+ */
+async function cancelBody(response: Response): Promise<void> {
+  try {
+    await response.body?.cancel();
+  } catch {
+    // Already ended: nothing to stop.
+  }
 }
 
 function headersOf(init: RequestInit | undefined): Record<string, string> {

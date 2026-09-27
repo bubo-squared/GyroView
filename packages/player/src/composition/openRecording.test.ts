@@ -1,4 +1,10 @@
-import { CalibrationVersion, GyroViewError } from '@gyroview/core';
+import {
+  CalibrationVersion,
+  Deferred,
+  GyroViewError,
+  type VideoDecoderHandle,
+  type VideoDecoderPort,
+} from '@gyroview/core';
 import {
   FakeDemuxer,
   FakeResourceLocator,
@@ -34,6 +40,33 @@ const fixture: { x5Bytes: Uint8Array } = { x5Bytes: new Uint8Array() };
 beforeAll(async () => {
   fixture.x5Bytes = await fetchBytes(X5_RECORDING_URL);
 });
+
+/**
+ * A decoder port whose decoders never produce a picture, as a stalled hardware decoder does.
+ */
+class StallingDecoderPort implements VideoDecoderPort {
+  public readonly created = new Deferred<void>();
+  public openDecoders = 0;
+
+  public isSupported(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
+  public create(): Promise<VideoDecoderHandle> {
+    this.openDecoders += 1;
+    this.created.resolve();
+    return Promise.resolve({
+      pendingCount: 1,
+      decode: (): void => undefined,
+      waitForPendingBelow: (): Promise<void> => new Deferred<void>().promise,
+      flush: (): Promise<void> => new Deferred<void>().promise,
+      reset: (): void => undefined,
+      close: (): void => {
+        this.openDecoders -= 1;
+      },
+    });
+  }
+}
 
 async function captureRejection(promise: Promise<unknown>): Promise<unknown> {
   try {
@@ -311,6 +344,19 @@ describe('openRecording', () => {
       openRecording(sourceOf(), ports, new AbortController().signal),
     ).rejects.toMatchObject({ code: 'missing-second-file' });
     expect(demuxer.openCount).toBe(0);
+  });
+
+  it('ends a stalled decode probe as soon as it is aborted, closing its decoders', async () => {
+    const world = x5World();
+    const decoderPort = new StallingDecoderPort();
+    const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer, decoderPort });
+    const controller = new AbortController();
+    const opening = openRecording(sourceOf(), ports, controller.signal);
+    await decoderPort.created.promise;
+    controller.abort();
+
+    await expect(opening).rejects.toMatchObject({ name: 'AbortError' });
+    expect(decoderPort.openDecoders).toBe(0);
   });
 
   it('stops at the first check after an abort and leaves nothing open', async () => {

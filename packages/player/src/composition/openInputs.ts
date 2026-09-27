@@ -16,6 +16,7 @@ import {
   type Recording,
   type RecordingTiming,
   type Seconds,
+  type Signal,
   type VideoTrackReader,
 } from '@gyroview/core';
 
@@ -172,13 +173,29 @@ async function ensureDecodable(
   attempt: OpenAttempt,
 ): Promise<void> {
   const { ports, signal } = attempt;
-  const report = await probeDecoding(frameSources, ports.decoderPort, ports.probeDeadline());
+  const report = await probeDecoding(frameSources, ports.decoderPort, probeDeadlineOf(attempt));
   signal.throwIfAborted();
   if (report.canDecode) return;
   throw new GyroViewError(
     'codec-unsupported',
     `this browser cannot decode the recording: ${describeProbe(report)}`,
   );
+}
+
+/**
+ * The probe's deadline, brought forward by an abort: a superseded load lets its probe decoders
+ * go at once, which matters where decoders are few (iOS Safari).
+ */
+function probeDeadlineOf(attempt: OpenAttempt): Signal {
+  const deadline = attempt.ports.probeDeadline();
+  attempt.signal.addEventListener(
+    'abort',
+    () => {
+      deadline.trigger();
+    },
+    { once: true },
+  );
+  return deadline;
 }
 
 function describeProbe(report: DecodeProbeReport): string {

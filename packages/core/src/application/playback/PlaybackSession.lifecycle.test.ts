@@ -9,6 +9,7 @@ import type {
 import { Deferred } from '../../shared/async/Deferred';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { seconds } from '../../shared/units/time';
+import type { Presentation } from '../../ports/FrameSink';
 import { FakeFrameSink } from '../../testing/FakeFrameSink';
 import { FakePlaybackClock } from '../../testing/FakePlaybackClock';
 import { FakeVideoDecoderPort, type FakeFrameHandle } from '../../testing/FakeVideoDecoderPort';
@@ -148,6 +149,31 @@ describe('PlaybackSession lifecycle', () => {
     for (let step = 0; step < 3; step += 1) await advance(0);
     expect(session.state).toBe('error');
     expect(errors).toEqual([refusal]);
+    // A change of how the picture is drawn asks for no drawing from a failed session.
+    expect(() => {
+      session.redraw();
+    }).not.toThrow();
+  });
+
+  it('fails as render-unavailable when a sink first refuses on a redraw', async () => {
+    let isRefusing = false;
+    class LaterRefusingSink extends FakeFrameSink<FakeFrameHandle> {
+      public override present(presentation: Presentation<FakeFrameHandle>): void {
+        if (isRefusing) throw new Error('context gone');
+        super.present(presentation);
+      }
+    }
+    const { session, advance } = sessionHarness({ parts: { sink: new LaterRefusingSink() } });
+    const errors: GyroViewError[] = [];
+    session.events.on('error', (error) => {
+      errors.push(error);
+    });
+    session.preload();
+    for (let step = 0; step < 3; step += 1) await advance(0);
+    isRefusing = true;
+    session.redraw();
+    expect(session.state).toBe('error');
+    expect(errors.map((error) => error.code)).toEqual(['render-unavailable']);
   });
 
   it('turns a clock failure into the error state on the next tick', async () => {

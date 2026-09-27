@@ -5,11 +5,12 @@ import { TimeUpdates } from './TimeUpdates';
 import { DecodeRun, type DecodeRunParts } from './DecodeRun';
 import { isAtEndOfMedia, isStoppedFromOutside } from './clockReadings';
 import { keyframeTimeAt } from './keyframeTimeAt';
+import { playbackFailureOf, renderFailureOf } from './playbackFailures';
 import { PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
 import { Deferred } from '../../shared/async/Deferred';
-import { GyroViewError } from '../../shared/errors/GyroViewError';
+import type { GyroViewError } from '../../shared/errors/GyroViewError';
 import { TypedEmitter } from '../../shared/events/TypedEmitter';
 import { seconds, type Seconds } from '../../shared/units/time';
 
@@ -184,8 +185,8 @@ export class PlaybackSession<Handle = unknown> {
    * picture stands still; while playing, the next pair shows it soon enough.
    */
   public redraw(): void {
-    if (!this.presented || this.machine.state === 'playing') return;
-    this.parts.sink.present(this.presented);
+    if (!this.presented || this.machine.isOneOf('playing', 'error', 'disposed')) return;
+    this.draw(this.presented);
   }
 
   public dispose(): void {
@@ -397,12 +398,19 @@ export class PlaybackSession<Handle = unknown> {
   private present(pair: FramePair<Handle>, mediaTime: Seconds): void {
     if (this.presented) closeFramePair(this.presented.pair);
     this.presented = { pair, mediaTime };
+    if (this.draw(this.presented)) this.events.emit('present', mediaTime);
+  }
+
+  /**
+   * A sink that cannot draw (a renderer the GPU refused) fails the session, never unheard.
+   */
+  private draw(presentation: Presentation<Handle>): boolean {
     try {
-      this.parts.sink.present(this.presented);
-      this.events.emit('present', mediaTime);
+      this.parts.sink.present(presentation);
+      return true;
     } catch (error) {
-      // A sink that cannot draw (a renderer the GPU refused) must not freeze playback unheard.
-      this.fail(error);
+      this.fail(renderFailureOf(error));
+      return false;
     }
   }
 
@@ -444,12 +452,7 @@ export class PlaybackSession<Handle = unknown> {
     this.abortRun();
     this.setState('error');
     this.settleStartAttempt();
-    this.events.emit(
-      'error',
-      error instanceof GyroViewError
-        ? error
-        : new GyroViewError('decode', 'playback failed', { cause: error }),
-    );
+    this.events.emit('error', playbackFailureOf(error));
   }
 
   private setState(next: PlayerState): void {

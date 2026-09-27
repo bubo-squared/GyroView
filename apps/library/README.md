@@ -54,6 +54,9 @@ The element's events are typed: each is a `CustomEvent` with its payload in `det
 ```ts
 player?.addEventListener('ready', (event) => console.log(event.detail.model));
 player?.addEventListener('error', (event) => console.log(event.detail.code));
+player?.addEventListener('warning', (event) => {
+  if (event.detail.code === 'autoplay-blocked') showTapToPlay();
+});
 ```
 
 Read what a recording holds without playing it: its trailer records, the info record (camera,

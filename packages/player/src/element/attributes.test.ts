@@ -80,9 +80,10 @@ describe('view and playback attributes', () => {
 
 describe('unreadableAngleWarning', () => {
   it('warns of a view attribute that names no number of degrees, and of nothing else', () => {
-    expect(unreadableAngleWarning('fov', 'wide')).toBe(
-      'ignoring fov="wide"; expected a number of degrees',
-    );
+    expect(unreadableAngleWarning('fov', 'wide')).toEqual({
+      code: 'ignored-attribute',
+      message: 'ignoring fov="wide"; expected a number of degrees',
+    });
     expect(unreadableAngleWarning('yaw', '30')).toBeUndefined();
     expect(unreadableAngleWarning('pitch', null)).toBeUndefined();
   });

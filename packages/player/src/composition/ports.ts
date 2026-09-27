@@ -71,7 +71,10 @@ export interface Pipeline {
    * Matches the lenses' exposure along the seam, or shows it as recorded.
    */
   setGainMatching(isEnabled: boolean): void;
-  readonly warnings: readonly string[];
+  /**
+   * Why the recording plays without sound, when it does: it has none, or none this browser plays.
+   */
+  readonly soundWarnings: readonly string[];
   dispose(): void;
 }
 

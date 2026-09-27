@@ -113,7 +113,10 @@ export class SeekBar {
         await this.host.player.scrub(target);
       }
     } catch (error) {
-      this.host.warn(`the seek bar could not show that moment: ${messageOf(error)}`);
+      this.host.warn({
+        code: 'playback-failed',
+        message: `the seek bar could not show that moment: ${messageOf(error)}`,
+      });
     } finally {
       this.scrubbing = undefined;
     }

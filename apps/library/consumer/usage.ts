@@ -14,6 +14,7 @@ import {
   type PlayerStatus,
   type RecordingInspection,
   type ViewMode,
+  type WarningCode,
 } from 'gyroview';
 
 const element = document.createElement('gyro-view');
@@ -41,6 +42,10 @@ element.addEventListener('error', (event) => {
 });
 element.addEventListener('timeupdate', (event) => event.detail.toFixed(1));
 element.addEventListener('click', (event) => event.clientX);
+element.addEventListener('warning', (event) => {
+  const code: WarningCode = event.detail.code;
+  return code === 'autoplay-blocked' ? event.detail.message : undefined;
+});
 
 const inspected: RecordingInspection = await inspectRecording(new File([], 'clip.insv'));
 const fromUrl = await inspectRecording('https://media.example/clip.insv', {

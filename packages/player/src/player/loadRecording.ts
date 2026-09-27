@@ -1,3 +1,4 @@
+import type { PlayerWarning } from './PlayerEvents';
 import type { PlayerParts } from './PlayerOptions';
 import { DrawingBufferFit } from './DrawingBufferFit';
 import type { Pipeline } from '../composition/ports';
@@ -12,6 +13,10 @@ import type { PlayerSource } from '../PlayerSource';
 export interface LoadedRecording {
   readonly opened: OpenedRecording;
   readonly pipeline: Pipeline;
+  /**
+   * What the opening worked around, then why the recording plays without sound, if it does.
+   */
+  readonly warnings: readonly PlayerWarning[];
   dispose(): void;
 }
 
@@ -47,9 +52,17 @@ export async function loadRecording(request: LoadRequest): Promise<LoadedRecordi
     disposables.add(() => {
       fit.dispose();
     });
-    return { opened, pipeline, dispose: disposables.toDisposer() };
+    const warnings = warningsOf(opened, pipeline);
+    return { opened, pipeline, warnings, dispose: disposables.toDisposer() };
   } catch (error) {
     disposables.disposeAll();
     throw error;
   }
+}
+
+function warningsOf(opened: OpenedRecording, pipeline: Pipeline): PlayerWarning[] {
+  return [
+    ...opened.warnings.map((message) => ({ code: 'recording-degraded' as const, message })),
+    ...pipeline.soundWarnings.map((message) => ({ code: 'no-sound' as const, message })),
+  ];
 }

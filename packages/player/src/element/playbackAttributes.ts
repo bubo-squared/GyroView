@@ -4,11 +4,12 @@ import { PlaybackAttribute } from './attributeNames';
 import { ignoredChoiceWarning, isBooleanAttributeSet, shouldMatchGains } from './attributes';
 import { choiceOf } from '../choices';
 import type { Player } from '../player/Player';
+import type { PlayerWarning } from '../player/PlayerEvents';
 
 export interface PlaybackTargets {
   readonly player: Player;
   readonly posterImage: HTMLImageElement;
-  readonly warn: (message: string) => void;
+  readonly warn: (warning: PlayerWarning) => void;
 }
 
 type AttributeApplier = (targets: PlaybackTargets, value: string | null) => void;

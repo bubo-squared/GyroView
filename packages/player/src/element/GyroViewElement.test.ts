@@ -5,6 +5,7 @@ import { defineGyroView } from './defineGyroView';
 import { GyroViewElement } from './GyroViewElement';
 import { queryShadow } from '../controls/controlParts';
 import { choiceMenuClasses, type ChoiceMenuName } from '../controls/controlsMarkup';
+import type { PlayerWarning } from '../player/PlayerEvents';
 import { expectIconOnly } from '../test/controls';
 import { fetchBytes, X5_RECORDING_URL, X5_RECORDING_WITH_AUDIO_URL } from '../test/recordings';
 import { nextEvent, settle, waitFor } from '../test/waiting';
@@ -213,15 +214,20 @@ describe('<gyro-view>', () => {
     const element = document.createElement('gyro-view-refused-late');
     Object.assign(element, { src: X5_RECORDING_URL, fov: 'wide', muted: true });
     element.style.width = '256px';
-    const warnings: string[] = [];
+    const warnings: PlayerWarning[] = [];
     element.addEventListener('warning', (event) => {
-      warnings.push(String((event as CustomEvent).detail));
+      warnings.push((event as CustomEvent<PlayerWarning>).detail);
     });
     document.body.append(element);
     customElements.define('gyro-view-refused-late', class extends GyroViewElement {});
     const upgraded = element as GyroViewElement;
     elements.push(upgraded);
-    expect(warnings).toEqual([expect.stringContaining('fov set before the element was defined')]);
+    expect(warnings).toEqual([
+      {
+        code: 'refused-property',
+        message: expect.stringContaining('fov set before the element was defined') as string,
+      },
+    ]);
     expect(upgraded.muted).toBe(true);
     await nextEvent(upgraded, 'ready');
   });
@@ -583,11 +589,13 @@ describe('<gyro-view>', () => {
 
   it('warns about a setting attribute naming a choice it does not know, and keeps the setting', async () => {
     const element = create({ controls: '' });
-    const warned = nextEvent<string>(element, 'warning');
+    const warned = nextEvent<PlayerWarning>(element, 'warning');
     element.setAttribute('view-mode', 'little-planet');
-    expect(await warned).toBe(
-      'ignoring view-mode="little-planet"; expected one of normal, equirectangular, raw-lenses',
-    );
+    expect(await warned).toEqual({
+      code: 'ignored-attribute',
+      message:
+        'ignoring view-mode="little-planet"; expected one of normal, equirectangular, raw-lenses',
+    });
     expect(element.viewMode).toBe('normal');
   });
 
@@ -607,12 +615,14 @@ describe('<gyro-view>', () => {
 
   it('warns of a view attribute it cannot read, as it warns of an unknown choice', () => {
     const element = create({ controls: '' });
-    const warnings: string[] = [];
+    const warnings: PlayerWarning[] = [];
     element.addEventListener('warning', (event) => {
       warnings.push(event.detail);
     });
     element.setAttribute('fov', 'wide');
-    expect(warnings).toEqual(['ignoring fov="wide"; expected a number of degrees']);
+    expect(warnings).toEqual([
+      { code: 'ignored-attribute', message: 'ignoring fov="wide"; expected a number of degrees' },
+    ]);
   });
 
   it('refuses an unset mode handed to its setter methods, as the embed commands do', () => {

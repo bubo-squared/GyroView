@@ -5,7 +5,13 @@ export { createBrowserPlayer } from './browserPlayer';
 export { inspectRecording, type InspectOptions } from './inspectRecording';
 export { Player } from './player/Player';
 export type { LoadOptions, PlayerParts, ViewAngles } from './player/PlayerOptions';
-export type { PlayerEvents, PlayerStatus, SoundLevel } from './player/PlayerEvents';
+export type {
+  PlayerEvents,
+  PlayerStatus,
+  PlayerWarning,
+  SoundLevel,
+  WarningCode,
+} from './player/PlayerEvents';
 export type { BrowserPortsOptions } from './composition/browserPorts';
 export type { PipelineHost } from './composition/ports';
 export { GyroViewElement } from './element/GyroViewElement';

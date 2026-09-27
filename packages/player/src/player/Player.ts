@@ -343,9 +343,7 @@ export class Player {
     this.announceStatus();
     // A listener of that status may have loaded something else: this recording's news is stale.
     if (this.loaded !== loaded) return;
-    for (const warning of [...loaded.opened.warnings, ...loaded.pipeline.warnings]) {
-      this.events.emit('warning', warning);
-    }
+    for (const warning of loaded.warnings) this.events.emit('warning', warning);
     this.events.emit('ready', loaded.opened.metadata);
   }
 
@@ -359,8 +357,8 @@ export class Player {
       this.events.emit(
         'warning',
         hasErrorCode(error, 'playback-blocked')
-          ? 'autoplay was blocked; playback waits for a user gesture'
-          : `autoplay failed: ${messageOf(error)}`,
+          ? { code: 'autoplay-blocked', message: 'playback waits for a user gesture' }
+          : { code: 'playback-failed', message: `autoplay failed: ${messageOf(error)}` },
       );
     }
   }
@@ -374,7 +372,10 @@ export class Player {
     try {
       await this.play();
     } catch (error) {
-      this.events.emit('warning', `the loop could not restart playback: ${messageOf(error)}`);
+      this.events.emit('warning', {
+        code: 'playback-failed',
+        message: `the loop could not restart playback: ${messageOf(error)}`,
+      });
     }
   }
 

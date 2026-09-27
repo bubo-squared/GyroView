@@ -28,6 +28,9 @@ export interface OpenedRecording {
   readonly motion: MotionSetup | undefined;
   readonly audioTrack: AudioTrackReader | undefined;
   readonly metadata: PlayerMetadata;
+  /**
+   * What the recording lacked or had damaged, and the player worked around.
+   */
   readonly warnings: readonly string[];
   dispose(): void;
 }

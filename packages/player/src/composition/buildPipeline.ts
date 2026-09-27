@@ -63,7 +63,7 @@ export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
       session,
       renderer: drawing.renderer,
       ...pictureSettingsOf(drawing, session),
-      warnings: clock.warnings,
+      soundWarnings: clock.warnings,
       dispose: disposables.toDisposer(),
     };
   } catch (error) {

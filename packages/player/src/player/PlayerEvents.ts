@@ -16,6 +16,33 @@ export interface SoundLevel {
   readonly isMuted: boolean;
 }
 
+/**
+ * What a `warning` is about, for a page that acts on some and not others:
+ * - `recording-degraded`: the recording lacks, or has damaged, data the player works around (no
+ *   gyro, an unverified IMU frame, fallback frame times or calibration); `ready`'s metadata says
+ *   what it got.
+ * - `no-sound`: the recording has no sound, or none this browser plays; a silent clock runs.
+ * - `autoplay-blocked`: the browser waits for a user gesture before it starts playback.
+ * - `playback-failed`: a start (a press, autoplay, the loop) or the seek bar's preview failed.
+ * - `ignored-attribute`: an attribute's value names nothing the element knows; the setting stays.
+ * - `refused-property`: a property set before the element was defined was refused.
+ */
+export type WarningCode =
+  | 'recording-degraded'
+  | 'no-sound'
+  | 'autoplay-blocked'
+  | 'playback-failed'
+  | 'ignored-attribute'
+  | 'refused-property';
+
+export interface PlayerWarning {
+  readonly code: WarningCode;
+  /**
+   * What happened exactly, for a developer.
+   */
+  readonly message: string;
+}
+
 export interface PlayerEvents {
   readonly statuschange: PlayerStatus;
   readonly ready: PlayerMetadata;
@@ -48,10 +75,9 @@ export interface PlayerEvents {
    */
   readonly volumechange: SoundLevel;
   /**
-   * Something the player worked around: a degraded feature (no gyro, an unverified IMU frame, a
-   * silent clock), a refused autoplay, a loop that could not restart.
+   * Something the player worked around; the code says what, the message says it exactly.
    */
-  readonly warning: string;
+  readonly warning: PlayerWarning;
   readonly error: GyroViewError;
 }
 

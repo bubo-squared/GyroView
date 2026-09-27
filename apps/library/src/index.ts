@@ -24,9 +24,11 @@ export type {
   PlayerMetadata,
   PlayerSource,
   PlayerStatus,
+  PlayerWarning,
   SoundLevel,
   UrlInput,
   ViewAngles,
+  WarningCode,
 } from '@gyroview/player';
 export {
   GYRO_VIEW_ERROR_CODES,

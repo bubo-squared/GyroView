@@ -3,6 +3,7 @@ import {
   GYRO_VIEW_TAG,
   type GyroViewElement,
   type PlayerMetadata,
+  type PlayerWarning,
 } from '@gyroview/player';
 
 import { FpsCounter } from './FpsCounter';
@@ -108,7 +109,8 @@ function bindDebugPanel(parts: DevelopmentPageParts): void {
     parts.metadata.textContent = JSON.stringify(metadata, undefined, JSON_INDENT);
   });
   player.addEventListener('warning', (event) => {
-    appendLine(parts.warnings, `warning: ${detailOf(event) as string}`);
+    const { code, message } = detailOf(event) as PlayerWarning;
+    appendLine(parts.warnings, `warning ${code}: ${message}`);
   });
   player.addEventListener('error', (event) => {
     const error = detailOf(event) as { code: string; message: string };

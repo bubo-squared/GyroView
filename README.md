@@ -79,10 +79,11 @@ version, frame time source, gyro and IMU frame, audio), `statuschange` (`idle`,
 `waiting`, `playing`, `pause`, `ended`, `timeupdate` (every quarter second of playback, and on
 a pause, a seek or the end, as a media element's), `seeking`, `seeked`, `frame`,
 `viewchange`, `viewmodechange`, `stabilizationchange`, `volumechange` (`{ volume, isMuted }`),
-`warning` (something the player worked around: a degraded feature such as no gyro, an
-unverified IMU frame or a silent clock, an attribute value it ignored, a refused start, a seek
-bar position it could not show, a loop that could not restart, a property set before the
-element was defined that it refused) and `error` (`code` and
+`warning` (`code` and `message`: something the player worked around; `recording-degraded` for
+missing or damaged data such as no gyro or an unverified IMU frame, `no-sound` for a silent
+clock, `autoplay-blocked`, `playback-failed` for a refused start, a seek bar position it could
+not show or a loop that could not restart, `ignored-attribute` for a value it does not know,
+`refused-property` for a property set before the element was defined) and `error` (`code` and
 `message`; the codes are listed in `docs/DEPLOYMENT.md`).
 
 Keyboard: space or K play/pause, J and L seek, S stops, arrows look around (Shift + arrows

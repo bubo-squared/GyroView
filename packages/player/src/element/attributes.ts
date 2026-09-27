@@ -1,5 +1,6 @@
 import { PlaybackAttribute, SourceAttribute, ViewAttribute } from './attributeNames';
 import { keywordOf, type KeywordAttribute } from './reflectedProperties';
+import type { PlayerWarning } from '../player/PlayerEvents';
 import type { ViewAngles } from '../player/PlayerOptions';
 import type { MediaInput, PlayerSource } from '../PlayerSource';
 
@@ -78,8 +79,11 @@ export function ignoredChoiceWarning(
   attribute: string,
   value: string,
   choices: readonly string[],
-): string {
-  return `ignoring ${attribute}="${value}"; expected one of ${choices.join(', ')}`;
+): PlayerWarning {
+  return {
+    code: 'ignored-attribute',
+    message: `ignoring ${attribute}="${value}"; expected one of ${choices.join(', ')}`,
+  };
 }
 
 /**
@@ -89,10 +93,13 @@ export function ignoredChoiceWarning(
 export function unreadableAngleWarning(
   attribute: string,
   value: string | null,
-): string | undefined {
+): PlayerWarning | undefined {
   return value === null || parseNumber(value) !== undefined
     ? undefined
-    : `ignoring ${attribute}="${value}"; expected a number of degrees`;
+    : {
+        code: 'ignored-attribute',
+        message: `ignoring ${attribute}="${value}"; expected a number of degrees`,
+      };
 }
 
 /**

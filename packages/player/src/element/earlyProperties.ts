@@ -1,5 +1,7 @@
 import { messageOf } from '@gyroview/core';
 
+import type { PlayerWarning } from '../player/PlayerEvents';
+
 /**
  * Properties a page set on the element before its definition ran (a classic script ahead of the
  * module, a framework's property binding) sit on the plain element as its own; the element's
@@ -26,7 +28,7 @@ export function takeEarlyProperties(
 export function applyEarlyProperties(
   element: HTMLElement,
   early: Map<string, unknown>,
-  warn: (message: string) => void,
+  warn: (warning: PlayerWarning) => void,
 ): void {
   const entries = [...early];
   early.clear();
@@ -34,7 +36,10 @@ export function applyEarlyProperties(
     try {
       Reflect.set(element, name, value);
     } catch (error) {
-      warn(`${name} set before the element was defined was refused: ${messageOf(error)}`);
+      warn({
+        code: 'refused-property',
+        message: `${name} set before the element was defined was refused: ${messageOf(error)}`,
+      });
     }
   }
 }

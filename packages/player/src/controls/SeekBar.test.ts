@@ -2,7 +2,7 @@ import { Deferred, seconds, TypedEmitter, type Seconds } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
 import { SeekBar, type SeekParts, type SeekPlayer } from './SeekBar';
-import type { PlayerEvents } from '../player/PlayerEvents';
+import type { PlayerEvents, PlayerWarning } from '../player/PlayerEvents';
 import { settle } from '../test/waiting';
 
 /**
@@ -40,7 +40,7 @@ class FakeTransport implements SeekPlayer {
 interface World {
   readonly parts: SeekParts;
   readonly transport: FakeTransport;
-  readonly warnings: string[];
+  readonly warnings: PlayerWarning[];
   readonly drag: (time: number) => void;
   readonly release: (time: number) => void;
   readonly letGo: (ending: string) => void;
@@ -52,11 +52,11 @@ function seekBar(): World {
   seek.step = 'any';
   const parts = { seek, time: document.createElement('span') };
   const transport = new FakeTransport();
-  const warnings: string[] = [];
+  const warnings: PlayerWarning[] = [];
   new SeekBar(parts, {
     player: transport,
-    warn: (message): void => {
-      warnings.push(message);
+    warn: (warning): void => {
+      warnings.push(warning);
     },
   });
   return {
@@ -171,6 +171,11 @@ describe('SeekBar', () => {
     drag(1);
     transport.landScrub(new Error('no key frame there'));
     await settle();
-    expect(warnings).toEqual(['the seek bar could not show that moment: no key frame there']);
+    expect(warnings).toEqual([
+      {
+        code: 'playback-failed',
+        message: 'the seek bar could not show that moment: no key frame there',
+      },
+    ]);
   });
 });

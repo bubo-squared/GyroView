@@ -43,7 +43,7 @@ import { bindKeyboard, type KeyboardHost } from '../controls/keyboard';
 import { ViewGestures } from '../controls/ViewGestures';
 import { ensureFinite } from '../player/ensureFinite';
 import type { Player } from '../player/Player';
-import type { PlayerStatus } from '../player/PlayerEvents';
+import type { PlayerStatus, PlayerWarning } from '../player/PlayerEvents';
 import type { ViewAngles } from '../player/PlayerOptions';
 import type { PlayerMetadata } from '../PlayerMetadata';
 /**
@@ -357,7 +357,10 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
       return;
     }
     void this.player.play().catch((error: unknown) => {
-      this.warn(`playback could not start: ${messageOf(error)}`);
+      this.warn({
+        code: 'playback-failed',
+        message: `playback could not start: ${messageOf(error)}`,
+      });
     });
   };
 
@@ -432,8 +435,8 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     return loading;
   }
 
-  private readonly warn = (message: string): void => {
-    this.dispatchEvent(new CustomEvent('warning', { detail: message, composed: true }));
+  private readonly warn = (warning: PlayerWarning): void => {
+    this.dispatchEvent(new CustomEvent('warning', { detail: warning, composed: true }));
   };
 }
 

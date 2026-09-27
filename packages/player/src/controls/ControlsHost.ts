@@ -1,4 +1,5 @@
 import type { Player } from '../player/Player';
+import type { PlayerWarning } from '../player/PlayerEvents';
 
 /**
  * What the controls ask of the element beyond the player itself.
@@ -10,5 +11,5 @@ export interface ControlsHost {
    */
   togglePlay(): void;
   toggleFullscreen(): void;
-  warn(message: string): void;
+  warn(warning: PlayerWarning): void;
 }

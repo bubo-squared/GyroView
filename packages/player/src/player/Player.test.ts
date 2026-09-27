@@ -8,7 +8,7 @@ import {
 import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import { Player } from './Player';
-import type { PlayerStatus } from './PlayerEvents';
+import type { PlayerStatus, PlayerWarning } from './PlayerEvents';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import { browserPorts } from '../composition/browserPorts';
 import { buildPipeline } from '../composition/buildPipeline';
@@ -30,7 +30,7 @@ interface Harness {
   readonly statuses: PlayerStatus[];
   readonly events: string[];
   readonly frames: number[];
-  readonly warnings: string[];
+  readonly warnings: PlayerWarning[];
   readonly errors: GyroViewError[];
 }
 
@@ -45,7 +45,7 @@ function harness(pipelines: PipelineFactory, ports: RecordingPorts = browserPort
   const statuses: PlayerStatus[] = [];
   const events: string[] = [];
   const frames: number[] = [];
-  const warnings: string[] = [];
+  const warnings: PlayerWarning[] = [];
   const errors: GyroViewError[] = [];
   player.events.on('statuschange', (status) => {
     statuses.push(status);
@@ -138,8 +138,11 @@ describe('Player over the synthetic X5 recording', () => {
     });
     expect(player.duration).toBeCloseTo(3, 1);
     expect(warnings).toEqual([
-      'exposure-record unavailable',
-      'the recording has no audio track; playback follows a silent clock',
+      { code: 'recording-degraded', message: 'exposure-record unavailable' },
+      {
+        code: 'no-sound',
+        message: 'the recording has no audio track; playback follows a silent clock',
+      },
     ]);
     expect(canvas.width).toBe(CANVAS_WIDTH * Math.min(window.devicePixelRatio, 2));
   });
@@ -316,13 +319,17 @@ describe('Player over the synthetic X5 recording', () => {
     await player.load(sourceOf(X5_RECORDING_WITH_AUDIO_URL));
 
     expect(player.metadata?.hasAudio).toBe(true);
-    const isSilent = warnings.some((warning) => warning.includes('silent clock'));
+    const isSilent = warnings.some((warning) => warning.code === 'no-sound');
     if (isSilent) {
-      expect(warnings).toContain(
-        'this browser cannot play the audio track through Media Source Extensions; playback follows a silent clock',
-      );
+      expect(warnings).toContainEqual({
+        code: 'no-sound',
+        message:
+          'this browser cannot play the audio track through Media Source Extensions; playback follows a silent clock',
+      });
     } else {
-      expect(warnings).toEqual(['exposure-record unavailable']);
+      expect(warnings).toEqual([
+        { code: 'recording-degraded', message: 'exposure-record unavailable' },
+      ]);
     }
     player.setVolume(0.5);
     player.setMuted(false);

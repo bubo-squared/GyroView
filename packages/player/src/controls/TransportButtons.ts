@@ -8,7 +8,7 @@ type TransportParts = Pick<ControlParts, 'play' | 'bigPlay' | 'stop'>;
 /**
  * What the buttons command, and the paused state they show.
  */
-interface TransportHost extends Pick<ControlsHost, 'togglePlay'> {
+interface TransportHost extends Pick<ControlsHost, 'togglePlay' | 'wording'> {
   readonly player: Pick<Player, 'events' | 'isPaused' | 'stop'>;
 }
 
@@ -19,7 +19,7 @@ interface TransportHost extends Pick<ControlsHost, 'togglePlay'> {
 export class TransportButtons {
   public constructor(
     private readonly parts: TransportParts,
-    host: TransportHost,
+    private readonly host: TransportHost,
   ) {
     const { player } = host;
     for (const button of [parts.play, parts.bigPlay]) {
@@ -37,9 +37,8 @@ export class TransportButtons {
   }
 
   private reflect(isPaused: boolean): void {
-    const label = isPaused ? 'Play' : 'Pause';
     for (const button of [this.parts.play, this.parts.bigPlay]) {
-      button.setAttribute('aria-label', label);
+      this.host.wording.label(button, isPaused ? 'play' : 'pause');
     }
     this.parts.play.replaceChildren(iconNode(isPaused ? 'play' : 'pause'));
   }

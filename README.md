@@ -100,8 +100,29 @@ picture.
 
 Styling: the host element sizes the player (a block with a 16:9 aspect ratio by default);
 `--gyro-view-accent`, `--gyro-view-controls-background`, `--gyro-view-text`,
-`--gyro-view-font` and `--gyro-view-radius` theme the controls; `::part(canvas)`,
-`::part(controls)`, `::part(poster)` and `::part(stage)` reach the parts.
+`--gyro-view-font` and `--gyro-view-radius` theme the controls; `::part(stage)`,
+`::part(canvas)`, `::part(poster)`, `::part(controls)`, `::part(big-play)`, `::part(loading)`,
+`::part(error)`, `::part(error-message)` and `::part(error-code)` reach the parts. The element
+writes its state on itself for a page's selectors, and a page never sets these: `data-status`
+(the status, as in `gyro-view[data-status='error']`), `data-has-frame` once a picture is drawn,
+`data-idle` while the controls have faded, `data-fill` while it is pinned over the page in
+place of fullscreen.
+
+Words: every label, menu choice and failure message is in English until the page gives its own
+through `messages`, table by table, and `null` brings the defaults back:
+
+```js
+player.messages = {
+  labels: { play: 'Lecture', pause: 'Pause', player: 'Lecteur vidéo 360°' },
+  viewModes: { 'raw-lenses': 'Objectifs bruts' },
+  errors: { cors: 'Cette vidéo ne peut pas être chargée ici.' },
+};
+```
+
+A failure shows the visitor a plain sentence and its code, and hides the controls; the `error`
+event carries the developer's account of it (which server answered what). The events do not
+bubble, as a media element's do not; a page that hears every player in a container listens in
+the capture phase: `container.addEventListener('error', listener, true)`.
 
 ### As an iframe
 

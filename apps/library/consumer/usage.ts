@@ -42,6 +42,9 @@ element.addEventListener('error', (event) => {
 });
 element.addEventListener('timeupdate', (event) => event.detail.toFixed(1));
 element.addEventListener('click', (event) => event.clientX);
+element.messages = { labels: { play: 'Lecture' }, errors: { cors: 'Introuvable.' } };
+const playLabel: string = element.messages.labels.play;
+element.messages = null;
 element.addEventListener('warning', (event) => {
   const code: WarningCode = event.detail.code;
   return code === 'autoplay-blocked' ? event.detail.message : undefined;
@@ -76,4 +79,15 @@ const matching: 'on' | 'off' = element.gainMatch;
 const knownCodes: readonly GyroViewErrorCode[] = GYRO_VIEW_ERROR_CODES;
 const fromMessage = isGyroViewErrorCode('cors') ? 'cors' : undefined;
 
-export { fromMessage, fromUrl, knownCodes, matching, metadata, position, samples, status, yaw };
+export {
+  playLabel,
+  fromMessage,
+  fromUrl,
+  knownCodes,
+  matching,
+  metadata,
+  position,
+  samples,
+  status,
+  yaw,
+};

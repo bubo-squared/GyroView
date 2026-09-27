@@ -2,6 +2,7 @@ import { Deferred, seconds, TypedEmitter, type Seconds } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
 import { SeekBar, type SeekParts, type SeekPlayer } from './SeekBar';
+import { Wording } from './Wording';
 import type { PlayerEvents, PlayerWarning } from '../player/PlayerEvents';
 import { settle } from '../test/waiting';
 
@@ -55,6 +56,7 @@ function seekBar(): World {
   const warnings: PlayerWarning[] = [];
   new SeekBar(parts, {
     player: transport,
+    wording: new Wording(),
     warn: (warning): void => {
       warnings.push(warning);
     },

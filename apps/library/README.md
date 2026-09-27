@@ -59,6 +59,13 @@ player?.addEventListener('warning', (event) => {
 });
 ```
 
+Its words are English until the page gives its own, and a failure shows visitors a plain
+sentence while the `error` event carries the diagnostic:
+
+```ts
+if (player) player.messages = { labels: { play: 'Lecture' }, errors: { cors: 'Introuvable.' } };
+```
+
 Read what a recording holds without playing it: its trailer records, the info record (camera,
 firmware, frame rate), the lens calibration and summaries of the gyro and exposure records.
 

@@ -37,9 +37,11 @@
   transition: opacity 0.25s;
 }
 
+/* A failed player has nothing to control: the error says so, and a press would only fail again. */
 :host(:not([controls])) .controls,
 :host([data-status='idle']) .controls,
-:host([data-status='loading']) .controls {
+:host([data-status='loading']) .controls,
+:host([data-status='error']) .controls {
   display: none;
 }
 

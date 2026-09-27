@@ -7,7 +7,8 @@ import { parseMarkup } from '../controls/parseMarkup';
 /**
  * The shadow tree: the stage with the canvas, poster, audio element and overlays, and the
  * controls' own markup. Class names are the contract between this markup, the stylesheet and the
- * code that queries it; `part` names are the embedder's styling hooks.
+ * code that queries it; `part` names are the embedder's styling hooks. The words are the
+ * wording's to fill in.
  */
 function elementMarkup(): string {
   return `
@@ -15,10 +16,12 @@ function elementMarkup(): string {
   <canvas part="canvas"></canvas>
   <img class="poster" part="poster" alt="" />
   <audio hidden></audio>
-  <div class="overlay loading" role="status" aria-label="Loading"><div class="spinner"></div></div>
-  <div class="overlay error" role="alert">
-    <p class="error-message"></p>
-    <p class="error-code"></p>
+  <div class="overlay loading" part="loading" role="status" data-label="loading">
+    <div class="spinner"></div>
+  </div>
+  <div class="overlay error" part="error" role="alert">
+    <p class="error-message" part="error-message"></p>
+    <p class="error-code" part="error-code"></p>
   </div>
   ${controlsMarkup()}
 </div>

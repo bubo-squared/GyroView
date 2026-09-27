@@ -1,5 +1,6 @@
 import type { IdleWatcher } from './IdleWatcher';
 import { queryShadow } from '../controls/controlParts';
+import type { Wording } from '../controls/Wording';
 import type { Player } from '../player/Player';
 import { PLAYER_EVENT_NAMES } from '../player/PlayerEvents';
 
@@ -10,6 +11,7 @@ export interface MirrorTarget {
   readonly element: HTMLElement;
   readonly shadow: ShadowRoot;
   readonly idle: IdleWatcher;
+  readonly wording: Wording;
 }
 
 /**
@@ -19,7 +21,7 @@ export interface MirrorTarget {
  * of the same name, the payload in `detail`.
  */
 export function mirrorPlayerEvents(player: Player, target: MirrorTarget): void {
-  const { element, shadow, idle } = target;
+  const { element, shadow, idle, wording } = target;
   const errorMessage = queryShadow(shadow, '.error-message', HTMLElement);
   const errorCode = queryShadow(shadow, '.error-code', HTMLElement);
   player.events.on('statuschange', (status) => {
@@ -29,8 +31,9 @@ export function mirrorPlayerEvents(player: Player, target: MirrorTarget): void {
   player.events.on('frame', () => {
     element.dataset['hasFrame'] = '';
   });
+  // The visitor reads the failure in words for them; the event tells the developer what exactly.
   player.events.on('error', (error) => {
-    errorMessage.textContent = error.message;
+    wording.showError(errorMessage, error.code);
     errorCode.textContent = error.code;
   });
   for (const name of PLAYER_EVENT_NAMES) {

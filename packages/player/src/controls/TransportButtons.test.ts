@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { TransportButtons } from './TransportButtons';
 import { bindViewButtons } from './viewButtons';
+import { Wording } from './Wording';
 import type { PlayerEvents } from '../player/PlayerEvents';
 import { expectIconOnly, removeRenderedControls, renderControls } from '../test/controls';
 
@@ -30,6 +31,7 @@ function world(): World {
       stop: record('stop'),
     },
     togglePlay: record('toggle play'),
+    wording: new Wording(),
   });
   bindViewButtons(parts, {
     player: { resetView: record('reset view') },

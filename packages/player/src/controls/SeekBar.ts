@@ -33,7 +33,7 @@ export type SeekPlayer = Pick<Player, 'events' | 'currentTime' | 'duration' | 's
 /**
  * The player, and where the seek bar reports a failed scrub.
  */
-export interface SeekHost extends Pick<ControlsHost, 'warn'> {
+export interface SeekHost extends Pick<ControlsHost, 'warn' | 'wording'> {
   readonly player: SeekPlayer;
 }
 
@@ -140,6 +140,8 @@ export class SeekBar {
   private showTime(time: number): void {
     const [shown, total] = [formatTime(time), formatTime(this.host.player.duration)];
     this.parts.time.textContent = `${shown} / ${total}`;
-    this.parts.seek.setAttribute('aria-valuetext', `${shown} of ${total}`);
+    const { position } = this.host.wording.current.labels;
+    const spoken = position.replaceAll('{time}', () => shown).replaceAll('{duration}', () => total);
+    this.parts.seek.setAttribute('aria-valuetext', spoken);
   }
 }

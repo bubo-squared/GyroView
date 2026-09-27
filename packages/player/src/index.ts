@@ -17,4 +17,9 @@ export type { PipelineHost } from './composition/ports';
 export { GyroViewElement } from './element/GyroViewElement';
 export type { GyroViewElementEventMap } from './element/TypedEventElement';
 export type { FileSource } from './element/elementSource';
+export type {
+  GyroViewLabels,
+  GyroViewMessageOverrides,
+  GyroViewMessages,
+} from './controls/messages';
 export { defineGyroView, GYRO_VIEW_TAG } from './element/defineGyroView';

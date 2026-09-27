@@ -17,7 +17,7 @@ import { elementSourceOf, type FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
 import { IdleWatcher } from './IdleWatcher';
 import { applyPlaybackAttribute } from './playbackAttributes';
-import { describeUnlessTheAuthorDid } from './accessibleRegion';
+import { describeUnlessTheAuthorDid, renameUnlessTheAuthorDid } from './accessibleRegion';
 import { applyEarlyProperties, takeEarlyProperties } from './earlyProperties';
 import {
   defineLiveSettings,
@@ -40,6 +40,8 @@ import { queryShadow } from '../controls/controlParts';
 import { bindControlsBar } from '../controls/controlsBar';
 import type { ControlsHost } from '../controls/ControlsHost';
 import { bindKeyboard, type KeyboardHost } from '../controls/keyboard';
+import type { GyroViewMessageOverrides, GyroViewMessages } from '../controls/messages';
+import { Wording } from '../controls/Wording';
 import { ViewGestures } from '../controls/ViewGestures';
 import { ensureFinite } from '../player/ensureFinite';
 import type { Player } from '../player/Player';
@@ -66,6 +68,7 @@ const PUBLIC_PROPERTIES: readonly string[] = [
   ].map((name) => propertyNameOf(name)),
   ...LIVE_SETTING_NAMES,
   'currentTime',
+  'messages',
 ];
 const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);
 /**
@@ -100,6 +103,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
    */
   private startTime: number | undefined;
   private readonly player: Player;
+  private readonly wording = new Wording();
   private readonly fullscreen = new FullscreenToggle(this);
   private readonly idle: IdleWatcher;
   private readonly posterImage: HTMLImageElement;
@@ -123,6 +127,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     defineBooleanProperties(this, BOOLEAN_ATTRIBUTES);
     const shadow = this.attachShadow({ mode: 'open' });
     renderShadowTree(shadow);
+    this.wording.write(shadow);
     const canvas = queryShadow(shadow, 'canvas', HTMLCanvasElement);
     const audio = queryShadow(shadow, 'audio', HTMLAudioElement);
     this.posterImage = queryShadow(shadow, '.poster', HTMLImageElement);
@@ -133,7 +138,8 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     new ViewGestures(canvas, this.player, this.onPictureTap);
     bindKeyboard(this, host);
     this.idle = new IdleWatcher(this, () => this.player.status === 'playing');
-    mirrorPlayerEvents(this.player, { element: this, shadow, idle: this.idle });
+    const { idle, wording } = this;
+    mirrorPlayerEvents(this.player, { element: this, shadow, idle, wording });
   }
 
   /**
@@ -182,8 +188,24 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     return this.player.view;
   }
 
+  /**
+   * Every word the element shows or says to assistive technology. Setting it replaces any of
+   * them, table by table (`labels`, `stabilizationModes`, `viewModes`, `errors`); the others keep
+   * their English defaults, and `null` brings them all back.
+   */
+  public get messages(): GyroViewMessages {
+    return this.wording.current;
+  }
+
+  public set messages(overrides: GyroViewMessageOverrides | null | undefined) {
+    const previousName = this.wording.current.labels.player;
+    this.wording.replace(overrides);
+    if (this.shadowRoot) this.wording.write(this.shadowRoot);
+    renameUnlessTheAuthorDid(this, previousName, this.wording.current.labels.player);
+  }
+
   public connectedCallback(): void {
-    describeUnlessTheAuthorDid(this);
+    describeUnlessTheAuthorDid(this, this.wording.current.labels.player);
     applyEarlyProperties(this, this.earlyProperties, this.warn);
     this.dataset['status'] = this.player.status;
     this.idle.start();
@@ -220,7 +242,11 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
    * for; rejects when the browser refuses to start.
    */
   public async play(): Promise<void> {
-    await this.scheduledLoadSettled();
+    try {
+      await this.scheduledLoad;
+    } catch {
+      // Dispatched as an `error` event already; the player's play rejects with it below.
+    }
     await this.player.play();
   }
 
@@ -325,6 +351,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   private controlsHost(): ControlsHost & KeyboardHost {
     return {
       player: this.player,
+      wording: this.wording,
       togglePlay: this.togglePlayback,
       toggleFullscreen: (): void => {
         void this.toggleFullscreen();
@@ -363,18 +390,6 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
       });
     });
   };
-
-  /**
-   * Waits for the load the attributes set just now asked for, if any, however it ends: a
-   * failure has been dispatched as an `error` event already.
-   */
-  private async scheduledLoadSettled(): Promise<void> {
-    try {
-      await this.scheduledLoad;
-    } catch {
-      // Reported as an `error` event.
-    }
-  }
 
   /**
    * The load the element starts when it is next connected, owed until then: only a connected

@@ -309,6 +309,41 @@ describe('<gyro-view>', () => {
     expect(getComputedStyle(control(first, '.controls', HTMLElement)).position).toBe('absolute');
   });
 
+  it('says every word in the language a page gives it, its own name included', () => {
+    const element = create({ controls: '' });
+    const named = create({ controls: '', 'aria-label': 'Harbour at dawn' });
+    for (const target of [element, named]) {
+      target.messages = {
+        labels: { player: 'Lecteur vidéo 360°', play: 'Lecture', viewMode: 'Vue' },
+        viewModes: { 'raw-lenses': 'Objectifs bruts' },
+      };
+    }
+    const viewMenu = control(element, '.view-mode-menu', HTMLElement);
+    expect(element.getAttribute('aria-label')).toBe('Lecteur vidéo 360°');
+    expect(named.getAttribute('aria-label')).toBe('Harbour at dawn');
+    expect(control(element, '.play', HTMLButtonElement).getAttribute('aria-label')).toBe('Lecture');
+    expect(control(element, '.view-mode-button', HTMLButtonElement).ariaLabel).toBe('Vue');
+    expect(viewMenu.querySelector('[data-choice="raw-lenses"]')?.textContent).toBe(
+      'Objectifs bruts',
+    );
+    expect(control(element, '.stop', HTMLButtonElement).getAttribute('aria-label')).toBe('Stop');
+    expect(element.messages.labels.play).toBe('Lecture');
+
+    element.messages = null;
+    expect(element.getAttribute('aria-label')).toBe('360° video player');
+    expect(control(element, '.play', HTMLButtonElement).getAttribute('aria-label')).toBe('Play');
+  });
+
+  it('names the parts a page may style: the overlays and the big play button among them', () => {
+    const element = create({ controls: '' });
+    const parts = [...(element.shadowRoot?.querySelectorAll('[part]') ?? [])].map((node) =>
+      node.getAttribute('part'),
+    );
+    expect(parts).toEqual(
+      expect.arrayContaining(['loading', 'error', 'error-message', 'error-code', 'big-play']),
+    );
+  });
+
   it('mirrors its source and presentation attributes as properties and takes focus', () => {
     const element = create({ controls: '', src: X5_RECORDING_URL });
     expect(element.src).toBe(X5_RECORDING_URL);
@@ -662,15 +697,20 @@ describe('<gyro-view>', () => {
 
   it('shows an error overlay for a source it cannot read and recovers on a new src', async () => {
     const element = create({ controls: '' });
-    const failed = nextEvent<{ code: string }>(element, 'error');
+    const failed = nextEvent<{ code: string; message: string }>(element, 'error');
     element.src = `${X5_RECORDING_URL}.missing`;
 
     const error = await failed;
 
     expect(error.code).toBe('source-unreadable');
+    expect(error.message).toContain('.missing');
     expect(element.dataset['status']).toBe('error');
+    expect(control(element, '.error-message', HTMLElement).textContent).toBe(
+      'The video could not be loaded.',
+    );
     expect(control(element, '.error-code', HTMLElement).textContent).toBe('source-unreadable');
     expect(getComputedStyle(control(element, '.overlay.error', HTMLElement)).display).toBe('flex');
+    expect(getComputedStyle(control(element, '.controls', HTMLElement)).display).toBe('none');
 
     const ready = nextEvent(element, 'ready');
     element.src = X5_RECORDING_URL;

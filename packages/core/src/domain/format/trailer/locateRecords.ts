@@ -31,16 +31,16 @@ async function locateThroughIndex(
   ensureNotBeforePayloadStart(indexOffset, layout.lastHeader, layout.payloadStart);
   const indexRange = ByteRange.of(indexOffset, layout.lastHeader.payloadSize);
   const records = parseRecordIndex(await source.read(indexRange), layout.payloadStart);
-  for (const record of records) ensureInsideTrailer(record, layout.payloadStart, indexRange.offset);
+  for (const record of records) ensureBeforeIndex(record, indexRange.offset);
   return records;
 }
 
-function ensureInsideTrailer(
-  record: RecordLocation,
-  payloadStart: number,
-  indexStart: number,
-): void {
-  if (record.payload.offset < payloadStart || record.payload.end > indexStart) {
+/**
+ * The index counts every offset from the payload start, so only a record's end can stray: past
+ * the index, into the footer or beyond the file.
+ */
+function ensureBeforeIndex(record: RecordLocation, indexStart: number): void {
+  if (record.payload.end > indexStart) {
     throw new GyroViewError(
       'invalid-trailer',
       `record ${record.id} at ${record.payload.offset}+${record.payload.length} lies outside the trailer`,

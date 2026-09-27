@@ -90,7 +90,10 @@ describe('DecodeRun', () => {
   it('is primed by a full queue that holds fewer pairs than priming asks for', async () => {
     const run = DecodeRun.start(partsQueuing(10, { queueCapacity: 1 }), seconds(0), QUIET);
     await settle();
-    expect(run.isPrimedAt(seconds(0))).toBe(true);
+    run.takePairAt(seconds(0));
+    await settle();
+    // One pair left, and a queue of one takes no more: two would never come.
+    expect(run.isPrimedAt(seconds(0.1))).toBe(true);
     run.abort();
   });
 

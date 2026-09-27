@@ -122,6 +122,14 @@ describe('readRecording on synthetic X5 files', () => {
     expect(source.reads.filter((range) => range.offset === 0)).toEqual([]);
   });
 
+  it('reads the gyro record once when the info record names its sample layout', async () => {
+    const source = new InMemoryRandomAccessSource(officeRecords().buildContiguous().bytes);
+    const recording = await readRecording(source);
+    const readsBefore = source.reads.length;
+    await recording.readGyroRecord();
+    expect(source.reads.length - readsBefore).toBe(1);
+  });
+
   it('fails with a typed error when the info record is not protobuf', async () => {
     const file = new TrailerFixtureBuilder()
       .withPrefix(minimalMp4Prefix())

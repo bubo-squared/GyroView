@@ -160,6 +160,18 @@ describe('PlaybackSession following what the platform does to its clock', () => 
       session.dispose();
     });
 
+    it('ends when a sound track shorter than the video ran out meanwhile', async () => {
+      const soundEnd = seconds(DURATION / 2);
+      const clock = new FakePlaybackClock({ endsAt: soundEnd });
+      const { session, advance } = sessionHarness({ clock });
+      await session.play();
+      await advance(100);
+      clock.advance(soundEnd);
+      session.tick();
+      expect(session.state).toBe('ended');
+      session.dispose();
+    });
+
     it('notices the missed ticks when playback started without any', async () => {
       const clock = new FakePlaybackClock();
       const { session, sink, states, advance } = sessionHarness({ clock });

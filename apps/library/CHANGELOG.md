@@ -16,7 +16,8 @@ The first release:
   puts the far field; `ready` reports `offset` as the calibration version. The lens pose reads
   the calibration's roll mirrored and turns both lenses alike by their yaw and pitch, which
   removes the step at the side seams of the X5 recordings. The `quality`
-  attribute (`fast`, `balanced`, `high`, with `setQuality` and `qualitychange`) sets how finely
+  attribute (`fast`, `balanced`, `high`, listed in `PICTURE_QUALITIES`, with `setQuality` and
+  `qualitychange`) sets how finely
   the lens images are read and how many device pixels are drawn; `balanced` reads them through a
   mip chain along each pixel's footprint, so fine detail no longer shimmers.
 - `createBrowserPlayer`, the player without the element, for an interface of your own, with

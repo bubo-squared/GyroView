@@ -10,8 +10,10 @@ import {
   hasErrorCode,
   inspectRecording,
   isGyroViewErrorCode,
+  PICTURE_QUALITIES,
   VIEW_MODES,
   type GyroViewErrorCode,
+  type PictureQuality,
   type PlayerMetadata,
   type PlayerStatus,
   type RecordingInspection,
@@ -29,6 +31,12 @@ const status: PlayerStatus = element.status;
 const metadata: PlayerMetadata | undefined = element.metadata;
 const panorama: ViewMode = VIEW_MODES[1] ?? 'normal';
 element.setViewMode(panorama);
+const sharpest: PictureQuality = PICTURE_QUALITIES.at(-1) ?? 'balanced';
+element.setQuality(sharpest);
+element.addEventListener('qualitychange', (event) => {
+  const quality: PictureQuality = event.detail;
+  return quality;
+});
 element.loadFiles({ main: new File([], 'VID_20260814_132640_00_013.insv') });
 
 const found = document.querySelector('gyro-view');

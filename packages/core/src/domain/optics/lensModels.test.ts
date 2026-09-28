@@ -50,8 +50,10 @@ describe('lens models on the X5 office lenses', () => {
     }
   });
 
-  it('agree with the legacy radius at the 100-degree field edge to within a few pixels', () => {
-    // The legacy radius is radial only; the MEI projection adds tangential distortion of ~2 px.
+  it('place the legacy radius 96 degrees from the axis, where the MEI model reaches it only at 100', () => {
+    expect(radiusOf(equidistant[0]!.model, 96)).toBeCloseTo(2664.255, 6);
+    expect(radiusOf(equidistant[1]!.model, 96)).toBeCloseTo(2652.858, 6);
+    // The MEI projection adds tangential distortion of ~2 px on top of its radius.
     expect(Math.abs(radiusOf(mei[0]!.model, 100) - 2664.255)).toBeLessThan(2.5);
     expect(Math.abs(radiusOf(mei[1]!.model, 100) - 2652.858)).toBeLessThan(2.5);
   });
@@ -74,9 +76,15 @@ describe('lens models on the X5 office lenses', () => {
     expect(worstRadialDifference(polynomial[1]!.model, mei[1]!.model)).toBeLessThan(10);
   });
 
-  it('equidistant fallback stays within 55 px of the MEI model across the field', () => {
-    expect(worstRadialDifference(equidistant[0]!.model, mei[0]!.model)).toBeLessThan(55);
-    expect(worstRadialDifference(equidistant[1]!.model, mei[1]!.model)).toBeLessThan(55);
+  it('equidistant reading draws every direction further out than the MEI model: a tenth mid-field, 3 percent at the edge (ADR 0023)', () => {
+    for (const lensIndex of [0, 1]) {
+      const ratioAt = (theta: number): number =>
+        radiusOf(equidistant[lensIndex]!.model, theta) / radiusOf(mei[lensIndex]!.model, theta);
+      expect(ratioAt(30)).toBeGreaterThan(1.08);
+      expect(ratioAt(30)).toBeLessThan(1.12);
+      expect(ratioAt(90)).toBeGreaterThan(1.02);
+      expect(ratioAt(90)).toBeLessThan(1.05);
+    }
   });
 
   it.each(BACK_LENS_GOLDEN)(

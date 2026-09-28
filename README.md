@@ -269,7 +269,8 @@ composition and embedding, 0011 sound follows the picture, 0012 gain matching al
 square, 0015 view modes replace projections, 0016 the player owns its settings, 0017 the
 recording itself or an error, 0018 every view mode zooms toward the pointer, 0019 a range that
 fails on the way is asked for again, 0020 one npm package bundles the core and the adapters, 0021
-changes are announced once whole, 0022 the player opens on the raw lenses.
+changes are announced once whole, 0022 the player opens on the raw lenses, 0023 the legacy
+radius spans 96 degrees.
 
 ## License
 

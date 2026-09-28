@@ -22,7 +22,7 @@ describe.skipIf(!hasSamples())('reading the real X5 recordings', () => {
         expect(layout.records).toHaveLength(10);
         const recording = await readRecording(source);
         expect(recording.info).toMatchObject({ model: 'Insta360 X5', frameRate: 60 });
-        expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
+        expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Legacy);
 
         const gyro = await recording.readGyroRecord();
         // Real stamps have jitter and no glitches: nothing is left out or mended.

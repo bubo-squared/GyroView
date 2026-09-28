@@ -11,7 +11,9 @@ The first release:
   import while a server renders the page. It runs under a strict CSP (`trusted-types gyroview`,
   no inline styles), speaks the page's language through `messages`, shows visitors plain failure
   texts and names its overlays as parts. It opens on the raw lenses; the view menu offers them
-  first, then the equirectangular panorama and the normal view.
+  first, then the equirectangular panorama and the normal view. The stitch reads the legacy
+  calibration string's radius as 96 degrees from the lens axis, where Insta360 Studio's own stitch
+  puts the far field; `ready` reports `offset` as the calibration version.
 - `createBrowserPlayer`, the player without the element, for an interface of your own, with
   `attachViewGestures` and `attachKeyboard` for the element's gestures and shortcuts.
 - `inspectRecording`, which reads what a recording holds from a file or a URL.

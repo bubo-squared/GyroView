@@ -50,6 +50,9 @@ up, while the parallax ghost of the door handle a metre away stays, as it must.
 
 ## What stays open
 
+Settled by ADR 0023: the scale below was the angle the legacy radius spans, measured against
+Insta360 Studio's stitch, not the window.
+
 The whole square and a 5312 window centred in it put the principal point at the same place
 and differ only by a 1.2 % scale. At the seam that is about two degrees of relative shift, not
 half a degree: a scale error `s` moves each lens's content by `s * r / (dr/dtheta)`, about

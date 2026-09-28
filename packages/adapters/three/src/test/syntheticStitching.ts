@@ -1,5 +1,6 @@
 import {
   degrees,
+  degreesToRadians,
   EquidistantModel,
   FULL_FRAME,
   LEFT_HALF,
@@ -10,6 +11,10 @@ import {
 
 const SQUARE = 1000;
 const HALF_SQUARE = 500;
+/**
+ * Ideal 200-degree lenses: the edge radius marks the 100-degree field edge itself.
+ */
+const EDGE_DEGREES = 100;
 
 /**
  * Two ideal 200-degree lenses back to back on a canvas of two squares, no pose corrections.
@@ -19,6 +24,7 @@ export function syntheticCalibration(): CalibrationSet {
     lensIndex,
     model: new EquidistantModel({
       edgeRadius: HALF_SQUARE,
+      radiusAngle: degreesToRadians(degrees(EDGE_DEGREES)),
       principalPoint: { x: lensIndex * SQUARE + HALF_SQUARE, y: HALF_SQUARE },
     }),
     orientation: { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) },

@@ -4,6 +4,7 @@ import {
   type LensBlock,
 } from './CalibrationStringLayout';
 import { EquidistantModel } from '../../../optics/EquidistantModel';
+import { LEGACY_RADIUS_ANGLE } from '../../../optics/opticsConstants';
 import type { CanvasSize, LensCalibration } from '../../../optics/LensCalibration';
 import { CalibrationVersion } from '../CalibrationVersion';
 import {
@@ -30,6 +31,7 @@ export const LEGACY_CALIBRATION_LAYOUT: CalibrationStringLayout = {
       lensIndex,
       model: new EquidistantModel({
         edgeRadius: block(V1Token.EdgeRadius),
+        radiusAngle: LEGACY_RADIUS_ANGLE,
         principalPoint: { x: block(V1Token.CenterX), y: block(V1Token.CenterY) },
       }),
       orientation: eulerDegrees(block(V1Token.Yaw), block(V1Token.Pitch), block(V1Token.Roll)),

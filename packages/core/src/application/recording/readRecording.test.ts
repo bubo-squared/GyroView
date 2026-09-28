@@ -21,7 +21,7 @@ describe('readRecording on synthetic X5 files', () => {
     const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
 
     expect(recording.info.model).toBe('Insta360 X5');
-    expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
+    expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Legacy);
     expect(recording.calibration.warnings).toEqual([]);
     expect(recording.info).toMatchObject({
       fileLayout: 'multi-track',
@@ -178,7 +178,7 @@ describe('readRecording on real trailers from other cameras (insta360py fixtures
       firmware: 'v1.11.6_build1',
       fileLayout: undefined,
     });
-    expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Mei);
+    expect(recording.calibration.calibration?.version).toBe(CalibrationVersion.Legacy);
     const gyro = await recording.readGyroRecord();
     expect(gyro?.track.length).toBe(12);
   });

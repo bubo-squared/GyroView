@@ -1,6 +1,8 @@
 # ADR 0005: Interpretation of the three calibration string versions
 
-Status: accepted with open items (2026-09-18)
+Status: accepted with open items (2026-09-18). The v1 radius angle and the preference for the Mei
+model are superseded by ADR 0023: the legacy radius spans 96 degrees and the legacy string is read
+first.
 
 ## Context
 

@@ -13,8 +13,9 @@ lockstep with WebCodecs; follows the recording's own audio through Media Source 
 or a silent clock without audio. Playback holds for frames rather than letting sound run
 ahead; the first frame shows before play; the seek bar scrubs to key frames.
 
-**Stitching.** One GPU pass per frame through the factory calibration (unified, polynomial or
-equidistant lens model), with a feathered blend across the overlap and per-channel exposure
+**Stitching.** One GPU pass per frame through the factory calibration (the legacy string's
+equidistant model, its radius read as 96 degrees against Insta360 Studio's own stitch, ADR 0023;
+the unified and polynomial strings as fallbacks), with a feathered blend across the overlap and per-channel exposure
 matching measured along the seam. A normal rectilinear view of 30 to 120 degrees with drag,
 pinch, wheel and keyboard look-around; the whole sphere as a level, letterboxed
 equirectangular panorama; and the raw lens images side by side or stacked, unstitched
@@ -63,9 +64,9 @@ are covered by synthetic fixtures built from the documented format variants.
   on the sailing recording the people within a metre of the camera dominated the estimate,
   the biased correction misaligned everything else, and the near people stayed torn, since
   no rigid calibration aligns two depths at once with lenses 3.2 cm apart.
-- The frame is mapped onto the whole calibration square; a 1.2 % scale uncertainty (about two
-  degrees of relative shift at the seam) remains until another camera's window record or a Studio export
-  settles it (ADR 0014).
+- The frame is mapped onto the whole calibration square, and the legacy radius spans 96 degrees,
+  known to about a degree from the Studio export of the sailing recording (ADR 0023); the
+  mid-field shape of the lens (equidistant against the Mei string's curve) is not settled.
 - Recordings split into several `_NNN` segment files play one segment at a time.
 - Playback speed is 1x: another speed needs the decoders to keep up with it, which an 8K
   recording's barely do at 1x, and the sound to follow at that rate.

@@ -149,7 +149,7 @@ describe('openRecording', () => {
     expect(opened.layout.kind).toBe('multi-track');
     // The X5 info record says track 0 is the screen-side lens, so lens 0 is track 1.
     expect(opened.frameSources.map((track) => track.description.trackIndex)).toEqual([1, 0]);
-    expect(opened.calibration.version).toBe(CalibrationVersion.Mei);
+    expect(opened.calibration.version).toBe(CalibrationVersion.Legacy);
     expect(opened.duration).toBe(3);
     expect(opened.frameTimes?.frameCount).toBe(30);
     expect(opened.motion?.orientations.length).toBe(2000);
@@ -157,7 +157,7 @@ describe('openRecording', () => {
     expect(opened.metadata).toMatchObject({
       model: 'Insta360 X5',
       layout: 'multi-track',
-      calibrationVersion: CalibrationVersion.Mei,
+      calibrationVersion: CalibrationVersion.Legacy,
       frameTimeSource: 'track-timestamps',
       hasGyro: true,
       imuFrame: { name: 'X5', isVerified: true },

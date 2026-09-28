@@ -27,15 +27,17 @@ const SKIPPABLE: ReadonlySet<GyroViewErrorCode> = new Set([
 ]);
 
 /**
- * Picks the most accurate calibration a recording offers: MEI (v3) over polynomial (v2) over
- * equidistant (v1). Strings that cannot be used are reported, not silently dropped; having none
- * is reported as absence, not as a failure.
+ * Picks the calibration a recording is stitched through: the legacy string first, whose
+ * equidistant reading is the one Insta360's own stitch agrees with on the far field
+ * (ADR 0023), then the Mei (v3) and polynomial (v2) strings for a recording without it. Strings
+ * that cannot be used are reported, not silently dropped; having none is reported as absence,
+ * not as a failure.
  */
 export function selectCalibration(strings: CalibrationStrings): CalibrationChoice {
   const candidates: readonly (readonly [name: string, text: string | undefined])[] = [
+    ['offset', strings.offset],
     ['offset_v3', strings.offsetV3],
     ['offset_v2', strings.offsetV2],
-    ['offset', strings.offset],
   ];
   const warnings: string[] = [];
   for (const [name, text] of candidates) {

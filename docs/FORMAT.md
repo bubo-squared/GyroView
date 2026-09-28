@@ -98,7 +98,7 @@ v2/v3: version 2 or 3 in the high 16 bits). The lens type is not used.
 
 | Version        | Tokens per lens | Per-lens fields                                                              | Model                                                                        |
 | -------------- | --------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| v1 `offset`    | 6               | r cx cy yaw pitch roll (+ canvas width, height after the lenses)             | equidistant, r = radius at the 100-degree field edge                         |
+| v1 `offset`    | 6               | r cx cy yaw pitch roll (+ canvas width, height after the lenses)             | equidistant, r = radius 96 degrees from the axis (ADR 0023); read first      |
 | v2 `offset_v2` | 16              | r cx cy yaw pitch roll tx ty tz c1 c2 c3 c4 width height type                | polynomial in radians scaled so 100 degrees maps to r (hypothesis, ADR 0005) |
 | v3 `offset_v3` | 19              | xi fx fy cx cy yaw pitch roll tx ty tz k1 k2 k3 p1 p2 width height type      | unified (Mei) with radial-tangential distortion                              |
 | v6             | 27              | xi fx fy cx cy yaw pitch roll tx ty tz + 13 coefficients + width height type | not supported yet                                                            |

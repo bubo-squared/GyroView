@@ -1,5 +1,10 @@
 import { ThreeFrameRenderer } from '@gyroview/adapter-three';
-import { buildStitchingSetup, type CalibrationSet, type MotionSetup } from '@gyroview/core';
+import {
+  buildStitchingSetup,
+  type CalibrationSet,
+  type MotionSetup,
+  type StitchingSetup,
+} from '@gyroview/core';
 import type { OpenedRecording } from '@gyroview/player/composition';
 
 export interface CanvasSize {
@@ -34,10 +39,21 @@ export function equirectangularRendering(
   opened: OpenedRecording,
   size: CanvasSize,
 ): EquirectangularRendering {
+  const setup = buildStitchingSetup({ calibration: calibrationOf(opened), layout: opened.layout });
+  return equirectangularRenderingOf(setup, size);
+}
+
+/**
+ * As {@link equirectangularRendering}, for a stitching setup of the caller's own: another
+ * reading of the calibration, or a scaled one.
+ */
+export function equirectangularRenderingOf(
+  setup: StitchingSetup,
+  size: CanvasSize,
+): EquirectangularRendering {
   const canvas = document.createElement('canvas');
   canvas.width = size.width;
   canvas.height = size.height;
-  const setup = buildStitchingSetup({ calibration: calibrationOf(opened), layout: opened.layout });
   const renderer = ThreeFrameRenderer.create(canvas, setup, { preserveDrawingBuffer: true });
   renderer.setViewMode('equirectangular');
   return {

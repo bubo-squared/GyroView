@@ -136,16 +136,22 @@ function withAxis(delta: PoseDelta, axis: Axis, value: number): PoseDelta {
  * Turns GyroView's panorama to match the reference: a column search for the yaw, then rounds
  * of one-axis searches around the best so far.
  */
-export function alignToReference(reference: GreyImage, renderable: Renderable): Alignment {
+export function alignToReference(
+  reference: GreyImage,
+  renderable: Renderable,
+  from?: PoseDelta,
+): Alignment {
   const rest: PoseDelta = { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) };
   const initialCost = farFieldCost(reference, renderUnder(renderable, rest));
-  const start = withAxis(rest, 'yaw', initialYaw(reference, renderUnder(renderable, rest)));
+  const start = from ?? withAxis(rest, 'yaw', initialYaw(reference, renderUnder(renderable, rest)));
   let best: Scored = {
     delta: start,
     cost: farFieldCost(reference, renderUnder(renderable, start)),
   };
   const comparison = { reference, renderable };
-  for (let round = 0; round < DESCENT_ROUNDS; round += 1) {
+  // A start near the answer needs one round; the column search's yaw needs the rest.
+  const rounds = from ? 1 : DESCENT_ROUNDS;
+  for (let round = 0; round < rounds; round += 1) {
     for (const axis of AXES) best = bestAlongAxis(comparison, best, axis);
   }
   return { rotation: best.delta, cost: best.cost, initialCost };

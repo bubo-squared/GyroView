@@ -37,9 +37,16 @@ export interface HttpRangeSourceOptions extends HttpRequestOptions {
 }
 
 /**
- * A failure on the way that asking again may cure; any other fails the read at once.
+ * The failures on the way, which asking again may cure; any other fails the read at once. They
+ * are `source-unreadable` errors like any other, so a caller that gets one after the retries
+ * cannot tell, and need not: only the retry loop asks.
  */
-class PassingFailure extends GyroViewError {}
+const passingFailures = new WeakSet<GyroViewError>();
+
+function passing(failure: GyroViewError): GyroViewError {
+  passingFailures.add(failure);
+  return failure;
+}
 const CONTENT_RANGE_TOTAL = /\/(\d+)$/u;
 
 /**
@@ -93,7 +100,7 @@ export class HttpRangeSource implements RandomAccessSource {
       try {
         return await this.readOnce(range);
       } catch (error) {
-        if (!(error instanceof PassingFailure)) throw error;
+        if (!(error instanceof GyroViewError && passingFailures.has(error))) throw error;
       }
       await wait(delayMs, this.options.requestInit?.signal);
     }
@@ -137,7 +144,7 @@ export class HttpRangeSource implements RandomAccessSource {
     const message = `${this.url} could not be reached for a byte range`;
     return isAbortError(error)
       ? error
-      : new PassingFailure('source-unreadable', message, { cause: error });
+      : passing(new GyroViewError('source-unreadable', message, { cause: error }));
   }
 
   private refusalOf(status: number): GyroViewError {
@@ -149,7 +156,7 @@ export class HttpRangeSource implements RandomAccessSource {
     }
     const message = `${this.url} answered ${status} to a byte range`;
     return status >= HTTP_SERVER_ERROR
-      ? new PassingFailure('source-unreadable', message)
+      ? passing(new GyroViewError('source-unreadable', message))
       : new GyroViewError('source-unreadable', message);
   }
 
@@ -163,10 +170,12 @@ export class HttpRangeSource implements RandomAccessSource {
       return new Uint8Array(await response.arrayBuffer());
     } catch (error) {
       if (isAbortError(error)) throw error;
-      throw new PassingFailure(
-        'source-unreadable',
-        `${this.url} broke off the ${range.length}-byte range at ${range.offset}`,
-        { cause: error },
+      throw passing(
+        new GyroViewError(
+          'source-unreadable',
+          `${this.url} broke off the ${range.length}-byte range at ${range.offset}`,
+          { cause: error },
+        ),
       );
     }
   }
@@ -261,7 +270,7 @@ function wait(ms: number, signal: AbortSignal | null | undefined): Promise<void>
 function passingIfUnreachable(error: unknown): unknown {
   const isUnreachable = hasErrorCode(error, 'source-unreadable') && error instanceof Error;
   return isUnreachable
-    ? new PassingFailure('source-unreadable', error.message, { cause: error.cause })
+    ? passing(new GyroViewError('source-unreadable', error.message, { cause: error.cause }))
     : error;
 }
 

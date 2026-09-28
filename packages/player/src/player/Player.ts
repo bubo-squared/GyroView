@@ -1,6 +1,7 @@
+import type { GyroViewError } from '@gyroview/core';
 import {
+  asGyroViewError,
   degrees,
-  GyroViewError,
   hasErrorCode,
   isFlowing,
   messageOf,
@@ -396,12 +397,7 @@ export class Player {
   }
 
   private failWith(error: unknown): GyroViewError {
-    const failure =
-      error instanceof GyroViewError
-        ? error
-        : new GyroViewError('invariant-violation', 'the player failed unexpectedly', {
-            cause: error,
-          });
+    const failure = asGyroViewError(error, 'invariant-violation', 'the player failed unexpectedly');
     this.outbox.change(() => {
       // Lets go of what the failed load holds: its reads, which only this abort ends, and the
       // recording, when it failed after attaching it.

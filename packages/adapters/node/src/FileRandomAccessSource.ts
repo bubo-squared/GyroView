@@ -1,6 +1,11 @@
 import { open, type FileHandle } from 'node:fs/promises';
 
-import { GyroViewError, type ByteRange, type RandomAccessSource } from '@gyroview/core';
+import {
+  asGyroViewError,
+  GyroViewError,
+  type ByteRange,
+  type RandomAccessSource,
+} from '@gyroview/core';
 
 /**
  * RandomAccessSource over a local file. Used by the CLI and by integration tests against the
@@ -28,9 +33,7 @@ export class FileRandomAccessSource implements RandomAccessSource {
       return new FileRandomAccessSource(handle, stats.size, path);
     } catch (error) {
       await handle.close();
-      throw error instanceof GyroViewError
-        ? error
-        : new GyroViewError('source-unreadable', `cannot stat ${path}`, { cause: error });
+      throw asGyroViewError(error, 'source-unreadable', `cannot stat ${path}`);
     }
   }
 

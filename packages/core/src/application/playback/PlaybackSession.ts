@@ -1,16 +1,15 @@
 import { closeFramePair, type FramePair } from '../../ports/FramePair';
-import { ClockWatch } from './ClockWatch';
+import { ClockWatch, isAtEndOfMedia, isStoppedFromOutside } from './ClockWatch';
 import { SeekOrder } from './SeekOrder';
 import { TimeUpdates } from './TimeUpdates';
 import { SessionLifecycle, type PlaybackSessionEvents } from './SessionLifecycle';
 import { DecodeRun, type DecodeRunParts } from './DecodeRun';
-import { isAtEndOfMedia, isStoppedFromOutside } from './clockReadings';
 import { keyframeTimeAt } from './keyframeTimeAt';
-import { playbackFailureOf, renderFailureOf } from './playbackFailures';
 import type { PlayerState } from '../../domain/playback/PlayerState';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
 import { Deferred } from '../../shared/async/Deferred';
+import { asGyroViewError } from '../../shared/errors/GyroViewError';
 import { TypedEmitter } from '../../shared/events/TypedEmitter';
 import { seconds, type Seconds } from '../../shared/units/time';
 
@@ -416,7 +415,8 @@ export class PlaybackSession<Handle = unknown> {
       this.parts.sink.present(presentation);
       return true;
     } catch (error) {
-      this.fail(renderFailureOf(error));
+      // A GPU that gave up, told apart from a stream that broke.
+      this.fail(asGyroViewError(error, 'render-unavailable', 'the picture could not be drawn'));
       return false;
     }
   }
@@ -457,7 +457,7 @@ export class PlaybackSession<Handle = unknown> {
       this.abortRun();
       this.lifecycle.moveTo('error');
       this.settleStartAttempt();
-      this.lifecycle.announce('error', playbackFailureOf(error));
+      this.lifecycle.announce('error', asGyroViewError(error, 'decode', 'playback failed'));
     });
   }
 }

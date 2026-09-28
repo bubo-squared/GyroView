@@ -1,4 +1,5 @@
 import {
+  asGyroViewError,
   GyroViewError,
   RunStop,
   seconds,
@@ -89,10 +90,7 @@ export class SourceBufferFeeder {
       if (this.hasAllAudioFrom(from)) return;
       await this.feedFrom(this.startOf(from), stop);
     } catch (error) {
-      this.failureValue ??=
-        error instanceof GyroViewError
-          ? error
-          : new GyroViewError('decode', 'feeding the audio buffer failed', { cause: error });
+      this.failureValue ??= asGyroViewError(error, 'decode', 'feeding the audio buffer failed');
     }
   }
 

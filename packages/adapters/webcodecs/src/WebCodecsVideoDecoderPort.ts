@@ -1,4 +1,5 @@
 import {
+  asGyroViewError,
   GyroViewError,
   messageOf,
   microseconds,
@@ -46,11 +47,7 @@ export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
       return Promise.resolve(this.configureDecoder(configuration, callbacks));
     } catch (error) {
       return Promise.reject(
-        error instanceof GyroViewError
-          ? error
-          : new GyroViewError('codec-unsupported', 'the decoder rejected its configuration', {
-              cause: error,
-            }),
+        asGyroViewError(error, 'codec-unsupported', 'the decoder rejected its configuration'),
       );
     }
   }

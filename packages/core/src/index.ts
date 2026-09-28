@@ -145,6 +145,7 @@ export type { CalibrationChoice } from './domain/format/calibration/selectCalibr
 
 // Shared vocabulary
 export {
+  asGyroViewError,
   ensureIndexInRange,
   ensureInvariant,
   GYRO_VIEW_ERROR_CODES,

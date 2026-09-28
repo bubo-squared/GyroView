@@ -48,6 +48,20 @@ export class GyroViewError extends Error {
   }
 }
 
+/**
+ * `error` as a `GyroViewError`: one already typed as it is, anything else under `code`, kept as
+ * the cause, so a failure crosses a boundary typed without losing what it was.
+ */
+export function asGyroViewError(
+  error: unknown,
+  code: GyroViewErrorCode,
+  message: string,
+): GyroViewError {
+  return error instanceof GyroViewError
+    ? error
+    : new GyroViewError(code, message, { cause: error });
+}
+
 export function hasErrorCode(error: unknown, code: GyroViewErrorCode): boolean {
   return error instanceof GyroViewError && error.code === code;
 }

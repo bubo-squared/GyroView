@@ -194,13 +194,14 @@ export class Player {
   }
 
   /**
-   * Seeks exactly to `time` seconds; while a recording is loading, or before one is, the next one
-   * starts there, as a media element's default playback start position has it.
+   * Seeks exactly to `time` seconds; while a recording is loading, before one is, or after its
+   * playback failed, the next one starts there, as a media element's default playback start
+   * position has it.
    */
   public seek(time: number): void {
     ensureFinite(time, 'time');
     const session = this.loaded?.pipeline.session;
-    if (session) session.seek(seconds(time));
+    if (session && session.state !== 'error') session.seek(seconds(time));
     else this.pendingStartTime = seconds(time);
   }
 

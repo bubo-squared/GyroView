@@ -4,6 +4,7 @@ import {
   seconds,
   type PictureRenderer,
   type PlaybackSession,
+  type VideoDecoderPort,
 } from '@gyroview/core';
 import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
@@ -92,6 +93,34 @@ function capturingSignals(): {
     },
   };
   return { ports: { ...browser, sources }, signals };
+}
+
+/**
+ * The browser's decoders, the latest of which a test can fail as a GPU reset fails it, once the
+ * decode run under way has made it.
+ */
+function breakableDecoders(): {
+  readonly ports: RecordingPorts;
+  readonly breakDecoder: () => Promise<void>;
+} {
+  const browser = browserPorts();
+  const failures: ((error: Error) => void)[] = [];
+  const decoderPort: VideoDecoderPort<VideoFrame> = {
+    isSupported: (configuration) => browser.decoderPort.isSupported(configuration),
+    create: (configuration, callbacks) => {
+      failures.push(callbacks.onError);
+      return browser.decoderPort.create(configuration, callbacks);
+    },
+  };
+  return {
+    ports: { ...browser, decoderPort },
+    breakDecoder: async (): Promise<void> => {
+      // The load's probe made its decoders; the preloading run makes its own after them.
+      const madeByTheLoad = failures.length;
+      await waitFor(() => failures.length > madeByTheLoad, 'the decode run');
+      failures.at(-1)?.(new Error('the GPU reset'));
+    },
+  };
 }
 
 /**
@@ -377,6 +406,17 @@ describe('Player over the synthetic X5 recording', () => {
     });
     expect(player.status).toBe('error');
     expect(errors).toHaveLength(1);
+  });
+
+  it('starts the next recording where a seek asked for after its playback failed', async () => {
+    const { ports, breakDecoder } = breakableDecoders();
+    const { player } = open(buildPipeline, ports);
+    await player.load(sourceOf(X5_RECORDING_URL));
+    await breakDecoder();
+    await waitFor(() => player.status === 'error', 'the decode failure');
+    player.seek(1.5);
+    await player.load(sourceOf(X5_RECORDING_URL));
+    expect(player.currentTime).toBeCloseTo(1.5, 1);
   });
 
   it('refuses to play after a failed load with that failure', async () => {

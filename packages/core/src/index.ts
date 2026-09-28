@@ -157,7 +157,11 @@ export {
   type GainRenderer,
 } from './application/gainMatching/GainMatchingFrameSink';
 export type { SeamMeter } from './ports/SeamMeter';
-export type { SeamMismatchMeter, SeamMismatchRequest } from './ports/SeamMismatchMeter';
+export type {
+  SeamCandidates,
+  SeamMismatchMeter,
+  SeamMismatchRequest,
+} from './ports/SeamMismatchMeter';
 export {
   isWithinArc,
   MISMATCH_CAP,
@@ -165,6 +169,7 @@ export {
   SEAM_BIN_COLUMNS,
   SEAM_BIN_COUNT,
   SEAM_BIN_WIDTH,
+  SEAM_CELL_SUBSAMPLES,
   SEAM_STRIP_COLUMNS,
   SEAM_STRIP_ROWS,
   SEAM_STRIP_STEP,
@@ -174,8 +179,18 @@ export {
   seamStripAzimuth,
   seamStripDirection,
   seamStripTheta,
+  ZERO_SHIFT,
   type AzimuthArc,
+  type StripShift,
 } from './domain/stitching/seamStrip';
+export {
+  DEFAULT_SHIFT_GRID,
+  localShiftsOf,
+  shiftGridOf,
+  type BinShift,
+  type ShiftGrid,
+} from './domain/stitching/seamShiftField';
+export { fitPoseToShifts, type PoseFit } from './domain/stitching/poseFit';
 export {
   DEFAULT_SEAM_COST_RULE,
   seamCostOf,

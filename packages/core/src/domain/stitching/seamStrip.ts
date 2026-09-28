@@ -42,6 +42,12 @@ export const SEAM_STRIP_ROWS = Math.round(
 export const SEAM_STRIP_COLUMNS = Math.round(FULL_CIRCLE_DEGREES / SEAM_STRIP_STEP);
 export const SEAM_BIN_COLUMNS = Math.round(SEAM_BIN_WIDTH / SEAM_STRIP_STEP);
 export const SEAM_BIN_COUNT = SEAM_STRIP_COLUMNS / SEAM_BIN_COLUMNS;
+/**
+ * Each cell's disagreement is the mean over this many sub-samples along each side of it, so
+ * the cost sees the source's own texture rather than one point every seven pixels: a fifth of
+ * the step is a tenth of a degree, about 1.4 pixels of a 5.7K frame and 1.9 of an 8K one.
+ */
+export const SEAM_CELL_SUBSAMPLES = 5;
 
 /**
  * The arc under the camera, where whatever holds it (a hand, a stick, a deck) is always within a
@@ -96,6 +102,18 @@ export function seamStripDirection(column: number, row: number): Vector3 {
 export function seamBinAzimuth(bin: number): Degrees {
   return degrees((bin + CELL_CENTRE) * SEAM_BIN_WIDTH);
 }
+
+/**
+ * A slide of a lens's sampling of the strip: `along` the ring (in azimuth) and `across` it (in
+ * the angle from the axis). The local shift that aligns the lenses in one bin, or a candidate
+ * for it.
+ */
+export interface StripShift {
+  readonly along: Degrees;
+  readonly across: Degrees;
+}
+
+export const ZERO_SHIFT: StripShift = { along: degrees(0), across: degrees(0) };
 
 export function isWithinArc(azimuth: Degrees, arc: AzimuthArc): boolean {
   return azimuth >= arc.start && azimuth < arc.end;

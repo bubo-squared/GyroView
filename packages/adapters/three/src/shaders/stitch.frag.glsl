@@ -19,6 +19,9 @@ void main() {
   float weightSum = 0.0;
   for (int i = 0; i < MAX_LENSES; i++) {
     if (i >= uLensCount) break;
+    // A lens silenced through its gain (ADR 0012) leaves the blend altogether, so the other
+    // lens fills the feather band alone and a lens-only render shows that lens as it is.
+    if (all(equal(uLensGain[i], vec3(0.0)))) continue;
     LensSample lens = sampleLensAt(i, dirBody);
     if (!lens.isImaged) continue;
     float weight = 1.0 - smoothstep(uFeather.x, uFeather.y, lens.theta);

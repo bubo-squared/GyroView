@@ -378,7 +378,7 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelAt(renderer, { column: 48, row: 16 }).r).toBeGreaterThan(BRIGHT);
   });
 
-  it('silences a lens through its gain so the other can be inspected alone', () => {
+  it('silences a lens through its gain and leaves the feather band to the other, unfaded', () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');
     presentRedAndBlue(renderer);
@@ -389,7 +389,11 @@ describe('ThreeFrameRenderer', () => {
     const seam = equirectangularPixelOf([1, 0, 0], SIZE);
     const beforeSeam = pixelAt(renderer, { column: seam.column - 1, row: seam.row });
     expect(beforeSeam.r).toBeLessThan(DIM);
-    expect(beforeSeam.b).toBeGreaterThan(FAINT);
+    expect(beforeSeam.b).toBeGreaterThan(BRIGHT);
+    // Where only the silenced lens sees, nothing shows.
+    const ahead = pixelAt(renderer, equirectangularPixelOf([0, 0, 1], SIZE));
+    expect(ahead.r).toBeLessThan(DIM);
+    expect(ahead.b).toBeLessThan(DIM);
   });
 
   it('refuses a gain for a lens the setup does not have', () => {

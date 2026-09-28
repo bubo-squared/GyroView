@@ -240,6 +240,7 @@ describe('ThreeFrameRenderer', () => {
 
   it('follows the view: yaw turns to the other lens and looking straight up hits the seam', () => {
     const renderer = open();
+    renderer.setViewMode('normal');
     presentRedAndBlue(renderer);
     expect(pixelAt(renderer, CENTRE).r).toBeGreaterThan(BRIGHT);
     renderer.setFraming(framingOf({ ...DEFAULT_VIEW, yaw: degrees(180) }));
@@ -252,6 +253,7 @@ describe('ThreeFrameRenderer', () => {
 
   it('gives the normal view a real horizontal field of view: turned 60 degrees with 60 across, its right edge meets the seam', () => {
     const renderer = open();
+    renderer.setViewMode('normal');
     presentRedAndBlue(renderer);
     renderer.setFraming(framingOf({ ...DEFAULT_VIEW, fieldOfView: degrees(120) }));
     expect(pixelAt(renderer, RIGHT_EDGE).r).toBeGreaterThan(BRIGHT);
@@ -497,6 +499,7 @@ describe('ThreeFrameRenderer', () => {
 
   it('resizes its drawing buffer and keeps the picture', () => {
     const renderer = open();
+    renderer.setViewMode('normal');
     presentRedAndBlue(renderer);
     renderer.resize({ width: 128, height: 64 });
     expect(pixelsOf(renderer)).toHaveLength(128 * 64 * RGBA);
@@ -507,6 +510,7 @@ describe('ThreeFrameRenderer', () => {
 
   it('draws the standing frame again once a lost context is restored', async () => {
     const renderer = open();
+    renderer.setViewMode('normal');
     presentRedAndBlue(renderer);
     const canvas = canvases.at(-1);
     const gl = canvas?.getContext('webgl2');

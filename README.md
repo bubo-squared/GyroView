@@ -68,14 +68,15 @@ Attributes:
 | `preload`                   | `auto`, `none`                            | `none` keeps the decoders idle until play; otherwise the first frame shows at once.                                 |
 | `gain-match`                | `on`, `off`                               | `off` leaves the lenses' exposure as recorded.                                                                      |
 | `stabilization`             | `off`, `lock`, `horizon`, `follow`        | How the gyro steadies the picture.                                                                                  |
-| `view-mode`                 | `normal`, `equirectangular`, `raw-lenses` | What the picture shows (below).                                                                                     |
+| `view-mode`                 | `raw-lenses`, `equirectangular`, `normal` | What the picture shows (below); the raw lenses until set.                                                           |
 | `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees.                                                             |
 | `yaw`, `pitch`              | degrees                                   | Where the normal view looks: yaw positive to the right, pitch positive up.                                          |
 
-`equirectangular` shows the whole sphere as a level 2:1 panorama. `raw-lenses` shows the
-decoded lens images side by side or stacked, whichever shows them larger, unstitched and as
-recorded; the camera records a square a little smaller than each lens's image circle, so the
-circles show cut at the frame's edges, where the two tiles meet as well.
+The element opens on `raw-lenses`, the decoded lens images side by side or stacked, whichever
+shows them larger, unstitched and as recorded; the camera records a square a little smaller
+than each lens's image circle, so the circles show cut at the frame's edges, where the two tiles
+meet as well. `equirectangular` shows the whole sphere as a level 2:1 panorama, and `normal` a
+window into it to look around in. The view menu offers the three in that order.
 
 The settings (`stabilization`, `view-mode`, `fov`, `yaw`, `pitch`, `muted`, `loop`) are
 applied when their attribute changes, and their properties (`viewMode` for `view-mode`, plus
@@ -268,7 +269,7 @@ composition and embedding, 0011 sound follows the picture, 0012 gain matching al
 square, 0015 view modes replace projections, 0016 the player owns its settings, 0017 the
 recording itself or an error, 0018 every view mode zooms toward the pointer, 0019 a range that
 fails on the way is asked for again, 0020 one npm package bundles the core and the adapters, 0021
-changes are announced once whole.
+changes are announced once whole, 0022 the player opens on the raw lenses.
 
 ## License
 

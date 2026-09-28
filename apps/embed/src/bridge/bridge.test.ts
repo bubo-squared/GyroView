@@ -127,6 +127,7 @@ describe('the embed bridge over a message channel', () => {
   it('changes the view, view mode, stabilization and loop over the channel, reading choices as the element does', async () => {
     const { handle, element } = bridge();
     await handle.lookAt(30, 10);
+    await handle.setViewMode('normal');
     await handle.zoom(1);
     await handle.setStabilization(' Horizon');
     await handle.setViewMode('equirectangular');
@@ -153,7 +154,7 @@ describe('the embed bridge over a message channel', () => {
     const { handle } = bridge();
     const state = await handle.getState();
     expect(state.stabilization).toBe('lock');
-    expect(state.viewMode).toBe('normal');
+    expect(state.viewMode).toBe('raw-lenses');
   });
 
   it('rejects a command with a bad argument without breaking the others', async () => {
@@ -167,7 +168,7 @@ describe('the embed bridge over a message channel', () => {
     });
     await expect(handle.setViewMode('stereographic')).rejects.toMatchObject({
       code: 'invalid-argument',
-      message: 'embed command argument 0 must be one of normal, equirectangular, raw-lenses',
+      message: 'embed command argument 0 must be one of raw-lenses, equirectangular, normal',
     });
     await expect(handle.load({ src: 5 as unknown as string })).rejects.toMatchObject({
       code: 'invalid-argument',

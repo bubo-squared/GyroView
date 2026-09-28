@@ -323,6 +323,7 @@ describe('Player over the synthetic X5 recording', () => {
 
   it('measures a drag on its own canvas and passes the zoom focus on, before any load', () => {
     const { player } = open();
+    player.setViewMode('normal');
     // A quarter of a 128-pixel canvas at 90 degrees across: a quarter of the field.
     player.pan({ x: CANVAS_WIDTH / 4, y: 0 });
     expect(player.view.yaw).toBeCloseTo(-22.5, 9);

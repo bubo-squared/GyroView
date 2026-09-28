@@ -15,14 +15,14 @@ const OWN_PARTS: Readonly<Record<ViewMode, readonly (keyof Framing)[]>> = {
 };
 
 describe('view modes', () => {
-  it('offers the normal view first and by default', () => {
-    expect(VIEW_MODES).toEqual(['normal', 'equirectangular', 'raw-lenses']);
-    expect(DEFAULT_VIEW_MODE).toBe('normal');
+  it('offers the raw lenses first and by default, the stitched views after', () => {
+    expect(VIEW_MODES).toEqual(['raw-lenses', 'equirectangular', 'normal']);
+    expect(DEFAULT_VIEW_MODE).toBe('raw-lenses');
   });
 
   it('stabilizes the stitched modes and leaves the raw lenses as recorded', () => {
     const stabilized = VIEW_MODES.filter((mode) => viewModeRulesFor(mode).isStabilized);
-    expect(stabilized).toEqual(['normal', 'equirectangular']);
+    expect(stabilized).toEqual(['equirectangular', 'normal']);
   });
 
   it.each(VIEW_MODES)('lets %s change only its own part of the framing', (mode) => {

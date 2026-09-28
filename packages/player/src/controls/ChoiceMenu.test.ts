@@ -68,10 +68,10 @@ describe('ChoiceMenu', () => {
   it('checks exactly the choice it is told', () => {
     const { menu, item } = world();
     menu.markChosen('raw-lenses');
-    const checked = ['normal', 'equirectangular', 'raw-lenses'].map((choice) =>
+    const checked = ['raw-lenses', 'equirectangular', 'normal'].map((choice) =>
       item(choice).getAttribute('aria-checked'),
     );
-    expect(checked).toEqual(['false', 'false', 'true']);
+    expect(checked).toEqual(['true', 'false', 'false']);
   });
 
   it('reports a choice, closes and hands the focus back to its button', () => {
@@ -123,16 +123,16 @@ describe('ChoiceMenu', () => {
     const { parts, escapedKeys, item } = world();
     parts.button.click();
     press(item('equirectangular'), 'ArrowDown');
-    expect(document.activeElement).toBe(item('raw-lenses'));
-    press(item('raw-lenses'), 'ArrowDown');
     expect(document.activeElement).toBe(item('normal'));
-    press(item('normal'), 'ArrowUp');
+    press(item('normal'), 'ArrowDown');
     expect(document.activeElement).toBe(item('raw-lenses'));
-    press(item('raw-lenses'), 'Home');
+    press(item('raw-lenses'), 'ArrowUp');
     expect(document.activeElement).toBe(item('normal'));
-    press(item('normal'), 'End');
+    press(item('normal'), 'Home');
     expect(document.activeElement).toBe(item('raw-lenses'));
-    press(item('raw-lenses'), ' ');
+    press(item('raw-lenses'), 'End');
+    expect(document.activeElement).toBe(item('normal'));
+    press(item('normal'), ' ');
     expect(escapedKeys).toEqual([]);
   });
 

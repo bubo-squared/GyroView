@@ -10,7 +10,8 @@ The first release:
 - `<gyro-view>`, registered by `@bubo-squared/gyroview/define` or `defineGyroView()`, safe to
   import while a server renders the page. It runs under a strict CSP (`trusted-types gyroview`,
   no inline styles), speaks the page's language through `messages`, shows visitors plain failure
-  texts and names its overlays as parts.
+  texts and names its overlays as parts. It opens on the raw lenses; the view menu offers them
+  first, then the equirectangular panorama and the normal view.
 - `createBrowserPlayer`, the player without the element, for an interface of your own, with
   `attachViewGestures` and `attachKeyboard` for the element's gestures and shortcuts.
 - `inspectRecording`, which reads what a recording holds from a file or a URL.

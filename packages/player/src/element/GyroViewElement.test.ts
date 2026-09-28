@@ -384,7 +384,7 @@ describe('<gyro-view>', () => {
   });
 
   it('answers keyboard shortcuts on the element', async () => {
-    const element = await createReady();
+    const element = await createReady({ 'view-mode': 'normal' });
     const key = (name: string, isShiftPressed = false): void => {
       element.dispatchEvent(
         new KeyboardEvent('keydown', { key: name, shiftKey: isShiftPressed, bubbles: true }),
@@ -433,7 +433,7 @@ describe('<gyro-view>', () => {
   });
 
   it('looks around with drags and wheel turns on the canvas, and toggles play on a tap', async () => {
-    const element = await createReady();
+    const element = await createReady({ 'view-mode': 'normal' });
     const canvas = control(element, 'canvas', HTMLCanvasElement);
     const views: number[] = [];
     element.addEventListener('viewchange', (event) => {
@@ -499,7 +499,7 @@ describe('<gyro-view>', () => {
   });
 
   it('forgets a finger whose capture was lost, so the next one drags instead of pinching', () => {
-    const element = create({ controls: '' });
+    const element = create({ controls: '', 'view-mode': 'normal' });
     const canvas = control(element, 'canvas', HTMLCanvasElement);
     canvas.setPointerCapture = (): void => undefined;
     canvas.dispatchEvent(fingerAt('pointerdown', 5, 100));
@@ -512,7 +512,7 @@ describe('<gyro-view>', () => {
   });
 
   it('zooms a pinch toward the point between the fingers', () => {
-    const element = create({ controls: '' });
+    const element = create({ controls: '', 'view-mode': 'normal' });
     const canvas = control(element, 'canvas', HTMLCanvasElement);
     // Synthetic touches are no active pointers, so the browser would refuse to capture them.
     canvas.setPointerCapture = (): void => undefined;
@@ -534,7 +534,7 @@ describe('<gyro-view>', () => {
   });
 
   it('zooms toward the pointer: a wheel over the right edge turns the view right as it narrows', () => {
-    const element = create({ controls: '' });
+    const element = create({ controls: '', 'view-mode': 'normal' });
     wheelOver(control(element, 'canvas', HTMLCanvasElement), { x: 0.95, y: 0.5 });
     expect(element.view.fieldOfView).toBeCloseTo(90 / 1.1, 6);
     expect(element.view.yaw).toBeGreaterThan(0);
@@ -546,14 +546,15 @@ describe('<gyro-view>', () => {
     const hover = (): void => {
       canvas.dispatchEvent(pointer('pointermove', { x: 50, y: 50 }));
     };
-    hover();
-    expect(getComputedStyle(canvas).cursor).toBe('grab');
-
-    element.setViewMode('raw-lenses');
+    // The raw lenses it opens on move only once zoomed in; a stitched view always turns.
     hover();
     expect(getComputedStyle(canvas).cursor).not.toBe('grab');
 
     wheelOver(canvas, { x: 0.25, y: 0.5 });
+    expect(getComputedStyle(canvas).cursor).toBe('grab');
+
+    element.setViewMode('normal');
+    hover();
     expect(getComputedStyle(canvas).cursor).toBe('grab');
   });
 
@@ -585,7 +586,7 @@ describe('<gyro-view>', () => {
     expect(element.viewMode).toBe('equirectangular');
     element.setAttribute('view-mode', 'bogus');
     expect(menuOf(element, 'view-mode')).toEqual({
-      choices: ['normal', 'equirectangular', 'raw-lenses'],
+      choices: ['raw-lenses', 'equirectangular', 'normal'],
       checked: ['equirectangular'],
     });
   });
@@ -610,22 +611,23 @@ describe('<gyro-view>', () => {
   it('offers stabilization only in the view modes it changes', async () => {
     const element = await createReady();
     const stabilization = control(element, '.stabilization-button', HTMLButtonElement);
-    expect(stabilization.hidden).toBe(false);
-
-    control(element, '.view-mode-button', HTMLButtonElement).click();
-    control(element, '.view-mode-menu [data-choice="raw-lenses"]', HTMLButtonElement).click();
-    expect(element.viewMode).toBe('raw-lenses');
+    // The raw lenses it opens on show the frames as recorded: nothing to steady.
     expect(stabilization.hidden).toBe(true);
     expect(getComputedStyle(stabilization).display).toBe('none');
 
-    element.setViewMode('equirectangular');
+    control(element, '.view-mode-button', HTMLButtonElement).click();
+    control(element, '.view-mode-menu [data-choice="equirectangular"]', HTMLButtonElement).click();
+    expect(element.viewMode).toBe('equirectangular');
     expect(stabilization.hidden).toBe(false);
+
+    element.setViewMode('raw-lenses');
+    expect(stabilization.hidden).toBe(true);
   });
 
   it('reports the settings in effect whether or not an attribute names them', () => {
     const element = create({ controls: '' });
     expect(element.stabilization).toBe('lock');
-    expect(element.viewMode).toBe('normal');
+    expect(element.viewMode).toBe('raw-lenses');
     expect(element.fov).toBe(90);
     expect(element.muted).toBe(false);
   });
@@ -637,9 +639,9 @@ describe('<gyro-view>', () => {
     expect(await warned).toEqual({
       code: 'ignored-attribute',
       message:
-        'ignoring view-mode="little-planet"; expected one of normal, equirectangular, raw-lenses',
+        'ignoring view-mode="little-planet"; expected one of raw-lenses, equirectangular, normal',
     });
-    expect(element.viewMode).toBe('normal');
+    expect(element.viewMode).toBe('raw-lenses');
   });
 
   it('refuses a setting value it cannot take', () => {

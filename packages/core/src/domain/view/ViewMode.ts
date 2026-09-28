@@ -4,14 +4,15 @@ import type { DragDelta, ViewportSize } from './screenLayout';
 import type { TurnRequest, ZoomRequest } from './viewGestures';
 
 /**
- * What the player shows: `normal` is a rectilinear window into the stitched sphere that the
- * viewer turns and zooms; `equirectangular` is the whole stitched sphere as a 2:1 panorama;
- * `raw-lenses` is each lens's decoded image on its own, unstitched.
+ * What the player shows: `raw-lenses` is each lens's decoded image on its own, unstitched, and
+ * what the player opens on; `equirectangular` is the whole stitched sphere as a 2:1 panorama;
+ * `normal` is a rectilinear window into the stitched sphere that the viewer turns and zooms.
+ * The order is the view menu's, first to last (ADR 0022).
  */
-export type ViewMode = 'normal' | 'equirectangular' | 'raw-lenses';
+export type ViewMode = 'raw-lenses' | 'equirectangular' | 'normal';
 
-export const VIEW_MODES: readonly ViewMode[] = ['normal', 'equirectangular', 'raw-lenses'];
-export const DEFAULT_VIEW_MODE: ViewMode = 'normal';
+export const VIEW_MODES: readonly ViewMode[] = ['raw-lenses', 'equirectangular', 'normal'];
+export const DEFAULT_VIEW_MODE: ViewMode = 'raw-lenses';
 
 /**
  * What a mode needs to know about where it draws: the viewport's size, in the unit of the drags

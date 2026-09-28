@@ -52,8 +52,11 @@ function recordedView(lensCount = 2): Recorded {
     },
   };
   view.attach(surface);
-  // Attaching draws the state as it is; the tests watch what follows.
+  // The gestures under test turn the normal view. Attaching and choosing it draw the state as
+  // it is; the tests watch what follows.
+  view.setMode('normal');
   drawn.length = 0;
+  modes.length = 0;
   return { view, surface, drawn, views, modes, canvas };
 }
 
@@ -74,10 +77,13 @@ function lensesAcrossAfterMovingFar(lensCount: number): number {
 }
 
 describe('PlayerView', () => {
-  it('starts on the default view in the normal mode', () => {
-    const { view } = recordedView();
+  it('starts on the default view, showing the raw lenses', () => {
+    const view = new PlayerView(new TypedEmitter<PlayerEvents>(), () => ({
+      width: 900,
+      height: 450,
+    }));
     expect(view.current).toEqual(DEFAULT_VIEW);
-    expect(view.viewMode).toBe('normal');
+    expect(view.viewMode).toBe('raw-lenses');
   });
 
   it('clamps every change, draws it and announces it', () => {

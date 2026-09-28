@@ -290,7 +290,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   }
 
   /**
-   * Shows the picture in `mode` (`normal`, `equirectangular`, `raw-lenses`); any other value,
+   * Shows the picture in `mode` (`raw-lenses`, `equirectangular`, `normal`); any other value,
    * an unset one included, is refused.
    */
   public setViewMode(mode: ViewMode): void {

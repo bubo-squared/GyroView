@@ -1,5 +1,6 @@
 import {
   CalibrationVersion,
+  DEFAULT_VIEW_MODE,
   seconds,
   TypedEmitter,
   type StabilizationMode,
@@ -19,7 +20,7 @@ import { choiceItem, removeRenderedControls, renderControls } from '../test/cont
 class FakePicturePlayer implements PicturePlayer {
   public readonly events = new TypedEmitter<PlayerEvents>();
   public metadata: PlayerMetadata | undefined;
-  public viewMode: ViewMode = 'normal';
+  public viewMode: ViewMode = DEFAULT_VIEW_MODE;
   public stabilization: StabilizationMode = 'lock';
 
   public setViewMode(mode: ViewMode): void {
@@ -93,11 +94,11 @@ describe('PictureMenus', () => {
 
   it('checks the modes in effect, however they were changed', () => {
     const { parts, player } = pictureMenus();
-    expect(checkedChoice(parts.viewMode)).toBe('normal');
-    expect(checkedChoice(parts.stabilization)).toBe('lock');
-    player.setViewMode('raw-lenses');
-    player.setStabilization('off');
     expect(checkedChoice(parts.viewMode)).toBe('raw-lenses');
+    expect(checkedChoice(parts.stabilization)).toBe('lock');
+    player.setViewMode('normal');
+    player.setStabilization('off');
+    expect(checkedChoice(parts.viewMode)).toBe('normal');
     expect(checkedChoice(parts.stabilization)).toBe('off');
   });
 
@@ -105,6 +106,8 @@ describe('PictureMenus', () => {
     const { parts, player } = pictureMenus();
     expect(parts.stabilization.button.hidden).toBe(true);
     player.becomeReady(true);
+    expect(parts.stabilization.button.hidden).toBe(true);
+    player.setViewMode('normal');
     expect(parts.stabilization.button.hidden).toBe(false);
     player.setViewMode('raw-lenses');
     expect(parts.stabilization.button.hidden).toBe(true);
@@ -114,13 +117,16 @@ describe('PictureMenus', () => {
 
   it('never offers stabilization for a recording without a gyro', () => {
     const { parts, player } = pictureMenus();
+    player.setViewMode('normal');
     player.becomeReady(false);
     expect(parts.stabilization.button.hidden).toBe(true);
   });
 
   it('withdraws stabilization when the next load fails', () => {
     const { parts, player } = pictureMenus();
+    player.setViewMode('normal');
     player.becomeReady(true);
+    expect(parts.stabilization.button.hidden).toBe(false);
     player.fail();
     expect(parts.stabilization.button.hidden).toBe(true);
   });

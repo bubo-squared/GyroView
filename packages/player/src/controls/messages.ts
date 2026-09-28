@@ -108,7 +108,7 @@ export const DEFAULT_MESSAGES: GyroViewMessages = {
     fullscreen: 'Fullscreen',
   },
   stabilizationModes: { off: 'Off', lock: 'Lock', horizon: 'Horizon', follow: 'Follow' },
-  viewModes: { normal: 'Normal', equirectangular: 'Equirectangular', 'raw-lenses': 'Raw lenses' },
+  viewModes: { 'raw-lenses': 'Raw lenses', equirectangular: 'Equirectangular', normal: 'Normal' },
   errors: ERRORS,
 };
 

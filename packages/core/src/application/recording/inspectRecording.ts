@@ -97,7 +97,7 @@ function summarizeGyro(gyro: ParsedGyroRecord): GyroSummary {
     mendedStamps,
     spanSeconds: microsecondsToSeconds(microseconds(span)),
     meanIntervalUs: track.meanSampleInterval,
-    meanAccelerationMagnitudeG: leading > 0 ? magnitudeSum / leading : NaN,
+    meanAccelerationMagnitudeG: leading > 0 ? magnitudeSum / leading : undefined,
   };
 }
 
@@ -112,9 +112,9 @@ function summarizeExposure(
   const hasEntries = exposure.length > 0;
   return {
     entries: exposure.length,
-    firstCaptureTimeUs: hasEntries ? exposure.entryAt(0).captureTime : NaN,
-    lastCaptureTimeUs: hasEntries ? exposure.entryAt(exposure.length - 1).captureTime : NaN,
-    meanShutterTimeSeconds: hasEntries ? shutterSum / exposure.length : NaN,
+    firstCaptureTimeUs: hasEntries ? exposure.entryAt(0).captureTime : undefined,
+    lastCaptureTimeUs: hasEntries ? exposure.entryAt(exposure.length - 1).captureTime : undefined,
+    meanShutterTimeSeconds: hasEntries ? shutterSum / exposure.length : undefined,
     firstEncodedFrameEntry: firstEncodedFrame,
   };
 }

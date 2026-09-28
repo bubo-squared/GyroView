@@ -101,7 +101,7 @@ function renderGyro(inspection: Inspection): string {
   const mended = gyro.mendedStamps > 0 ? `, ${gyro.mendedStamps} stamp(s) mended` : '';
   return (
     `Gyro: ${gyro.layout} layout, ${gyro.samples.toLocaleString('en-US')} samples over ${fixed(gyro.spanSeconds)} s, ` +
-    `mean interval ${showFixed(gyro.meanIntervalUs)} us, mean |a| ${fixed(gyro.meanAccelerationMagnitudeG)} g${stray}${damaged}${mended}`
+    `mean interval ${showFixed(gyro.meanIntervalUs)} us, mean |a| ${showFixed(gyro.meanAccelerationMagnitudeG)} g${stray}${damaged}${mended}`
   );
 }
 
@@ -116,10 +116,17 @@ function renderExposure(inspection: Inspection): string {
 
 function renderExposureSummary(exposure: ExposureSummary): string {
   return (
-    `Exposure: ${exposure.entries.toLocaleString('en-US')} entries from ${exposure.firstCaptureTimeUs} to ${exposure.lastCaptureTimeUs} us, ` +
-    `mean shutter 1/${Math.round(1 / exposure.meanShutterTimeSeconds)} s, ` +
+    `Exposure: ${exposure.entries.toLocaleString('en-US')} entries from ${show(exposure.firstCaptureTimeUs)} to ${show(exposure.lastCaptureTimeUs)} us, ` +
+    `mean shutter ${shutterOf(exposure.meanShutterTimeSeconds)}, ` +
     `first encoded frame at entry ${show(exposure.firstEncodedFrameEntry)}`
   );
+}
+
+/**
+ * A shutter time as photographers write it, `1/640 s`; unknown for a record without entries.
+ */
+function shutterOf(seconds: number | undefined): string {
+  return seconds === undefined || seconds <= 0 ? UNKNOWN : `1/${Math.round(1 / seconds)} s`;
 }
 
 function show(value: string | number | boolean | undefined): string {

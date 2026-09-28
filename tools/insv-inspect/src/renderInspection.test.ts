@@ -114,6 +114,24 @@ describe('renderInspection', () => {
     expect(bare).toContain('Exposure: none');
   });
 
+  it('shows unknown values of an empty record as unknown, not as NaN', () => {
+    const empty = renderInspection({
+      ...inspection,
+      gyro: { ...GYRO, samples: 0, meanAccelerationMagnitudeG: undefined },
+      exposure: {
+        entries: 0,
+        firstCaptureTimeUs: undefined,
+        lastCaptureTimeUs: undefined,
+        meanShutterTimeSeconds: undefined,
+        firstEncodedFrameEntry: undefined,
+      },
+    });
+    expect(empty).toContain('mean |a| ? g');
+    expect(empty).toContain('Exposure: 0 entries from ? to ? us, mean shutter ?,');
+    expect(empty).not.toContain('NaN');
+    expect(empty).not.toContain('Infinity');
+  });
+
   it('says what damage it left out', () => {
     const gyro = { ...GYRO, damagedSamples: 3, mendedStamps: 2 };
     const damaged = renderInspection({ ...inspection, gyro, exposure: { damaged: true } });

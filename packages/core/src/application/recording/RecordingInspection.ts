@@ -48,9 +48,10 @@ export interface GyroSummary {
   readonly spanSeconds: number;
   readonly meanIntervalUs: number | undefined;
   /**
-   * Mean |acceleration| over the leading samples; about 1 g proves the range scaling.
+   * Mean |acceleration| over the leading samples; about 1 g proves the range scaling. Undefined
+   * for a record without samples.
    */
-  readonly meanAccelerationMagnitudeG: number;
+  readonly meanAccelerationMagnitudeG: number | undefined;
 }
 
 /**
@@ -75,11 +76,15 @@ export interface UnreadExposure {
   readonly unread: string;
 }
 
+/**
+ * The record's entries; the times and the mean are undefined for a record without any, so the
+ * summary stays plain data that serializes as it reads.
+ */
 export interface ExposureSummary {
   readonly entries: number;
-  readonly firstCaptureTimeUs: number;
-  readonly lastCaptureTimeUs: number;
-  readonly meanShutterTimeSeconds: number;
+  readonly firstCaptureTimeUs: number | undefined;
+  readonly lastCaptureTimeUs: number | undefined;
+  readonly meanShutterTimeSeconds: number | undefined;
   /**
    * Index of the entry that belongs to the first encoded frame, when the info record says.
    */

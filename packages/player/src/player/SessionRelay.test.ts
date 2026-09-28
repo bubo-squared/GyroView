@@ -64,15 +64,15 @@ function relaying(session: PlaybackSession<FakeFrameHandle>): Relaying {
 }
 
 describe('SessionRelay', () => {
-  it("cuts a change's events short when a listener changes the state again", async () => {
+  it('relays a change whole, then the newer change a listener made on one of its events', async () => {
     const session = idleSession();
     const { events, relayed, states } = relaying(session);
     events.on('play', () => {
       session.pause();
     });
     await session.play();
-    expect(relayed).toEqual(['play', 'pause']);
-    expect(states).toEqual(['paused']);
+    expect(relayed).toEqual(['play', 'waiting', 'pause']);
+    expect(states).toEqual(['buffering', 'paused']);
     session.dispose();
   });
 

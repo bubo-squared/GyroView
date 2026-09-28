@@ -12,7 +12,7 @@ import {
   type Framing,
   type PictureRenderer,
   type ScreenPoint,
-  type TypedEmitter,
+  type EventSink,
   type ViewContext,
   type ViewMode,
   type ViewModeRules,
@@ -45,7 +45,7 @@ export class PlayerView {
   private lensCount = LENS_COUNT_BEFORE_A_LOAD;
 
   public constructor(
-    private readonly events: TypedEmitter<PlayerEvents>,
+    private readonly events: EventSink<PlayerEvents>,
     private readonly measureViewport: () => ViewportSize,
   ) {}
 

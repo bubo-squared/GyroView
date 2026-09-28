@@ -262,7 +262,8 @@ composition and embedding, 0011 sound follows the picture, 0012 gain matching al
 0013 byte-range reads bypass the browser cache, 0014 the frame shows the whole calibration
 square, 0015 view modes replace projections, 0016 the player owns its settings, 0017 the
 recording itself or an error, 0018 every view mode zooms toward the pointer, 0019 a range that
-fails on the way is asked for again, 0020 one npm package bundles the core and the adapters.
+fails on the way is asked for again, 0020 one npm package bundles the core and the adapters, 0021
+changes are announced once whole.
 
 ## License
 

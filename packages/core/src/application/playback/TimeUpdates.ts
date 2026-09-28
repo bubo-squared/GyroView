@@ -1,3 +1,4 @@
+import type { SessionLifecycle } from './SessionLifecycle';
 import type { Seconds } from '../../shared/units/time';
 
 /**
@@ -14,11 +15,11 @@ const INTERVAL_SECONDS = 0.25;
 export class TimeUpdates {
   private announced: Seconds | undefined;
 
-  public constructor(private readonly emit: (time: Seconds) => void) {}
+  public constructor(private readonly lifecycle: Pick<SessionLifecycle, 'announce'>) {}
 
   public announce(time: Seconds): void {
     this.announced = time;
-    this.emit(time);
+    this.lifecycle.announce('timeupdate', time);
   }
 
   /**

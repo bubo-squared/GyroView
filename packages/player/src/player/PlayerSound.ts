@@ -1,4 +1,4 @@
-import type { TypedEmitter } from '@gyroview/core';
+import type { EventSink } from '@gyroview/core';
 
 import type { PlayerEvents } from './PlayerEvents';
 
@@ -16,7 +16,7 @@ export class PlayerSound {
 
   public constructor(
     private readonly audio: HTMLMediaElement,
-    private readonly events: TypedEmitter<PlayerEvents>,
+    private readonly events: EventSink<PlayerEvents>,
   ) {
     this.canSetVolume = isVolumeSettable(audio.ownerDocument);
     audio.addEventListener('volumechange', this.onVolumeChange);

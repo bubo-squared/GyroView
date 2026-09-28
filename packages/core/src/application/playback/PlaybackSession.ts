@@ -2,28 +2,19 @@ import { closeFramePair, type FramePair } from '../../ports/FramePair';
 import { ClockWatch } from './ClockWatch';
 import { SeekOrder } from './SeekOrder';
 import { TimeUpdates } from './TimeUpdates';
+import { SessionLifecycle, type PlaybackSessionEvents } from './SessionLifecycle';
 import { DecodeRun, type DecodeRunParts } from './DecodeRun';
 import { isAtEndOfMedia, isStoppedFromOutside } from './clockReadings';
 import { keyframeTimeAt } from './keyframeTimeAt';
 import { playbackFailureOf, renderFailureOf } from './playbackFailures';
-import { PlayerStateMachine, type PlayerState } from '../../domain/playback/PlayerState';
+import type { PlayerState } from '../../domain/playback/PlayerState';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
 import { Deferred } from '../../shared/async/Deferred';
-import type { GyroViewError } from '../../shared/errors/GyroViewError';
 import { TypedEmitter } from '../../shared/events/TypedEmitter';
 import { seconds, type Seconds } from '../../shared/units/time';
 
-export interface PlaybackSessionEvents {
-  readonly statechange: PlayerState;
-  readonly timeupdate: Seconds;
-  /**
-   * The sink has drawn a new pair; the media time it was drawn at.
-   */
-  readonly present: Seconds;
-  readonly ended: undefined;
-  readonly error: GyroViewError;
-}
+export type { PlaybackSessionEvents } from './SessionLifecycle';
 
 /**
  * What a session works with. The session borrows every part: the composition root that opened
@@ -40,10 +31,15 @@ export interface PlaybackSessionParts<Handle> extends DecodeRunParts<Handle> {
  * frame pairs to the sink. The host calls {@link tick} once per animation frame; everything
  * else is event-driven. Sound follows the picture: the clock waits in `buffering` until frames
  * are ready, on starting, after a seek and whenever decoding falls behind.
+ *
+ * Every change is made whole before its listeners hear of it (ADR 0021): what a method does
+ * after announcing never depends on what a listener did meanwhile. The one exception is the
+ * clock's start, which waits for `playing` to be heard, so that a listener pausing on it keeps
+ * the sound from ever starting.
  */
 export class PlaybackSession<Handle = unknown> {
   public readonly events = new TypedEmitter<PlaybackSessionEvents>();
-  private readonly machine = new PlayerStateMachine();
+  private readonly lifecycle = new SessionLifecycle(this.events);
   /**
    * The decode under way, if any: one per start or seek, replaced whole.
    */
@@ -52,9 +48,7 @@ export class PlaybackSession<Handle = unknown> {
    * The pair on screen, kept open until the next one replaces it.
    */
   private presented: Presentation<Handle> | undefined;
-  private readonly timeUpdates = new TimeUpdates((time) => {
-    this.events.emit('timeupdate', time);
-  });
+  private readonly timeUpdates = new TimeUpdates(this.lifecycle);
   /**
    * The `play` call waiting for the clock to start once frames are ready.
    */
@@ -65,7 +59,7 @@ export class PlaybackSession<Handle = unknown> {
   public constructor(private readonly parts: PlaybackSessionParts<Handle>) {}
 
   public get state(): PlayerState {
-    return this.machine.state;
+    return this.lifecycle.current;
   }
 
   public get currentTime(): Seconds {
@@ -80,40 +74,39 @@ export class PlaybackSession<Handle = unknown> {
    * waits for a user gesture. Pausing meanwhile, a listener's pause included, resolves quietly.
    */
   public async play(): Promise<void> {
-    if (this.machine.state === 'playing') return;
-    if (this.machine.state === 'buffering') {
+    if (this.lifecycle.current === 'playing') return;
+    if (this.lifecycle.current === 'buffering') {
       await this.startAttempt?.promise;
       return;
     }
-    if (this.isAtTheEnd()) this.seek(seconds(0));
-    if (!this.machine.canTransitionTo('buffering')) return;
-    if (!this.run) this.startRun(this.parts.clock.currentTime);
-    await (this.isPrimed() ? this.startNow() : this.startOncePrimed());
+    await this.lifecycle.change(() => this.beginStart());
   }
 
   /**
-   * Stops the clock, whatever the state says: a listener may have paused the session while it
-   * was starting it. A running clock stops where it ran to, which no tick takes for a move from
-   * outside.
+   * Stops the clock, whatever the state says: a clock start still under way may have been asked
+   * for before a pause. A running clock stops where it ran to, which no tick takes for a move
+   * from outside.
    */
   public pause(): void {
-    const wasRunning = this.parts.clock.isRunning;
-    this.parts.clock.pause();
-    if (wasRunning) this.clockWatch.stoppedAt(this.parts.clock.currentTime);
-    if (!this.machine.canTransitionTo('paused')) return;
-    // Taken first: a listener's `play` on `paused` makes an attempt of its own.
-    const attempt = this.takeStartAttempt();
-    this.setState('paused');
-    attempt?.resolve();
-    if (this.isIn('paused')) this.timeUpdates.announce(this.parts.clock.currentTime);
+    this.lifecycle.change(() => {
+      const wasRunning = this.parts.clock.isRunning;
+      this.parts.clock.pause();
+      if (wasRunning) this.clockWatch.stoppedAt(this.parts.clock.currentTime);
+      if (!this.lifecycle.canMoveTo('paused')) return;
+      this.lifecycle.moveTo('paused');
+      this.settleStartAttempt();
+      this.timeUpdates.announce(this.parts.clock.currentTime);
+    });
   }
 
   /**
    * Pause and return to the beginning, showing the first frame again on the next tick.
    */
   public stop(): void {
-    this.pause();
-    this.seek(seconds(0));
+    this.lifecycle.change(() => {
+      this.pause();
+      this.seek(seconds(0));
+    });
   }
 
   /**
@@ -121,16 +114,16 @@ export class PlaybackSession<Handle = unknown> {
    * been decoded; a paused one shows the target frame and stays paused.
    */
   public seek(time: Seconds): void {
-    if (this.machine.isOneOf('disposed', 'error')) return;
-    const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
-    const generation = this.seeks.begin(this.machine.state);
-    this.moveClockTo(target);
-    this.startRun(target);
-    if (!this.isIn('seeking')) this.setState('seeking');
-    // A listener may have sought again, paused or disposed while `seeking` was announced.
-    if (!this.isSeekCurrent(generation)) return;
-    if (this.isIn('seeking')) this.setState(this.seeks.resumesPlaying ? 'buffering' : 'paused');
-    if (this.isSeekCurrent(generation)) this.timeUpdates.announce(target);
+    if (this.lifecycle.isOneOf('disposed', 'error')) return;
+    this.lifecycle.change(() => {
+      const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
+      this.seeks.begin(this.lifecycle.current);
+      this.moveClockTo(target);
+      this.startRun(target);
+      this.lifecycle.moveTo('seeking');
+      this.lifecycle.moveTo(this.seeks.resumesPlaying ? 'buffering' : 'paused');
+      this.timeUpdates.announce(target);
+    });
   }
 
   /**
@@ -139,12 +132,12 @@ export class PlaybackSession<Handle = unknown> {
    */
   public async scrub(time: Seconds): Promise<void> {
     const [track] = this.parts.frameSources;
-    if (!track || this.machine.isOneOf('disposed', 'error')) return;
+    if (!track || this.lifecycle.isOneOf('disposed', 'error')) return;
     const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
     const ticket = this.seeks.claimScrub();
     const keyframeTime = await keyframeTimeAt(track, target);
     // A seek or scrub made meanwhile is newer: this scrub lands no more.
-    if (!this.seeks.isScrubCurrent(ticket) || this.machine.isOneOf('disposed', 'error')) return;
+    if (!this.seeks.isScrubCurrent(ticket) || this.lifecycle.isOneOf('disposed', 'error')) return;
     this.seek(keyframeTime);
   }
 
@@ -153,8 +146,10 @@ export class PlaybackSession<Handle = unknown> {
    * session is still `ready`.
    */
   public preload(): void {
-    if (this.run || this.machine.state !== 'ready') return;
-    this.startRun(this.parts.clock.currentTime);
+    if (this.run || this.lifecycle.current !== 'ready') return;
+    this.lifecycle.change(() => {
+      this.startRun(this.parts.clock.currentTime);
+    });
   }
 
   /**
@@ -163,24 +158,26 @@ export class PlaybackSession<Handle = unknown> {
    * platform made by itself (media keys, an audio interruption).
    */
   public tick(): void {
-    if (this.machine.isOneOf('disposed', 'error')) return;
-    const { failure } = this.parts.clock;
-    if (failure) {
-      this.fail(failure);
-      return;
-    }
-    const now = this.parts.clock.currentTime;
-    if (this.clockWatch.wasMovedFromOutside(now, this.isIn('playing'))) {
-      this.followMoveFromOutside(now);
-      return;
-    }
-    if (this.haveTicksStopped(now)) {
-      this.restartAt(now);
-      return;
-    }
-    this.presentDue(now);
-    if (this.isIn('playing')) this.followClock(now);
-    else if (this.isStartedFromOutside()) void this.followStartFromOutside();
+    if (this.lifecycle.isOneOf('disposed', 'error')) return;
+    this.lifecycle.change(() => {
+      const { failure } = this.parts.clock;
+      if (failure) {
+        this.fail(failure);
+        return;
+      }
+      const now = this.parts.clock.currentTime;
+      if (this.clockWatch.wasMovedFromOutside(now, this.lifecycle.is('playing'))) {
+        this.followMoveFromOutside(now);
+        return;
+      }
+      if (this.haveTicksStopped(now)) {
+        this.restartAt(now);
+        return;
+      }
+      this.presentDue(now);
+      if (this.lifecycle.is('playing')) this.followClock(now);
+      else if (this.isStartedFromOutside()) void this.followStartFromOutside();
+    });
   }
 
   /**
@@ -188,36 +185,56 @@ export class PlaybackSession<Handle = unknown> {
    * picture stands still; while playing, the next pair shows it soon enough.
    */
   public redraw(): void {
-    if (!this.presented || this.machine.isOneOf('playing', 'error')) return;
-    this.draw(this.presented);
+    if (!this.presented || this.lifecycle.isOneOf('playing', 'error')) return;
+    const { presented } = this;
+    this.lifecycle.change(() => this.draw(presented));
   }
 
   public dispose(): void {
-    if (this.machine.state === 'disposed') return;
-    this.abortRun();
-    if (this.presented) closeFramePair(this.presented.pair);
-    this.presented = undefined;
-    this.parts.clock.pause();
-    this.setState('disposed');
-    this.settleStartAttempt();
+    if (this.lifecycle.current === 'disposed') return;
+    this.lifecycle.change(() => {
+      this.abortRun();
+      if (this.presented) closeFramePair(this.presented.pair);
+      this.presented = undefined;
+      this.parts.clock.pause();
+      this.lifecycle.moveTo('disposed');
+      this.settleStartAttempt();
+    });
     this.events.removeAll();
   }
 
-  private async startNow(): Promise<void> {
+  /**
+   * A start from where the session stands, from the beginning when it stands at the end: what
+   * to await once it has been announced, or nothing when there is nothing to start.
+   */
+  private beginStart(): Promise<void> | undefined {
+    if (this.isAtTheEnd()) this.seek(seconds(0));
+    if (!this.lifecycle.canMoveTo('buffering')) return undefined;
+    if (!this.run) this.startRun(this.parts.clock.currentTime);
+    if (!this.isPrimed()) return this.startOncePrimed();
     this.enterPlaying();
-    if (this.isIn('playing')) await this.startClock();
+    return this.startClockOnceHeard();
   }
 
   /**
-   * The attempt exists before `buffering` is announced, so a listener's pause settles it. The
-   * clock holds meanwhile, even one the platform started (a media key's play).
+   * `buffering` until the frames are ready, the clock held meanwhile, even one the platform
+   * started (a media key's play). A pause settles the wait.
    */
-  private async startOncePrimed(): Promise<void> {
+  private startOncePrimed(): Promise<void> {
     const attempt = new Deferred<void>();
     this.startAttempt = attempt;
     this.parts.clock.pause();
-    this.setState('buffering');
-    await attempt.promise;
+    this.lifecycle.moveTo('buffering');
+    return attempt.promise;
+  }
+
+  /**
+   * Starts the clock once `playing` has been heard, unless a listener paused on it: an audio
+   * element told to pause while it starts refuses the start.
+   */
+  private async startClockOnceHeard(): Promise<void> {
+    await Promise.resolve();
+    if (this.lifecycle.is('playing')) await this.startClock();
   }
 
   /**
@@ -226,14 +243,7 @@ export class PlaybackSession<Handle = unknown> {
    */
   private enterPlaying(): void {
     this.clockWatch.playingFrom(this.parts.clock.currentTime);
-    this.setState('playing');
-  }
-
-  /**
-   * Whether the session is in `state` now: a listener of the last change may have moved it on.
-   */
-  private isIn(state: PlayerState): boolean {
-    return this.machine.state === state;
+    this.lifecycle.moveTo('playing');
   }
 
   private presentDue(now: Seconds): void {
@@ -252,13 +262,13 @@ export class PlaybackSession<Handle = unknown> {
     }
     // The platform stopped the clock while playing: the next `play` starts it again.
     if (isStoppedFromOutside(this.parts.clock)) {
-      this.setState('paused');
+      this.lifecycle.moveTo('paused');
       this.timeUpdates.announce(now);
       return;
     }
     if (this.run?.isStarvedAt(now, this.presented?.pair.timestamp) === true) {
       this.parts.clock.pause();
-      this.setState('buffering');
+      this.lifecycle.moveTo('buffering');
       return;
     }
     this.timeUpdates.followPlayback(now);
@@ -269,7 +279,7 @@ export class PlaybackSession<Handle = unknown> {
    * still: the session follows, as it follows a stop.
    */
   private isStartedFromOutside(): boolean {
-    return this.parts.clock.isRunning && this.machine.isOneOf('ready', 'paused', 'ended');
+    return this.parts.clock.isRunning && this.lifecycle.isOneOf('ready', 'paused', 'ended');
   }
 
   private async followStartFromOutside(): Promise<void> {
@@ -278,10 +288,6 @@ export class PlaybackSession<Handle = unknown> {
     } catch {
       // The clock already runs: nothing is left to refuse.
     }
-  }
-
-  private isSeekCurrent(generation: number): boolean {
-    return this.seeks.isCurrent(generation) && !this.machine.isOneOf('disposed', 'error');
   }
 
   /**
@@ -300,16 +306,16 @@ export class PlaybackSession<Handle = unknown> {
    */
   private followMoveFromOutside(now: Seconds): void {
     const wasRunning = this.parts.clock.isRunning;
-    if (!wasRunning && this.isIn('playing')) this.pause();
+    if (!wasRunning && this.lifecycle.is('playing')) this.pause();
     this.seek(now);
-    if (wasRunning && this.isIn('paused')) void this.followStartFromOutside();
+    if (wasRunning && this.lifecycle.is('paused')) void this.followStartFromOutside();
   }
 
   /**
    * Ticks were missed while the clock ran on; an ended clock is left to end the session.
    */
   private haveTicksStopped(now: Seconds): boolean {
-    const wereMissed = this.clockWatch.wereTicksMissed(now, this.isIn('playing'));
+    const wereMissed = this.clockWatch.wereTicksMissed(now, this.lifecycle.is('playing'));
     return wereMissed && !this.parts.clock.hasEnded;
   }
 
@@ -328,7 +334,7 @@ export class PlaybackSession<Handle = unknown> {
     const wasRunning = clock.isRunning;
     clock.pause();
     this.startRun(now);
-    this.setState(wasRunning ? 'buffering' : 'paused');
+    this.lifecycle.moveTo(wasRunning ? 'buffering' : 'paused');
     if (!wasRunning) this.timeUpdates.announce(now);
   }
 
@@ -336,7 +342,9 @@ export class PlaybackSession<Handle = unknown> {
    * Ended, or paused at the end: a play from there starts over, as a media element does.
    */
   private isAtTheEnd(): boolean {
-    return this.machine.state === 'ended' || isAtEndOfMedia(this.parts.clock, this.parts.duration);
+    return (
+      this.lifecycle.current === 'ended' || isAtEndOfMedia(this.parts.clock, this.parts.duration)
+    );
   }
 
   private isPrimed(): boolean {
@@ -347,7 +355,7 @@ export class PlaybackSession<Handle = unknown> {
    * Called as pairs arrive and when a run ends: the moment `buffering` has what it waits for.
    */
   private resumeIfPrimed(): void {
-    if (this.machine.state === 'buffering' && this.isPrimed()) void this.resume();
+    if (this.lifecycle.current === 'buffering' && this.isPrimed()) void this.resume();
   }
 
   /**
@@ -357,12 +365,8 @@ export class PlaybackSession<Handle = unknown> {
   private async resume(): Promise<void> {
     const attempt = this.takeStartAttempt();
     this.enterPlaying();
-    if (!this.isIn('playing')) {
-      attempt?.resolve();
-      return;
-    }
     try {
-      await this.startClock();
+      await this.startClockOnceHeard();
       attempt?.resolve();
     } catch (error) {
       attempt?.reject(error);
@@ -373,7 +377,7 @@ export class PlaybackSession<Handle = unknown> {
     try {
       await this.parts.clock.start();
     } catch (error) {
-      if (this.machine.state === 'playing') this.setState('paused');
+      if (this.lifecycle.is('playing')) this.lifecycle.moveTo('paused');
       throw error;
     }
   }
@@ -401,7 +405,7 @@ export class PlaybackSession<Handle = unknown> {
   private present(pair: FramePair<Handle>, mediaTime: Seconds): void {
     if (this.presented) closeFramePair(this.presented.pair);
     this.presented = { pair, mediaTime };
-    if (this.draw(this.presented)) this.events.emit('present', mediaTime);
+    if (this.draw(this.presented)) this.lifecycle.announce('present', mediaTime);
   }
 
   /**
@@ -439,26 +443,21 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   private end(): void {
-    if (!this.machine.canTransitionTo('ended')) return;
+    if (!this.lifecycle.canMoveTo('ended')) return;
     this.parts.clock.pause();
-    this.setState('ended');
-    // A listener may have started over on `ended`: the end is past then.
-    if (!this.isIn('ended')) return;
+    this.lifecycle.moveTo('ended');
     this.timeUpdates.announce(this.parts.clock.currentTime);
-    this.events.emit('ended', undefined);
+    this.lifecycle.announce('ended', undefined);
   }
 
   private fail(error: unknown): void {
-    if (!this.machine.canTransitionTo('error')) return;
-    this.parts.clock.pause();
-    this.abortRun();
-    this.setState('error');
-    this.settleStartAttempt();
-    this.events.emit('error', playbackFailureOf(error));
-  }
-
-  private setState(next: PlayerState): void {
-    this.machine.transitionTo(next);
-    this.events.emit('statechange', next);
+    if (!this.lifecycle.canMoveTo('error')) return;
+    this.lifecycle.change(() => {
+      this.parts.clock.pause();
+      this.abortRun();
+      this.lifecycle.moveTo('error');
+      this.settleStartAttempt();
+      this.lifecycle.announce('error', playbackFailureOf(error));
+    });
   }
 }

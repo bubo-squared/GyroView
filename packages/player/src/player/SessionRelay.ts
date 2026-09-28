@@ -1,4 +1,4 @@
-import type { PlaybackSession, PlayerState, TypedEmitter } from '@gyroview/core';
+import type { EventSink, PlaybackSession, PlayerState } from '@gyroview/core';
 
 import type { PlayerEvents } from './PlayerEvents';
 import { transportEventsFor, type TransportEventName } from './transportEvents';
@@ -12,7 +12,7 @@ export type RelayedSession = Pick<PlaybackSession, 'events' | 'state' | 'current
  * What the relay reports to beyond the player's events.
  */
 export interface RelayTargets {
-  readonly events: TypedEmitter<PlayerEvents>;
+  readonly events: EventSink<PlayerEvents>;
   /**
    * The session's state, which is the player's status while a recording is loaded.
    */
@@ -23,17 +23,17 @@ export interface RelayTargets {
 /**
  * Relays the loaded session's events in media-element terms: transport events for its state
  * changes, time updates, drawn frames, errors and the end. Listens to one session at a time and
- * stops before that session is disposed, so its disposal is never announced. A listener that
- * changes the state again cuts the older change's events short: the newer change reports itself.
+ * stops before that session is disposed, so its disposal is never announced. A change is relayed
+ * whole, as a media element fires the events it queued before a listener's `pause()`; the
+ * session announces a listener's newer change after it (ADR 0021).
  */
 export class SessionRelay {
   private stopListening: readonly (() => void)[] = [];
   private lastState: PlayerState | undefined;
   /**
-   * Counts state changes and detachments, so a change whose listener made a newer one, or let the
-   * session go, stops relaying.
+   * Counts detachments, so a change whose listener let the session go stops relaying.
    */
-  private changes = 0;
+  private detachments = 0;
 
   public constructor(private readonly targets: RelayTargets) {}
 
@@ -64,17 +64,16 @@ export class SessionRelay {
     for (const stop of this.stopListening) stop();
     this.stopListening = [];
     this.lastState = undefined;
-    this.changes += 1;
+    this.detachments += 1;
   }
 
   private onStateChange(state: PlayerState, session: RelayedSession): void {
     const previous = this.lastState;
     this.lastState = state;
-    this.changes += 1;
-    const change = this.changes;
+    const detachments = this.detachments;
     for (const name of transportEventsFor(previous, state)) {
       this.emitTransport(name, session);
-      if (this.changes !== change) return;
+      if (this.detachments !== detachments) return;
     }
     this.targets.onState(state);
   }

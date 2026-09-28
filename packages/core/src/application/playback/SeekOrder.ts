@@ -9,9 +9,8 @@ export interface ScrubTicket {
 }
 
 /**
- * The seeks of a session in order: one that a listener's seek overtook while it was announced
- * stops there, and a seek made while another is announced resumes as that one would have. A scrub
- * lands only if no seek or scrub came after it while it looked up its key frame.
+ * The seeks of a session in order, and whether the latest resumes playing. A scrub lands only if
+ * no seek or scrub came after it while it looked up its key frame.
  */
 export class SeekOrder {
   private generation = 0;
@@ -26,17 +25,11 @@ export class SeekOrder {
   }
 
   /**
-   * A new seek, begun from `state`; overtaking one still announced, it begins from what that one
-   * began from.
+   * A new seek, begun from `state`.
    */
-  public begin(state: PlayerState): number {
-    if (state !== 'seeking') this.isFromFlowing = isFlowing(state);
+  public begin(state: PlayerState): void {
+    this.isFromFlowing = isFlowing(state);
     this.generation += 1;
-    return this.generation;
-  }
-
-  public isCurrent(generation: number): boolean {
-    return generation === this.generation;
   }
 
   public claimScrub(): ScrubTicket {

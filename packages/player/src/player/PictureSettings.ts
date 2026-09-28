@@ -1,8 +1,4 @@
-import {
-  DEFAULT_STABILIZATION_MODE,
-  type StabilizationMode,
-  type TypedEmitter,
-} from '@gyroview/core';
+import { DEFAULT_STABILIZATION_MODE, type StabilizationMode, type EventSink } from '@gyroview/core';
 
 import type { PlayerEvents } from './PlayerEvents';
 import type { Pipeline } from '../composition/ports';
@@ -21,7 +17,7 @@ export class PictureSettings {
   private isMatching = true;
   private target: PictureTarget | undefined;
 
-  public constructor(private readonly events: TypedEmitter<PlayerEvents>) {}
+  public constructor(private readonly events: EventSink<PlayerEvents>) {}
 
   public get stabilization(): StabilizationMode {
     return this.mode;

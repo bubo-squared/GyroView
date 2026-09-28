@@ -4,6 +4,7 @@ import {
   hasErrorCode,
   isFlowing,
   messageOf,
+  Outbox,
   seconds,
   TypedEmitter,
   type DragDelta,
@@ -14,19 +15,12 @@ import {
 } from '@gyroview/core';
 
 import { cssSizeOf } from './DrawingBufferFit';
-import { ensureFinite } from './ensureFinite';
+import { ensureFinite, viewStateOf } from './ensureFinite';
 import { FrameLoop } from './FrameLoop';
 import { loadRecording, type LoadedRecording } from './loadRecording';
 import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
 import type { LoadOptions, PlayerParts, ViewAngles } from './PlayerOptions';
-import {
-  IDLE,
-  loadingPhase,
-  statusOf,
-  type FailedPhase,
-  type LoadingPhase,
-  type PlayerPhase,
-} from './PlayerPhase';
+import { IDLE, loadingPhase, statusOf, type LoadingPhase, type PlayerPhase } from './PlayerPhase';
 import { PictureSettings } from './PictureSettings';
 import { PlayerSound } from './PlayerSound';
 import { PlayerView } from './PlayerView';
@@ -43,17 +37,21 @@ import type { PlayerSource } from '../PlayerSource';
  */
 export class Player {
   public readonly events = new TypedEmitter<PlayerEvents>();
+  /**
+   * What the player and its parts announce, heard once each change is whole (ADR 0021).
+   */
+  private readonly outbox = new Outbox(this.events);
   private readonly loop: FrameLoop;
   private phase: PlayerPhase = IDLE;
   private readonly viewing: PlayerView;
-  private readonly picture = new PictureSettings(this.events);
+  private readonly picture = new PictureSettings(this.outbox);
   /**
    * A seek asked for before a recording was ready, where the next one starts.
    */
   private pendingStartTime: Seconds | undefined;
   private readonly sound: PlayerSound;
   private readonly relay = new SessionRelay({
-    events: this.events,
+    events: this.outbox,
     onState: (): void => {
       this.announceStatus();
     },
@@ -66,6 +64,9 @@ export class Player {
    * Past `dispose`: a listener of the idle it announces must not load again.
    */
   private isDisposed = false;
+  /**
+   * The status listeners heard last.
+   */
   private lastStatus: PlayerStatus = 'idle';
 
   /**
@@ -76,9 +77,9 @@ export class Player {
     // A hidden tab or an offscreen frame gets no animation frames: the sound's end ticks the
     // session itself, so the recording still ends, and loops, there.
     parts.host.audio.addEventListener('ended', this.tick);
-    this.sound = new PlayerSound(parts.host.audio, this.events);
+    this.sound = new PlayerSound(parts.host.audio, this.outbox);
     const { canvas } = parts.host;
-    this.viewing = new PlayerView(this.events, () => cssSizeOf(canvas));
+    this.viewing = new PlayerView(this.outbox, () => cssSizeOf(canvas));
   }
 
   public get status(): PlayerStatus {
@@ -149,12 +150,13 @@ export class Player {
    */
   public async load(source: PlayerSource, options: LoadOptions = {}): Promise<void> {
     if (this.isDisposed) return;
-    this.unload();
-    // A listener of the `idle` just announced may have loaded something else: that load is newer.
-    if (this.phase.kind !== 'idle') return;
-    const loading = loadingPhase();
-    this.phase = loading;
-    this.announceStatus();
+    const loading = this.outbox.change(() => {
+      this.unload();
+      const next = loadingPhase();
+      this.phase = next;
+      this.announceStatus();
+      return next;
+    });
     try {
       await this.complete(loading, source, options);
     } catch (error) {
@@ -166,8 +168,10 @@ export class Player {
   }
 
   public unload(): void {
-    this.release();
-    this.announceStatus();
+    this.outbox.change(() => {
+      this.release();
+      this.announceStatus();
+    });
   }
 
   /**
@@ -209,14 +213,7 @@ export class Player {
   }
 
   public setView(view: ViewAngles): void {
-    ensureFinite(view.yaw, 'yaw');
-    ensureFinite(view.pitch, 'pitch');
-    ensureFinite(view.fieldOfView, 'fieldOfView');
-    this.viewing.set({
-      yaw: degrees(view.yaw),
-      pitch: degrees(view.pitch),
-      fieldOfView: degrees(view.fieldOfView),
-    });
+    this.viewing.set(viewStateOf(view));
   }
 
   /**
@@ -298,12 +295,15 @@ export class Player {
     this.loaded?.pipeline.session.tick();
   };
 
-  private get loaded(): LoadedRecording | undefined {
-    return this.phase.kind === 'loaded' ? this.phase.loaded : undefined;
-  }
-
+  /**
+   * Whatever it ends in: a failure is the load's to report, and `play` reads it from the phase.
+   */
   private async loadInProgress(): Promise<void> {
     if (this.phase.kind === 'loading') await this.phase.settled.promise;
+  }
+
+  private get loaded(): LoadedRecording | undefined {
+    return this.phase.kind === 'loaded' ? this.phase.loaded : undefined;
   }
 
   private async complete(
@@ -319,12 +319,13 @@ export class Player {
       loaded.dispose();
       return;
     }
-    this.attach(loaded, loading.controller);
-    // A listener of `ready` may have loaded something else already; the rest is that load's.
-    if (this.loaded !== loaded) return;
-    this.startAtPendingTime(loaded);
-    if (options.preload !== false) loaded.pipeline.session.preload();
-    if (options.autoplay) await this.autoplay();
+    this.outbox.change(() => {
+      this.attach(loaded, loading.controller);
+      this.startAtPendingTime(loaded);
+      if (options.preload !== false) loaded.pipeline.session.preload();
+    });
+    // A listener of `ready` may have loaded something else: whether that plays is its own call.
+    if (options.autoplay && this.loaded === loaded) await this.autoplay();
   }
 
   private startAtPendingTime(loaded: LoadedRecording): void {
@@ -341,10 +342,8 @@ export class Player {
     this.relay.attach(session);
     this.loop.start();
     this.announceStatus();
-    // A listener of that status may have loaded something else: this recording's news is stale.
-    if (this.loaded !== loaded) return;
-    for (const warning of loaded.warnings) this.events.emit('warning', warning);
-    this.events.emit('ready', loaded.opened.metadata);
+    for (const warning of loaded.warnings) this.outbox.emit('warning', warning);
+    this.outbox.emit('ready', loaded.opened.metadata);
   }
 
   /**
@@ -354,7 +353,7 @@ export class Player {
     try {
       await this.play();
     } catch (error) {
-      this.events.emit(
+      this.outbox.emit(
         'warning',
         hasErrorCode(error, 'playback-blocked')
           ? { code: 'autoplay-blocked', message: 'playback waits for a user gesture' }
@@ -364,7 +363,7 @@ export class Player {
   }
 
   private onEnded(): void {
-    this.events.emit('ended', undefined);
+    this.outbox.emit('ended', undefined);
     if (this.isLoopingValue) void this.replay();
   }
 
@@ -372,7 +371,7 @@ export class Player {
     try {
       await this.play();
     } catch (error) {
-      this.events.emit('warning', {
+      this.outbox.emit('warning', {
         code: 'playback-failed',
         message: `the loop could not restart playback: ${messageOf(error)}`,
       });
@@ -402,23 +401,27 @@ export class Player {
         : new GyroViewError('invariant-violation', 'the player failed unexpectedly', {
             cause: error,
           });
-    // Lets go of what the failed load holds: its reads, which only this abort ends, and the
-    // recording, when it failed after attaching it.
-    this.release();
-    const failed: FailedPhase = { kind: 'failed', failure };
-    this.phase = failed;
-    this.announceStatus();
-    if (this.phase === failed) this.events.emit('error', failure);
+    this.outbox.change(() => {
+      // Lets go of what the failed load holds: its reads, which only this abort ends, and the
+      // recording, when it failed after attaching it.
+      this.release();
+      this.phase = { kind: 'failed', failure };
+      this.announceStatus();
+      this.outbox.emit('error', failure);
+    });
     return failure;
   }
 
   /**
-   * Announces the status the phase gives now, once for each change.
+   * Announces the status the phase gives now, heard once for each change: a status announced
+   * again before listeners heard the other one in between is heard once.
    */
   private announceStatus(): void {
     const { status } = this;
-    if (status === this.lastStatus) return;
-    this.lastStatus = status;
-    this.events.emit('statuschange', status);
+    this.outbox.post(() => {
+      if (status === this.lastStatus) return;
+      this.lastStatus = status;
+      this.events.emit('statuschange', status);
+    });
   }
 }

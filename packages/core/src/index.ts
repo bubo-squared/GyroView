@@ -155,6 +155,7 @@ export {
   type GyroViewErrorCode,
 } from './shared/errors/GyroViewError';
 export { lazy } from './shared/lazy';
+export { Outbox, type EventSink } from './shared/events/Outbox';
 export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
 export { IDENTITY_MATRIX3, transformVector, type Matrix3 } from './shared/math/Matrix3';
 export {

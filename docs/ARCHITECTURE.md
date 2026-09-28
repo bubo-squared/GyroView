@@ -130,7 +130,9 @@ Use cases that orchestrate the domain through ports.
   and its own queue, replaced whole on a seek) in step with a `PlaybackClock`, presents the pair due at each tick to a `FrameSink`, and owns the state
   machine. Sound follows the picture: playback waits in `buffering` until two pairs are queued,
   after a seek, and whenever the decoders fall behind (ADR 0011). It also offers `preload`
-  (first frame while ready) and `scrub` (seek to the key frame at or before a time).
+  (first frame while ready) and `scrub` (seek to the key frame at or before a time). Its state
+  machine and announcements are a `SessionLifecycle`: every change is heard once it is whole
+  (ADR 0021).
 - `playback/probeDecoding` decodes the first key frame of every lens track under a deadline
   before anything else is built, because platforms say yes to codecs they then fail on.
 - `gainMatching/GainMatching` measures the seam through a `SeamMeter` every half second of
@@ -167,8 +169,10 @@ and `equirectangularPixelOf`, the oracle the renderer tests read panoramas with.
 
 Branded units (`Microseconds`, `Milliseconds`, `Seconds`, `Degrees`, `Radians`) so the
 format's mixed units cannot be confused; `Vector3`, `Matrix3`, `Quaternion` with the rotation
-conventions in one place; `GyroViewError` with stable codes; a `TypedEmitter`; a protobuf
-reader; `Deferred` and `Signal` for waiting without timers (the core has none).
+conventions in one place; `GyroViewError` with stable codes; a `TypedEmitter`, and the
+`Outbox` that holds a change's events until the change is whole (ADR 0021); a protobuf reader;
+`Deferred` and `Signal` for waiting without timers (the core has none); `lazy` for a value made
+on first request.
 
 ## The adapters: `packages/adapters`
 
@@ -226,7 +230,8 @@ The composition root and the user-facing element, in three layers.
   ticks the session
   from a `FrameLoop`, keeps the canvas sized (`DrawingBufferFit`), and owns the settings (view and view
   mode in `PlayerView`, stabilization and gain matching in `PictureSettings`, sound in
-  `PlayerSound`, loop) across loads (ADR 0016). Its
+  `PlayerSound`, loop) across loads (ADR 0016). It and its parts announce through one `Outbox`,
+  so a change is heard once it is whole (ADR 0021). Its
   life with a recording is one `PlayerPhase`. The element drives it; the embed bridge drives the element.
 - **`element`** and **`controls`**: `GyroViewElement` is `<gyro-view>`: attributes parsed by
   pure functions in `attributes.ts` (names in `attributeNames.ts`, published as

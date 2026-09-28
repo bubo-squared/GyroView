@@ -181,6 +181,23 @@ export {
   type StripShift,
 } from './domain/stitching/seamStrip';
 export {
+  binDisparitiesOf,
+  DEFAULT_DISPARITY_RANGE,
+  disparityCandidatesOf,
+  type BinDisparity,
+  type DisparityRange,
+} from './domain/stitching/seamDisparity';
+export { disparityFieldOf, easedDisparities } from './domain/stitching/seamDisparityField';
+export {
+  FIXED_SEAM,
+  SEAM_BEND_WIDTH,
+  SEAM_CUT_DISPARITY,
+  SEAM_CUT_HALF_WIDTH,
+  SEAM_MAX_BEND,
+  type SeamAlignment,
+  type SeamJoin,
+} from './domain/stitching/seamJoin';
+export {
   DEFAULT_SEAM_COST_RULE,
   seamCostOf,
   type SeamBinCost,

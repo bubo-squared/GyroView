@@ -33,6 +33,62 @@ export const STUDIO_SAILING_FRAMES: readonly ReferenceFrame[] = [
 ];
 
 /**
+ * More frames of the same export, spread over the clip, extracted the same way: for a
+ * measurement that near objects spoil on some frames, so that the median of many decides.
+ */
+export const STUDIO_SAILING_SPREAD: readonly ReferenceFrame[] = [
+  ...STUDIO_SAILING_FRAMES,
+  {
+    time: 10,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-10s.png', import.meta.url).href,
+  },
+  {
+    time: 20,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-20s.png', import.meta.url).href,
+  },
+  {
+    time: 25,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-25s.png', import.meta.url).href,
+  },
+  {
+    time: 40,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-40s.png', import.meta.url).href,
+  },
+  {
+    time: 70,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-70s.png', import.meta.url).href,
+  },
+  {
+    time: 85,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-85s.png', import.meta.url).href,
+  },
+  {
+    time: 115,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-115s.png', import.meta.url).href,
+  },
+  {
+    time: 130,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-130s.png', import.meta.url).href,
+  },
+  {
+    time: 135,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-135s.png', import.meta.url).href,
+  },
+  {
+    time: 145,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-145s.png', import.meta.url).href,
+  },
+  {
+    time: 160,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-160s.png', import.meta.url).href,
+  },
+  {
+    time: 185,
+    url: new URL('../../../../.artifacts/reference/studio-sailing-185s.png', import.meta.url).href,
+  },
+];
+
+/**
  * The recording's time of the export's frame at `time`.
  */
 export function recordingTimeOf(frame: ReferenceFrame): number {

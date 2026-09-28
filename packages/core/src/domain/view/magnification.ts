@@ -7,6 +7,7 @@ import {
   type ScreenShift,
 } from './screenLayout';
 import { zoomFactor, type ZoomRequest } from './viewGestures';
+import { clamp } from '../../shared/math/clamp';
 
 /**
  * How far a flat picture (the panorama, the lens tiles) is enlarged from its fitted size, and
@@ -71,7 +72,7 @@ export function clampMagnification(
   fitted: ScreenRectangle,
   magnification: Magnification,
 ): Magnification {
-  const limited = Math.min(Math.max(magnification.scale, 1), MAX_MAGNIFICATION);
+  const limited = clamp(magnification.scale, 1, MAX_MAGNIFICATION);
   const scale = limited - 1 < FITTED_TOLERANCE ? 1 : limited;
   return {
     scale,
@@ -141,5 +142,5 @@ export function pictureShiftOf(
 function clampedCentre(centre: number, extent: number): number {
   if (extent <= 1) return HALF;
   const halfViewport = HALF / extent;
-  return Math.min(Math.max(centre, halfViewport), 1 - halfViewport);
+  return clamp(centre, halfViewport, 1 - halfViewport);
 }

@@ -1,6 +1,7 @@
 import type { CaptureClock } from './CaptureClock';
 import { ensureIndexInRange, ensureInvariant } from '../../../shared/errors/GyroViewError';
 import { type Microseconds, microseconds, seconds, type Seconds } from '../../../shared/units/time';
+import { clamp } from '../../../shared/math/clamp';
 
 export interface FrameTime {
   readonly index: number;
@@ -107,7 +108,7 @@ export class FrameTimes {
       this.frameDuration === undefined
         ? this.lastCapturedAt(videoTime)
         : this.onFrameGrid(videoTime, this.frameDuration);
-    return Math.min(Math.max(index, 0), this.frameCount - 1);
+    return clamp(index, 0, this.frameCount - 1);
   }
 
   private onFrameGrid(videoTime: Seconds, frameDuration: Seconds): number {

@@ -1,5 +1,6 @@
 import { interpolateVectors, type Vector3 } from '../../shared/math/Vector3';
 import { seconds, type Seconds } from '../../shared/units/time';
+import { clamp } from '../../shared/math/clamp';
 
 export interface GainMatchOptions {
   /**
@@ -51,7 +52,7 @@ function channelGains(reference: Vector3, mean: Vector3, maxGain: number): Vecto
 function channelGain(reference: number, mean: number, maxGain: number): number {
   return reference < DARK_CHANNEL || mean < DARK_CHANNEL
     ? 1
-    : Math.min(Math.max(reference / mean, 1 / maxGain), maxGain);
+    : clamp(reference / mean, 1 / maxGain, maxGain);
 }
 
 /**

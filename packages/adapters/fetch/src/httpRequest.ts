@@ -1,4 +1,4 @@
-import { GyroViewError } from '@gyroview/core';
+import { GyroViewError, isAbortError } from '@gyroview/core';
 
 export type HttpMethod = 'GET' | 'HEAD';
 
@@ -49,7 +49,7 @@ export async function httpRequest(
   try {
     return await plainHttpRequest(url, request, options);
   } catch (error) {
-    if (isAbort(error)) throw error;
+    if (isAbortError(error)) throw error;
     throw await diagnoseFailure(url, options, error);
   }
 }
@@ -105,13 +105,6 @@ function eitherSignal(first: AbortSignal, second: AbortSignal): AbortSignal {
 }
 
 /**
- * A caller's abort, passed on as it is.
- */
-export function isAbort(error: unknown): boolean {
-  return error instanceof DOMException && error.name === 'AbortError';
-}
-
-/**
  * Browsers report a CORS refusal and a network failure alike, as a rejected fetch. A request
  * that asks for no CORS answer at all (an opaque response) still succeeds when the server is
  * reachable, so its outcome tells the two apart.
@@ -146,7 +139,7 @@ async function isReachableWithoutCors(url: string, options: HttpRequestOptions):
     discardBody(probe);
     return true;
   } catch (error) {
-    if (isAbort(error)) throw error;
+    if (isAbortError(error)) throw error;
     return false;
   }
 }

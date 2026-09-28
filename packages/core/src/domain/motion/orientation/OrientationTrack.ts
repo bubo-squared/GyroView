@@ -21,6 +21,7 @@ import { seconds, type Seconds } from '../../../shared/units/time';
 import type { GyroSample, GyroTrack } from '../gyro/GyroTrack';
 import { toBodyFrame, type ImuFrame } from '../imu/ImuFrame';
 import type { CaptureClock } from '../timing/CaptureClock';
+import { clamp } from '../../../shared/math/clamp';
 
 export interface IntegrationOptions {
   /**
@@ -196,7 +197,7 @@ function stepTo(
   context: IntegrationContext,
 ): IntegrationState {
   const { frame, bias, gravityGain } = context;
-  const step = Math.min(Math.max(time - state.time, 0), MAX_STEP_SECONDS);
+  const step = clamp(time - state.time, 0, MAX_STEP_SECONDS);
   const correction = gravityCorrection(state.orientation, toBodyFrame(frame, sample.acceleration));
   return {
     orientation: advance(state.orientation, corrected(state.rate, correction, gravityGain), step),

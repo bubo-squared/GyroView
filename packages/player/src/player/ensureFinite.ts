@@ -3,11 +3,11 @@ import { degrees, GyroViewError, type ViewState } from '@gyroview/core';
 import type { ViewAngles } from './PlayerOptions';
 
 /**
- * A number from the page: NaN from an empty field or an undefined value would reach the clock
- * and the view, which cannot take it.
+ * A number from the page, or from another origin through the embed: NaN from an empty field, an
+ * undefined value or text would reach the clock and the view, which cannot take it.
  */
-export function ensureFinite(value: number, name: string): void {
-  if (!Number.isFinite(value)) {
+export function ensureFinite(value: unknown, name: string): asserts value is number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new GyroViewError('invalid-argument', `${name} must be a finite number`);
   }
 }

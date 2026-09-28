@@ -1,3 +1,4 @@
+import { clamp } from '@gyroview/core';
 import type { PictureRenderer, ViewportSize } from '@gyroview/core';
 
 /**
@@ -12,7 +13,7 @@ export function drawingBufferSizeFor(
   cssSize: ViewportSize,
   devicePixelRatio: number,
 ): ViewportSize {
-  const ratio = Math.min(Math.max(devicePixelRatio, 1), MAX_DEVICE_PIXEL_RATIO);
+  const ratio = clamp(devicePixelRatio, 1, MAX_DEVICE_PIXEL_RATIO);
   return {
     width: Math.max(1, Math.round(cssSize.width * ratio)),
     height: Math.max(1, Math.round(cssSize.height * ratio)),

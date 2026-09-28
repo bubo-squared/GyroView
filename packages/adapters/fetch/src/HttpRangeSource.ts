@@ -1,6 +1,7 @@
 import {
   GyroViewError,
   hasErrorCode,
+  isAbortError,
   type ByteRange,
   type RandomAccessSource,
 } from '@gyroview/core';
@@ -10,7 +11,6 @@ import {
   EXPOSED_HEADERS_ADVICE,
   FIRST_BYTE_RANGE,
   httpRequest,
-  isAbort,
   plainHttpRequest,
   withAbortSignal,
   type HttpMethod,
@@ -135,7 +135,7 @@ export class HttpRangeSource implements RandomAccessSource {
 
   private passingOnceAnswered(error: unknown): unknown {
     const message = `${this.url} could not be reached for a byte range`;
-    return isAbort(error)
+    return isAbortError(error)
       ? error
       : new PassingFailure('source-unreadable', message, { cause: error });
   }
@@ -162,7 +162,7 @@ export class HttpRangeSource implements RandomAccessSource {
     try {
       return new Uint8Array(await response.arrayBuffer());
     } catch (error) {
-      if (isAbort(error)) throw error;
+      if (isAbortError(error)) throw error;
       throw new PassingFailure(
         'source-unreadable',
         `${this.url} broke off the ${range.length}-byte range at ${range.offset}`,

@@ -6,6 +6,7 @@ import {
   type Matrix3,
 } from '../../shared/math/Matrix3';
 import { degrees, degreesToRadians, wrapHalfTurn, type Degrees } from '../../shared/units/angle';
+import { clamp } from '../../shared/math/clamp';
 
 /**
  * Where the viewer looks. Angles are in the camera body frame: yaw positive looks right, pitch
@@ -44,8 +45,8 @@ export function clampView(view: ViewState): ViewState {
   return {
     ...view,
     yaw: wrapHalfTurn(view.yaw),
-    pitch: degrees(Math.min(Math.max(view.pitch, -MAX_PITCH_DEGREES), MAX_PITCH_DEGREES)),
-    fieldOfView: degrees(Math.min(Math.max(view.fieldOfView, NARROWEST_DEGREES), WIDEST_DEGREES)),
+    pitch: degrees(clamp(view.pitch, -MAX_PITCH_DEGREES, MAX_PITCH_DEGREES)),
+    fieldOfView: degrees(clamp(view.fieldOfView, NARROWEST_DEGREES, WIDEST_DEGREES)),
   };
 }
 

@@ -1,5 +1,6 @@
 import {
   GyroViewError,
+  isAbortError,
   messageOf,
   seconds,
   type AudioSegmentSource,
@@ -107,7 +108,7 @@ export class MediaSourceAudioClock implements PlaybackClock {
     try {
       await this.element.play();
     } catch (error) {
-      if (isNamed(error, 'AbortError')) return;
+      if (isAbortError(error)) return;
       const isBlocked = isNamed(error, 'NotAllowedError');
       throw new GyroViewError(
         isBlocked ? 'playback-blocked' : 'decode',

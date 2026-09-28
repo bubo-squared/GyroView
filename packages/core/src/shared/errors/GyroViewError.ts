@@ -62,6 +62,14 @@ export function asGyroViewError(
     : new GyroViewError(code, message, { cause: error });
 }
 
+/**
+ * A caller's abort, as `AbortSignal` reports it (a `DOMException` named `AbortError`): passed on
+ * as it is, never taken for a failure.
+ */
+export function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 export function hasErrorCode(error: unknown, code: GyroViewErrorCode): boolean {
   return error instanceof GyroViewError && error.code === code;
 }

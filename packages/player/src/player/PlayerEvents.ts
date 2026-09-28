@@ -1,4 +1,10 @@
-import type { GyroViewError, PlayerState, StabilizationMode, ViewMode } from '@gyroview/core';
+import {
+  keysOf,
+  type GyroViewError,
+  type PlayerState,
+  type StabilizationMode,
+  type ViewMode,
+} from '@gyroview/core';
 
 import type { ViewAngles } from './PlayerOptions';
 import type { PlayerMetadata } from '../PlayerMetadata';
@@ -82,9 +88,9 @@ export interface PlayerEvents {
 }
 
 /**
- * Every event name once; the record makes the compiler reject a missing or unknown name.
+ * Every event name once.
  */
-const EVENT_NAMES: Readonly<Record<keyof PlayerEvents, true>> = {
+export const PLAYER_EVENT_NAMES = keysOf<keyof PlayerEvents>({
   statuschange: true,
   ready: true,
   play: true,
@@ -102,6 +108,4 @@ const EVENT_NAMES: Readonly<Record<keyof PlayerEvents, true>> = {
   volumechange: true,
   warning: true,
   error: true,
-};
-
-export const PLAYER_EVENT_NAMES = Object.keys(EVENT_NAMES) as readonly (keyof PlayerEvents)[];
+});

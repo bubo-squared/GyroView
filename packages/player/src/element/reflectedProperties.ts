@@ -85,7 +85,11 @@ export function keywordOf<Keyword extends string>(
  * `removeAttribute` does: a framework unsetting a property assigns `undefined`, which would
  * otherwise be written as the text "undefined".
  */
-function writeAttribute(element: Element, name: string, value: string | null | undefined): void {
+export function writeAttribute(
+  element: Element,
+  name: string,
+  value: string | null | undefined,
+): void {
   if (value === null || value === undefined) {
     element.removeAttribute(name);
     return;

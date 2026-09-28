@@ -1,6 +1,8 @@
 export type { BlobInput, MediaInput, PlayerSource, UrlInput } from './PlayerSource';
 export type { ImuFrameSummary, PlayerMetadata } from './PlayerMetadata';
 export { choiceOf } from './choices';
+export { writeAttribute } from './element/reflectedProperties';
+export { ensureFinite } from './player/ensureFinite';
 export {
   attachKeyboard,
   attachViewGestures,

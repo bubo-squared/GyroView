@@ -1,6 +1,7 @@
 import {
   degrees,
   GyroViewError,
+  keysOf,
   type Degrees,
   type StabilizationMode,
   type ViewMode,
@@ -8,6 +9,7 @@ import {
 } from '@gyroview/core';
 
 import { stabilizationModeOf, viewModeOf } from '../choices';
+import { ensureFinite } from '../player/ensureFinite';
 import type { Player } from '../player/Player';
 
 interface Accessor {
@@ -33,9 +35,10 @@ export interface LiveSettings {
 type Accessors = { readonly [Name in keyof LiveSettings]: Accessor };
 
 /**
- * Every name of {@link LiveSettings} once; the record makes the compiler reject a missing one.
+ * Every name of {@link LiveSettings} once, for what must know the settings before the element
+ * defines them.
  */
-const SETTING_NAMES: Readonly<Record<keyof LiveSettings, true>> = {
+export const LIVE_SETTING_NAMES = keysOf<keyof LiveSettings>({
   stabilization: true,
   viewMode: true,
   fov: true,
@@ -44,12 +47,7 @@ const SETTING_NAMES: Readonly<Record<keyof LiveSettings, true>> = {
   muted: true,
   loop: true,
   volume: true,
-};
-
-/**
- * For what must know the settings before the element defines them.
- */
-export const LIVE_SETTING_NAMES = Object.keys(SETTING_NAMES) as readonly (keyof LiveSettings)[];
+});
 
 /**
  * Properties that read and change the player's settings as they are now, the way
@@ -159,8 +157,6 @@ function angleOf(value: unknown, property: string): Degrees {
 }
 
 function numberOf(value: unknown, property: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new GyroViewError('invalid-argument', `${property} must be a finite number`);
-  }
+  ensureFinite(value, property);
   return value;
 }

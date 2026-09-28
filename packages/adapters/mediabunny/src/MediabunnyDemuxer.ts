@@ -1,6 +1,7 @@
 import {
   ByteRange,
   GyroViewError,
+  isAbortError,
   seconds,
   type DemuxedInput,
   type Demuxer,
@@ -40,8 +41,7 @@ export class MediabunnyDemuxer implements Demuxer {
  * throws means the bytes are no media file it can read.
  */
 function failureOf(error: unknown, name: string | undefined): unknown {
-  const isAbort = error instanceof DOMException && error.name === 'AbortError';
-  const isPassedOn = isAbort || error instanceof GyroViewError;
+  const isPassedOn = isAbortError(error) || error instanceof GyroViewError;
   const message = `${name ?? 'the input'} is not a readable media file`;
   return isPassedOn ? error : new GyroViewError('unsupported-container', message, { cause: error });
 }

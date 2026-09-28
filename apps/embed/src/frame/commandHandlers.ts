@@ -1,5 +1,5 @@
 import { GyroViewError, STABILIZATION_MODES, VIEW_MODES } from '@gyroview/core';
-import { choiceOf, type GyroViewElement } from '@gyroview/player';
+import { choiceOf, ensureFinite, writeAttribute, type GyroViewElement } from '@gyroview/player';
 import { SourceAttribute } from '@gyroview/player/attributes';
 
 import type { EmbedState, LoadRequest } from '../bridge/EmbedState';
@@ -18,8 +18,7 @@ function invalid(what: string): GyroViewError {
 
 function numberAt(parameters: readonly unknown[], index: number): number {
   const value = parameters[index];
-  if (typeof value !== 'number' || !Number.isFinite(value))
-    throw invalid(`${index} must be a finite number`);
+  ensureFinite(value, `embed command argument ${index}`);
   return value;
 }
 
@@ -74,14 +73,6 @@ export function stateOf(element: GyroViewElement): EmbedState {
 function load(element: GyroViewElement, request: LoadRequest): Promise<void> {
   for (const name of LOAD_ATTRIBUTES) writeAttribute(element, name, request[name]);
   return element.load();
-}
-
-function writeAttribute(element: Element, name: string, value: string | undefined): void {
-  if (value === undefined) {
-    element.removeAttribute(name);
-    return;
-  }
-  element.setAttribute(name, value);
 }
 
 /**

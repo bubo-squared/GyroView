@@ -1,3 +1,4 @@
+import { keysOf } from '@gyroview/core';
 import type { PlayerEvents } from '@gyroview/player';
 
 /**
@@ -98,7 +99,7 @@ const FORWARDED: Readonly<Record<ForwardedEventName, true>> = {
   error: true,
 };
 
-export const FORWARDED_EVENT_NAMES = Object.keys(FORWARDED) as readonly ForwardedEventName[];
+export const FORWARDED_EVENT_NAMES = keysOf(FORWARDED);
 
 /**
  * Events as the embedding page hears them: the player's, with errors as plain data.

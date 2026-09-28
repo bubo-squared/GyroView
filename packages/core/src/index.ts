@@ -151,12 +151,15 @@ export {
   GYRO_VIEW_ERROR_CODES,
   GyroViewError,
   hasErrorCode,
+  isAbortError,
   isGyroViewErrorCode,
   messageOf,
   type GyroViewErrorCode,
 } from './shared/errors/GyroViewError';
+export { keysOf } from './shared/keysOf';
 export { lazy } from './shared/lazy';
 export { Outbox, type EventSink } from './shared/events/Outbox';
+export { clamp } from './shared/math/clamp';
 export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
 export { IDENTITY_MATRIX3, transformVector, type Matrix3 } from './shared/math/Matrix3';
 export {

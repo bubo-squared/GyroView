@@ -1,3 +1,4 @@
+import { clamp } from '@gyroview/core';
 import type { EventSink } from '@gyroview/core';
 
 import type { PlayerEvents } from './PlayerEvents';
@@ -34,7 +35,7 @@ export class PlayerSound {
    * From 0 (silent) to 1 (as recorded); anything outside is clamped.
    */
   public setVolume(volume: number): void {
-    this.audio.volume = Math.min(Math.max(volume, 0), 1);
+    this.audio.volume = clamp(volume, 0, 1);
   }
 
   public setMuted(isMuted: boolean): void {

@@ -12,6 +12,7 @@ import { Deferred } from '../../shared/async/Deferred';
 import { asGyroViewError } from '../../shared/errors/GyroViewError';
 import { TypedEmitter } from '../../shared/events/TypedEmitter';
 import { seconds, type Seconds } from '../../shared/units/time';
+import { clamp } from '../../shared/math/clamp';
 
 export type { PlaybackSessionEvents } from './SessionLifecycle';
 
@@ -115,7 +116,7 @@ export class PlaybackSession<Handle = unknown> {
   public seek(time: Seconds): void {
     if (this.lifecycle.isOneOf('disposed', 'error')) return;
     this.lifecycle.change(() => {
-      const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
+      const target = seconds(clamp(time, 0, this.parts.duration));
       this.seeks.begin(this.lifecycle.current);
       this.moveClockTo(target);
       this.startRun(target);
@@ -132,7 +133,7 @@ export class PlaybackSession<Handle = unknown> {
   public async scrub(time: Seconds): Promise<void> {
     const [track] = this.parts.frameSources;
     if (!track || this.lifecycle.isOneOf('disposed', 'error')) return;
-    const target = seconds(Math.min(Math.max(time, 0), this.parts.duration));
+    const target = seconds(clamp(time, 0, this.parts.duration));
     const ticket = this.seeks.claimScrub();
     const keyframeTime = await keyframeTimeAt(track, target);
     // A seek or scrub made meanwhile is newer: this scrub lands no more.

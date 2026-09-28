@@ -111,6 +111,7 @@ function pictureSettingsOf(
       drawing.stabilizing?.setStabilizer(stabilizerFor(mode));
       session.redraw();
     },
+    // The drawing buffer's share of the quality is the fit's, which loadRecording adds.
     setQuality: (quality): void => {
       drawing.renderer.setQuality(quality);
     },

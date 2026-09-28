@@ -1,16 +1,10 @@
-import { clamp, DEFAULT_PICTURE_QUALITY, type PictureQuality } from '@gyroview/core';
+import {
+  clamp,
+  DEFAULT_PICTURE_QUALITY,
+  pixelRatioCapOf,
+  type PictureQuality,
+} from '@gyroview/core';
 import type { PictureRenderer, ViewportSize } from '@gyroview/core';
-
-/**
- * The most device pixels per CSS pixel each quality draws: the screen's own ratio up to this.
- * Above two, the stitch's cost grows faster than what the eye gains from it, so only `high`
- * follows a phone's screen all the way (ADR 0024).
- */
-const BUFFER_RATIO_CAPS: Readonly<Record<PictureQuality, number>> = {
-  fast: 1,
-  balanced: 2,
-  high: 3,
-};
 
 /**
  * The drawing buffer size, in device pixels, for an element of the given CSS size on a screen
@@ -21,7 +15,7 @@ export function drawingBufferSizeFor(
   devicePixelRatio: number,
   quality: PictureQuality = DEFAULT_PICTURE_QUALITY,
 ): ViewportSize {
-  const ratio = clamp(devicePixelRatio, 1, BUFFER_RATIO_CAPS[quality]);
+  const ratio = clamp(devicePixelRatio, 1, pixelRatioCapOf(quality));
   return {
     width: Math.max(1, Math.round(cssSize.width * ratio)),
     height: Math.max(1, Math.round(cssSize.height * ratio)),

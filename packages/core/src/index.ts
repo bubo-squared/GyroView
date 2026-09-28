@@ -87,6 +87,22 @@ export type {
 } from './domain/optics/LensCalibration';
 export type { LensModel, LensModelKind, LensProjectionParameters } from './domain/optics/LensModel';
 export { lensRotation } from './domain/optics/lensPose';
+export {
+  correctedLensRotation,
+  isZeroDelta,
+  largestComponentOf,
+  ZERO_POSE_DELTA,
+  type PoseDelta,
+} from './domain/optics/poseDelta';
+export {
+  DEFAULT_SEARCH_STAGES,
+  gridAround,
+  searchPose,
+  type CostEvaluator,
+  type PoseSearchResult,
+  type SearchStage,
+} from './domain/stitching/poseSearch';
+export { DEFAULT_MAX_GAIN, gainsMatching } from './domain/optics/gainMatch';
 export { clampView, DEFAULT_VIEW, isSameView, type ViewState } from './domain/view/ViewState';
 export {
   DEFAULT_VIEW_MODE,

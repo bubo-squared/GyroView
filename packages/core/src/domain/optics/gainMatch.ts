@@ -14,7 +14,7 @@ export interface GainMatchOptions {
   readonly timeConstant: Seconds;
 }
 
-const DEFAULT_MAX_GAIN = 2;
+export const DEFAULT_MAX_GAIN = 2;
 const DEFAULT_TIME_CONSTANT_SECONDS = 1.5;
 /**
  * A channel darker than this (0..1) carries no exposure information; its gain is left at one.

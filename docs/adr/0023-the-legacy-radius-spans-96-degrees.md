@@ -60,7 +60,8 @@ further out. The far field cannot say which shape is right mid-field.
   the raw lenses show.
 - The `ready` metadata reports `offset` as the calibration version on an X5.
 - The angle is known to about a degree. A second reference (an omnikit stitch, another Studio
-  export) and the block field in `pnpm measure` can refine it, and settle the mid-field shape.
+  export) can refine it and settle the mid-field shape; the seam's disparity measures it without
+  one (below).
 
 ## On a second unit (2026-09-29)
 

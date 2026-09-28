@@ -91,13 +91,13 @@ rotation the renderer applies.
 region) and `StitchingSetup`, which joins calibration and layout into the per-lens numbers a
 renderer binds (each frame shows its whole calibration square, ADR 0014) and orders the frame
 sources the session decodes (`lensFrameOrder`). The seam instruments measure how well the
-lenses agree without drawing a picture: `seamStrip` (the band of body directions 83 to 97
-degrees from lens 0's axis, in 5-degree azimuth bins), `seamMismatch` (a robust cost over the
-bins) and `seamDisparity` (per bin, the slide of lens 0's sampling across the ring that aligns
-it with lens 1). `seamDisparityField` makes a field of the bins' disparities, smoothed around
-the ring and eased over time, and `seamJoin` names what a stitch does with it: the fixed
-template, the lenses' images bent toward each other, or a cut. They serve `pnpm measure`; the
-player draws the fixed join (ADR 0026).
+lenses agree without drawing a picture: `seamStrip` (the seam ring 90 degrees from body +z and
+the band 7 degrees either side of it, in 5-degree azimuth bins), `seamMismatch` (a bin's cost)
+and `seamDisparity` (per bin, the slide of lens 0's sampling across the ring that aligns it with
+lens 1). `seamDisparityField` makes a field of the bins' disparities, smoothed around the ring
+and eased over time, and `seamJoin` names what a stitch does with it: the fixed template, or
+the lenses' images bent toward each other. They serve `pnpm measure`; the player draws the
+fixed join (ADR 0026).
 
 **`playback`**: `PlayerStateMachine` with the exhaustive transition table
 (`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`).
@@ -161,7 +161,7 @@ Use cases that orchestrate the domain through ports.
 | `FrameSink`          | present a frame pair                                                                                                                            | `ThreeFrameRenderer`                                                  |
 | `PictureRenderer`    | a `FrameSink` that also takes the stabilization rotation, framing, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
 | `SeamMeter`          | the mean colour each lens shows along the seam                                                                                                  | `SeamMeterPass`                                                       |
-| `SeamMismatchMeter`  | per seam-strip bin, how far the lenses disagree for each candidate pose or sampling slide of one lens                                           | `SeamMismatchPass`                                                    |
+| `SeamMismatchMeter`  | per seam-strip bin, how far the lenses disagree for each slide of lens 0's sampling across the ring                                             | the lab's `SeamMismatchPass`                                          |
 | `ResourceLocator`    | does this URL exist                                                                                                                             | `HttpResourceLocator`                                                 |
 
 `WallClock` is the one port implementation in the core: it reads time the host hands it (the
@@ -209,14 +209,17 @@ One package per external technology; none imports another.
   `rectilinearRays` or `equirectangularRays` chunk) turns every pixel of the picture's area into
   a ray, applies the view and stabilization rotations, projects through each lens model and
   blends across the feather band; `rawLenses.frag.glsl` copies each lens's frame region into its
-  tile; `seamJoin.glsl` decides where each lens is read and across which band it is blended at
-  the seam, fixed or bent by the disparity field `seamJoin` binds. `shaderPrograms` is the only
-  place the order of GLSL chunks is known, `fullscreenPass`
-  holds the triangle and material setup every pass shares, and `rendererUniforms` is the only
-  place uniform names are spelled (a test checks them against the chunks). `seamMeter/SeamMeterPass`
-  is the `SeamMeter`: it renders the seam ring per lens into a tiny target and reads it back.
-  `seamMismatch/SeamMismatchPass` is the `SeamMismatchMeter`: it samples the seam strip from both
-  lenses for a batch of candidates and reduces each bin to a cost packed in 8-bit texels.
+  tile; the seam join chunk decides where each lens is read and across which band it is blended
+  at the seam (`fixedJoin.glsl` in the player's stitch). `shaderPrograms` is the only place the
+  order of GLSL chunks is known, `fullscreenPass` holds the triangle and material setup every
+  pass shares, and `rendererUniforms` is the only place the shared uniform names are spelled (a
+  test checks them against the chunks). `seamMeter/SeamMeterPass` is the `SeamMeter`: it renders
+  the seam ring per lens into a tiny target and reads it back.
+- **`three/lab`** (`@gyroview/adapter-three/lab`, for `pnpm measure` only; a dependency rule keeps
+  the player and the apps from linking it): `LabRenderer`, the player's renderer with a lens pose
+  to set, the bent seam join (`bentJoin.glsl`, `seamJoin`) and `seamMismatch/SeamMismatchPass`,
+  the `SeamMismatchMeter`: it samples the seam strip from both lenses for every slide of lens 0
+  and reduces each bin to a cost packed in 8-bit texels.
 
 ## The player: `packages/player`
 

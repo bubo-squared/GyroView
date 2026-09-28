@@ -31,8 +31,9 @@ buffer scale together; `balanced` is the default and the setting is kept across 
 The footprint (the lens coordinates' screen derivatives) is taken before any gate, and every
 picture program runs to its end without an early return, so the derivatives are defined on
 every pixel, seams included. The footprint's samples are inset half a texel from the lens's
-region of its frame, so a packed layout's two circles do not bleed into each other through the
-mip chain. The seam meters read the base level (`textureLod` 0), unchanged by the quality. The
+region of its frame, so the finest levels of a packed layout's two circles do not bleed into each
+other; the coarsest levels of the chain average across the boundary regardless, and `high`'s
+four taps sit around the inset centre, not inside it. The seam meters read the base level (`textureLod` 0), unchanged by the quality. The
 strategy is a uniform, not a define: switching quality recompiles nothing and re-uploads only
 the frames standing on screen.
 

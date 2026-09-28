@@ -14,13 +14,13 @@
   ],
   "license": "MIT",
   "author": "Perica Milošević",
-  "homepage": "https://github.com/pericamilosevic/GyroView#readme",
+  "homepage": "https://github.com/bubo-squared/GyroView#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pericamilosevic/GyroView.git",
+    "url": "git+https://github.com/bubo-squared/GyroView.git",
     "directory": "apps/library"
   },
-  "bugs": "https://github.com/pericamilosevic/GyroView/issues",
+  "bugs": "https://github.com/bubo-squared/GyroView/issues",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

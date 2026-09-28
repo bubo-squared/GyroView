@@ -89,7 +89,7 @@ Once, for the first version: npm trusts a workflow only for a package that alrea
 1. Publish the first version by hand: `npm login`, `pnpm --filter gyroview build`, then in
    `apps/library` `pnpm pack` and `npm publish gyroview-<version>.tgz --access public`.
 2. On npmjs.com, in the package's settings, add a trusted publisher: GitHub Actions, owner
-   `pericamilosevic`, repository `GyroView`, workflow `release.yml`, environment `npm`.
+   `bubo-squared`, repository `GyroView`, workflow `release.yml`, environment `npm`.
 3. On GitHub, in the repository's settings, give the `npm` environment (created by the first
    run of the workflow, or by hand) required reviewers and limit it to `v*` tags, so a pushed
    tag publishes only once someone approves it.

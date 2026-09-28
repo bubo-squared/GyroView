@@ -205,8 +205,8 @@ Until 1.0, a minor version may change the API; [CHANGELOG.md](./CHANGELOG.md) sa
 ## Reference
 
 Every attribute, method, event and keyboard shortcut is in the
-[project README](https://github.com/pericamilosevic/GyroView#using-the-player); hosting and the
-error codes are in [docs/DEPLOYMENT.md](https://github.com/pericamilosevic/GyroView/blob/main/docs/DEPLOYMENT.md).
+[project README](https://github.com/bubo-squared/GyroView#using-the-player); hosting and the
+error codes are in [docs/DEPLOYMENT.md](https://github.com/bubo-squared/GyroView/blob/main/docs/DEPLOYMENT.md).
 
 ## License
 

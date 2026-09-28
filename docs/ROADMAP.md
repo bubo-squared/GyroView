@@ -3,7 +3,7 @@
 What the player does today, what is verified on real material, what is waiting on something
 external, and what a next step could be. Dated so a reader can tell how current it is.
 
-## Done (as of 2026-09-26)
+## Done (as of 2026-09-28)
 
 **Playback of raw recordings.** Opens `.insv` files over HTTP byte ranges or from local
 files; reads the Insta360 trailer (indexed or bare, `inst`-wrapped or not), the protobuf info
@@ -15,12 +15,18 @@ ahead; the first frame shows before play; the seek bar scrubs to key frames.
 
 **Stitching.** One GPU pass per frame through the factory calibration (the legacy string's
 equidistant model, its radius read as 96 degrees against Insta360 Studio's own stitch, ADR 0023;
-the unified and polynomial strings as fallbacks), with a feathered blend across the overlap and per-channel exposure
+the unified and polynomial strings as fallbacks; the lens pose as measured against the same
+stitch, ADR 0025), with a feathered blend across the overlap and per-channel exposure
 matching measured along the seam. A normal rectilinear view of 30 to 120 degrees with drag,
 pinch, wheel and keyboard look-around; the whole sphere as a level, letterboxed
 equirectangular panorama; and the raw lens images side by side or stacked, unstitched
 (ADR 0015). Every view zooms toward the pointer, the flat ones up to four times, and moves
 once zoomed (ADR 0018).
+
+**Picture quality.** `fast`, `balanced` (the default) or `high`: the lens images are read along
+each drawn pixel's footprint through a mip chain, which halves the aliasing and shimmer of the
+panorama at `balanced` at no measurable cost on a laptop, and the drawing buffer's pixel ratio
+is capped per quality. Kept across loads (ADR 0024).
 
 **Stabilization.** Gyro and accelerometer integrated into the camera's orientation, sampled at
 each frame's mid-exposure; lock, horizon and follow modes, or off.
@@ -29,24 +35,30 @@ each frame's mid-exposure; lock, horizon and follow modes, or off.
 events and controls; `embed.html` in an iframe driven by `embed.js` over a validated,
 origin-checked message protocol; a developer page.
 
-**Verified on real recordings.** Two Insta360 X5 files (5.7K60 and 8K30, firmware 1.7 and
-1.11): layout, calibration, timing, the canvas-to-frame mapping (by the image circle's centre
-in every frame, ADR 0014), the X5 IMU frame (by a world-stillness ranking), lock and horizon
-stabilization, seam continuity, audio-locked playback and seeking. Other cameras and layouts
-are covered by synthetic fixtures built from the documented format variants.
+**Verified on real recordings.** Three Insta360 X5 files from two camera units (5.7K60 and
+8K30, firmware 1.7 and 1.11, and a second 8K30 recording of the 8K unit): layout, calibration,
+timing, the canvas-to-frame mapping (by the image circle's centre in every frame, ADR 0014),
+the X5 IMU frame (by a world-stillness ranking), lock and horizon stabilization, seam
+continuity, audio-locked playback and seeking; the legacy radius and the lens pose against
+Insta360 Studio's stitch of the sailing recording (ADR 0023, ADR 0025). Other cameras and
+layouts are covered by synthetic fixtures built from the documented format variants.
 
 ## Waiting on something only a user can supply
 
 - **An X3 or X4 recording** (a 5.7K `_00_`/`_10_` pair and a packed sub-5.7K file would cover
   most): to verify the split-file and packed layouts, the `offset_v2`/`offset` calibration
-  paths, the IMU frames of those cameras and the sign convention of the calibration's yaw and
-  pitch on real material. The code paths exist and are tested on synthetic files; the IMU
-  frames default to "aligned" with a `warning` until measured.
+  paths, the IMU frames of those cameras and the calibration's pose reading (ADR 0025) on real
+  material. The code paths exist and are tested on synthetic files; the IMU frames default to
+  "aligned" with a `warning` until measured.
 - **An iPhone**: to run the developer page on iOS Safari and confirm `ManagedMediaSource`
   audio, hardware decoder limits with several players on a page, the pinned fullscreen
-  fallback, and that the volume slider hides where the volume cannot be set.
-- **An Insta360 Studio export** of one clip: an external reference for stitching and
-  stabilization quality.
+  fallback, that the volume slider hides where the volume cannot be set, and that the
+  `balanced` quality holds the recording's frame rate.
+- **An Insta360 Studio export of the office recording**, made like the sailing one: the
+  office camera is a second X5 unit, so it would confirm the lens pose of ADR 0025 beyond one
+  camera, and settle whether the front lens's roll is read mirrored like the back lens's (on
+  the sailing unit the two readings of the front lens differ by 0.14 degrees, too little to
+  tell; on the office unit by 1.05).
 
 ## Known limits
 
@@ -77,14 +89,15 @@ are covered by synthetic fixtures built from the documented format variants.
 
 ## Possible next steps
 
-In rough order of value, none started:
+In rough order of value. The second is planned next: first a trial in `pnpm measure` against
+the Studio exports, then in the player only if it removes the ghosting without new artifacts.
 
 1. Device-orientation look-around on phones (turn the phone to look).
 2. Parallax-aware stitching. A single stitching distance (the calibration's lens translation
    and a chosen depth) helps only what sits at that depth; serving near people and a far
    horizon at once needs a local alignment of the blend band per azimuth, measured from what
    both lenses see there (optical-flow style, what Insta360 calls dynamic stitching), which
-   would also absorb the pose and scale errors above without a rigid correction.
+   would also absorb what remains of the lens pose without a rigid correction.
 3. WebGPU external textures for the frame upload, once WebGPU video import is broad enough.
 4. Multi-segment recordings played as one.
 5. `.insp` photos through the same stitcher.

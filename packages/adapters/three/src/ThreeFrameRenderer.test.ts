@@ -6,8 +6,10 @@ import {
   GainMatchingFrameSink,
   lensRotation,
   MAX_MAGNIFICATION,
+  multiplyMatrices,
   quaternionFromAxisAngle,
   radians,
+  rotationAboutY,
   seconds,
   stabilizerFor,
   transformVector,
@@ -23,6 +25,7 @@ import { equirectangularPixelOf, parseOffsetString } from '@gyroview/core/testin
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { readPixels } from './test/readPixels';
+import { gradientFrame, GRADIENT_SIZE, halvesFrame, solidFrame } from './test/syntheticFrames';
 import { MULTI_TRACK, PACKED, syntheticCalibration } from './test/syntheticStitching';
 import { ThreeFrameRenderer } from './ThreeFrameRenderer';
 
@@ -44,7 +47,6 @@ const MIXED = 60;
  */
 const FAINT = 15;
 const RGBA = 4;
-const GRADIENT_SIZE = 256;
 /**
  * A colour channel encodes a canvas coordinate in 256 steps; the parity check allows two.
  */
@@ -54,61 +56,6 @@ const GRADIENT_TOLERANCE = 2 / 255;
  */
 const OFFICE_MEI =
   '2_2.000000_4296.660_4295.450_2689.890_2681.940_-0.002_0.377_90.524_0.000000_0.000000_0.000000_0.18113680_2.16784811_-3.49636626_-0.00016818_-0.00010206_10752_5376_113_2.000000_4281.830_4282.190_8082.100_2679.470_0.289_0.043_89.987_-0.000907_-0.000055_-0.032061_0.18382449_2.06260586_-3.21479726_0.00075291_0.00063732_10752_5376_113_197632';
-
-function frameOf(
-  paint: (context: CanvasRenderingContext2D, size: number) => void,
-  size = WIDTH,
-): DecodedFrame<VideoFrame> {
-  const source = document.createElement('canvas');
-  source.width = size;
-  source.height = size;
-  const context = source.getContext('2d');
-  if (!context) throw new Error('no 2d context');
-  paint(context, size);
-  const frame = new VideoFrame(source, { timestamp: 0 });
-  return {
-    timestamp: seconds(0),
-    handle: frame,
-    close: (): void => {
-      frame.close();
-    },
-  };
-}
-
-function solidFrame(fillStyle: string): DecodedFrame<VideoFrame> {
-  return frameOf((context, size) => {
-    context.fillStyle = fillStyle;
-    context.fillRect(0, 0, size, size);
-  });
-}
-
-function halvesFrame(left: string, right: string): DecodedFrame<VideoFrame> {
-  return frameOf((context, size) => {
-    context.fillStyle = left;
-    context.fillRect(0, 0, size / 2, size);
-    context.fillStyle = right;
-    context.fillRect(size / 2, 0, size / 2, size);
-  });
-}
-
-/**
- * Red encodes the frame's x, green its y, so a sampled colour tells which frame pixel was read.
- */
-function gradientFrame(): DecodedFrame<VideoFrame> {
-  return frameOf((context, size) => {
-    const image = context.createImageData(size, size);
-    for (let y = 0; y < size; y += 1) {
-      for (let x = 0; x < size; x += 1) {
-        const offset = (y * size + x) * RGBA;
-        image.data[offset] = x;
-        image.data[offset + 1] = y;
-        image.data[offset + 2] = 0;
-        image.data[offset + 3] = 255;
-      }
-    }
-    context.putImageData(image, 0, 0);
-  }, GRADIENT_SIZE);
-}
 
 interface Rgb {
   readonly r: number;
@@ -499,6 +446,23 @@ describe('ThreeFrameRenderer', () => {
       expect(Math.abs(sampled.r / 255 - u)).toBeLessThan(GRADIENT_TOLERANCE + 1 / GRADIENT_SIZE);
       expect(Math.abs(sampled.g / 255 - v)).toBeLessThan(GRADIENT_TOLERANCE + 1 / GRADIENT_SIZE);
     }
+  });
+
+  it('turns one lens to a new pose: the back lens turned to face forward shows with the front, and the back goes black', () => {
+    const renderer = open();
+    renderer.setViewMode('equirectangular');
+    presentRedAndBlue(renderer);
+    const setup = buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
+    const back = setup.lenses[1];
+    if (!back) throw new Error('the synthetic calibration has two lenses');
+    const halfTurn = rotationAboutY(radians(Math.PI));
+    renderer.setLensPose(1, multiplyMatrices(back.rotation, halfTurn));
+    const ahead = pixelTowards(renderer, [0, 0, 1]);
+    expect(ahead.r).toBeGreaterThan(MIXED);
+    expect(ahead.b).toBeGreaterThan(MIXED);
+    const behind = pixelTowards(renderer, [0, 0, -1]);
+    expect(behind.r).toBeLessThan(DIM);
+    expect(behind.b).toBeLessThan(DIM);
   });
 
   it('resizes its drawing buffer and keeps the picture', () => {

@@ -9,6 +9,7 @@ import lensTextures from './shaders/lensTextures.glsl?raw';
 import rawLensesFragment from './shaders/rawLenses.frag.glsl?raw';
 import rectilinearRays from './shaders/rectilinearRays.glsl?raw';
 import screenAreas from './shaders/screenAreas.glsl?raw';
+import seamMismatchFragment from './shaders/seamMismatch.frag.glsl?raw';
 import stitchFragment from './shaders/stitch.frag.glsl?raw';
 
 /**
@@ -33,8 +34,13 @@ export const PICTURE_PROGRAMS: Readonly<Record<PictureKind, readonly string[]>> 
 export const SEAM_ANALYSIS = [header, ...LENS_PROJECTION, analysisFragment];
 
 /**
+ * The seam strip's disagreement between the lenses for candidate poses of one of them.
+ */
+export const SEAM_MISMATCH = [header, ...LENS_PROJECTION, seamMismatchFragment];
+
+/**
  * Every chunk of every program once, for checking them against the TypeScript side.
  */
 export const ALL_CHUNKS: readonly string[] = [
-  ...new Set([...Object.values(PICTURE_PROGRAMS).flat(), ...SEAM_ANALYSIS]),
+  ...new Set([...Object.values(PICTURE_PROGRAMS).flat(), ...SEAM_ANALYSIS, ...SEAM_MISMATCH]),
 ];

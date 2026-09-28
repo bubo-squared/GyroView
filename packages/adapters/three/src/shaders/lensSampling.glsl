@@ -40,10 +40,10 @@ bool canvasPixel(int i, vec3 d, float theta, out vec2 pixel) {
   return false;
 }
 
-// What lens i shows in a body direction, if it images it at all: outside its field, or beyond
-// the window the frame shows, nothing.
-LensSample sampleLensAt(int i, vec3 dirBody) {
-  vec3 d = uLensRotation[i] * dirBody;
+// What lens i shows in a body direction through a given body-to-lens rotation, if it images it
+// at all: outside its field, or beyond the window the frame shows, nothing.
+LensSample sampleLensWith(int i, mat3 rotation, vec3 dirBody) {
+  vec3 d = rotation * dirBody;
   // atan keeps its precision near the axis where acos loses it.
   float theta = atan(length(d.xy), d.z);
   LensSample result;
@@ -58,4 +58,9 @@ LensSample sampleLensAt(int i, vec3 dirBody) {
   result.isImaged = true;
   result.color = sampleLens(uLensTexture[i], texel).rgb;
   return result;
+}
+
+// What lens i shows in a body direction through its own pose.
+LensSample sampleLensAt(int i, vec3 dirBody) {
+  return sampleLensWith(i, uLensRotation[i], dirBody);
 }

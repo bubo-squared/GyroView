@@ -9,6 +9,7 @@ import {
   type PictureRenderer,
   type Presentation,
   type SeamMeter,
+  type SeamMismatchMeter,
   type StitchingSetup,
   type Vector3 as CoreVector3,
   viewModeRulesFor,
@@ -29,6 +30,7 @@ import {
 
 import { createFullscreenTriangle } from './fullscreenPass';
 import { SeamMeterPass } from './seamMeter/SeamMeterPass';
+import { SeamMismatchPass } from './seamMismatch/SeamMismatchPass';
 import {
   compilePictureMaterials,
   createPictureMaterials,
@@ -37,6 +39,7 @@ import {
 } from './pictureMaterials';
 import {
   applyLensGain,
+  applyLensPose,
   applyPicture,
   applyStabilization,
   createRendererUniforms,
@@ -51,6 +54,13 @@ export interface ThreeFrameRendererOptions {
    * costs a copy per frame, so off by default.
    */
   readonly preserveDrawingBuffer?: boolean;
+}
+
+/**
+ * A meter this renderer made and disposes with itself unless disposed first.
+ */
+interface Meter {
+  dispose(): void;
 }
 
 interface RendererParts {
@@ -87,7 +97,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
    */
   private hasFrames = false;
   private isDisposed = false;
-  private readonly meters = new Set<SeamMeter>();
+  private readonly meters = new Set<Meter>();
 
   private constructor(
     private readonly parts: RendererParts,
@@ -148,6 +158,33 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     const pass = new SeamMeterPass(this.parts.renderer, this.parts.uniforms, this.parts.lensCount);
     const meter: SeamMeter = {
       measure: () => pass.measure(),
+      dispose: (): void => {
+        this.meters.delete(meter);
+        pass.dispose();
+      },
+    };
+    this.meters.add(meter);
+    return meter;
+  }
+
+  public setLensPose(lensIndex: number, rotation: CoreMatrix3): void {
+    this.ensureLive();
+    applyLensPose(this.parts.uniforms, lensIndex, rotation);
+    this.render();
+  }
+
+  /**
+   * As {@link createSeamMeter}: the meter shares this renderer's frames, poses and context.
+   */
+  public createSeamMismatchMeter(): SeamMismatchMeter {
+    this.ensureLive();
+    const pass = new SeamMismatchPass(
+      this.parts.renderer,
+      this.parts.uniforms,
+      this.parts.lensCount,
+    );
+    const meter: SeamMismatchMeter = {
+      measure: (request) => pass.measure(request),
       dispose: (): void => {
         this.meters.delete(meter);
         pass.dispose();

@@ -1,9 +1,14 @@
 import {
   aspectOfArea,
+  degreesToRadians,
   ensureIndexInRange,
   ensureInvariant,
   IDENTITY_MATRIX3,
   planeHalfExtentOf,
+  SEAM_BIN_COLUMNS,
+  SEAM_STRIP_ROWS,
+  SEAM_STRIP_STEP,
+  SEAM_STRIP_THETA_START,
   type LensProjectionParameters,
   type LensStitch,
   type Matrix3 as CoreMatrix3,
@@ -35,6 +40,10 @@ export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntri
   ['MAX_LENSES', MAX_LENSES],
   ['LENS_MEI', LENS_MEI],
   ['LENS_RADIAL_POLYNOMIAL', LENS_RADIAL_POLYNOMIAL],
+  ['SEAM_STRIP_ROWS', SEAM_STRIP_ROWS],
+  ['SEAM_BIN_COLUMNS', SEAM_BIN_COLUMNS],
+  ['SEAM_STRIP_STEP_RADIANS', degreesToRadians(SEAM_STRIP_STEP)],
+  ['SEAM_STRIP_THETA_START_RADIANS', degreesToRadians(SEAM_STRIP_THETA_START)],
 ]);
 
 /**
@@ -205,6 +214,18 @@ export function applyLensGain(
 ): void {
   ensureIndexInRange(lensIndex, uniforms.uLensCount.value, 'lens');
   uniforms.uLensGain.value[lensIndex]?.set(...gain);
+}
+
+/**
+ * Replaces one lens's body-to-lens rotation; a lens the setup does not have is a defect.
+ */
+export function applyLensPose(
+  uniforms: RendererUniforms,
+  lensIndex: number,
+  rotation: CoreMatrix3,
+): void {
+  ensureIndexInRange(lensIndex, uniforms.uLensCount.value, 'lens');
+  uniforms.uLensRotation.value[lensIndex]?.set(...rotation);
 }
 
 /**

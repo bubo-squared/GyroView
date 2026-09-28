@@ -1,5 +1,6 @@
 import type { FrameSink } from './FrameSink';
 import type { SeamMeter } from './SeamMeter';
+import type { SeamMismatchMeter } from './SeamMismatchMeter';
 import type { Framing } from '../domain/view/Framing';
 import type { ViewportSize } from '../domain/view/screenLayout';
 import type { ViewMode } from '../domain/view/ViewMode';
@@ -41,5 +42,16 @@ export interface PictureRenderer<Handle = unknown> extends FrameSink<Handle> {
    * to inspect the other.
    */
   setLensGains(gains: readonly Vector3[]): void;
+  /**
+   * Replaces one lens's body-to-lens rotation, the calibration's or a refined one, for every
+   * picture and meter from now on. Redraws the frames on screen.
+   */
+  setLensPose(lensIndex: number, rotation: Matrix3): void;
+  /**
+   * A meter of how the lenses disagree along the seam strip of the frames on screen, for
+   * candidate poses of one lens. Whoever creates it disposes it; the renderer disposes any
+   * still live when it is disposed itself.
+   */
+  createSeamMismatchMeter(): SeamMismatchMeter;
   dispose(): void;
 }

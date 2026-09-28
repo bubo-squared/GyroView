@@ -2,12 +2,17 @@ import type { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   correctedLensRotation,
   DEFAULT_MAX_GAIN,
+  fitPoseToShifts,
   gainsMatching,
+  localShiftsOf,
   searchPose,
   seamCostOf,
+  shiftGridOf,
+  type BinShift,
   type CostEvaluator,
   type FramePair,
   type Matrix3,
+  type PoseFit,
   type PoseSearchResult,
   type SeamMismatchMeter,
   type Vector3,
@@ -48,6 +53,11 @@ export interface MomentAgreement {
   readonly mismatchByBin: readonly number[];
   readonly validityByBin: readonly number[];
   readonly search: PoseSearchResult;
+  /**
+   * The local shift that aligns the lenses in each bin, and the turn that explains the field.
+   */
+  readonly field: readonly BinShift[];
+  readonly fit: PoseFit | undefined;
 }
 
 export function showPair(parts: SeamAgreementParts, pair: FramePair<VideoFrame>): void {
@@ -78,7 +88,11 @@ export function costEvaluatorOf(
 ): CostEvaluator {
   return async (candidates) => {
     const rotations = candidates.map((delta) => correctedLensRotation(parts.factoryPose, delta));
-    const measured = await parts.meter.measure({ lensIndex: REFINED_LENS, rotations, gains });
+    const measured = await parts.meter.measure({
+      lensIndex: REFINED_LENS,
+      candidates: { kind: 'rotations', rotations },
+      gains,
+    });
     return measured
       ? measured.map((bins) => seamCostOf(bins) ?? Infinity)
       : candidates.map(() => Infinity);
@@ -91,13 +105,34 @@ export async function factoryCostOf(
   gains: readonly Vector3[],
 ): Promise<number | undefined> {
   showPair(parts, pair);
-  const [bins] =
-    (await parts.meter.measure({
-      lensIndex: REFINED_LENS,
-      rotations: [parts.factoryPose],
-      gains,
-    })) ?? [];
+  const [bins] = (await measureFactory(parts, gains)) ?? [];
   return bins ? seamCostOf(bins) : undefined;
+}
+
+function measureFactory(
+  parts: SeamAgreementParts,
+  gains: readonly Vector3[],
+): ReturnType<SeamMismatchMeter['measure']> {
+  return parts.meter.measure({
+    lensIndex: REFINED_LENS,
+    candidates: { kind: 'rotations', rotations: [parts.factoryPose] },
+    gains,
+  });
+}
+
+/**
+ * Each bin's aligning slide of the refined lens's sampling, over the frames on screen.
+ */
+export async function shiftFieldOf(
+  parts: SeamAgreementParts,
+  gains: readonly Vector3[],
+): Promise<readonly BinShift[]> {
+  const measured = await parts.meter.measure({
+    lensIndex: REFINED_LENS,
+    candidates: { kind: 'shifts', shifts: shiftGridOf() },
+    gains,
+  });
+  return measured ? localShiftsOf(measured) : [];
 }
 
 export async function measureMoment(
@@ -106,13 +141,9 @@ export async function measureMoment(
 ): Promise<MomentAgreement> {
   showPair(parts, moment.pair);
   const gains = await gainsOf(parts.renderer);
-  const [bins] =
-    (await parts.meter.measure({
-      lensIndex: REFINED_LENS,
-      rotations: [parts.factoryPose],
-      gains,
-    })) ?? [];
+  const [bins] = (await measureFactory(parts, gains)) ?? [];
   const search = await searchPose(costEvaluatorOf(parts, gains));
+  const field = await shiftFieldOf(parts, gains);
   return {
     time: moment.time,
     gains,
@@ -120,6 +151,8 @@ export async function measureMoment(
     mismatchByBin: bins?.map((bin) => bin.mismatch) ?? [],
     validityByBin: bins?.map((bin) => bin.validity) ?? [],
     search,
+    field,
+    fit: fitPoseToShifts(field),
   };
 }
 

@@ -209,7 +209,6 @@ export {
 export { Deferred } from './shared/async/Deferred';
 export { RunStop, STOPPED } from './shared/async/RunStop';
 export { fileNameOfUrl } from './shared/text/urlPath';
-export { Signal } from './shared/async/Signal';
 export type { PlaybackClock } from './ports/PlaybackClock';
 export type { FrameSink, Presentation } from './ports/FrameSink';
 export type { PictureRenderer } from './ports/PictureRenderer';

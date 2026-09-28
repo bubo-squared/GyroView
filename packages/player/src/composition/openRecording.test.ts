@@ -2,7 +2,6 @@ import {
   CalibrationVersion,
   Deferred,
   GyroViewError,
-  Signal,
   type EncodedVideoPacket,
   type VideoDecoderHandle,
   type VideoDecoderPort,
@@ -51,7 +50,7 @@ const fixture: { x5Bytes: Uint8Array } = { x5Bytes: new Uint8Array() };
 class LateKeyframeTrack extends FakeVideoTrack {
   public constructor(
     options: FakeVideoTrackOptions,
-    private readonly deadline: Signal,
+    private readonly deadline: Deferred<void>,
     private readonly after: Promise<void> = Promise.resolve(),
   ) {
     super(options);
@@ -59,7 +58,7 @@ class LateKeyframeTrack extends FakeVideoTrack {
 
   public override async firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
     await this.after;
-    this.deadline.trigger();
+    this.deadline.resolve();
     return new Deferred<EncodedVideoPacket | undefined>().promise;
   }
 }
@@ -245,7 +244,7 @@ describe('openRecording', () => {
   it('blames the network, not the browser, when the first frames do not arrive in time', async () => {
     const opener = new MapSourceOpener();
     const main = opener.register(MAIN_URL, fixture.x5Bytes);
-    const deadline = new Signal();
+    const deadline = new Deferred<void>();
     const videoTracks = [0, 1].map(
       (trackIndex) =>
         new LateKeyframeTrack(
@@ -256,7 +255,7 @@ describe('openRecording', () => {
     const demuxer = new FakeDemuxer([{ source: main, duration: seconds(3), videoTracks }]);
     const ports = {
       ...fakePorts({ sources: opener, demuxer }),
-      probeDeadline: (): Signal => deadline,
+      probeDeadline: (): Deferred<void> => deadline,
     };
 
     const failure = await captureRejection(
@@ -270,7 +269,7 @@ describe('openRecording', () => {
   it("blames the network when one frame source waits for its key frame while the other's decoder is still busy", async () => {
     const opener = new MapSourceOpener();
     const main = opener.register(MAIN_URL, fixture.x5Bytes);
-    const deadline = new Signal();
+    const deadline = new Deferred<void>();
     const decoderPort = new StallingDecoderPort();
     const [decoding] = squareTracks({ codec: HEVC });
     const late = new LateKeyframeTrack(
@@ -283,7 +282,7 @@ describe('openRecording', () => {
     ]);
     const ports = {
       ...fakePorts({ sources: opener, demuxer, decoderPort }),
-      probeDeadline: (): Signal => deadline,
+      probeDeadline: (): Deferred<void> => deadline,
     };
 
     const failure = await captureRejection(

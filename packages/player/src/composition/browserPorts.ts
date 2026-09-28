@@ -6,7 +6,7 @@ import {
 } from '@gyroview/adapter-fetch';
 import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
 import { WebCodecsVideoDecoderPort } from '@gyroview/adapter-webcodecs';
-import { Signal } from '@gyroview/core';
+import { Deferred } from '@gyroview/core';
 
 import type { RecordingPorts, SourceOpener } from './ports';
 import { isUrlInput } from '../PlayerSource';
@@ -53,12 +53,12 @@ export function browserSources(http: HttpRequestOptions): SourceOpener {
 }
 
 /**
- * A signal that fires after `ms`: the core has no timers, so the host supplies deadlines.
+ * A deadline that passes after `ms`: the core has no timers, so the host supplies deadlines.
  */
-function deadlineIn(ms: number): Signal {
-  const signal = new Signal();
+function deadlineIn(ms: number): Deferred<void> {
+  const deadline = new Deferred<void>();
   setTimeout(() => {
-    signal.trigger();
+    deadline.resolve();
   }, ms);
-  return signal;
+  return deadline;
 }

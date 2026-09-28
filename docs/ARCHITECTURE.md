@@ -171,7 +171,7 @@ Branded units (`Microseconds`, `Milliseconds`, `Seconds`, `Degrees`, `Radians`) 
 format's mixed units cannot be confused; `Vector3`, `Matrix3`, `Quaternion` with the rotation
 conventions in one place; `GyroViewError` with stable codes; a `TypedEmitter`, and the
 `Outbox` that holds a change's events until the change is whole (ADR 0021); a protobuf reader;
-`Deferred` and `Signal` for waiting without timers (the core has none); `lazy` for a value made
+`Deferred` for waiting without timers (the core has none); `lazy` for a value made
 on first request.
 
 ## The adapters: `packages/adapters`

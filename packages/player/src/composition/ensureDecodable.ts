@@ -4,7 +4,7 @@ import {
   type DecodeProbeReport,
   type GyroViewErrorCode,
   type ProbeVerdict,
-  type Signal,
+  type Deferred,
   type VideoTrackReader,
 } from '@gyroview/core';
 
@@ -73,12 +73,12 @@ function sharedCause(report: DecodeProbeReport): ProbeVerdict | undefined {
  * The probe's deadline, brought forward by an abort: a superseded load lets its probe decoders
  * go at once, which matters where decoders are few (iOS Safari).
  */
-function probeDeadlineOf(attempt: OpenAttempt): Signal {
+function probeDeadlineOf(attempt: OpenAttempt): Deferred<void> {
   const deadline = attempt.ports.probeDeadline();
   attempt.signal.addEventListener(
     'abort',
     () => {
-      deadline.trigger();
+      deadline.resolve();
     },
     { once: true },
   );

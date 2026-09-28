@@ -8,7 +8,6 @@ import type {
   VideoDecoderPort,
 } from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';
-import { Signal } from '../../shared/async/Signal';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { seconds } from '../../shared/units/time';
 import { FakeVideoDecoderPort } from '../../testing/FakeVideoDecoderPort';
@@ -153,7 +152,7 @@ class PacketRefusingPort implements VideoDecoderPort<never> {
 describe('probeDecoding', () => {
   it('reports that every lens decodes, leaving no frame open and every decoder closed', async () => {
     const port = new FakeVideoDecoderPort({ latencyTicks: 2 });
-    const report = await probeDecoding(tracks([30, 30]), port, new Signal());
+    const report = await probeDecoding(tracks([30, 30]), port, new Deferred<void>());
     expect(report.canDecode).toBe(true);
     expect(report.sources.map((lens) => lens.verdict)).toEqual(['decodes', 'decodes']);
     expect(report.sources[0]?.track.trackIndex).toBe(0);
@@ -169,13 +168,13 @@ describe('probeDecoding', () => {
       framesPerGop: 30,
       firstTimestamp: seconds(0.7),
     });
-    const report = await probeDecoding([late], new FakeVideoDecoderPort(), new Signal());
+    const report = await probeDecoding([late], new FakeVideoDecoderPort(), new Deferred<void>());
     expect(report.sources[0]?.verdict).toBe('decodes');
   });
 
   it('reports an unsupported configuration without opening a decoder', async () => {
     const port = new FakeVideoDecoderPort({ unsupportedCodecs: ['fake.1'] });
-    const report = await probeDecoding(tracks([30]), port, new Signal());
+    const report = await probeDecoding(tracks([30]), port, new Deferred<void>());
     expect(report.canDecode).toBe(false);
     expect(report.sources[0]).toMatchObject({
       verdict: 'unsupported-configuration',
@@ -186,7 +185,7 @@ describe('probeDecoding', () => {
 
   it('marks a lens whose track has no key frame and still probes the other lens', async () => {
     const port = new FakeVideoDecoderPort();
-    const report = await probeDecoding(tracks([30, 0]), port, new Signal());
+    const report = await probeDecoding(tracks([30, 0]), port, new Deferred<void>());
     expect(report.canDecode).toBe(false);
     expect(report.sources.map((lens) => lens.verdict)).toEqual(['decodes', 'no-key-frame']);
   });
@@ -200,7 +199,7 @@ describe('probeDecoding', () => {
       frameCount: 30,
       framesPerGop: 30,
     });
-    const probing = probeDecoding([readable ?? unreadable, unreadable], port, new Signal());
+    const probing = probeDecoding([readable ?? unreadable, unreadable], port, new Deferred<void>());
     await expect(probing).rejects.toMatchObject({ code: 'source-unreadable' });
     await settle();
     expect(port.decoders).toHaveLength(1);
@@ -210,7 +209,7 @@ describe('probeDecoding', () => {
   it('maps a refused decoder creation onto the codec verdicts', async () => {
     const unsupported = new RefusingPort(new GyroViewError('codec-unsupported', 'no hevc here'));
     const broken = new RefusingPort(new Error('out of decoder instances'));
-    const deadline = new Signal();
+    const deadline = new Deferred<void>();
     const [first, second] = await Promise.all([
       probeDecoding(tracks([30]), unsupported, deadline),
       probeDecoding(tracks([30]), broken, deadline),
@@ -226,13 +225,17 @@ describe('probeDecoding', () => {
   });
 
   it('reports a first packet the decoder refuses on the spot as a failed decode', async () => {
-    const report = await probeDecoding(tracks([30, 30]), new PacketRefusingPort(), new Signal());
+    const report = await probeDecoding(
+      tracks([30, 30]),
+      new PacketRefusingPort(),
+      new Deferred<void>(),
+    );
     expect(report.sources.map((lens) => lens.verdict)).toEqual(['decode-failed', 'decode-failed']);
     expect(report.sources[0]?.detail).toBe('a key frame is required after configure()');
   });
 
   it('reports a decoder error on the first packet as a failed decode', async () => {
-    const report = await probeDecoding(tracks([30]), new ErroringPort(), new Signal());
+    const report = await probeDecoding(tracks([30]), new ErroringPort(), new Deferred<void>());
     expect(report.sources[0]).toMatchObject({
       verdict: 'decode-failed',
       detail: 'bitstream error',
@@ -241,11 +244,11 @@ describe('probeDecoding', () => {
 
   it('gives up on a stalled decoder when the deadline passes and closes it', async () => {
     const port = new StalledPort();
-    const deadline = new Signal();
+    const deadline = new Deferred<void>();
     const pending = probeDecoding(tracks([30, 30]), port, deadline);
     await settle();
     expect(port.decoders).toHaveLength(2);
-    deadline.trigger();
+    deadline.resolve();
     const report = await pending;
     expect(report.canDecode).toBe(false);
     expect(report.sources.map((lens) => lens.verdict)).toEqual(['timed-out', 'timed-out']);
@@ -254,10 +257,10 @@ describe('probeDecoding', () => {
 
   it('closes a decoder that appears only after the deadline and reports it timed out', async () => {
     const port = new LatePort();
-    const deadline = new Signal();
+    const deadline = new Deferred<void>();
     const pending = probeDecoding(tracks([30]), port, deadline);
     await settle();
-    deadline.trigger();
+    deadline.resolve();
     const report = await pending;
     expect(report.sources[0]?.verdict).toBe('timed-out');
     port.gate.resolve();
@@ -269,9 +272,9 @@ describe('probeDecoding', () => {
     const port = new SlowSupportPort();
     const track = gatedTrack();
     track.keyFrameGate.resolve();
-    const deadline = new Signal();
+    const deadline = new Deferred<void>();
     const pending = probeDecoding([track], port, deadline);
-    deadline.trigger();
+    deadline.resolve();
     const report = await pending;
     expect(report.sources[0]?.verdict).toBe('timed-out');
     port.gate.resolve();
@@ -283,11 +286,11 @@ describe('probeDecoding', () => {
   it('reports a key frame the deadline passed while it was read as late, and opens no decoder for it', async () => {
     const port = new StalledPort();
     const track = gatedTrack();
-    const deadline = new Signal();
+    const deadline = new Deferred<void>();
     const pending = probeDecoding([track], port, deadline);
     await settle();
     expect(track.keyFrameReads).toBe(1);
-    deadline.trigger();
+    deadline.resolve();
     const report = await pending;
     expect(report.sources[0]).toMatchObject({
       verdict: 'key-frame-late',
@@ -299,7 +302,7 @@ describe('probeDecoding', () => {
   });
 
   it('reports a decoder that accepts the key frame but never produces a picture as a failed decode', async () => {
-    const report = await probeDecoding(tracks([30]), new SilentPort(), new Signal());
+    const report = await probeDecoding(tracks([30]), new SilentPort(), new Deferred<void>());
     expect(report.sources[0]).toMatchObject({
       verdict: 'decode-failed',
       detail: expect.stringContaining('no picture') as string,

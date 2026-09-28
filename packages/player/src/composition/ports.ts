@@ -4,7 +4,7 @@ import type {
   PlaybackSession,
   RandomAccessSource,
   ResourceLocator,
-  Signal,
+  Deferred,
   StabilizationMode,
   VideoDecoderPort,
 } from '@gyroview/core';
@@ -32,7 +32,7 @@ export interface RecordingPorts<Handle = unknown> {
   /**
    * A fresh signal that fires when a decode probe has taken too long.
    */
-  readonly probeDeadline: () => Signal;
+  readonly probeDeadline: () => Deferred<void>;
 }
 
 /**

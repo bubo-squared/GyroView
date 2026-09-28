@@ -1,4 +1,9 @@
-import { Signal, type Demuxer, type ResourceLocator, type VideoDecoderPort } from '@gyroview/core';
+import {
+  Deferred,
+  type Demuxer,
+  type ResourceLocator,
+  type VideoDecoderPort,
+} from '@gyroview/core';
 import {
   encodeBox,
   FakeResourceLocator,
@@ -93,6 +98,6 @@ export function fakePorts(parts: FakePortsParts): RecordingPorts {
     demuxer: parts.demuxer,
     decoderPort: parts.decoderPort ?? new FakeVideoDecoderPort(),
     locator: parts.locator ?? new FakeResourceLocator([]),
-    probeDeadline: (): Signal => new Signal(),
+    probeDeadline: (): Deferred<void> => new Deferred<void>(),
   };
 }

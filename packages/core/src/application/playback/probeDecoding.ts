@@ -3,7 +3,6 @@ import type { VideoTrackReader } from '../../ports/Demuxer';
 import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../../ports/VideoTrack';
 import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';
-import type { Signal } from '../../shared/async/Signal';
 import { hasErrorCode, messageOf } from '../../shared/errors/GyroViewError';
 
 export type ProbeVerdict =
@@ -52,7 +51,7 @@ const KEY_FRAME_LATE: Outcome = {
  * Use case: find out before playback whether this platform decodes the recording, by decoding the
  * first key frame of every frame source. The decoder port's `isSupported` alone is not trusted:
  * platforms answer yes and then fail, and hardware decoders can stall, hence the real decode under
- * a deadline. The host triggers `deadline` once the probe has taken too long (the core has no
+ * a deadline. The host resolves `deadline` once the probe has taken too long (the core has no
  * timers); sources still undecided then report `timed-out`, or `key-frame-late` while their key
  * frame was still being read, and their decoders are closed. A track that cannot be read rejects
  * the probe with its own failure, and the other sources' decoders are closed then, not at the
@@ -61,7 +60,7 @@ const KEY_FRAME_LATE: Outcome = {
 export async function probeDecoding<Handle>(
   frameSources: readonly VideoTrackReader[],
   decoderPort: VideoDecoderPort<Handle>,
-  deadline: Signal,
+  deadline: Deferred<void>,
 ): Promise<DecodeProbeReport> {
   const probes = frameSources.map((track) => new SourceProbe(track, decoderPort));
   try {
@@ -74,7 +73,7 @@ export async function probeDecoding<Handle>(
 
 async function probeFrameSource<Handle>(
   probe: SourceProbe<Handle>,
-  deadline: Signal,
+  deadline: Deferred<void>,
 ): Promise<SourceProbeResult> {
   try {
     const outcome = await Promise.race([probe.run(), afterDeadline(deadline, probe)]);
@@ -85,7 +84,7 @@ async function probeFrameSource<Handle>(
 }
 
 async function afterDeadline<Handle>(
-  deadline: Signal,
+  deadline: Deferred<void>,
   probe: SourceProbe<Handle>,
 ): Promise<Outcome> {
   await deadline.promise;

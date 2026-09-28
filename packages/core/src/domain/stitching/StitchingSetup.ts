@@ -4,17 +4,13 @@ import type { LensProjectionParameters } from '../optics/LensModel';
 import { lensRotation } from '../optics/lensPose';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import type { Matrix3 } from '../../shared/math/Matrix3';
+import type { Rectangle } from '../../shared/math/Rectangle';
 import { degrees, degreesToRadians, type Radians } from '../../shared/units/angle';
 
 /**
  * The part of the calibration canvas an encoded frame shows, in canvas pixels.
  */
-export interface CanvasWindow {
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-}
+export type CanvasWindow = Rectangle<'canvas pixels'>;
 
 /**
  * The angles from a lens's optical axis between which its weight fades from one to zero.

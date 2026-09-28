@@ -1,6 +1,7 @@
 import type { Milliseconds, Seconds } from '../../../shared/units/time';
 import type { FrameTimeSourceName } from '../../motion/timing/FrameTimeSource';
 import type { LensLayoutKind } from '../../stitching/LensLayout';
+import type { Size } from '../../../shared/math/Rectangle';
 
 /**
  * How the camera says it stored the lens images, one of the layouts with a lens per track: a
@@ -14,10 +15,10 @@ export type FileLayoutHint = Exclude<LensLayoutKind, 'packed'>;
  */
 export type TrackOrderHint = 'stream-10-first' | 'stream-00-first';
 
-export interface LensDimension {
-  readonly width: number;
-  readonly height: number;
-}
+/**
+ * One lens image's size as the camera recorded it, in pixels of the encoded video.
+ */
+export type LensDimension = Size<'video pixels'>;
 
 /**
  * Full-scale ranges of the IMU, which the raw gyro sample layout needs to scale its integers.

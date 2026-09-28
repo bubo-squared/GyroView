@@ -1,14 +1,10 @@
 import { ensureInvariant } from '../../shared/errors/GyroViewError';
+import type { Rectangle, Size } from '../../shared/math/Rectangle';
 
 /**
  * A rectangle of the viewport as fractions of its width and height, from the top-left corner.
  */
-export interface ScreenRectangle {
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-}
+export type ScreenRectangle = Rectangle<'viewport fractions'>;
 
 /**
  * A point of the viewport or of a picture, as fractions of its width and height from the top-left
@@ -22,10 +18,7 @@ export interface ScreenPoint {
 /**
  * The viewport's size, in whatever unit the drags on it are measured in (CSS pixels for gestures).
  */
-export interface ViewportSize {
-  readonly width: number;
-  readonly height: number;
-}
+export type ViewportSize = Size<'viewport'>;
 
 /**
  * A pointer movement on the viewport, in the unit of its size; positive x to the right, positive

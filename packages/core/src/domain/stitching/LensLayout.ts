@@ -1,14 +1,11 @@
+import type { Rectangle } from '../../shared/math/Rectangle';
+
 export type LensLayoutKind = 'multi-track' | 'split-files' | 'packed';
 
 /**
  * Normalised rectangle within a decoded frame (0..1 on both axes) that holds one lens image.
  */
-export interface FrameRegion {
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-}
+export type FrameRegion = Rectangle<'frame fractions'>;
 
 /**
  * Where the pixels of one calibrated lens come from.

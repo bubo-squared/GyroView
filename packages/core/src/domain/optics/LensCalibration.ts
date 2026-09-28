@@ -1,6 +1,7 @@
 import type { LensModel } from './LensModel';
 import type { Vector3 } from '../../shared/math/Vector3';
 import type { Degrees } from '../../shared/units/angle';
+import type { Size } from '../../shared/math/Rectangle';
 
 export interface EulerDegrees {
   readonly yaw: Degrees;
@@ -8,10 +9,10 @@ export interface EulerDegrees {
   readonly roll: Degrees;
 }
 
-export interface CanvasSize {
-  readonly width: number;
-  readonly height: number;
-}
+/**
+ * The calibration canvas's size, in its pixels.
+ */
+export type CanvasSize = Size<'canvas pixels'>;
 
 /**
  * One lens of the camera: its projection model and its pose relative to the first lens.

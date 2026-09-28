@@ -1,9 +1,7 @@
-import { ExposureFrameTimeSource } from './ExposureFrameTimeSource';
-import type { FrameTimeSource, FrameTimeSourceName, FrameTimingContext } from './FrameTimeSource';
+import type { FrameTimeSourceName, FrameTimingContext } from './FrameTimeSource';
 import type { FrameTimes } from './FrameTimes';
+import { FRAME_TIME_SOURCES } from './frameTimeSources';
 import type { Seconds } from '../../../shared/units/time';
-import { NominalFrameTimeSource } from './NominalFrameTimeSource';
-import { TrackTimestampFrameTimeSource } from './TrackTimestampFrameTimeSource';
 
 export interface ResolvedFrameTimes {
   readonly frameTimes: FrameTimes;
@@ -11,15 +9,15 @@ export interface ResolvedFrameTimes {
   readonly warnings: readonly string[];
 }
 
-const EXPOSURE_FIRST: readonly FrameTimeSource[] = [
-  new ExposureFrameTimeSource(),
-  new TrackTimestampFrameTimeSource(),
-  new NominalFrameTimeSource(),
+const EXPOSURE_FIRST: readonly FrameTimeSourceName[] = [
+  'exposure-record',
+  'track-timestamps',
+  'nominal',
 ];
-const TRACK_TIMESTAMPS_FIRST: readonly FrameTimeSource[] = [
-  new TrackTimestampFrameTimeSource(),
-  new ExposureFrameTimeSource(),
-  new NominalFrameTimeSource(),
+const TRACK_TIMESTAMPS_FIRST: readonly FrameTimeSourceName[] = [
+  'track-timestamps',
+  'exposure-record',
+  'nominal',
 ];
 
 /**
@@ -33,9 +31,9 @@ export function resolveFrameTimes(
 ): ResolvedFrameTimes | undefined {
   const warnings: string[] = [];
   for (const source of orderFor(preferred)) {
-    const frameTimes = source.resolve(context);
-    if (frameTimes) return { frameTimes, source: source.name, warnings };
-    warnings.push(`${source.name} unavailable`);
+    const frameTimes = FRAME_TIME_SOURCES[source](context);
+    if (frameTimes) return { frameTimes, source, warnings };
+    warnings.push(`${source} unavailable`);
   }
   return undefined;
 }
@@ -62,25 +60,21 @@ export function planFrameTimes(
 ): FrameTimesPlan {
   const warnings: string[] = [];
   for (const source of orderFor(preferred)) {
-    if (source.name === 'track-timestamps') {
+    if (source === 'track-timestamps') {
       return {
         needsTrackTimestamps: true,
         resolveWith: (trackTimestamps) =>
           resolveFrameTimes({ ...context, trackTimestamps }, preferred),
       };
     }
-    const frameTimes = source.resolve({ ...context, trackTimestamps: undefined });
-    if (frameTimes) {
-      return {
-        needsTrackTimestamps: false,
-        resolved: { frameTimes, source: source.name, warnings },
-      };
-    }
-    warnings.push(`${source.name} unavailable`);
+    const frameTimes = FRAME_TIME_SOURCES[source]({ ...context, trackTimestamps: undefined });
+    if (frameTimes)
+      return { needsTrackTimestamps: false, resolved: { frameTimes, source, warnings } };
+    warnings.push(`${source} unavailable`);
   }
   return { needsTrackTimestamps: false, resolved: undefined };
 }
 
-function orderFor(preferred: FrameTimeSourceName | undefined): readonly FrameTimeSource[] {
+function orderFor(preferred: FrameTimeSourceName | undefined): readonly FrameTimeSourceName[] {
   return preferred === 'track-timestamps' ? TRACK_TIMESTAMPS_FIRST : EXPOSURE_FIRST;
 }

@@ -1,5 +1,4 @@
 import type { CaptureClock } from './CaptureClock';
-import type { FrameTimes } from './FrameTimes';
 import type { Seconds } from '../../../shared/units/time';
 import type { ExposureRecord } from '../exposure/ExposureRecord';
 
@@ -27,9 +26,4 @@ export interface FrameTimingContext {
    * How far apart the track presents its frames; undefined when it does not say.
    */
   readonly frameDuration: Seconds | undefined;
-}
-
-export interface FrameTimeSource {
-  readonly name: FrameTimeSourceName;
-  resolve(context: FrameTimingContext): FrameTimes | undefined;
 }

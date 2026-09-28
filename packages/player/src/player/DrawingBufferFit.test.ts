@@ -11,7 +11,7 @@ describe('drawingBufferSizeFor', () => {
     });
   });
 
-  it('caps the ratio at two and never goes below one', () => {
+  it('caps the ratio at two in the balanced quality and never goes below one', () => {
     expect(drawingBufferSizeFor({ width: 100, height: 50 }, 3)).toEqual({
       width: 200,
       height: 100,
@@ -20,6 +20,13 @@ describe('drawingBufferSizeFor', () => {
       width: 100,
       height: 50,
     });
+  });
+
+  it('draws one device pixel per CSS pixel in the fast quality and follows a phone screen in the high one', () => {
+    const css = { width: 100, height: 50 };
+    expect(drawingBufferSizeFor(css, 2, 'fast')).toEqual({ width: 100, height: 50 });
+    expect(drawingBufferSizeFor(css, 3, 'high')).toEqual({ width: 300, height: 150 });
+    expect(drawingBufferSizeFor(css, 4, 'high')).toEqual({ width: 300, height: 150 });
   });
 
   it('keeps at least one pixel each way for a collapsed element', () => {
@@ -64,6 +71,31 @@ describe('DrawingBufferFit', () => {
     ratio.mockReturnValue(2);
     ratioQueries.at(-1)?.dispatchEvent(new Event('change'));
     expect(sizes).toHaveLength(3);
+    canvas.remove();
+  });
+
+  it('fits the buffer again when the quality changes what the screen ratio is worth', () => {
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'width: 100px; height: 50px';
+    document.body.append(canvas);
+    vi.spyOn(globalThis, 'devicePixelRatio', 'get').mockReturnValue(3);
+    const sizes: ViewportSize[] = [];
+    const fit = new DrawingBufferFit(canvas, {
+      resize: (size): void => {
+        sizes.push(size);
+        canvas.width = size.width;
+        canvas.height = size.height;
+      },
+    });
+    fit.setQuality('high');
+    fit.setQuality('fast');
+    fit.setQuality('fast');
+    expect(sizes).toEqual([
+      { width: 200, height: 100 },
+      { width: 300, height: 150 },
+      { width: 100, height: 50 },
+    ]);
+    fit.dispose();
     canvas.remove();
   });
 });

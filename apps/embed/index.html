@@ -42,6 +42,7 @@
         font-size: 0.85rem;
       }
       input,
+      select,
       button {
         font: inherit;
       }
@@ -82,6 +83,14 @@
         <gyro-view controls muted></gyro-view>
         <section>
           <h2>Debug</h2>
+          <label
+            >Quality
+            <select class="quality">
+              <option value="fast">fast</option>
+              <option value="balanced" selected>balanced</option>
+              <option value="high">high</option>
+            </select></label
+          >
           <pre class="status"></pre>
           <ul class="warnings"></ul>
           <pre class="metadata"></pre>

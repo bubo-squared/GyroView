@@ -1,4 +1,4 @@
-import type { StabilizationMode, ViewMode } from '@gyroview/core';
+import type { PictureQuality, StabilizationMode, ViewMode } from '@gyroview/core';
 
 /**
  * The attributes `<gyro-view>` takes, for a framework's JSX declaration of the element (React,
@@ -17,6 +17,7 @@ export interface GyroViewAttributes {
   readonly controls?: boolean | undefined;
   readonly stabilization?: StabilizationMode | undefined;
   readonly 'view-mode'?: ViewMode | undefined;
+  readonly quality?: PictureQuality | undefined;
   readonly fov?: number | string | undefined;
   readonly yaw?: number | string | undefined;
   readonly pitch?: number | string | undefined;

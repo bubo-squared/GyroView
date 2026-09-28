@@ -1,4 +1,4 @@
-import type { StabilizationMode, ViewMode } from '@gyroview/core';
+import type { PictureQuality, StabilizationMode, ViewMode } from '@gyroview/core';
 import type { PlayerMetadata, PlayerStatus, ViewAngles } from '@gyroview/player';
 
 /**
@@ -15,6 +15,7 @@ export interface EmbedState {
   readonly view: ViewAngles;
   readonly viewMode: ViewMode;
   readonly stabilization: StabilizationMode;
+  readonly quality: PictureQuality;
   readonly metadata: PlayerMetadata | undefined;
 }
 

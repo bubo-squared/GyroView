@@ -3,12 +3,13 @@ import {
   GyroViewError,
   keysOf,
   type Degrees,
+  type PictureQuality,
   type StabilizationMode,
   type ViewMode,
   type ViewState,
 } from '@gyroview/core';
 
-import { stabilizationModeOf, viewModeOf } from '../choices';
+import { pictureQualityOf, stabilizationModeOf, viewModeOf } from '../choices';
 import { ensureFinite } from '../player/ensureFinite';
 import type { Player } from '../player/Player';
 
@@ -24,6 +25,7 @@ interface Accessor {
 export interface LiveSettings {
   stabilization: StabilizationMode;
   viewMode: ViewMode;
+  quality: PictureQuality;
   fov: number;
   yaw: number;
   pitch: number;
@@ -41,6 +43,7 @@ type Accessors = { readonly [Name in keyof LiveSettings]: Accessor };
 export const LIVE_SETTING_NAMES = keysOf<keyof LiveSettings>({
   stabilization: true,
   viewMode: true,
+  quality: true,
   fov: true,
   yaw: true,
   pitch: true,
@@ -68,6 +71,12 @@ export function defineLiveSettings(element: HTMLElement, player: Player): void {
       get: (): unknown => player.viewMode,
       set: unlessUnset((value) => {
         player.setViewMode(viewModeFrom(value));
+      }),
+    },
+    quality: {
+      get: (): unknown => player.quality,
+      set: unlessUnset((value) => {
+        player.setQuality(pictureQualityFrom(value));
       }),
     },
     ...viewAccessors(player),
@@ -128,6 +137,13 @@ export function stabilizationModeFrom(value: unknown): StabilizationMode {
  */
 export function viewModeFrom(value: unknown): ViewMode {
   return accepted(value, viewModeOf, 'viewMode');
+}
+
+/**
+ * The picture quality `value` names; anything else is refused.
+ */
+export function pictureQualityFrom(value: unknown): PictureQuality {
+  return accepted(value, pictureQualityOf, 'quality');
 }
 
 /**

@@ -1,6 +1,7 @@
 import {
   keysOf,
   type GyroViewError,
+  type PictureQuality,
   type PlayerState,
   type StabilizationMode,
   type ViewMode,
@@ -77,6 +78,10 @@ export interface PlayerEvents {
   readonly viewmodechange: ViewMode;
   readonly stabilizationchange: StabilizationMode;
   /**
+   * The picture quality changed, to the one named.
+   */
+  readonly qualitychange: PictureQuality;
+  /**
    * The volume or the mute changed, from whatever changed it.
    */
   readonly volumechange: SoundLevel;
@@ -105,6 +110,7 @@ export const PLAYER_EVENT_NAMES = keysOf<keyof PlayerEvents>({
   viewchange: true,
   viewmodechange: true,
   stabilizationchange: true,
+  qualitychange: true,
   volumechange: true,
   warning: true,
   error: true,

@@ -1,5 +1,6 @@
 import type {
   Demuxer,
+  PictureQuality,
   PictureRenderer,
   PlaybackSession,
   RandomAccessSource,
@@ -71,6 +72,10 @@ export interface Pipeline {
    * Matches the lenses' exposure along the seam, or shows it as recorded.
    */
   setGainMatching(isEnabled: boolean): void;
+  /**
+   * How finely the lens images are read, and how many device pixels are drawn.
+   */
+  setQuality(quality: PictureQuality): void;
   /**
    * Why the recording plays without sound, when it does: it has none, or none this browser plays.
    */

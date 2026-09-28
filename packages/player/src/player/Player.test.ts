@@ -13,7 +13,7 @@ import type { PlayerStatus, PlayerWarning } from './PlayerEvents';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import { browserPorts } from '../composition/browserPorts';
 import { buildPipeline } from '../composition/buildPipeline';
-import type { PipelineFactory, RecordingPorts, SourceOpener } from '../composition/ports';
+import type { Pipeline, PipelineFactory, RecordingPorts, SourceOpener } from '../composition/ports';
 import type { PlayerSource } from '../PlayerSource';
 import { X5_RECORDING_URL, X5_RECORDING_WITH_AUDIO_URL } from '../test/recordings';
 import { settle, waitFor } from '../test/waiting';
@@ -150,6 +150,7 @@ describe('Player over the synthetic X5 recording', () => {
       player.dispose();
       canvas.remove();
     }
+    vi.restoreAllMocks();
   });
 
   it('loads, reports metadata and warnings, and sizes the canvas to its layout box', async () => {
@@ -246,17 +247,40 @@ describe('Player over the synthetic X5 recording', () => {
     expect(await heard).toEqual({ volume: 1, isMuted: !wasMuted });
   });
 
-  it('keeps view, view mode and stabilization across loads', async () => {
+  it('keeps view, view mode, stabilization and quality across loads', async () => {
     const { player } = open();
     player.lookAt(degrees(400), degrees(10));
     player.setStabilization('horizon');
     player.setViewMode('equirectangular');
+    player.setQuality('high');
 
     await player.load(sourceOf(X5_RECORDING_URL));
 
     expect(player.view).toMatchObject({ yaw: 40, pitch: 10 });
     expect(player.stabilization).toBe('horizon');
     expect(player.viewMode).toBe('equirectangular');
+    expect(player.quality).toBe('high');
+  });
+
+  it('sizes the drawing buffer and reads the lenses as the quality says, and announces the change', async () => {
+    const applied: MockInstance<Pipeline['setQuality']>[] = [];
+    const { player, canvas } = open(async (parts) => {
+      const pipeline = await buildPipeline(parts);
+      applied.push(vi.spyOn(pipeline, 'setQuality'));
+      return pipeline;
+    });
+    const announced: string[] = [];
+    player.events.on('qualitychange', (quality) => {
+      announced.push(quality);
+    });
+    vi.spyOn(globalThis, 'devicePixelRatio', 'get').mockReturnValue(2);
+    await player.load(sourceOf(X5_RECORDING_URL));
+    expect(applied[0]).toHaveBeenLastCalledWith('balanced');
+    expect(canvas.width).toBe(CANVAS_WIDTH * 2);
+    player.setQuality('fast');
+    expect(applied[0]).toHaveBeenLastCalledWith('fast');
+    expect(canvas.width).toBe(CANVAS_WIDTH);
+    expect(announced).toEqual(['fast']);
   });
 
   it('draws a view mode chosen while the recording was loading', async () => {

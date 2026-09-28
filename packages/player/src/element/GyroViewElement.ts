@@ -1,4 +1,4 @@
-import type { ScreenPoint, StabilizationMode, ViewMode } from '@gyroview/core';
+import type { PictureQuality, ScreenPoint, StabilizationMode, ViewMode } from '@gyroview/core';
 
 import {
   OBSERVED_ATTRIBUTES,
@@ -17,6 +17,7 @@ import { applyEarlyProperties, takeEarlyProperties } from './earlyProperties';
 import {
   defineLiveSettings,
   LIVE_SETTING_NAMES,
+  pictureQualityFrom,
   stabilizationModeFrom,
   viewModeFrom,
   type LiveSettings,
@@ -86,6 +87,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   declare public controls: boolean;
   declare public stabilization: StabilizationMode;
   declare public viewMode: ViewMode;
+  declare public quality: PictureQuality;
   declare public fov: number;
   declare public yaw: number;
   declare public pitch: number;
@@ -295,6 +297,14 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
    */
   public setViewMode(mode: ViewMode): void {
     this.player.setViewMode(viewModeFrom(mode));
+  }
+
+  /**
+   * Reads the lens images as `quality` says (`fast`, `balanced`, `high`); any other value, an
+   * unset one included, is refused.
+   */
+  public setQuality(quality: PictureQuality): void {
+    this.player.setQuality(pictureQualityFrom(quality));
   }
 
   /**

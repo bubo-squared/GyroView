@@ -9,6 +9,7 @@ import {
   seconds,
   TypedEmitter,
   type DragDelta,
+  type PictureQuality,
   type ScreenPoint,
   type Seconds,
   type StabilizationMode,
@@ -123,6 +124,10 @@ export class Player {
 
   public get stabilization(): StabilizationMode {
     return this.picture.stabilization;
+  }
+
+  public get quality(): PictureQuality {
+    return this.picture.quality;
   }
 
   public get isLooping(): boolean {
@@ -263,6 +268,13 @@ export class Player {
 
   public setStabilization(mode: StabilizationMode): void {
     this.picture.setStabilization(mode);
+  }
+
+  /**
+   * How finely the lens images are read and how many device pixels are drawn; kept across loads.
+   */
+  public setQuality(quality: PictureQuality): void {
+    this.picture.setQuality(quality);
   }
 
   public setLooping(isLooping: boolean): void {

@@ -69,6 +69,7 @@ Attributes:
 | `gain-match`                | `on`, `off`                               | `off` leaves the lenses' exposure as recorded.                                                                      |
 | `stabilization`             | `off`, `lock`, `horizon`, `follow`        | How the gyro steadies the picture.                                                                                  |
 | `view-mode`                 | `raw-lenses`, `equirectangular`, `normal` | What the picture shows (below); the raw lenses until set.                                                           |
+| `quality`                   | `fast`, `balanced`, `high`                | How finely the lens images are read and how many device pixels are drawn (below); `balanced` until set.             |
 | `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees.                                                             |
 | `yaw`, `pitch`              | degrees                                   | Where the normal view looks: yaw positive to the right, pitch positive up.                                          |
 
@@ -78,9 +79,16 @@ than each lens's image circle, so the circles show cut at the frame's edges, whe
 meet as well. `equirectangular` shows the whole sphere as a level 2:1 panorama, and `normal` a
 window into it to look around in. The view menu offers the three in that order.
 
-The settings (`stabilization`, `view-mode`, `fov`, `yaw`, `pitch`, `muted`, `loop`) are
-applied when their attribute changes, and their properties (`viewMode` for `view-mode`, plus
-`volume`) report and change the setting in effect, as a video's `muted` property does, however
+The `quality` sets how the lens images, larger than the picture on most screens, are read:
+`fast` takes one bilinear sample per pixel and draws one device pixel per CSS pixel, cheapest
+and prone to shimmer on fine detail; `balanced` reads the lens images through a mip chain along
+the footprint of each drawn pixel and follows the screen's pixel ratio up to two; `high` adds
+four samples on a rotated grid per pixel and follows the ratio up to three. The setting is kept
+across loads.
+
+The settings (`stabilization`, `view-mode`, `quality`, `fov`, `yaw`, `pitch`, `muted`, `loop`)
+are applied when their attribute changes, and their properties (`viewMode` for `view-mode`,
+plus `volume`) report and change the setting in effect, as a video's `muted` property does, however
 it was last changed. The other attributes are mirrored by properties (`gainMatch` for
 `gain-match`); `preload` and `gainMatch` read the keyword in effect.
 
@@ -97,6 +105,7 @@ Methods and properties:
 | `view`, `lookAt(yaw, pitch)`, `resetView()`   | Where the normal view looks.                                                                    |
 | `zoom(steps, focus?)`                         | Zooms toward a point of the picture given as fractions of its size, or about the centre.        |
 | `setViewMode(mode)`, `setStabilization(mode)` | As the attributes; an unknown mode is refused.                                                  |
+| `setQuality(quality)`                         | As the attribute; an unknown quality is refused.                                                |
 | `volume`                                      | 0 to 1, where the platform lets a page set it.                                                  |
 | `messages`                                    | Every word the element shows (below).                                                           |
 | `toggleFullscreen()`                          | Fills the screen through the Fullscreen API, or pins the element over the page where it cannot. |
@@ -112,6 +121,7 @@ Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewEle
 | `seeking`, `seeked`                                   | seconds                   | Around a seek.                                                                                                       |
 | `frame`                                               | seconds                   | Right after each picture is drawn.                                                                                   |
 | `viewchange`, `viewmodechange`, `stabilizationchange` | the view, mode or setting | Whatever changed it.                                                                                                 |
+| `qualitychange`                                       | the quality               | Whatever changed it.                                                                                                 |
 | `volumechange`                                        | `{ volume, isMuted }`     | Whatever changed it.                                                                                                 |
 | `warning`                                             | `{ code, message }`       | Something the player worked around (below).                                                                          |
 | `error`                                               | `GyroViewError`           | The load or playback failed: `code` and `message`; `docs/DEPLOYMENT.md` lists the codes.                             |

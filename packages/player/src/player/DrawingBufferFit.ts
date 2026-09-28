@@ -1,19 +1,27 @@
-import { clamp } from '@gyroview/core';
+import { clamp, DEFAULT_PICTURE_QUALITY, type PictureQuality } from '@gyroview/core';
 import type { PictureRenderer, ViewportSize } from '@gyroview/core';
 
 /**
- * Sharper than this on high-density screens costs GPU time the stitch does not repay.
+ * The most device pixels per CSS pixel each quality draws: the screen's own ratio up to this.
+ * Above two, the stitch's cost grows faster than what the eye gains from it, so only `high`
+ * follows a phone's screen all the way (ADR 0024).
  */
-const MAX_DEVICE_PIXEL_RATIO = 2;
+const BUFFER_RATIO_CAPS: Readonly<Record<PictureQuality, number>> = {
+  fast: 1,
+  balanced: 2,
+  high: 3,
+};
 
 /**
- * The drawing buffer size, in device pixels, for an element of the given CSS size.
+ * The drawing buffer size, in device pixels, for an element of the given CSS size on a screen
+ * of the given pixel ratio, drawn at the given quality.
  */
 export function drawingBufferSizeFor(
   cssSize: ViewportSize,
   devicePixelRatio: number,
+  quality: PictureQuality = DEFAULT_PICTURE_QUALITY,
 ): ViewportSize {
-  const ratio = clamp(devicePixelRatio, 1, MAX_DEVICE_PIXEL_RATIO);
+  const ratio = clamp(devicePixelRatio, 1, BUFFER_RATIO_CAPS[quality]);
   return {
     width: Math.max(1, Math.round(cssSize.width * ratio)),
     height: Math.max(1, Math.round(cssSize.height * ratio)),
@@ -30,12 +38,13 @@ export function cssSizeOf(element: Element): ViewportSize {
 }
 
 /**
- * Keeps the renderer's drawing buffer matched to the canvas's layout size and the screen's pixel
- * ratio.
+ * Keeps the renderer's drawing buffer matched to the canvas's layout size, the screen's pixel
+ * ratio and the picture quality.
  */
 export class DrawingBufferFit {
   private readonly observer: ResizeObserver;
   private readonly ratioWatch = new AbortController();
+  private quality: PictureQuality = DEFAULT_PICTURE_QUALITY;
 
   public constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -46,6 +55,11 @@ export class DrawingBufferFit {
     });
     this.observer.observe(canvas);
     this.watchPixelRatio();
+    this.fit();
+  }
+
+  public setQuality(quality: PictureQuality): void {
+    this.quality = quality;
     this.fit();
   }
 
@@ -68,7 +82,8 @@ export class DrawingBufferFit {
   }
 
   private fit(): void {
-    const size = drawingBufferSizeFor(cssSizeOf(this.canvas), globalThis.devicePixelRatio);
+    const css = cssSizeOf(this.canvas);
+    const size = drawingBufferSizeFor(css, globalThis.devicePixelRatio, this.quality);
     if (size.width === this.canvas.width && size.height === this.canvas.height) return;
     this.renderer.resize(size);
   }

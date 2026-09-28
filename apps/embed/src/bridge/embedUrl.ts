@@ -18,6 +18,10 @@ export interface EmbedOptions {
   readonly stabilization?: string;
   readonly viewMode?: string;
   /**
+   * `fast`, `balanced` or `high`.
+   */
+  readonly quality?: string;
+  /**
    * `none` keeps the decoders idle until play.
    */
   readonly preload?: string;
@@ -41,7 +45,7 @@ export interface EmbedOptions {
 export const ORIGIN_PARAMETER = 'origin';
 
 type StringOption =
-  'src' | 'src2' | 'stabilization' | 'viewMode' | 'preload' | 'gainMatch' | 'poster';
+  'src' | 'src2' | 'stabilization' | 'viewMode' | 'quality' | 'preload' | 'gainMatch' | 'poster';
 type NumberOption = 'fov' | 'yaw' | 'pitch';
 type FlagOption = 'autoplay' | 'muted' | 'loop';
 
@@ -54,6 +58,7 @@ const STRING_PARAMETERS: Readonly<Record<StringOption, string>> = {
   src2: SourceAttribute.Src2,
   stabilization: PlaybackAttribute.Stabilization,
   viewMode: PlaybackAttribute.ViewMode,
+  quality: PlaybackAttribute.Quality,
   preload: PlaybackAttribute.Preload,
   gainMatch: PlaybackAttribute.GainMatch,
   poster: PlaybackAttribute.Poster,

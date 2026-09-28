@@ -1,4 +1,5 @@
 import {
+  DEFAULT_PICTURE_QUALITY,
   DEFAULT_STABILIZATION_MODE,
   DEFAULT_VIEW,
   DEFAULT_VIEW_MODE,
@@ -40,6 +41,7 @@ const INITIAL_STATE: EmbedState = {
   view: DEFAULT_VIEW,
   viewMode: DEFAULT_VIEW_MODE,
   stabilization: DEFAULT_STABILIZATION_MODE,
+  quality: DEFAULT_PICTURE_QUALITY,
   metadata: undefined,
 };
 
@@ -120,6 +122,10 @@ export class EmbedHandle {
 
   public setViewMode(mode: string): Promise<void> {
     return this.command('setViewMode', mode);
+  }
+
+  public setQuality(quality: string): Promise<void> {
+    return this.command('setQuality', quality);
   }
 
   public setVolume(volume: number): Promise<void> {
@@ -298,6 +304,7 @@ const STATE_UPDATERS: StateUpdaters = {
   viewmodechange: (state, viewMode) => ({ ...state, viewMode }),
   volumechange: (state, sound) => ({ ...state, volume: sound.volume, isMuted: sound.isMuted }),
   stabilizationchange: (state, stabilization) => ({ ...state, stabilization }),
+  qualitychange: (state, quality) => ({ ...state, quality }),
 };
 
 function stateAfter<Name extends ForwardedEventName>(

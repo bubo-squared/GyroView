@@ -38,26 +38,40 @@ export async function loadRecording(request: LoadRequest): Promise<LoadedRecordi
     opened.dispose();
   });
   try {
-    const pipeline = await parts.pipelines({
+    const built = await parts.pipelines({
       opened,
       host: parts.host,
       decoderPort: parts.ports.decoderPort,
       signal,
     });
     disposables.add(() => {
-      pipeline.dispose();
+      built.dispose();
     });
     signal.throwIfAborted();
-    const fit = new DrawingBufferFit(parts.host.canvas, pipeline.renderer);
+    const fit = new DrawingBufferFit(parts.host.canvas, built.renderer);
     disposables.add(() => {
       fit.dispose();
     });
+    const pipeline = withBufferQuality(built, fit);
     const warnings = warningsOf(opened, pipeline);
     return { opened, pipeline, warnings, dispose: disposables.toDisposer() };
   } catch (error) {
     disposables.disposeAll();
     throw error;
   }
+}
+
+/**
+ * The quality sets how many device pixels are drawn as well as how finely they are read.
+ */
+function withBufferQuality(built: Pipeline, fit: DrawingBufferFit): Pipeline {
+  return {
+    ...built,
+    setQuality: (quality): void => {
+      built.setQuality(quality);
+      fit.setQuality(quality);
+    },
+  };
 }
 
 function warningsOf(opened: OpenedRecording, pipeline: Pipeline): PlayerWarning[] {

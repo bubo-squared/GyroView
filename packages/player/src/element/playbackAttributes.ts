@@ -1,4 +1,4 @@
-import { STABILIZATION_MODES, VIEW_MODES } from '@gyroview/core';
+import { PICTURE_QUALITIES, STABILIZATION_MODES, VIEW_MODES } from '@gyroview/core';
 
 import { PlaybackAttribute } from './attributeNames';
 import { ignoredChoiceWarning, isBooleanAttributeSet, shouldMatchGains } from './attributes';
@@ -60,6 +60,13 @@ const APPLIERS: Readonly<Record<AppliedAttribute, AttributeApplier>> = {
     VIEW_MODES,
     (player, mode) => {
       player.setViewMode(mode);
+    },
+  ),
+  [PlaybackAttribute.Quality]: choiceApplier(
+    PlaybackAttribute.Quality,
+    PICTURE_QUALITIES,
+    (player, quality) => {
+      player.setQuality(quality);
     },
   ),
   [PlaybackAttribute.Muted]: ({ player }, value): void => {

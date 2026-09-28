@@ -36,6 +36,11 @@ export const PlaybackAttribute = {
    * lenses until set (ADR 0022).
    */
   ViewMode: 'view-mode',
+  /**
+   * `fast`, `balanced` or `high`: how finely the lens images are read and how many device
+   * pixels are drawn; `balanced` until set.
+   */
+  Quality: 'quality',
   Controls: 'controls',
   Poster: 'poster',
 } as const;

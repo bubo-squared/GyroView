@@ -105,11 +105,14 @@ function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
 function pictureSettingsOf(
   drawing: Drawing,
   session: PlaybackSession<VideoFrame>,
-): Pick<Pipeline, 'setStabilization' | 'setGainMatching'> {
+): Pick<Pipeline, 'setStabilization' | 'setGainMatching' | 'setQuality'> {
   return {
     setStabilization: (mode): void => {
       drawing.stabilizing?.setStabilizer(stabilizerFor(mode));
       session.redraw();
+    },
+    setQuality: (quality): void => {
+      drawing.renderer.setQuality(quality);
     },
     setGainMatching: (isEnabled): void => {
       if (isEnabled) drawing.gainMatching.enable();

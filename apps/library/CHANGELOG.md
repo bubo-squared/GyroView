@@ -13,7 +13,10 @@ The first release:
   texts and names its overlays as parts. It opens on the raw lenses; the view menu offers them
   first, then the equirectangular panorama and the normal view. The stitch reads the legacy
   calibration string's radius as 96 degrees from the lens axis, where Insta360 Studio's own stitch
-  puts the far field; `ready` reports `offset` as the calibration version.
+  puts the far field; `ready` reports `offset` as the calibration version. The `quality`
+  attribute (`fast`, `balanced`, `high`, with `setQuality` and `qualitychange`) sets how finely
+  the lens images are read and how many device pixels are drawn; `balanced` reads them through a
+  mip chain along each pixel's footprint, so fine detail no longer shimmers.
 - `createBrowserPlayer`, the player without the element, for an interface of your own, with
   `attachViewGestures` and `attachKeyboard` for the element's gestures and shortcuts.
 - `inspectRecording`, which reads what a recording holds from a file or a URL.

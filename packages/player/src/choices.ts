@@ -1,6 +1,8 @@
 import {
+  PICTURE_QUALITIES,
   STABILIZATION_MODES,
   VIEW_MODES,
+  type PictureQuality,
   type StabilizationMode,
   type ViewMode,
 } from '@gyroview/core';
@@ -24,4 +26,8 @@ export function stabilizationModeOf(value: string | null): StabilizationMode | u
 
 export function viewModeOf(value: string | null): ViewMode | undefined {
   return choiceOf(value, VIEW_MODES);
+}
+
+export function pictureQualityOf(value: string | null): PictureQuality | undefined {
+  return choiceOf(value, PICTURE_QUALITIES);
 }

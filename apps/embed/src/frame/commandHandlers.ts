@@ -1,4 +1,4 @@
-import { GyroViewError, STABILIZATION_MODES, VIEW_MODES } from '@gyroview/core';
+import { GyroViewError, PICTURE_QUALITIES, STABILIZATION_MODES, VIEW_MODES } from '@gyroview/core';
 import { choiceOf, ensureFinite, writeAttribute, type GyroViewElement } from '@gyroview/player';
 import { SourceAttribute } from '@gyroview/player/attributes';
 
@@ -63,6 +63,7 @@ export function stateOf(element: GyroViewElement): EmbedState {
     view: element.view,
     stabilization: element.stabilization,
     viewMode: element.viewMode,
+    quality: element.quality,
     metadata: element.metadata,
   };
 }
@@ -105,6 +106,9 @@ export const COMMAND_HANDLERS: Readonly<Record<CommandName, Handler>> = {
   },
   setViewMode: (element, parameters): void => {
     element.setViewMode(choiceAt(parameters, VIEW_MODES));
+  },
+  setQuality: (element, parameters): void => {
+    element.setQuality(choiceAt(parameters, PICTURE_QUALITIES));
   },
   setVolume: (element, parameters): void => {
     element.volume = numberAt(parameters, 0);

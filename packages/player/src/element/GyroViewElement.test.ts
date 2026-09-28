@@ -624,10 +624,28 @@ describe('<gyro-view>', () => {
     expect(stabilization.hidden).toBe(true);
   });
 
+  it('reads the lenses at the quality set by attribute, property or method, and announces the change', async () => {
+    const element = create({ controls: '', quality: 'fast' });
+    expect(element.quality).toBe('fast');
+    const changed = nextEvent<string>(element, 'qualitychange');
+    element.setQuality('high');
+    expect(await changed).toBe('high');
+    element.quality = 'balanced';
+    expect(element.quality).toBe('balanced');
+    const warned = nextEvent<PlayerWarning>(element, 'warning');
+    element.setAttribute('quality', 'ultra');
+    expect(await warned).toEqual({
+      code: 'ignored-attribute',
+      message: 'ignoring quality="ultra"; expected one of fast, balanced, high',
+    });
+    expect(element.quality).toBe('balanced');
+  });
+
   it('reports the settings in effect whether or not an attribute names them', () => {
     const element = create({ controls: '' });
     expect(element.stabilization).toBe('lock');
     expect(element.viewMode).toBe('raw-lenses');
+    expect(element.quality).toBe('balanced');
     expect(element.fov).toBe(90);
     expect(element.muted).toBe(false);
   });

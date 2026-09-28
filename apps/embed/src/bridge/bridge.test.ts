@@ -124,21 +124,24 @@ describe('the embed bridge over a message channel', () => {
     await waitFor(() => handle.state.status === 'idle', 'the unload');
   });
 
-  it('changes the view, view mode, stabilization and loop over the channel, reading choices as the element does', async () => {
+  it('changes the view, view mode, stabilization, quality and loop over the channel, reading choices as the element does', async () => {
     const { handle, element } = bridge();
     await handle.lookAt(30, 10);
     await handle.setViewMode('normal');
     await handle.zoom(1);
     await handle.setStabilization(' Horizon');
     await handle.setViewMode('equirectangular');
+    await handle.setQuality('High');
     await handle.setLoop(true);
     expect(handle.state.view).toMatchObject({ yaw: 30, pitch: 10 });
     expect(handle.state.view.fieldOfView).toBeLessThan(90);
     expect(handle.state.stabilization).toBe('horizon');
     expect(handle.state.viewMode).toBe('equirectangular');
+    expect(handle.state.quality).toBe('high');
     expect(element.loop).toBe(true);
     const state = await handle.getState();
     expect(state.viewMode).toBe('equirectangular');
+    expect(state.quality).toBe('high');
   });
 
   it('mirrors the sound as the player changes it', async () => {
@@ -155,6 +158,7 @@ describe('the embed bridge over a message channel', () => {
     const state = await handle.getState();
     expect(state.stabilization).toBe('lock');
     expect(state.viewMode).toBe('raw-lenses');
+    expect(state.quality).toBe('balanced');
   });
 
   it('rejects a command with a bad argument without breaking the others', async () => {
@@ -169,6 +173,10 @@ describe('the embed bridge over a message channel', () => {
     await expect(handle.setViewMode('stereographic')).rejects.toMatchObject({
       code: 'invalid-argument',
       message: 'embed command argument 0 must be one of raw-lenses, equirectangular, normal',
+    });
+    await expect(handle.setQuality('ultra')).rejects.toMatchObject({
+      code: 'invalid-argument',
+      message: 'embed command argument 0 must be one of fast, balanced, high',
     });
     await expect(handle.load({ src: 5 as unknown as string })).rejects.toMatchObject({
       code: 'invalid-argument',

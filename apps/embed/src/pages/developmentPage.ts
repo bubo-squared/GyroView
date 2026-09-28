@@ -1,4 +1,6 @@
+import { PICTURE_QUALITIES } from '@gyroview/core';
 import {
+  choiceOf,
   defineGyroView,
   GYRO_VIEW_TAG,
   type GyroViewElement,
@@ -16,6 +18,7 @@ interface DevelopmentPageParts {
   readonly urlForm: HTMLFormElement;
   readonly fileForm: HTMLFormElement;
   readonly samples: HTMLElement;
+  readonly quality: HTMLSelectElement;
   readonly status: HTMLElement;
   readonly metadata: HTMLElement;
   readonly warnings: HTMLElement;
@@ -57,6 +60,7 @@ export function startDevelopmentPage(): void {
     urlForm: part('form.url-source', HTMLFormElement),
     fileForm: part('form.file-source', HTMLFormElement),
     samples: part('.samples', HTMLElement),
+    quality: part('select.quality', HTMLSelectElement),
     status: part('.status', HTMLElement),
     metadata: part('.metadata', HTMLElement),
     warnings: part('.warnings', HTMLElement),
@@ -66,6 +70,7 @@ export function startDevelopmentPage(): void {
   bindUrlForm(parts);
   bindFileForm(parts);
   bindDebugPanel(parts);
+  bindQuality(parts);
   void listSamples(parts);
 }
 
@@ -121,6 +126,23 @@ function bindDebugPanel(parts: DevelopmentPageParts): void {
   }, STATUS_INTERVAL_MS);
 }
 
+/**
+ * The select and the element follow each other: a quality set by a script, or refused by the
+ * element, shows in the select as the one in effect.
+ */
+function bindQuality(parts: DevelopmentPageParts): void {
+  const { player, quality } = parts;
+  quality.value = player.quality;
+  quality.addEventListener('change', () => {
+    const chosen = choiceOf(quality.value, PICTURE_QUALITIES);
+    if (chosen) player.setQuality(chosen);
+    quality.value = player.quality;
+  });
+  player.addEventListener('qualitychange', () => {
+    quality.value = player.quality;
+  });
+}
+
 function showStatus(parts: DevelopmentPageParts, fps: number): void {
   const { player } = parts;
   const view = player.view;
@@ -131,7 +153,21 @@ function showStatus(parts: DevelopmentPageParts, fps: number): void {
     `view: yaw ${view.yaw.toFixed(1)} pitch ${view.pitch.toFixed(1)} fov ${view.fieldOfView.toFixed(1)}`,
     `view mode: ${player.viewMode}`,
     `stabilization: ${player.stabilization}`,
+    `quality: ${player.quality}`,
+    bufferLine(player),
   ].join('\n');
+}
+
+/**
+ * The drawing buffer beside the element's layout box and the screen's ratio: the picture is
+ * scaled once more by the compositor wherever the two do not match.
+ */
+function bufferLine(player: GyroViewElement): string {
+  const canvas = player.shadowRoot?.querySelector('canvas');
+  const buffer = canvas ? `${canvas.width}x${canvas.height}` : 'none';
+  const { width, height } = player.getBoundingClientRect();
+  const css = `${width.toFixed(1)}x${height.toFixed(1)} css px`;
+  return `buffer: ${buffer} device px for ${css} at ${globalThis.devicePixelRatio}x`;
 }
 
 function appendLine(list: HTMLElement, text: string): void {

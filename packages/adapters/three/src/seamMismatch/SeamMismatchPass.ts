@@ -1,12 +1,15 @@
 import {
+  degreesToRadians,
   ensureIndexInRange,
   ensureInvariant,
   MISMATCH_CAP,
   SEAM_BIN_COUNT,
   type Matrix3 as CoreMatrix3,
   type SeamBinCosts,
+  type SeamCandidates,
   type SeamMismatchMeter,
   type SeamMismatchRequest,
+  type StripShift,
 } from '@gyroview/core';
 import {
   Camera,
@@ -27,7 +30,12 @@ import { decodeBinCosts } from './decodeBinCosts';
 import { compileAndProve } from '../compileAndProve';
 import { createFullscreenTriangle, createPassMaterial } from '../fullscreenPass';
 import { renderInto } from '../renderInto';
-import { MAX_LENSES, type RendererUniforms } from '../rendererUniforms';
+import {
+  CANDIDATE_ROTATIONS,
+  CANDIDATE_SHIFTS,
+  MAX_LENSES,
+  type RendererUniforms,
+} from '../rendererUniforms';
 import { RGBA_CHANNELS } from '../seamMeter/rowMeans';
 import { SEAM_MISMATCH } from '../shaderPrograms';
 
@@ -52,6 +60,7 @@ const COMPARED_LENSES = 2;
  */
 export interface SeamMismatchUniforms extends RendererUniforms {
   readonly uCandidateLens: IUniform<number>;
+  readonly uCandidateKind: IUniform<number>;
   readonly uCandidateCount: IUniform<number>;
   readonly uCandidates: IUniform<DataTexture>;
   readonly uMismatchGain: IUniform<Vector3[]>;
@@ -65,6 +74,7 @@ export function createSeamMismatchUniforms(
   return {
     ...base,
     uCandidateLens: { value: 0 },
+    uCandidateKind: { value: CANDIDATE_ROTATIONS },
     uCandidateCount: { value: 0 },
     uCandidates: { value: candidates },
     uMismatchGain: { value: Array.from({ length: MAX_LENSES }, () => new Vector3(1, 1, 1)) },
@@ -127,11 +137,10 @@ export class SeamMismatchPass implements SeamMismatchMeter {
     this.apply(request);
     const costs: SeamBinCosts[] = [];
     try {
-      for (let start = 0; start < request.rotations.length; start += MAX_CANDIDATES_PER_BATCH) {
-        const batch = request.rotations.slice(start, start + MAX_CANDIDATES_PER_BATCH);
+      for (const batch of batchesOf(request.candidates)) {
         await this.readBatch(batch);
         if (this.isDisposed) return undefined;
-        costs.push(...decodeBinCosts(this.pixels, batch.length));
+        costs.push(...decodeBinCosts(this.pixels, countOf(batch)));
       }
     } catch (error) {
       // A lost context, or a disposal before or while reading back, fails the read-back; the
@@ -159,14 +168,17 @@ export class SeamMismatchPass implements SeamMismatchMeter {
       `${request.gains.length} gains for ${this.lensCount} lenses`,
     );
     this.uniforms.uCandidateLens.value = request.lensIndex;
+    this.uniforms.uCandidateKind.value =
+      request.candidates.kind === 'rotations' ? CANDIDATE_ROTATIONS : CANDIDATE_SHIFTS;
     for (const [lensIndex, gain] of request.gains.entries()) {
       this.uniforms.uMismatchGain.value[lensIndex]?.set(...gain);
     }
   }
 
-  private async readBatch(rotations: readonly CoreMatrix3[]): Promise<void> {
-    this.writeCandidates(rotations);
-    this.uniforms.uCandidateCount.value = rotations.length;
+  private async readBatch(batch: SeamCandidates): Promise<void> {
+    if (batch.kind === 'rotations') this.writeRotations(batch.rotations);
+    else this.writeShifts(batch.shifts);
+    this.uniforms.uCandidateCount.value = countOf(batch);
     renderInto(this.renderer, this.target, () => {
       this.renderer.render(this.scene, this.camera);
     });
@@ -175,7 +187,7 @@ export class SeamMismatchPass implements SeamMismatchMeter {
       0,
       0,
       SEAM_BIN_COUNT,
-      rotations.length,
+      countOf(batch),
       this.pixels,
     );
   }
@@ -184,7 +196,7 @@ export class SeamMismatchPass implements SeamMismatchMeter {
    * Column by column, as GLSL builds a matrix from its columns: texel `c` of row `k` is column
    * `c` of candidate `k`, the core's row-major matrix read down its columns.
    */
-  private writeCandidates(rotations: readonly CoreMatrix3[]): void {
+  private writeRotations(rotations: readonly CoreMatrix3[]): void {
     for (const [candidate, matrix] of rotations.entries()) {
       for (let column = 0; column < MATRIX_COLUMNS; column += 1) {
         const offset = (candidate * MATRIX_COLUMNS + column) * RGBA_CHANNELS;
@@ -196,4 +208,36 @@ export class SeamMismatchPass implements SeamMismatchMeter {
     }
     this.candidates.needsUpdate = true;
   }
+
+  /**
+   * A slide's two angles, in radians, in the first texel of its row.
+   */
+  private writeShifts(shifts: readonly StripShift[]): void {
+    for (const [candidate, shift] of shifts.entries()) {
+      const offset = candidate * MATRIX_COLUMNS * RGBA_CHANNELS;
+      this.candidateData[offset] = degreesToRadians(shift.along);
+      this.candidateData[offset + 1] = degreesToRadians(shift.across);
+    }
+    this.candidates.needsUpdate = true;
+  }
+}
+
+function countOf(candidates: SeamCandidates): number {
+  return candidates.kind === 'rotations' ? candidates.rotations.length : candidates.shifts.length;
+}
+
+/**
+ * The candidates in batches the target has rows for, of the same kind.
+ */
+function batchesOf(candidates: SeamCandidates): SeamCandidates[] {
+  const batches: SeamCandidates[] = [];
+  for (let start = 0; start < countOf(candidates); start += MAX_CANDIDATES_PER_BATCH) {
+    const end = start + MAX_CANDIDATES_PER_BATCH;
+    batches.push(
+      candidates.kind === 'rotations'
+        ? { kind: 'rotations', rotations: candidates.rotations.slice(start, end) }
+        : { kind: 'shifts', shifts: candidates.shifts.slice(start, end) },
+    );
+  }
+  return batches;
 }

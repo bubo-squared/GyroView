@@ -1,20 +1,27 @@
 import {
   buildStitchingSetup,
   clamp,
+  correctedLensRotation,
   degrees,
   degreesToRadians,
+  fitPoseToShifts,
   IDENTITY_MATRIX3,
+  localShiftsOf,
   multiplyMatrices,
   rotationAboutZ,
   seamCostOf,
   seconds,
+  shiftGridOf,
   transformVector,
   transposeMatrix,
+  type BinShift,
   type CalibrationSet,
   type DecodedFrame,
   type LensCalibration,
   type Matrix3,
+  type PoseDelta,
   type SeamBinCosts,
+  type SeamCandidates,
   type SeamMismatchMeter,
   type Vector3,
 } from '@gyroview/core';
@@ -29,6 +36,7 @@ const FRAME_SIZE = 256;
 const CANVAS = { width: 64, height: 32 };
 const UNIT_GAIN: Vector3 = [1, 1, 1];
 const DOUBLED_GAIN: Vector3 = [2, 2, 2];
+const UNIT_GAINS: readonly Vector3[] = [UNIT_GAIN, UNIT_GAIN];
 /**
  * The turn painted into the back lens beyond its calibration, and the sweep that must find it.
  */
@@ -44,6 +52,17 @@ const AGREEMENT = 0.01;
  * the range, the cap.
  */
 const CLEAR_DISAGREEMENT = 0.1;
+/**
+ * A tenth of a degree, the resolution the refinement is asked for.
+ */
+const FIT_TOLERANCE = 0.1;
+/**
+ * One percent more radius at 90 degrees from the axis is 0.9 degrees of slide across the ring.
+ */
+const SCALE_SLIDE_MIN = 0.6;
+const SCALE_SLIDE_MAX = 1.2;
+const CLEAR_RATIO = 3;
+const HAIR = 1e-9;
 
 /**
  * The scene both lenses record: a luma that varies 24 times around the ring and tilts across
@@ -67,6 +86,10 @@ interface Recording {
   readonly calibration: CalibrationSet;
   readonly bodyToLens: Matrix3;
   readonly brightness?: number;
+  /**
+   * How much larger the lens draws its image than its calibration says.
+   */
+  readonly radialScale?: number;
 }
 
 /**
@@ -78,6 +101,7 @@ function recordedFrame({
   calibration,
   bodyToLens,
   brightness = 1,
+  radialScale = 1,
 }: Recording): DecodedFrame<VideoFrame> {
   const lensToBody = transposeMatrix(bodyToLens);
   const side = calibration.canvas.height;
@@ -85,7 +109,7 @@ function recordedFrame({
   const { principalPoint, halfFieldOfView } = lens.model;
   const rim = lens.model.project([Math.sin(halfFieldOfView), 0, Math.cos(halfFieldOfView)]);
   if (!rim) throw new Error('the lens images its own rim');
-  const edgeRadius = rim.x - principalPoint.x;
+  const edgeRadius = (rim.x - principalPoint.x) * radialScale;
   return paintedFrame(FRAME_SIZE, (column, row) => {
     const dx = squareX + ((column + 0.5) / FRAME_SIZE) * side - principalPoint.x;
     const dy = ((row + 0.5) / FRAME_SIZE) * side - principalPoint.y;
@@ -110,6 +134,19 @@ interface Scene {
   readonly backPose: Matrix3;
 }
 
+/**
+ * How the back lens is painted beyond its calibration.
+ */
+interface BackLens {
+  readonly turn?: Matrix3;
+  readonly brightness?: number;
+  readonly radialScale?: number;
+}
+
+function rotationsOf(rotations: readonly Matrix3[]): SeamCandidates {
+  return { kind: 'rotations', rotations };
+}
+
 function turnOf(deltaDegrees: number): Matrix3 {
   return rotationAboutZ(degreesToRadians(degrees(deltaDegrees)));
 }
@@ -128,21 +165,40 @@ function costOf(bins: SeamBinCosts | undefined): number {
   return cost;
 }
 
+/**
+ * The shift field of the frames on screen over the default grid.
+ */
+async function fieldOf(meter: SeamMismatchMeter): Promise<BinShift[]> {
+  const measured = await meter.measure({
+    lensIndex: 1,
+    candidates: { kind: 'shifts', shifts: shiftGridOf() },
+    gains: UNIT_GAINS,
+  });
+  if (!measured) throw new Error('the strip was not measured');
+  return localShiftsOf(measured);
+}
+
+function expectDelta(actual: PoseDelta, expected: PoseDelta): void {
+  expect(Math.abs(actual.yaw - expected.yaw)).toBeLessThan(FIT_TOLERANCE);
+  expect(Math.abs(actual.pitch - expected.pitch)).toBeLessThan(FIT_TOLERANCE);
+  expect(Math.abs(actual.roll - expected.roll)).toBeLessThan(FIT_TOLERANCE);
+}
+
 describe('SeamMismatchPass', () => {
   const canvases: HTMLCanvasElement[] = [];
   const renderers: ThreeFrameRenderer[] = [];
   const frames: DecodedFrame<VideoFrame>[] = [];
 
   /**
-   * Both lenses recording the scene, the back one turned beyond its calibration by `backTurn`
-   * (in the body frame) and dimmed to `backBrightness`, on screen with a meter over them.
+   * Both lenses recording the scene, the back one painted beyond its calibration as `back`
+   * says, on screen with a meter over them.
    */
-  function openScene(backTurn: Matrix3 = IDENTITY_MATRIX3, backBrightness = 1): Scene {
+  function openScene(back: BackLens = {}): Scene {
     const calibration = syntheticCalibration();
     const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
-    const [front, back] = calibration.lenses;
-    const [frontStitch, backStitch] = setup.lenses;
-    if (!front || !back || !frontStitch || !backStitch) throw new Error('two lenses expected');
+    const [front, rear] = calibration.lenses;
+    const [frontStitch, rearStitch] = setup.lenses;
+    if (!front || !rear || !frontStitch || !rearStitch) throw new Error('two lenses expected');
     const canvas = document.createElement('canvas');
     canvas.width = CANVAS.width;
     canvas.height = CANVAS.height;
@@ -150,18 +206,19 @@ describe('SeamMismatchPass', () => {
     canvases.push(canvas);
     const renderer = ThreeFrameRenderer.create(canvas, setup);
     renderers.push(renderer);
+    const { turn = IDENTITY_MATRIX3, ...painting } = back;
     const pair = [
       recordedFrame({ lens: front, calibration, bodyToLens: frontStitch.rotation }),
       recordedFrame({
-        lens: back,
+        lens: rear,
         calibration,
-        bodyToLens: multiplyMatrices(backStitch.rotation, backTurn),
-        brightness: backBrightness,
+        bodyToLens: multiplyMatrices(rearStitch.rotation, turn),
+        ...painting,
       }),
     ];
     frames.push(...pair);
     renderer.present({ pair: { timestamp: seconds(0), frames: pair }, mediaTime: seconds(0) });
-    return { meter: renderer.createSeamMismatchMeter(), backPose: backStitch.rotation };
+    return { meter: renderer.createSeamMismatchMeter(), backPose: rearStitch.rotation };
   }
 
   afterEach(() => {
@@ -172,41 +229,76 @@ describe('SeamMismatchPass', () => {
 
   it('finds no disagreement at the poses the lenses recorded with, over a strip both image whole', async () => {
     const { meter, backPose } = openScene();
-    const [bins] =
-      (await meter.measure({
-        lensIndex: 1,
-        rotations: [backPose],
-        gains: [UNIT_GAIN, UNIT_GAIN],
-      })) ?? [];
+    const measured = await meter.measure({
+      lensIndex: 1,
+      candidates: rotationsOf([backPose]),
+      gains: UNIT_GAINS,
+    });
+    const [bins] = measured ?? [];
     if (!bins) throw new Error('the strip was not measured');
     for (const bin of bins) expect(bin.validity).toBe(1);
     expect(costOf(bins)).toBeLessThan(AGREEMENT);
   });
 
   it('finds the turn the back lens recorded with among the candidates, to a tenth of a degree', async () => {
-    const { meter, backPose } = openScene(turnOf(PAINTED_TURN_DEGREES));
+    const { meter, backPose } = openScene({ turn: turnOf(PAINTED_TURN_DEGREES) });
     const deltas = sweepDeltas();
+    const candidates = deltas.map((delta) => multiplyMatrices(backPose, turnOf(delta)));
     const measured = await meter.measure({
       lensIndex: 1,
-      rotations: deltas.map((delta) => multiplyMatrices(backPose, turnOf(delta))),
-      gains: [UNIT_GAIN, UNIT_GAIN],
+      candidates: rotationsOf(candidates),
+      gains: UNIT_GAINS,
     });
     const costs = (measured ?? []).map((bins) => costOf(bins));
     const best = costs.indexOf(Math.min(...costs));
-    expect(Math.abs((deltas[best] ?? NaN) - PAINTED_TURN_DEGREES)).toBeLessThanOrEqual(
-      SWEEP_STEP_DEGREES + 1e-9,
-    );
+    const found = deltas[best] ?? NaN;
+    expect(Math.abs(found - PAINTED_TURN_DEGREES)).toBeLessThanOrEqual(SWEEP_STEP_DEGREES + HAIR);
     const atCalibration = costs[deltas.indexOf(0)] ?? NaN;
-    expect(atCalibration).toBeGreaterThan(3 * (costs[best] ?? NaN));
+    expect(atCalibration).toBeGreaterThan(CLEAR_RATIO * (costs[best] ?? NaN));
   });
 
   it('applies the gains before comparing, so a darker back lens agrees at its gain', async () => {
-    const { meter, backPose } = openScene(IDENTITY_MATRIX3, 0.5);
-    const request = { lensIndex: 1, rotations: [backPose] };
-    const [matched] = (await meter.measure({ ...request, gains: [UNIT_GAIN, DOUBLED_GAIN] })) ?? [];
-    const [unmatched] = (await meter.measure({ ...request, gains: [UNIT_GAIN, UNIT_GAIN] })) ?? [];
-    expect(costOf(matched)).toBeLessThan(AGREEMENT);
-    expect(costOf(unmatched)).toBeGreaterThan(CLEAR_DISAGREEMENT);
+    const { meter, backPose } = openScene({ brightness: 0.5 });
+    const request = { lensIndex: 1, candidates: rotationsOf([backPose]) };
+    const matched = await meter.measure({ ...request, gains: [UNIT_GAIN, DOUBLED_GAIN] });
+    const unmatched = await meter.measure({ ...request, gains: UNIT_GAINS });
+    expect(costOf(matched?.[0])).toBeLessThan(AGREEMENT);
+    expect(costOf(unmatched?.[0])).toBeGreaterThan(CLEAR_DISAGREEMENT);
+  });
+
+  it('slides the back lens’s sampling along the ring: a lens turned by a roll aligns at that slide in every bin', async () => {
+    const { meter } = openScene({ turn: turnOf(PAINTED_TURN_DEGREES) });
+    const shifts = sweepDeltas().map((along) => ({ along: degrees(along), across: degrees(0) }));
+    const measured = await meter.measure({
+      lensIndex: 1,
+      candidates: { kind: 'shifts', shifts },
+      gains: UNIT_GAINS,
+    });
+    if (!measured) throw new Error('the strip was not measured');
+    const binCount = measured[0]?.length ?? 0;
+    for (let bin = 0; bin < binCount; bin += 1) {
+      const costs = measured.map((byBin) => byBin[bin]?.mismatch ?? Infinity);
+      const best = shifts[costs.indexOf(Math.min(...costs))]?.along ?? NaN;
+      expect(Math.abs(best - PAINTED_TURN_DEGREES)).toBeLessThanOrEqual(SWEEP_STEP_DEGREES + HAIR);
+    }
+  });
+
+  it('recovers a turn about every axis from the shift field, with no symmetric part', async () => {
+    const injected: PoseDelta = { yaw: degrees(0.4), pitch: degrees(-0.3), roll: degrees(0.7) };
+    const { meter } = openScene({ turn: correctedLensRotation(IDENTITY_MATRIX3, injected) });
+    const fit = fitPoseToShifts(await fieldOf(meter));
+    if (!fit) throw new Error('no fit');
+    expectDelta(fit.delta, injected);
+    expect(Math.abs(fit.symmetric)).toBeLessThan(FIT_TOLERANCE);
+  });
+
+  it('reads a lens drawn larger than its calibration as a symmetric slide, not a turn', async () => {
+    const { meter } = openScene({ radialScale: 1.01 });
+    const fit = fitPoseToShifts(await fieldOf(meter));
+    if (!fit) throw new Error('no fit');
+    expectDelta(fit.delta, { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) });
+    expect(Math.abs(fit.symmetric)).toBeGreaterThan(SCALE_SLIDE_MIN);
+    expect(Math.abs(fit.symmetric)).toBeLessThan(SCALE_SLIDE_MAX);
   });
 
   it('measures more candidates than fit one batch, in their order', async () => {
@@ -214,8 +306,8 @@ describe('SeamMismatchPass', () => {
     const count = MAX_CANDIDATES_PER_BATCH + 5;
     const measured = await meter.measure({
       lensIndex: 1,
-      rotations: Array.from({ length: count }, () => backPose),
-      gains: [UNIT_GAIN, UNIT_GAIN],
+      candidates: rotationsOf(Array.from({ length: count }, () => backPose)),
+      gains: UNIT_GAINS,
     });
     expect(measured).toHaveLength(count);
     const costs = (measured ?? []).map((bins) => costOf(bins));
@@ -224,16 +316,14 @@ describe('SeamMismatchPass', () => {
 
   it('refuses a lens the setup does not have', async () => {
     const { meter, backPose } = openScene();
-    await expect(
-      meter.measure({ lensIndex: 2, rotations: [backPose], gains: [UNIT_GAIN, UNIT_GAIN] }),
-    ).rejects.toMatchObject({ code: 'index-out-of-range' });
+    const request = { lensIndex: 2, candidates: rotationsOf([backPose]), gains: UNIT_GAINS };
+    await expect(meter.measure(request)).rejects.toMatchObject({ code: 'index-out-of-range' });
   });
 
   it('measures nothing once disposed', async () => {
     const { meter, backPose } = openScene();
     meter.dispose();
-    await expect(
-      meter.measure({ lensIndex: 1, rotations: [backPose], gains: [UNIT_GAIN, UNIT_GAIN] }),
-    ).resolves.toBeUndefined();
+    const request = { lensIndex: 1, candidates: rotationsOf([backPose]), gains: UNIT_GAINS };
+    await expect(meter.measure(request)).resolves.toBeUndefined();
   });
 });

@@ -6,6 +6,7 @@ import {
   IDENTITY_MATRIX3,
   planeHalfExtentOf,
   SEAM_BIN_COLUMNS,
+  SEAM_CELL_SUBSAMPLES,
   SEAM_STRIP_ROWS,
   SEAM_STRIP_STEP,
   SEAM_STRIP_THETA_START,
@@ -31,6 +32,11 @@ export const LENS_TEXTURES = 2;
 
 const LENS_MEI = 0;
 const LENS_RADIAL_POLYNOMIAL = 1;
+/**
+ * What a seam mismatch candidate replaces for its lens: the pose, or where it is sampled.
+ */
+export const CANDIDATE_ROTATIONS = 0;
+export const CANDIDATE_SHIFTS = 1;
 
 /**
  * The constants the GLSL sources refer to, injected as preprocessor defines so that this file is
@@ -42,8 +48,11 @@ export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntri
   ['LENS_RADIAL_POLYNOMIAL', LENS_RADIAL_POLYNOMIAL],
   ['SEAM_STRIP_ROWS', SEAM_STRIP_ROWS],
   ['SEAM_BIN_COLUMNS', SEAM_BIN_COLUMNS],
+  ['SEAM_CELL_SUBSAMPLES', SEAM_CELL_SUBSAMPLES],
   ['SEAM_STRIP_STEP_RADIANS', degreesToRadians(SEAM_STRIP_STEP)],
   ['SEAM_STRIP_THETA_START_RADIANS', degreesToRadians(SEAM_STRIP_THETA_START)],
+  ['CANDIDATE_ROTATIONS', CANDIDATE_ROTATIONS],
+  ['CANDIDATE_SHIFTS', CANDIDATE_SHIFTS],
 ]);
 
 /**

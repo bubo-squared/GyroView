@@ -86,7 +86,7 @@ export type {
   LensCalibration,
 } from './domain/optics/LensCalibration';
 export type { LensModel, LensModelKind, LensProjectionParameters } from './domain/optics/LensModel';
-export { lensRotation } from './domain/optics/lensPose';
+export { lensRotation, mirroredRoll } from './domain/optics/lensPose';
 export {
   correctedLensRotation,
   isZeroDelta,

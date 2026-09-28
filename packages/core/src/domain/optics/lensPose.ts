@@ -6,23 +6,47 @@ import {
   rotationAboutZ,
   type Matrix3,
 } from '../../shared/math/Matrix3';
-import { degrees, degreesToRadians, HALF_TURN } from '../../shared/units/angle';
+import {
+  degrees,
+  degreesToRadians,
+  HALF_TURN,
+  QUARTER_TURN,
+  type Degrees,
+} from '../../shared/units/angle';
+
+/**
+ * The roll the rotation applies for a calibration roll: mirrored about the sensor's mounting,
+ * the quarter turn nearest to it. The strings measure the in-plane roll in the other sense than
+ * the lens frame turns: registering each X5 lens alone on Insta360 Studio's stitch of the sailing
+ * recording, about its own axis, found the back lens turned 1.0 degree from the front one as
+ * written and 0.04 degrees apart mirrored (ADR 0025). The mounting itself is kept, so a sensor mounted
+ * sideways, as on the X5, or upright stays so.
+ */
+export function mirroredRoll(roll: Degrees): Degrees {
+  const mounting = Math.round(roll / QUARTER_TURN) * QUARTER_TURN;
+  return degrees(2 * mounting - roll);
+}
 
 /**
  * Turns directions in the camera body frame (x right, y down, z forward along lens 0's optical
  * axis) into the lens frame the {@link LensCalibration.model} projects from.
  *
- * Convention checked on the X5 office recording (ADR 0008): the lenses sit on opposite faces
- * with the back sensor mounted upside down relative to the front one, so lens `i` first turns
- * half a turn per lens index about the body's lateral axis; then the calibration's yaw (about
- * y), pitch (about x) and roll (about the optical axis) are applied in that order. The X5
- * strings carry a roll near 90 degrees for both lenses and no half turn, which is why the
- * facing is part of the convention.
+ * The calibration's yaw (about the body's vertical) and pitch (about its lateral axis) turn each
+ * lens in the body frame, alike for both lenses; then lens `i` turns half a turn per lens index
+ * about the lateral axis to face backwards, its sensor upside down relative to the front one
+ * (ADR 0008); then the roll turns the image about the optical axis, read mirrored
+ * ({@link mirroredRoll}). Registering each X5 lens alone on Insta360 Studio's stitch of the
+ * sailing recording measured this order (ADR 0025): with the half turn first, as before, the
+ * back lens's yaw acted in the other sense and the lenses sat 1.1 degrees apart about the
+ * vertical. The X5 strings carry a roll near 90 degrees for both lenses and no half turn, which
+ * is why the facing is part of the convention.
  */
 export function lensRotation(lens: LensCalibration): Matrix3 {
   const { yaw, pitch, roll } = lens.orientation;
-  const facing = rotationAboutX(degreesToRadians(degrees(HALF_TURN * lens.lensIndex)));
-  const yawed = multiplyMatrices(rotationAboutY(degreesToRadians(yaw)), facing);
+  const yawed = rotationAboutY(degreesToRadians(yaw));
   const pitched = multiplyMatrices(rotationAboutX(degreesToRadians(pitch)), yawed);
-  return multiplyMatrices(rotationAboutZ(degreesToRadians(roll)), pitched);
+  const facing = rotationAboutX(degreesToRadians(degrees(HALF_TURN * lens.lensIndex)));
+  const faced = multiplyMatrices(facing, pitched);
+  const rolled = rotationAboutZ(degreesToRadians(mirroredRoll(roll)));
+  return multiplyMatrices(rolled, faced);
 }

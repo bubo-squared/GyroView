@@ -1,6 +1,7 @@
 # ADR 0025: The calibration's roll is read mirrored, and yaw and pitch turn the lenses in the body frame
 
-Status: accepted (2026-09-28); amends the lens pose of ADR 0008
+Status: accepted (2026-09-28), measured on a second unit (2026-09-29); amends the lens pose of ADR
+0008
 
 ## Context
 
@@ -67,11 +68,36 @@ the front lens's. The pitch keeps its sign: mirroring it moves no median outside
   sailing unit, 1.05 on the office unit), which levels the horizon under stabilization by as much.
   That absolute roll is not measured here: the registration sees only the lenses against each
   other.
-- The measurement is one X5 unit against one Studio export; the office unit agrees with the old
-  roadmap figure. X3 and X4 strings and their roll mountings are unverified; mirroring about the
-  nearest quarter turn keeps any mounting and changes only the residual.
+- The roll is measured on two X5 units against their Studio exports, the yaw and pitch on one. X3
+  and X4 strings and their roll mountings are unverified; mirroring about the nearest quarter turn
+  keeps any mounting and changes only the residual.
 - The pitch sign and the Euler order remain conventions; a reference with far, textured content
   near both lens axes would measure them.
+
+## On a second unit (2026-09-29)
+
+Insta360 Studio's export of the office recording (another X5 unit, 5.7K at 60 fps) joined the
+measurement. Cross-correlating the frame-to-frame change of each export and of both lenses showed
+that Studio keeps the recording's clock at its own frame rate: the sailing export's frame at `t` is
+the recording's frame at `t`, not at `t * 30 / 29.97` as the table above assumed, and the office
+export starts 2.98 s into its recording. With the times corrected, the sailing medians are
+(+0.02, −0.01, −0.07) degrees about (x, y, z), 13 frames.
+
+On the office unit, 17 frames, the relative turn about the lens axis:
+
+| Reading                                 | About z               |
+| --------------------------------------- | --------------------- |
+| this ADR                                | +0.09 (−0.31 to 0.31) |
+| roll as written                         | +0.88 (0.58 to 1.34)  |
+| only the back lens's roll read mirrored | +0.91 (0.60 to 1.19)  |
+| ADR 0008 as it was                      | +0.84 (0.52 to 1.14)  |
+
+On the sailing unit the front lens's two readings differ by 0.14 degrees, too little to tell apart;
+on the office unit by 1.05, and only the reading of this ADR, both rolls mirrored, registers the
+lenses alike. The turns about x and y cannot be read on this clip: the person holding the camera
+stands half a metre in front of one lens and a door as near faces the other, within the cones the
+two turns are read in, and every reading leaves about (+1.2, −1.5) degrees there, which no reading
+of the signs explains.
 
 ## Alternatives considered
 

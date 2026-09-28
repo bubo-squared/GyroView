@@ -53,12 +53,11 @@ are covered by synthetic fixtures built from the documented format variants.
 - Stitching is a fixed template: objects closer than about three metres show parallax
   ghosting in the blend band, and people within a metre of the camera are cut or doubled
   along the seam.
-- The seam on the X5 files also shows a vertical step at the side seams and a strip missing
-  near the nadir and doubled near the zenith. Measured across the overlap band (2026-09-25),
-  these amount to a turn of the back lens of about 1.0 degree about lens 0's axis (twice the
-  factory roll difference between the lenses, so a sign convention somewhere in ADR 0008's
-  reading of the calibration angles) plus an offset along the seam of 2 to 4 degrees that
-  carries the scene's parallax on top of a scale error of about 1 percent. A rigid refinement
+- The vertical step at the side seams, the strip missing near the nadir and the doubling near
+  the zenith of the X5 files came from the lens pose: the calibration's roll read in the wrong
+  sense and the back lens's yaw applied after its half turn. Measured against Insta360 Studio's
+  stitch of the sailing recording (ADR 0025), the two lenses now agree to about 0.3 degrees,
+  from 1.8. What remains at the seams is parallax, and the pitch sign is a convention. A rigid refinement
   of the back lens's pose and the radial scale, estimated from the seam while the recording
   plays, was built and withdrawn the same day: on the office recording it removed the step,
   on the sailing recording the people within a metre of the camera dominated the estimate,

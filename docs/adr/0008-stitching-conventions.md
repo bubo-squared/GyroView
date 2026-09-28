@@ -2,6 +2,8 @@
 
 Status: accepted (2026-09-18), verified on the X5 office and sailing recordings and the office LRV.
 The canvas-window decision below is superseded by ADR 0014: the frame shows the whole square.
+The lens pose is amended by ADR 0025: yaw and pitch turn the lenses in the body frame before the
+half turn, and the roll is read mirrored, as measured against Insta360 Studio's stitch.
 
 ## Context
 

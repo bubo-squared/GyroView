@@ -13,7 +13,9 @@ The first release:
   texts and names its overlays as parts. It opens on the raw lenses; the view menu offers them
   first, then the equirectangular panorama and the normal view. The stitch reads the legacy
   calibration string's radius as 96 degrees from the lens axis, where Insta360 Studio's own stitch
-  puts the far field; `ready` reports `offset` as the calibration version. The `quality`
+  puts the far field; `ready` reports `offset` as the calibration version. The lens pose reads
+  the calibration's roll mirrored and turns both lenses alike by their yaw and pitch, which
+  removes the step at the side seams of the X5 recordings. The `quality`
   attribute (`fast`, `balanced`, `high`, with `setQuality` and `qualitychange`) sets how finely
   the lens images are read and how many device pixels are drawn; `balanced` reads them through a
   mip chain along each pixel's footprint, so fine detail no longer shimmers.

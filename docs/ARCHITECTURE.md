@@ -73,7 +73,7 @@ ports and application code.
 **`optics`: lenses and calibration.** A `CalibrationSet` holds one `LensCalibration` per lens;
 each lens has a `LensModel` strategy (`MeiModel`, `PolynomialModel`, `EquidistantModel`) that maps a
 direction to a canvas pixel and also exposes its parameters for the shader. `lensPose` gives
-the body-to-lens rotation from the calibration's yaw, pitch and roll (ADR 0008). `gainMatch`
+the body-to-lens rotation from the calibration's yaw, pitch and roll (ADR 0008, ADR 0025). `gainMatch`
 holds the exposure-matching model (ADR 0012).
 
 **`motion`: time and orientation.** `CaptureClock` relates the camera's microsecond clock to

@@ -16,7 +16,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { saveMeasurement } from '../browser/artifacts';
 import { openSample } from '../browser/realRecordingSupport';
 import { equirectangularRendering } from '../browser/rendering';
-import { OFFICE_5K7_60, SAILING_8K_30 } from '../browser/sampleUrls';
+import { KRNJACA_8K_30, OFFICE_5K7_60, SAILING_8K_30 } from '../browser/sampleUrls';
 import { closeMoment, decodeMoment } from '../browser/SharedSample';
 import { worldMovement } from '../browser/worldMovement';
 
@@ -106,6 +106,7 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
   for (const [slug, sample, times] of [
     ['sailing', SAILING_8K_30, [20, 55, 85, 135, 170]],
     ['office', OFFICE_5K7_60, [3, 45, 120, 210, 240]],
+    ['krnjaca', KRNJACA_8K_30, [20, 60, 100, 140, 180]],
   ] as const) {
     it(`ranks the configured X5 frame first on the ${sample.name}`, async (context) => {
       const opened = await openSample(context, sample);

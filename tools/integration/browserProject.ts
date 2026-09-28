@@ -24,7 +24,7 @@ async function saveArtifact(_context: unknown, name: string, dataUrl: string): P
   await writeFile(target, Buffer.from(payload, 'base64'));
   return target;
 }
-const SAMPLE_FOLDERS = ['office', 'sailing'].map((name) =>
+const SAMPLE_FOLDERS = ['office', 'sailing', 'krnjaca-c2'].map((name) =>
   fileURLToPath(new URL(`../../samples/${name}`, import.meta.url)),
 );
 

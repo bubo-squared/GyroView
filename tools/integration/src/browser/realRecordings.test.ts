@@ -36,7 +36,7 @@ import {
   motionOf,
   type EquirectangularRendering,
 } from './rendering';
-import { OFFICE_5K7_60, OFFICE_PROXY, SAILING_8K_30 } from './sampleUrls';
+import { KRNJACA_8K_30, OFFICE_5K7_60, OFFICE_PROXY, SAILING_8K_30 } from './sampleUrls';
 import { SharedSample } from './SharedSample';
 import { worldMovement } from './worldMovement';
 
@@ -87,6 +87,7 @@ const MAX_LOCKED_MOVEMENT = 0.75;
 const office = new SharedSample(OFFICE_5K7_60);
 const proxy = new SharedSample(OFFICE_PROXY);
 const sailing = new SharedSample(SAILING_8K_30);
+const krnjaca = new SharedSample(KRNJACA_8K_30);
 const cleanups: (() => void)[] = [];
 
 afterEach(() => {
@@ -94,7 +95,7 @@ afterEach(() => {
 });
 
 afterAll(() => {
-  for (const shared of [office, proxy, sailing]) shared.dispose();
+  for (const shared of [office, proxy, sailing, krnjaca]) shared.dispose();
 });
 
 /**
@@ -179,6 +180,7 @@ describe('rendering the real recordings', () => {
     ['office', office],
     ['office-proxy', proxy],
     ['sailing', sailing],
+    ['krnjaca', krnjaca],
   ] as const) {
     const { name } = shared.sample;
 
@@ -220,6 +222,7 @@ describe('rendering the real recordings', () => {
   for (const [slug, shared] of [
     ['office', office],
     ['sailing', sailing],
+    ['krnjaca', krnjaca],
   ] as const) {
     it(`turns the ${shared.sample.name} under lock by exactly the orientation the player integrated`, async (context) => {
       const opened = await shared.open(context);

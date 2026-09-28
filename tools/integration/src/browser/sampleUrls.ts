@@ -33,6 +33,18 @@ export const SAILING_8K_30: SampleRecording = {
   codedSize: 3840,
 };
 
+/**
+ * A second recording of the sailing camera unit: what a correction estimated per unit must
+ * find again here.
+ */
+export const KRNJACA_8K_30: SampleRecording = {
+  name: 'krnjaca (X5, 8K30)',
+  url: new URL('../../../../samples/krnjaca-c2/VID_20260514_131639_00_004.insv', import.meta.url)
+    .href,
+  frameRate: 29.97,
+  codedSize: 3840,
+};
+
 export async function isServed(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, { method: 'HEAD' });

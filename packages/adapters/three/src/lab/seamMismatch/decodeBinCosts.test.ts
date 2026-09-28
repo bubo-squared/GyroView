@@ -2,7 +2,7 @@ import { MISMATCH_CAP, SEAM_BIN_COUNT } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
 import { decodeBinCosts } from './decodeBinCosts';
-import { RGBA_CHANNELS } from '../seamMeter/rowMeans';
+import { RGBA_CHANNELS } from '../../seamMeter/rowMeans';
 
 describe('decodeBinCosts', () => {
   it('reads each candidate row as one cost per bin, the mismatch from two bytes and the validity from one', () => {

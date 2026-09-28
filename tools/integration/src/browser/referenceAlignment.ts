@@ -1,25 +1,27 @@
+import type { LabRenderer } from '@gyroview/adapter-three/lab';
 import { readPixels } from '@gyroview/adapter-three/testing';
-import type { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   degrees,
   degreesToRadians,
+  FULL_TURN,
+  HALF_TURN,
   multiplyMatrices,
   rotationAboutX,
   rotationAboutY,
   rotationAboutZ,
+  type Degrees,
   type FramePair,
   type Matrix3,
-  type PoseDelta,
 } from '@gyroview/core';
 
-import { greyOf, type GreyImage } from './referenceFrames';
+import { greyOfDrawn, type GreyImage } from './referenceFrames';
 
 /**
  * A renderer showing one pair under the gyro's lock stabilization, on top of which the
  * alignment turns the panorama.
  */
-export interface Renderable {
-  readonly renderer: ThreeFrameRenderer;
+export interface LockedRendering {
+  readonly renderer: LabRenderer;
   readonly canvas: HTMLCanvasElement;
   readonly pair: FramePair<VideoFrame>;
   /**
@@ -29,61 +31,67 @@ export interface Renderable {
 }
 
 /**
- * The reference and the renderer compared against it.
+ * A turn of the whole panorama, about the view's axes: yaw about its vertical, then pitch, then
+ * roll about its forward axis.
  */
-interface Comparison {
-  readonly reference: GreyImage;
-  readonly renderable: Renderable;
+export interface ViewTurn {
+  readonly yaw: Degrees;
+  readonly pitch: Degrees;
+  readonly roll: Degrees;
 }
 
+export const NO_TURN: ViewTurn = { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) };
+
+/**
+ * The turn of GyroView's panorama that best matches the reference, and the far-field cost left.
+ */
 export interface Alignment {
-  /**
-   * The turn of GyroView's panorama that best matches the reference: view frame into body.
-   */
-  readonly rotation: PoseDelta;
+  readonly turn: ViewTurn;
   readonly cost: number;
-  readonly initialCost: number;
 }
 
 /**
- * The rows compared: the sky, the horizon and the far coast, above the boat.
+ * The rows compared: the upper band, above the horizon (the sky and the far coast over the
+ * boat, the ceiling and the upper walls indoors).
  */
 const FAR_FIELD_TOP = 0.15;
 const FAR_FIELD_BOTTOM = 0.5;
 const COMPARISON_STRIDE = 2;
 const COARSE_YAW_STEP_PIXELS = 4;
+/**
+ * A search from nothing takes a column search for the yaw and this many rounds of one-axis
+ * searches; a search from a turn already close takes one round.
+ */
 const DESCENT_ROUNDS = 3;
 /**
  * The angles tried around the current best in each round, per axis.
  */
 const DESCENT_EXTENT_DEGREES = 2;
 const DESCENT_STEP_DEGREES = 0.2;
-const FULL_TURN = 360;
-const HALF_TURN = 180;
 
-export function rotationOf(delta: PoseDelta): Matrix3 {
-  const yawed = rotationAboutY(degreesToRadians(delta.yaw));
-  const pitched = rotationAboutX(degreesToRadians(delta.pitch));
-  const rolled = rotationAboutZ(degreesToRadians(delta.roll));
+export function rotationOf(turn: ViewTurn): Matrix3 {
+  const yawed = rotationAboutY(degreesToRadians(turn.yaw));
+  const pitched = rotationAboutX(degreesToRadians(turn.pitch));
+  const rolled = rotationAboutZ(degreesToRadians(turn.roll));
   return multiplyMatrices(yawed, multiplyMatrices(pitched, rolled));
 }
 
 /**
  * GyroView's panorama under the given turn, as a grey image from the top down.
  */
-export function renderUnder(renderable: Renderable, delta: PoseDelta): GreyImage {
-  const { renderer, canvas, pair, lock } = renderable;
-  renderer.setStabilization(multiplyMatrices(lock, rotationOf(delta)));
+export function renderUnder(rendering: LockedRendering, turn: ViewTurn): GreyImage {
+  const { renderer, canvas, pair, lock } = rendering;
+  renderer.setStabilization(multiplyMatrices(lock, rotationOf(turn)));
   renderer.present({ pair, mediaTime: pair.timestamp });
   const size = { width: canvas.width, height: canvas.height };
-  return { ...size, data: greyOf(readPixels(canvas), true, size) };
+  return { ...size, data: greyOfDrawn(readPixels(canvas), size) };
 }
 
 /**
  * Mean absolute difference over the far-field rows, the candidate read `columnShift` columns
  * to the right of the reference.
  */
-export function farFieldCost(reference: GreyImage, candidate: GreyImage, columnShift = 0): number {
+function farFieldCost(reference: GreyImage, candidate: GreyImage, columnShift = 0): number {
   const { width, height } = reference;
   let total = 0;
   let count = 0;
@@ -125,56 +133,65 @@ function initialYaw(reference: GreyImage, atRest: GreyImage): number {
   return yaw > HALF_TURN ? yaw - FULL_TURN : yaw;
 }
 
-type Axis = keyof PoseDelta;
+type Axis = keyof ViewTurn;
 const AXES: readonly Axis[] = ['yaw', 'pitch', 'roll'];
 
-function withAxis(delta: PoseDelta, axis: Axis, value: number): PoseDelta {
-  return { ...delta, [axis]: degrees(value) };
+function withAxis(turn: ViewTurn, axis: Axis, value: number): ViewTurn {
+  return { ...turn, [axis]: degrees(value) };
+}
+
+/**
+ * The reference and the rendering compared against it.
+ */
+interface Comparison {
+  readonly reference: GreyImage;
+  readonly rendering: LockedRendering;
 }
 
 /**
  * Turns GyroView's panorama to match the reference: a column search for the yaw, then rounds
  * of one-axis searches around the best so far.
  */
-export function alignToReference(
+export function alignToReference(reference: GreyImage, rendering: LockedRendering): Alignment {
+  const yaw = initialYaw(reference, renderUnder(rendering, NO_TURN));
+  return descended({ reference, rendering }, withAxis(NO_TURN, 'yaw', yaw), DESCENT_ROUNDS);
+}
+
+/**
+ * As {@link alignToReference}, from a turn already close to the answer: one round.
+ */
+export function refineAlignment(
   reference: GreyImage,
-  renderable: Renderable,
-  from?: PoseDelta,
+  rendering: LockedRendering,
+  from: ViewTurn,
 ): Alignment {
-  const rest: PoseDelta = { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) };
-  const initialCost = farFieldCost(reference, renderUnder(renderable, rest));
-  const start = from ?? withAxis(rest, 'yaw', initialYaw(reference, renderUnder(renderable, rest)));
-  let best: Scored = {
-    delta: start,
-    cost: farFieldCost(reference, renderUnder(renderable, start)),
+  return descended({ reference, rendering }, from, 1);
+}
+
+function descended(comparison: Comparison, start: ViewTurn, rounds: number): Alignment {
+  let best: Alignment = {
+    turn: start,
+    cost: farFieldCost(comparison.reference, renderUnder(comparison.rendering, start)),
   };
-  const comparison = { reference, renderable };
-  // A start near the answer needs one round; the column search's yaw needs the rest.
-  const rounds = from ? 1 : DESCENT_ROUNDS;
   for (let round = 0; round < rounds; round += 1) {
     for (const axis of AXES) best = bestAlongAxis(comparison, best, axis);
   }
-  return { rotation: best.delta, cost: best.cost, initialCost };
-}
-
-interface Scored {
-  readonly delta: PoseDelta;
-  readonly cost: number;
+  return best;
 }
 
 /**
  * The best of the angles tried about one axis around the best so far, the best so far kept
  * on a tie.
  */
-function bestAlongAxis(comparison: Comparison, sofar: Scored, axis: Axis): Scored {
-  const { reference, renderable } = comparison;
+function bestAlongAxis(comparison: Comparison, sofar: Alignment, axis: Axis): Alignment {
+  const { reference, rendering } = comparison;
   let best = sofar;
-  const centre = sofar.delta[axis];
+  const centre = sofar.turn[axis];
   const steps = Math.round(DESCENT_EXTENT_DEGREES / DESCENT_STEP_DEGREES);
   for (let step = -steps; step <= steps; step += 1) {
-    const candidate = withAxis(sofar.delta, axis, centre + step * DESCENT_STEP_DEGREES);
-    const cost = farFieldCost(reference, renderUnder(renderable, candidate));
-    if (cost < best.cost) best = { delta: candidate, cost };
+    const candidate = withAxis(sofar.turn, axis, centre + step * DESCENT_STEP_DEGREES);
+    const cost = farFieldCost(reference, renderUnder(rendering, candidate));
+    if (cost < best.cost) best = { turn: candidate, cost };
   }
   return best;
 }

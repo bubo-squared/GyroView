@@ -19,23 +19,24 @@ export interface SeamAlignment {
   readonly disparities: readonly Degrees[];
 }
 
-export const FIXED_SEAM: SeamAlignment = {
+export const FIXED_SEAM_ALIGNMENT: SeamAlignment = {
   join: 'fixed',
   disparities: Array.from({ length: SEAM_BIN_COUNT }, () => degrees(0)),
 };
 
 /**
  * How far from the seam, on each side, a bent lens's image is moved: the bend falls smoothly
- * to nothing over this span, so content beyond it is drawn as the template draws it. Wide
- * enough that a bend of a few degrees stretches the lens's image by a tenth at most.
+ * to nothing over this span, so content beyond it is drawn as the template draws it. At the
+ * largest bend the steepest part of the fall stretches the lens's image by a fifth.
  */
 const BEND_WIDTH_DEGREES = 15;
 export const SEAM_BEND_WIDTH = degrees(BEND_WIDTH_DEGREES);
 
 /**
- * The most a bent join moves the lenses' images apart or together: at the seam each lens is
- * then read 92 degrees from its axis, well inside the image circle's 96, where it still images
- * sharply and bright.
+ * The most a bent join moves the two lenses' images apart or together between them, half each:
+ * at the seam each lens is then read 92 degrees from its axis, where the X5 lenses still image
+ * sharply and bright, well inside the 96.8 degrees where the frame's square begins to cut the
+ * image circle.
  */
 const MAX_BEND_DEGREES = 4;
 export const SEAM_MAX_BEND = degrees(MAX_BEND_DEGREES);

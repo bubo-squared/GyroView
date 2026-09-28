@@ -171,6 +171,17 @@ module.exports = {
       to: { path: '^(packages/player|apps|tools)/' },
     },
     {
+      name: 'the-lab-stays-out-of-the-player',
+      comment:
+        "The Three adapter's lab (the renderer pnpm measure draws with, its seam instruments and the bent join) is for tools/integration; the player, the apps and the adapter's own shipped code never link it (ADR 0026).",
+      severity: 'error',
+      from: {
+        path: '^(packages|apps)/',
+        pathNot: ['^packages/adapters/three/src/lab/', '\\.test\\.ts$'],
+      },
+      to: { path: '^packages/adapters/three/src/lab/' },
+    },
+    {
       name: 'only-integration-tests-combine-adapters',
       comment:
         'tools/integration may depend on several adapters; other tools use the application API.',

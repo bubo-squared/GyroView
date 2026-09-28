@@ -21,19 +21,34 @@ export function createFullscreenTriangle(): BufferGeometry {
 }
 
 /**
- * A fullscreen pass over the shared uniforms: the fragment shader is the given GLSL chunks joined
- * in order, with the constants of `rendererUniforms` defined. The raw shaders ignore the camera
- * three still wants to render with; each pass keeps its own.
+ * The GLSL chunks of a pass's fragment shader, joined in order, and the constants they refer to,
+ * defined before them.
+ */
+export interface PassProgram {
+  readonly chunks: readonly string[];
+  readonly defines: Readonly<Record<string, number>>;
+}
+
+/**
+ * The program of a pass whose chunks refer only to the constants of `rendererUniforms`.
+ */
+export function programOf(chunks: readonly string[]): PassProgram {
+  return { chunks, defines: SHADER_DEFINES };
+}
+
+/**
+ * A fullscreen pass over the shared uniforms. The raw shaders ignore the camera three still
+ * wants to render with; each pass keeps its own.
  */
 export function createPassMaterial(
   uniforms: RendererUniforms,
-  fragmentChunks: readonly string[],
+  program: PassProgram,
 ): RawShaderMaterial {
   return new RawShaderMaterial({
     glslVersion: GLSL3,
-    defines: { ...SHADER_DEFINES },
+    defines: { ...program.defines },
     vertexShader: fullscreenVertex,
-    fragmentShader: fragmentChunks.join('\n'),
+    fragmentShader: program.chunks.join('\n'),
     uniforms: { ...uniforms },
     depthTest: false,
     depthWrite: false,

@@ -6,10 +6,8 @@ import {
   GainMatchingFrameSink,
   lensRotation,
   MAX_MAGNIFICATION,
-  multiplyMatrices,
   quaternionFromAxisAngle,
   radians,
-  rotationAboutY,
   seconds,
   stabilizerFor,
   transformVector,
@@ -500,6 +498,17 @@ describe('ThreeFrameRenderer', () => {
     expect(blockStats(renderer, CENTRE, BLOCK_SIDE).spread).toBeGreaterThan(MIXED);
   });
 
+  it('builds the mip chain of the frames standing on screen when the quality asks for one', () => {
+    const renderer = open();
+    renderer.setViewMode('equirectangular');
+    renderer.setQuality('fast');
+    present(renderer, [stripesFrame(), solidFrame('#000000')]);
+    renderer.setQuality('balanced');
+    const { mean, spread } = blockStats(renderer, CENTRE, BLOCK_SIDE);
+    expect(Math.abs(mean - GREY)).toBeLessThan(EVEN);
+    expect(spread).toBeLessThan(EVEN);
+  });
+
   it('keeps a solid colour exact through every quality, on the frames standing on screen', () => {
     const renderer = open();
     renderer.setViewMode('equirectangular');
@@ -532,23 +541,6 @@ describe('ThreeFrameRenderer', () => {
     expect(lastOfLeftTile.b).toBeLessThan(DIM);
     expect(firstOfRightTile.b).toBeGreaterThan(BRIGHT);
     expect(firstOfRightTile.r).toBeLessThan(DIM);
-  });
-
-  it('turns one lens to a new pose: the back lens turned to face forward shows with the front, and the back goes black', () => {
-    const renderer = open();
-    renderer.setViewMode('equirectangular');
-    presentRedAndBlue(renderer);
-    const setup = buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
-    const back = setup.lenses[1];
-    if (!back) throw new Error('the synthetic calibration has two lenses');
-    const halfTurn = rotationAboutY(radians(Math.PI));
-    renderer.setLensPose(1, multiplyMatrices(back.rotation, halfTurn));
-    const ahead = pixelTowards(renderer, [0, 0, 1]);
-    expect(ahead.r).toBeGreaterThan(MIXED);
-    expect(ahead.b).toBeGreaterThan(MIXED);
-    const behind = pixelTowards(renderer, [0, 0, -1]);
-    expect(behind.r).toBeLessThan(DIM);
-    expect(behind.b).toBeLessThan(DIM);
   });
 
   it('resizes its drawing buffer and keeps the picture', () => {

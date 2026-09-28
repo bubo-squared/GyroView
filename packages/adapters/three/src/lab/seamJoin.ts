@@ -7,6 +7,7 @@ import {
   SEAM_CUT_DISPARITY,
   SEAM_CUT_HALF_WIDTH,
   SEAM_MAX_BEND,
+  SEAM_RING_ANGLE,
   type SeamAlignment,
   type SeamJoin,
 } from '@gyroview/core';
@@ -25,11 +26,13 @@ const JOIN_CODES: Readonly<Record<SeamJoin, number>> = {
 const BINS_PER_VECTOR = 4;
 
 /**
- * The constants `seamJoin.glsl` refers to, as preprocessor defines.
+ * The constants `bentJoin.glsl` refers to, as preprocessor defines.
  */
 export const SEAM_JOIN_DEFINES: readonly (readonly [string, number])[] = [
   ['SEAM_JOIN_BENT', SEAM_JOIN_BENT],
   ['SEAM_BIN_COUNT', SEAM_BIN_COUNT],
+  ['SEAM_BINS_PER_VECTOR', BINS_PER_VECTOR],
+  ['SEAM_RING_RADIANS', degreesToRadians(SEAM_RING_ANGLE)],
   ['SEAM_BIN_WIDTH_RADIANS', degreesToRadians(SEAM_BIN_WIDTH)],
   ['SEAM_BEND_WIDTH_RADIANS', degreesToRadians(SEAM_BEND_WIDTH)],
   ['SEAM_CUT_HALF_WIDTH_RADIANS', degreesToRadians(SEAM_CUT_HALF_WIDTH)],
@@ -54,13 +57,22 @@ export function createSeamJoinUniforms(): SeamJoinUniforms {
   };
 }
 
+/**
+ * Sets the join and its disparities; a disparity per seam bin, each a finite angle, or the
+ * alignment is refused.
+ */
 export function applySeamAlignment(uniforms: SeamJoinUniforms, alignment: SeamAlignment): void {
+  const { disparities } = alignment;
   ensureInvariant(
-    alignment.disparities.length === SEAM_BIN_COUNT,
-    `${alignment.disparities.length} disparities for ${SEAM_BIN_COUNT} seam bins`,
+    disparities.length === SEAM_BIN_COUNT,
+    `${disparities.length} disparities for ${SEAM_BIN_COUNT} seam bins`,
+  );
+  ensureInvariant(
+    disparities.every((disparity) => Number.isFinite(disparity)),
+    'a seam disparity is not a finite angle',
   );
   uniforms.uSeamJoin.value = JOIN_CODES[alignment.join];
-  for (const [bin, disparity] of alignment.disparities.entries()) {
+  for (const [bin, disparity] of disparities.entries()) {
     const vector = uniforms.uSeamDisparity.value[Math.floor(bin / BINS_PER_VECTOR)];
     vector?.setComponent(bin % BINS_PER_VECTOR, degreesToRadians(disparity));
   }

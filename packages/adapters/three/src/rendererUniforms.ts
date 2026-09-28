@@ -1,15 +1,9 @@
 import {
   aspectOfArea,
-  degreesToRadians,
   ensureIndexInRange,
   ensureInvariant,
   IDENTITY_MATRIX3,
   planeHalfExtentOf,
-  SEAM_BIN_COLUMNS,
-  SEAM_CELL_SUBSAMPLES,
-  SEAM_STRIP_ROWS,
-  SEAM_STRIP_STEP,
-  SEAM_STRIP_THETA_START,
   type LensProjectionParameters,
   type LensStitch,
   type Matrix3 as CoreMatrix3,
@@ -20,7 +14,6 @@ import {
 } from '@gyroview/core';
 import { Matrix3, Vector2, Vector3, Vector4, type IUniform, type Texture } from 'three';
 
-import { createSeamJoinUniforms, SEAM_JOIN_DEFINES, type SeamJoinUniforms } from './seamJoin';
 import {
   SAMPLING_BILINEAR,
   SAMPLING_SUPERSAMPLED,
@@ -41,12 +34,6 @@ export const LENS_TEXTURES = 2;
 const LENS_MEI = 0;
 const LENS_RADIAL_POLYNOMIAL = 1;
 /**
- * What a seam mismatch candidate replaces for its lens: the pose, or where it is sampled.
- */
-export const CANDIDATE_ROTATIONS = 0;
-export const CANDIDATE_SHIFTS = 1;
-
-/**
  * The constants the GLSL sources refer to, injected as preprocessor defines so that this file is
  * their only home.
  */
@@ -54,24 +41,16 @@ export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntri
   ['MAX_LENSES', MAX_LENSES],
   ['LENS_MEI', LENS_MEI],
   ['LENS_RADIAL_POLYNOMIAL', LENS_RADIAL_POLYNOMIAL],
-  ['SEAM_STRIP_ROWS', SEAM_STRIP_ROWS],
-  ['SEAM_BIN_COLUMNS', SEAM_BIN_COLUMNS],
-  ['SEAM_CELL_SUBSAMPLES', SEAM_CELL_SUBSAMPLES],
-  ['SEAM_STRIP_STEP_RADIANS', degreesToRadians(SEAM_STRIP_STEP)],
-  ['SEAM_STRIP_THETA_START_RADIANS', degreesToRadians(SEAM_STRIP_THETA_START)],
-  ['CANDIDATE_ROTATIONS', CANDIDATE_ROTATIONS],
-  ['CANDIDATE_SHIFTS', CANDIDATE_SHIFTS],
   ['SAMPLING_BILINEAR', SAMPLING_BILINEAR],
   ['SAMPLING_TRILINEAR', SAMPLING_TRILINEAR],
   ['SAMPLING_SUPERSAMPLED', SAMPLING_SUPERSAMPLED],
-  ...SEAM_JOIN_DEFINES,
 ]);
 
 /**
  * Every uniform the renderer's programs declare, named exactly as in the GLSL chunks and shared
  * by all programs as the same objects; the only place the TypeScript side spells uniform names.
  */
-export interface RendererUniforms extends SeamJoinUniforms {
+export interface RendererUniforms {
   readonly uLensCount: IUniform<number>;
   readonly uViewRotation: IUniform<Matrix3>;
   readonly uStabilization: IUniform<Matrix3>;
@@ -106,7 +85,6 @@ export function createRendererUniforms(
     ...viewUniforms(setup),
     ...projectionUniforms(lenses),
     ...samplingUniforms(lenses),
-    ...createSeamJoinUniforms(),
     uTexture0: { value: textures[0] ?? null },
     uTexture1: { value: textures[1] ?? null },
   };
@@ -250,15 +228,6 @@ export function applyLensGain(
 /**
  * Replaces one lens's body-to-lens rotation; a lens the setup does not have is a defect.
  */
-export function applyLensPose(
-  uniforms: RendererUniforms,
-  lensIndex: number,
-  rotation: CoreMatrix3,
-): void {
-  ensureIndexInRange(lensIndex, uniforms.uLensCount.value, 'lens');
-  uniforms.uLensRotation.value[lensIndex]?.set(...rotation);
-}
-
 /**
  * What one picture sets; a value a picture's program does not read stays neutral.
  */

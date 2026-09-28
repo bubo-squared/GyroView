@@ -87,18 +87,12 @@ export type {
 } from './domain/optics/LensCalibration';
 export type { LensModel, LensModelKind, LensProjectionParameters } from './domain/optics/LensModel';
 export { lensRotation, mirroredRoll } from './domain/optics/lensPose';
-export {
-  correctedLensRotation,
-  isZeroDelta,
-  largestComponentOf,
-  ZERO_POSE_DELTA,
-  type PoseDelta,
-} from './domain/optics/poseDelta';
 export { DEFAULT_MAX_GAIN, gainsMatching } from './domain/optics/gainMatch';
 export { clampView, DEFAULT_VIEW, isSameView, type ViewState } from './domain/view/ViewState';
 export {
   DEFAULT_PICTURE_QUALITY,
   PICTURE_QUALITIES,
+  pixelRatioCapOf,
   type PictureQuality,
 } from './domain/view/PictureQuality';
 export {
@@ -154,32 +148,22 @@ export {
   type GainRenderer,
 } from './application/gainMatching/GainMatchingFrameSink';
 export type { SeamMeter } from './ports/SeamMeter';
-export type {
-  SeamCandidates,
-  SeamMismatchMeter,
-  SeamMismatchRequest,
-} from './ports/SeamMismatchMeter';
+export type { SeamMismatchMeter, SeamMismatchRequest } from './ports/SeamMismatchMeter';
 export {
   isWithinArc,
-  MISMATCH_CAP,
   NADIR_ARC,
   SEAM_BIN_COLUMNS,
   SEAM_BIN_COUNT,
   SEAM_BIN_WIDTH,
   SEAM_CELL_SUBSAMPLES,
-  SEAM_STRIP_COLUMNS,
+  SEAM_RING_ANGLE,
   SEAM_STRIP_ROWS,
   SEAM_STRIP_STEP,
-  SEAM_STRIP_THETA_END,
   SEAM_STRIP_THETA_START,
   seamBinAzimuth,
-  seamStripAzimuth,
-  seamStripDirection,
-  seamStripTheta,
-  ZERO_SHIFT,
   type AzimuthArc,
-  type StripShift,
 } from './domain/stitching/seamStrip';
+export { MISMATCH_CAP, type SeamBinCost, type SeamBinCosts } from './domain/stitching/seamMismatch';
 export {
   binDisparitiesOf,
   DEFAULT_DISPARITY_RANGE,
@@ -189,7 +173,7 @@ export {
 } from './domain/stitching/seamDisparity';
 export { disparityFieldOf, easedDisparities } from './domain/stitching/seamDisparityField';
 export {
-  FIXED_SEAM,
+  FIXED_SEAM_ALIGNMENT,
   SEAM_BEND_WIDTH,
   SEAM_CUT_DISPARITY,
   SEAM_CUT_HALF_WIDTH,
@@ -197,13 +181,6 @@ export {
   type SeamAlignment,
   type SeamJoin,
 } from './domain/stitching/seamJoin';
-export {
-  DEFAULT_SEAM_COST_RULE,
-  seamCostOf,
-  type SeamBinCost,
-  type SeamBinCosts,
-  type SeamCostRule,
-} from './domain/stitching/seamMismatch';
 export type { CalibrationChoice } from './domain/format/calibration/selectCalibration';
 
 // Shared vocabulary
@@ -223,6 +200,7 @@ export { keysOf } from './shared/keysOf';
 export { lazy } from './shared/lazy';
 export { Outbox, type EventSink } from './shared/events/Outbox';
 export { clamp } from './shared/math/clamp';
+export { indexOfLeast, parabolicOffset } from './shared/math/minimum';
 export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
 export {
   IDENTITY_MATRIX3,
@@ -255,6 +233,9 @@ export {
 export {
   degrees,
   degreesToRadians,
+  FULL_TURN,
+  HALF_TURN,
+  QUARTER_TURN,
   radians,
   radiansToDegrees,
   type Degrees,

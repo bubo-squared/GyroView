@@ -1,11 +1,19 @@
-import type { ThreeFrameRenderer } from '@gyroview/adapter-three';
-import { transformVector, type Matrix3, type PoseDelta, type Vector3 } from '@gyroview/core';
+import type { LabRenderer } from '@gyroview/adapter-three/lab';
+import {
+  degrees,
+  degreesToRadians,
+  indexOfLeast,
+  parabolicOffset,
+  transformVector,
+  type Degrees,
+  type Matrix3,
+  type Vector3,
+} from '@gyroview/core';
 
-import { viewDirectionOf } from './radialFit';
 import { withTurnAbout, type BodyAxis } from './poseConventions';
-import { renderUnder, type Renderable } from './referenceAlignment';
+import { renderUnder, type LockedRendering, type ViewTurn } from './referenceAlignment';
 import type { GreyImage } from './referenceFrames';
-import type { CanvasSize } from './rendering';
+import { gainsShowingOnly, viewDirectionOf, type CanvasSize } from './rendering';
 
 /**
  * A level difference counts at most this much: where Studio's dynamic stitching warps a near
@@ -13,14 +21,12 @@ import type { CanvasSize } from './rendering';
  */
 const DIFFERENCE_CAP = 48;
 /**
- * The turns tried about a body axis, in degrees: the factory reading's error is well inside.
+ * The turns tried about a body axis: the factory reading's error is well inside.
  */
-const LINE_EXTENT = 2;
-const LINE_STEP = 0.1;
+const LINE_EXTENT_DEGREES = 2;
+const LINE_STEP_DEGREES = 0.1;
 const SHOWN: Vector3 = [1, 1, 1];
-const SILENT: Vector3 = [0, 0, 0];
 const COMPARED = 1;
-const DEGREES_PER_HALF_TURN = 180;
 
 /**
  * The panorama's pixels a cost reads: `COMPARED` where it counts one.
@@ -52,7 +58,7 @@ export function bandPixels(size: CanvasSize, band: RowBand): ComparedPixels {
 export interface Cone {
   readonly viewToBody: Matrix3;
   readonly axis: Vector3;
-  readonly halfAngle: number;
+  readonly halfAngle: Degrees;
   readonly band: RowBand;
 }
 
@@ -61,7 +67,7 @@ export interface Cone {
  */
 export function conePixels(size: CanvasSize, cone: Cone): ComparedPixels {
   const compared = bandPixels(size, cone.band);
-  const minCosine = Math.cos((cone.halfAngle * Math.PI) / DEGREES_PER_HALF_TURN);
+  const minCosine = Math.cos(degreesToRadians(cone.halfAngle));
   for (const [index, isCompared] of compared.entries()) {
     if (isCompared !== COMPARED) continue;
     const view = viewDirectionOf(index % size.width, Math.floor(index / size.width), size);
@@ -72,30 +78,15 @@ export function conePixels(size: CanvasSize, cone: Cone): ComparedPixels {
   return compared;
 }
 
-/**
- * Draws only `lensIndex`: the other lenses silenced, it fills its whole field up to where its
- * feather ends, and every other pixel is black.
- */
-export function showOnly(renderer: ThreeFrameRenderer, lensIndex: number): void {
-  const gains = Array.from({ length: renderer.lensCount }, (_unused, index) =>
-    index === lensIndex ? SHOWN : SILENT,
-  );
-  renderer.setLensGains(gains);
-}
-
-export function showAll(renderer: ThreeFrameRenderer): void {
-  renderer.setLensGains(Array.from({ length: renderer.lensCount }, () => SHOWN));
+function unitGains(renderer: LabRenderer): Vector3[] {
+  return Array.from({ length: renderer.lensCount }, () => SHOWN);
 }
 
 /**
  * Mean capped level difference over the compared pixels where the candidate shows a lens: a
  * black candidate pixel lies outside the lens drawn alone.
  */
-export function lensCost(
-  reference: GreyImage,
-  candidate: GreyImage,
-  compared: ComparedPixels,
-): number {
+function lensCost(reference: GreyImage, candidate: GreyImage, compared: ComparedPixels): number {
   let total = 0;
   let count = 0;
   for (const [index, isCompared] of compared.entries()) {
@@ -111,7 +102,7 @@ export interface LineMinimum {
   /**
    * Where the cost is least, refined between the samples by a parabola through the best three.
    */
-  readonly at: number;
+  readonly at: Degrees;
   readonly cost: number;
   /**
    * The least sampled cost lay at an end of the range: the true minimum may lie beyond it.
@@ -119,36 +110,18 @@ export interface LineMinimum {
   readonly isAtBoundary: boolean;
 }
 
-function indexOfLeast(costs: readonly number[]): number {
-  let best = 0;
-  for (const [index, cost] of costs.entries()) if (cost < (costs[best] ?? Infinity)) best = index;
-  return best;
-}
-
 /**
- * The vertex of the parabola through the costs at `index` and its neighbours, in steps from
- * `index`; nothing when the three do not bend upwards.
+ * The least of `evaluate` over the turns from -LINE_EXTENT_DEGREES to LINE_EXTENT_DEGREES,
+ * sampled every LINE_STEP_DEGREES.
  */
-function parabolicOffset(costs: readonly number[], index: number): number {
-  const left = costs[index - 1];
-  const centre = costs[index];
-  const right = costs[index + 1];
-  if (left === undefined || centre === undefined || right === undefined) return 0;
-  const curvature = left - 2 * centre + right;
-  return curvature > 0 ? (left - right) / (2 * curvature) : 0;
-}
-
-/**
- * The least of `evaluate` over [-LINE_EXTENT, LINE_EXTENT], sampled every LINE_STEP.
- */
-export function lineMinimum(evaluate: (value: number) => number): LineMinimum {
-  const steps = Math.round(LINE_EXTENT / LINE_STEP);
+function lineMinimum(evaluate: (angle: Degrees) => number): LineMinimum {
+  const steps = Math.round(LINE_EXTENT_DEGREES / LINE_STEP_DEGREES);
   const costs = Array.from({ length: 2 * steps + 1 }, (_unused, index) =>
-    evaluate((index - steps) * LINE_STEP),
+    evaluate(degrees((index - steps) * LINE_STEP_DEGREES)),
   );
   const best = indexOfLeast(costs);
   return {
-    at: (best - steps + parabolicOffset(costs, best)) * LINE_STEP,
+    at: degrees((best - steps + parabolicOffset(costs, best)) * LINE_STEP_DEGREES),
     cost: costs[best] ?? Infinity,
     isAtBoundary: best === 0 || best === costs.length - 1,
   };
@@ -158,10 +131,10 @@ export function lineMinimum(evaluate: (value: number) => number): LineMinimum {
  * One lens's search: its pose, the view turn it is drawn under, the body axis turned about and
  * the pixels compared.
  */
-export interface LensTurnSearch {
+interface LensTurnSearch {
   readonly lensIndex: number;
   readonly pose: Matrix3;
-  readonly view: PoseDelta;
+  readonly view: ViewTurn;
   readonly axis: BodyAxis;
   readonly compared: ComparedPixels;
 }
@@ -172,17 +145,17 @@ export interface LensTurnSearch {
  */
 export function turnRegistering(
   reference: GreyImage,
-  renderable: Renderable,
+  rendering: LockedRendering,
   search: LensTurnSearch,
 ): LineMinimum {
-  const { renderer } = renderable;
+  const { renderer } = rendering;
   const { lensIndex, pose, view, axis, compared } = search;
-  showOnly(renderer, lensIndex);
+  renderer.setLensGains(gainsShowingOnly(unitGains(renderer), lensIndex));
   const found = lineMinimum((angle) => {
     renderer.setLensPose(lensIndex, withTurnAbout(pose, axis, angle));
-    return lensCost(reference, renderUnder(renderable, view), compared);
+    return lensCost(reference, renderUnder(rendering, view), compared);
   });
   renderer.setLensPose(lensIndex, pose);
-  showAll(renderer);
+  renderer.setLensGains(unitGains(renderer));
   return found;
 }

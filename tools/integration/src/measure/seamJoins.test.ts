@@ -1,18 +1,16 @@
 import {
   DecodePipeline,
-  degrees,
   easedDisparities,
-  FIXED_SEAM,
-  SEAM_MAX_BEND,
+  FIXED_SEAM_ALIGNMENT,
   IDENTITY_MATRIX3,
   multiplyMatrices,
+  SEAM_MAX_BEND,
   seconds,
-  stabilizerFor,
   type Degrees,
   type FramePair,
-  type Matrix3,
-  type PoseDelta,
+  type SeamAlignment,
   type SeamJoin,
+  type Seconds,
   type Vector3,
 } from '@gyroview/core';
 import { DECODE_PIPELINE_OPTIONS, type OpenedRecording } from '@gyroview/player/composition';
@@ -22,37 +20,34 @@ import { saveMeasurement, saveRender } from '../browser/artifacts';
 import { closeAll, openSample, port, takePairs } from '../browser/realRecordingSupport';
 import {
   alignToReference,
+  NO_TURN,
   renderUnder,
   rotationOf,
-  type Renderable,
+  type LockedRendering,
+  type ViewTurn,
 } from '../browser/referenceAlignment';
 import {
   greyCanvasOf,
-  loadGreyImage,
-  recordingTimeOf,
+  REFERENCE_PANORAMA_SIZE,
   STUDIO_CLIPS,
   type GreyImage,
-  type ReferenceClip,
-  type ReferenceFrame,
 } from '../browser/referenceFrames';
-import { equirectangularRendering, motionOf } from '../browser/rendering';
-import { timeRenders } from '../browser/samplingChecks';
+import { equirectangularRendering, gainsShowingOnly, lockOf } from '../browser/rendering';
+import { isServed } from '../browser/sampleUrls';
 import {
+  bandShownBy,
   binDifferences,
   matchedGains,
   measuredDisparity,
+  millisecondsPerDraw,
   seamBandOf,
   type MeasuredDisparity,
   type SeamBand,
 } from '../browser/seamJoins';
-import { isServed } from '../browser/sampleUrls';
-import { closeMoment, decodeMoment } from '../browser/SharedSample';
+import { meanOf } from '../browser/statistics';
+import { openStudioFrame, type StudioFrameRequest } from '../browser/studioFrame';
 
-const PANORAMA_SIZE = { width: 1536, height: 768 };
 const FRAME_TIMEOUT_MS = 300_000;
-const JOINS: readonly SeamJoin[] = ['fixed', 'bent'];
-const SILENT: Vector3 = [0, 0, 0];
-const AT_REST: PoseDelta = { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) };
 /**
  * The bins by how far the field bends them, in degrees: near objects (a degree is an object
  * about two metres away) up to the most a bend takes and beyond it, the lens models' own error
@@ -77,6 +72,7 @@ const STEADINESS_TIME = 100;
 const STEADINESS_PAIRS = 16;
 
 type PerBin = readonly number[];
+type PerJoin<Value> = Readonly<Record<SeamJoin, Value>>;
 
 interface FrameResult {
   readonly time: number;
@@ -84,12 +80,12 @@ interface FrameResult {
   /**
    * Per join, each bin's mean level difference to Studio's stitch.
    */
-  readonly toStudio: Readonly<Record<SeamJoin, PerBin>>;
+  readonly toStudio: PerJoin<PerBin>;
   /**
-   * Per join, each bin's mean level difference between the two lenses drawn alone: the double
-   * image a blend makes of them.
+   * Per join, each bin's mean level difference between the two lenses drawn alone, the double
+   * image a blend makes of them, over the pixels both lenses show under every join.
    */
-  readonly lensDisagreement: Readonly<Record<SeamJoin, PerBin>>;
+  readonly lensDisagreement: PerJoin<PerBin>;
   /**
    * Each bin's change in the fixed join's difference to Studio from the frame to the next:
    * how much of a difference is the measurement's own noise.
@@ -98,158 +94,125 @@ interface FrameResult {
 }
 
 interface Drawn {
-  readonly renderable: Renderable;
-  readonly view: PoseDelta;
+  readonly rendering: LockedRendering;
+  readonly view: ViewTurn;
   readonly gains: readonly Vector3[];
 }
 
-function withJoin(drawn: Drawn, join: SeamJoin, field: readonly Degrees[]): GreyImage {
-  drawn.renderable.renderer.setSeamAlignment({ join, disparities: field });
-  return renderUnder(drawn.renderable, drawn.view);
+function perJoin<Value>(valueOf: (join: SeamJoin) => Value): PerJoin<Value> {
+  return { fixed: valueOf('fixed'), bent: valueOf('bent') };
+}
+
+function alignmentOf(join: SeamJoin, field: readonly Degrees[]): SeamAlignment {
+  return { join, disparities: field };
+}
+
+function withJoin(drawn: Drawn, alignment: SeamAlignment): GreyImage {
+  drawn.rendering.renderer.setSeamAlignment(alignment);
+  return renderUnder(drawn.rendering, drawn.view);
 }
 
 /**
- * One lens drawn alone at its matched gain, the other silenced.
+ * Each lens drawn alone at its matched gain under the alignment, the other silenced.
  */
-function drawnAlone(drawn: Drawn, lensIndex: number): GreyImage {
-  const gains = drawn.gains.map((gain, index) => (index === lensIndex ? gain : SILENT));
-  drawn.renderable.renderer.setLensGains(gains);
-  const image = renderUnder(drawn.renderable, drawn.view);
-  drawn.renderable.renderer.setLensGains(drawn.gains);
-  return image;
+function lensesAloneUnder(drawn: Drawn, alignment: SeamAlignment): readonly [GreyImage, GreyImage] {
+  const { renderer } = drawn.rendering;
+  renderer.setSeamAlignment(alignment);
+  const [front, back] = [0, 1].map((lensIndex) => {
+    renderer.setLensGains(gainsShowingOnly(drawn.gains, lensIndex));
+    return renderUnder(drawn.rendering, drawn.view);
+  });
+  renderer.setLensGains(drawn.gains);
+  if (!front || !back) throw new Error('two lenses expected');
+  return [front, back];
 }
 
-function lensDisagreementUnder(
+function lensDisagreements(
   drawn: Drawn,
-  join: SeamJoin,
-  at: { readonly field: readonly Degrees[]; readonly band: SeamBand },
-): PerBin {
-  drawn.renderable.renderer.setSeamAlignment({ join, disparities: at.field });
-  return binDifferences(drawnAlone(drawn, 0), drawnAlone(drawn, 1), at.band);
-}
-
-function lockOf(pair: FramePair<VideoFrame>, opened: OpenedRecording): Matrix3 {
-  return stabilizerFor('lock').nextRotation(
-    motionOf(opened).orientations.orientationAt(pair.timestamp),
-    pair.timestamp,
-  );
+  field: readonly Degrees[],
+  band: SeamBand,
+): PerJoin<PerBin> {
+  const alone = perJoin((join) => lensesAloneUnder(drawn, alignmentOf(join, field)));
+  const shown = bandShownBy(band, [...alone.fixed, ...alone.bent]);
+  return perJoin((join) => binDifferences(alone[join][0], alone[join][1], shown));
 }
 
 /**
  * The joins stacked under Studio's stitch, for the eye.
  */
 function sheetOf(images: readonly GreyImage[]): HTMLCanvasElement {
+  const { width, height } = REFERENCE_PANORAMA_SIZE;
   const sheet = document.createElement('canvas');
-  sheet.width = PANORAMA_SIZE.width;
-  sheet.height = PANORAMA_SIZE.height * images.length;
+  sheet.width = width;
+  sheet.height = height * images.length;
   const context = sheet.getContext('2d');
   for (const [index, image] of images.entries()) {
-    context?.drawImage(greyCanvasOf(image), 0, index * PANORAMA_SIZE.height);
+    context?.drawImage(greyCanvasOf(image), 0, index * height);
   }
   return sheet;
 }
 
 async function measureFrame(
   context: TestContext,
-  at: {
-    readonly clip: ReferenceClip;
-    readonly frame: ReferenceFrame;
-    readonly cleanups: (() => void)[];
-  },
+  request: StudioFrameRequest,
 ): Promise<FrameResult> {
-  const { clip, frame, cleanups } = at;
-  const reference = await loadGreyImage(frame.url);
-  const opened = await openSample(context, clip.sample);
-  cleanups.push(() => {
-    opened.dispose();
-  });
-  const { canvas, renderer, dispose } = equirectangularRendering(opened, PANORAMA_SIZE);
-  cleanups.push(dispose);
-  const moment = await decodeMoment(opened, recordingTimeOf(clip, frame));
-  cleanups.push(() => {
-    closeMoment(moment);
-  });
-  const renderable: Renderable = {
-    renderer,
-    canvas,
-    pair: moment.first,
-    lock: lockOf(moment.first, opened),
-  };
-  renderUnder(renderable, AT_REST);
-  const gains = await matchedGains(renderer);
-  renderer.setLensGains(gains);
-  const view = alignToReference(reference, renderable).rotation;
-  const drawn: Drawn = { renderable, view, gains };
-  const disparity = await measuredDisparity(renderer, gains);
-  const band = seamBandOf(PANORAMA_SIZE, multiplyMatrices(renderable.lock, rotationOf(view)));
-  const images = JOINS.map((join) => withJoin(drawn, join, disparity.field));
-  const [fixed, bent] = images.map((image) => binDifferences(image, reference, band));
-  if (!fixed || !bent) throw new Error('two joins expected');
+  const { reference, opened, moment, rendering } = await openStudioFrame(context, request);
+  renderUnder(rendering, NO_TURN);
+  const gains = await matchedGains(rendering.renderer);
+  rendering.renderer.setLensGains(gains);
+  const drawn: Drawn = { rendering, view: alignToReference(reference, rendering).turn, gains };
+  const disparity = await measuredDisparity(rendering.renderer, gains);
+  const viewToBody = multiplyMatrices(rendering.lock, rotationOf(drawn.view));
+  const band = seamBandOf(REFERENCE_PANORAMA_SIZE, viewToBody);
+  const images = perJoin((join) => withJoin(drawn, alignmentOf(join, disparity.field)));
   const following: Drawn = {
     ...drawn,
-    renderable: { ...renderable, pair: moment.second, lock: lockOf(moment.second, opened) },
+    rendering: { ...rendering, pair: moment.second, lock: lockOf(opened, moment.second) },
   };
-  const next = binDifferences(withJoin(following, 'fixed', disparity.field), reference, band);
-  const prefix = `${clip.slug}-${frame.time}s`;
-  if (SAVED_FRAMES.has(frame.time)) {
-    await saveRender(`${prefix}-seam-joins`, sheetOf([reference, ...images]));
+  const next = binDifferences(withJoin(following, FIXED_SEAM_ALIGNMENT), reference, band);
+  const toStudio = perJoin((join) => binDifferences(images[join], reference, band));
+  const { time } = request.frame;
+  if (SAVED_FRAMES.has(time)) {
+    const sheet = sheetOf([reference, images.fixed, images.bent]);
+    await saveRender(`${request.clip.slug}-${time}s-seam-joins`, sheet);
   }
   return {
-    time: frame.time,
+    time,
     disparity,
-    toStudio: { fixed, bent },
-    lensDisagreement: {
-      fixed: lensDisagreementUnder(drawn, 'fixed', { field: disparity.field, band }),
-      bent: lensDisagreementUnder(drawn, 'bent', { field: disparity.field, band }),
-    },
-    noise: fixed.map((difference, bin) => Math.abs(difference - (next[bin] ?? NaN))),
+    toStudio,
+    lensDisagreement: lensDisagreements(drawn, disparity.field, band),
+    noise: toStudio.fixed.map((difference, bin) => Math.abs(difference - (next[bin] ?? NaN))),
   };
 }
 
-function countedValues(
-  result: FrameResult,
-  values: PerBin,
-  isCounted: (result: FrameResult, bin: number) => boolean,
-): number[] {
-  return values.filter((value, bin) => isCounted(result, bin) && Number.isFinite(value));
+function finite(values: PerBin): number[] {
+  return values.filter((value) => Number.isFinite(value));
 }
 
 /**
- * The mean of the values of the bins `isCounted` picks, over every frame.
+ * The mean, over every frame, of the finite values of the bins the field bends as `isIn` says.
  */
 function meanOver(
   results: readonly FrameResult[],
   valuesOf: (result: FrameResult) => PerBin,
-  isCounted: (result: FrameResult, bin: number) => boolean,
+  isIn: (bend: number) => boolean,
 ): { mean: number; bins: number } {
-  const counted = results.flatMap((result) => countedValues(result, valuesOf(result), isCounted));
+  const counted = results.flatMap((result) =>
+    finite(valuesOf(result).filter((_value, bin) => isIn(result.disparity.field[bin] ?? 0))),
+  );
   return { mean: meanOf(counted), bins: counted.length };
 }
 
-function meanOf(values: readonly number[]): number {
-  return values.length > 0
-    ? values.reduce((total, value) => total + value, 0) / values.length
-    : NaN;
-}
-
 function summaryOf(results: readonly FrameResult[]): object {
-  const over = (valuesOf: (result: FrameResult) => PerBin): object =>
+  const byBend = (valuesOf: (result: FrameResult) => PerBin): object =>
     Object.fromEntries(
-      BEND_CLASSES.map(({ name, isIn }) => [
-        name,
-        meanOver(results, valuesOf, (result, bin) => isIn(result.disparity.field[bin] ?? 0)),
-      ]),
+      BEND_CLASSES.map(({ name, isIn }) => [name, meanOver(results, valuesOf, isIn)]),
     );
   return {
     frames: results.length,
-    toStudio: Object.fromEntries(
-      JOINS.map((join) => [join, over((result) => result.toStudio[join])]),
-    ),
-    lensDisagreement: {
-      fixed: over((result) => result.lensDisagreement.fixed),
-      bent: over((result) => result.lensDisagreement.bent),
-    },
-    noise: over((result) => result.noise),
+    toStudio: perJoin((join) => byBend((result) => result.toStudio[join])),
+    lensDisagreement: perJoin((join) => byBend((result) => result.lensDisagreement[join])),
+    noise: byBend((result) => result.noise),
     trustedBins: results.map(
       (result) => result.disparity.bins.filter((bin) => bin.isTrusted).length,
     ),
@@ -262,46 +225,50 @@ function summaryOf(results: readonly FrameResult[]): object {
  * What the steadiness run carries from one frame to the next.
  */
 interface Steadiness {
-  field: Degrees[] | undefined;
-  time: number;
-  images: Partial<Record<SeamJoin, GreyImage>>;
-  readonly change: Record<SeamJoin, number>;
+  readonly field: readonly Degrees[] | undefined;
+  readonly time: Seconds;
+  readonly images: Partial<PerJoin<GreyImage>>;
+  readonly change: PerJoin<number>;
 }
 
+const STEADY_START: Steadiness = {
+  field: undefined,
+  time: seconds(0),
+  images: {},
+  change: { fixed: 0, bent: 0 },
+};
+
 interface SteadyDrawing {
-  readonly renderer: Renderable['renderer'];
-  readonly canvas: HTMLCanvasElement;
+  readonly rendering: LockedRendering;
   readonly band: SeamBand;
 }
 
 /**
- * Measures the pair's disparity, eases the field toward it, draws each join and adds its
- * change from the frame before.
+ * The steadiness after one more pair: its disparity measured, the field eased toward it, each
+ * join drawn and its change from the frame before added.
  */
-async function stepSteadiness(
-  steadiness: Steadiness,
+async function nextSteadiness(
+  before: Steadiness,
   drawing: SteadyDrawing,
   pair: FramePair<VideoFrame>,
-): Promise<void> {
-  const { renderer, canvas, band } = drawing;
-  const renderable: Renderable = { renderer, canvas, pair, lock: IDENTITY_MATRIX3 };
-  renderUnder(renderable, AT_REST);
-  const gains = await matchedGains(renderer);
-  renderer.setLensGains(gains);
-  const measured = await measuredDisparity(renderer, gains);
-  const field = easedDisparities(
-    steadiness.field,
-    measured.field,
-    seconds(pair.timestamp - steadiness.time),
+): Promise<Steadiness> {
+  const rendering = { ...drawing.rendering, pair };
+  renderUnder(rendering, NO_TURN);
+  const gains = await matchedGains(rendering.renderer);
+  rendering.renderer.setLensGains(gains);
+  const measured = await measuredDisparity(rendering.renderer, gains);
+  const elapsed = seconds(pair.timestamp - before.time);
+  const field = easedDisparities(before.field, measured.field, elapsed);
+  const images = perJoin((join) =>
+    withJoin({ rendering, view: NO_TURN, gains }, alignmentOf(join, field)),
   );
-  const images: Partial<Record<SeamJoin, GreyImage>> = {};
-  for (const join of JOINS) {
-    const image = withJoin({ renderable, view: AT_REST, gains }, join, field);
-    const before = steadiness.images[join];
-    if (before) steadiness.change[join] += bandMean(binDifferences(image, before, band));
-    images[join] = image;
-  }
-  Object.assign(steadiness, { field, time: pair.timestamp, images });
+  const change = perJoin((join) => {
+    const previous = before.images[join];
+    if (!previous) return before.change[join];
+    const step = meanOf(finite(binDifferences(images[join], previous, drawing.band)));
+    return before.change[join] + step;
+  });
+  return { field, time: pair.timestamp, images, change };
 }
 
 /**
@@ -314,49 +281,33 @@ async function steadinessOf(
   opened: OpenedRecording,
   pairs: readonly FramePair<VideoFrame>[],
 ): Promise<object> {
-  const { canvas, renderer, dispose } = equirectangularRendering(opened, PANORAMA_SIZE);
+  const { canvas, renderer, dispose } = equirectangularRendering(opened, REFERENCE_PANORAMA_SIZE);
   try {
-    const drawing = { renderer, canvas, band: seamBandOf(PANORAMA_SIZE, IDENTITY_MATRIX3) };
-    const steadiness: Steadiness = {
-      field: undefined,
-      time: 0,
-      images: {},
-      change: { fixed: 0, bent: 0 },
-    };
-    for (const pair of pairs) await stepSteadiness(steadiness, drawing, pair);
     const [first, second] = pairs;
     if (!first || !second) throw new Error('two pairs expected');
-    const locked = [
-      { pair: first, lock: IDENTITY_MATRIX3 },
-      { pair: second, lock: IDENTITY_MATRIX3 },
-    ] as const;
-    const disparities = steadiness.field ?? FIXED_SEAM.disparities;
-    const millisecondsPerRender = Object.fromEntries(
-      JOINS.map((join) => {
-        renderer.setSeamAlignment({ join, disparities });
-        return [join, timeRenders(renderer, canvas, locked)];
-      }),
-    );
+    const rendering: LockedRendering = { renderer, canvas, pair: first, lock: IDENTITY_MATRIX3 };
+    const drawing = { rendering, band: seamBandOf(REFERENCE_PANORAMA_SIZE, IDENTITY_MATRIX3) };
+    let steadiness = STEADY_START;
+    for (const pair of pairs) steadiness = await nextSteadiness(steadiness, drawing, pair);
+    const disparities = steadiness.field ?? FIXED_SEAM_ALIGNMENT.disparities;
+    const drawTimes = perJoin((join) => {
+      renderer.setSeamAlignment(alignmentOf(join, disparities));
+      return millisecondsPerDraw([rendering, { ...rendering, pair: second }]);
+    });
     const steps = pairs.length - 1;
     return {
-      changePerFrame: Object.fromEntries(
-        JOINS.map((join) => [join, steadiness.change[join] / steps]),
-      ),
-      millisecondsPerRender,
+      changePerFrame: perJoin((join) => steadiness.change[join] / steps),
+      millisecondsPerDraw: drawTimes,
     };
   } finally {
     dispose();
   }
 }
 
-function bandMean(perBin: PerBin): number {
-  return meanOf(perBin.filter((value) => Number.isFinite(value)));
-}
-
 /**
  * The fixed seam and the seam bent by the disparity measured across it, each against Insta360
  * Studio's stitch, on frames spread over the clip; and how steady and how costly each is on
- * consecutive frames.
+ * consecutive frames (ADR 0026).
  */
 for (const clip of STUDIO_CLIPS) {
   describe(`the seam joins against the Studio export of ${clip.sample.name}`, () => {
@@ -381,7 +332,7 @@ for (const clip of STUDIO_CLIPS) {
       );
     }
 
-    it('summarises the joins over the frames, near bins and far ones apart', async (context) => {
+    it('summarises the joins over the frames, by how far the field bends each bin', async (context) => {
       if (results.length === 0) context.skip('no frame was measured');
       await saveMeasurement(`${clip.slug}-seam-joins`, summaryOf(results));
       expect(results.length).toBeGreaterThan(0);
@@ -405,7 +356,7 @@ for (const clip of STUDIO_CLIPS) {
         });
         const steadiness = await steadinessOf(opened, pairs);
         await saveMeasurement(`${clip.slug}-seam-join-steadiness`, steadiness);
-        expect(steadiness).toBeDefined();
+        expect(steadiness).toHaveProperty('changePerFrame');
       },
       FRAME_TIMEOUT_MS,
     );

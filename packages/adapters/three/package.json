@@ -12,6 +12,10 @@
     "./testing": {
       "types": "./src/test/readPixels.ts",
       "default": "./src/test/readPixels.ts"
+    },
+    "./lab": {
+      "types": "./src/lab/index.ts",
+      "default": "./src/lab/index.ts"
     }
   },
   "scripts": {

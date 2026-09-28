@@ -12,7 +12,10 @@ const NEAR = 4;
  */
 const RIGHT_SEAM = [0, 1, 2, 3, 4];
 const LEFT_SEAM = [36, 37, 38, 39, 40];
-const NADIR_BIN = 18;
+/**
+ * The first bin of the arc under the camera, 60 to 120 degrees.
+ */
+const NADIR_START = 12;
 
 function binsWith(trusted: ReadonlyMap<number, number>): BinDisparity[] {
   return Array.from({ length: SEAM_BIN_COUNT }, (_unused, bin) => ({
@@ -49,10 +52,10 @@ describe('disparityFieldOf', () => {
   });
 
   it('never bends the seam under the camera, where whatever holds it is always near', () => {
-    const field = disparityFieldOf(
-      binsWith(mapOf([NADIR_BIN - 1, NADIR_BIN, NADIR_BIN + 1], NEAR)),
-    );
-    expect(field[NADIR_BIN]).toBe(0);
+    const beside = disparityFieldOf(binsWith(mapOf([NADIR_START - 2, NADIR_START - 1], NEAR)));
+    expect(beside[NADIR_START]).toBe(0);
+    const under = disparityFieldOf(binsWith(mapOf([NADIR_START, NADIR_START + 1], NEAR)));
+    expect(under[NADIR_START - 1]).toBe(0);
   });
 
   it('is flat for a ring of untrusted bins', () => {
@@ -77,5 +80,15 @@ describe('easedDisparities', () => {
 
   it('takes the new field whole when there is no previous one', () => {
     expect(easedDisparities(undefined, target, seconds(0))).toEqual(target);
+  });
+
+  it('takes the new field whole after a step back in time, or none at all', () => {
+    const partway = easedDisparities(previous, target, seconds(0.1));
+    expect(easedDisparities(partway, target, seconds(-1))).toEqual(target);
+    expect(easedDisparities(partway, target, seconds(NaN))).toEqual(target);
+  });
+
+  it('takes the new field whole when the one shown has another length', () => {
+    expect(easedDisparities(previous.slice(1), target, seconds(0.05))).toEqual(target);
   });
 });

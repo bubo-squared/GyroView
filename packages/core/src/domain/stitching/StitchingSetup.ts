@@ -1,4 +1,5 @@
 import type { FrameRegion, LensLayout, LensSource } from './LensLayout';
+import { SEAM_RING_ANGLE } from './seamStrip';
 import type { CalibrationSet, LensCalibration } from '../optics/LensCalibration';
 import type { LensProjectionParameters } from '../optics/LensModel';
 import { lensRotation } from '../optics/lensPose';
@@ -59,15 +60,14 @@ export interface FrameSourceKey {
 }
 
 /**
- * Two 200-degree lenses overlap between 80 and 100 degrees from their axes; the default blend
- * is centred in that band.
+ * Two 200-degree lenses overlap between 80 and 100 degrees from their axes; the blend spans 5
+ * degrees either side of the seam ring, which lies 90 degrees from both.
  */
-const FEATHER_START_DEGREES = 85;
-const FEATHER_END_DEGREES = 95;
+const FEATHER_HALF_WIDTH_DEGREES = 5;
 
 const DEFAULT_FEATHER: FeatherBand = {
-  start: degreesToRadians(degrees(FEATHER_START_DEGREES)),
-  end: degreesToRadians(degrees(FEATHER_END_DEGREES)),
+  start: degreesToRadians(degrees(SEAM_RING_ANGLE - FEATHER_HALF_WIDTH_DEGREES)),
+  end: degreesToRadians(degrees(SEAM_RING_ANGLE + FEATHER_HALF_WIDTH_DEGREES)),
 };
 
 /**

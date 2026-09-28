@@ -10,19 +10,43 @@ import {
 
 import { compileAndProve } from './compileAndProve';
 import { createPassMaterial } from './fullscreenPass';
-import type { RendererUniforms } from './rendererUniforms';
-import { PICTURE_PROGRAMS } from './shaderPrograms';
+import { SHADER_DEFINES, type RendererUniforms } from './rendererUniforms';
+import { PICTURE_PROGRAMS, type PicturePrograms } from './shaderPrograms';
 
 /**
- * The program each kind of picture is drawn with; all read the same uniform objects.
+ * The material each kind of picture is drawn with; all read the same uniform objects.
  */
 export type PictureMaterials = Readonly<Record<PictureKind, RawShaderMaterial>>;
 
-export function createPictureMaterials(uniforms: RendererUniforms): PictureMaterials {
+/**
+ * The picture programs a renderer draws with and the constants they refer to.
+ */
+export interface PictureProgramSet {
+  readonly programs: PicturePrograms;
+  readonly defines: Readonly<Record<string, number>>;
+}
+
+/**
+ * The pictures the player draws: the stitch through the fixed seam join.
+ */
+export const PLAYER_PICTURES: PictureProgramSet = {
+  programs: PICTURE_PROGRAMS,
+  defines: SHADER_DEFINES,
+};
+
+/**
+ * The pictures' materials over the shared uniforms, and any the pictures' programs add.
+ */
+export function createPictureMaterials(
+  uniforms: RendererUniforms,
+  pictures: PictureProgramSet,
+): PictureMaterials {
+  const materialOf = (kind: PictureKind): RawShaderMaterial =>
+    createPassMaterial(uniforms, { chunks: pictures.programs[kind], defines: pictures.defines });
   return {
-    rectilinear: createPassMaterial(uniforms, PICTURE_PROGRAMS.rectilinear),
-    equirectangular: createPassMaterial(uniforms, PICTURE_PROGRAMS.equirectangular),
-    'lens-tiles': createPassMaterial(uniforms, PICTURE_PROGRAMS['lens-tiles']),
+    rectilinear: materialOf('rectilinear'),
+    equirectangular: materialOf('equirectangular'),
+    'lens-tiles': materialOf('lens-tiles'),
   };
 }
 

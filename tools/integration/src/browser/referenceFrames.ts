@@ -1,3 +1,4 @@
+import { seconds, type Seconds } from '@gyroview/core';
 import { inject } from 'vitest';
 
 import { OFFICE_5K7_60, SAILING_8K_30, type SampleRecording } from './sampleUrls';
@@ -7,13 +8,18 @@ import { OFFICE_5K7_60, SAILING_8K_30, type SampleRecording } from './sampleUrls
  * the external reference for GyroView's geometry. `time` is the export's own.
  */
 export interface ReferenceFrame {
-  readonly time: number;
+  readonly time: Seconds;
   readonly url: string;
 }
 
 /**
- * A recording and frames of its Studio export, extracted beforehand at the panorama size the
- * tests render, with
+ * The size of the panoramas compared with the Studio frames, and so of the frames extracted.
+ */
+export const REFERENCE_PANORAMA_SIZE = { width: 1536, height: 768 } as const;
+
+/**
+ * A recording and frames of its Studio export, extracted beforehand at
+ * {@link REFERENCE_PANORAMA_SIZE} with
  *
  *   ffmpeg -ss <t> -i <export> -frames:v 1 -vf scale=1536:768 \
  *     .artifacts/reference/studio-<slug>-<t>s.png
@@ -26,7 +32,7 @@ export interface ReferenceClip {
    * own frame rate: cross-correlating the frame-to-frame change of the export and of both lenses
    * matches them within a frame (office at 0 and 200 s, sailing at 150 s).
    */
-  readonly start: number;
+  readonly start: Seconds;
   readonly frames: readonly ReferenceFrame[];
 }
 
@@ -34,12 +40,12 @@ export interface ReferenceClip {
  * Frames every 15 seconds from the tenth, so that the median of many decides a measurement
  * that near objects spoil on some.
  */
-const FIRST_FRAME_TIME = 10;
-const FRAME_SPACING = 15;
+const FIRST_FRAME_SECONDS = 10;
+const FRAME_SPACING_SECONDS = 15;
 
 function framesOf(slug: string, count: number): ReferenceFrame[] {
   return Array.from({ length: count }, (_, index) => {
-    const time = FIRST_FRAME_TIME + index * FRAME_SPACING;
+    const time = seconds(FIRST_FRAME_SECONDS + index * FRAME_SPACING_SECONDS);
     return { time, url: `${inject('referenceFolder')}studio-${slug}-${time}s.png` };
   });
 }
@@ -49,10 +55,10 @@ function framesOf(slug: string, count: number): ReferenceFrame[] {
  */
 const SAILING_FRAME_COUNT = 13;
 
-export const STUDIO_SAILING: ReferenceClip = {
+const STUDIO_SAILING: ReferenceClip = {
   slug: 'sailing',
   sample: SAILING_8K_30,
-  start: 0,
+  start: seconds(0),
   frames: framesOf('sailing', SAILING_FRAME_COUNT),
 };
 
@@ -60,12 +66,12 @@ export const STUDIO_SAILING: ReferenceClip = {
  * `Carigradska.mp4` beside the office recording: 5.7K at 60 fps, trimmed at both ends to 256 s.
  */
 const OFFICE_FRAME_COUNT = 17;
-const OFFICE_START = 2.98;
+const OFFICE_START_SECONDS = 2.98;
 
-export const STUDIO_OFFICE: ReferenceClip = {
+const STUDIO_OFFICE: ReferenceClip = {
   slug: 'office',
   sample: OFFICE_5K7_60,
-  start: OFFICE_START,
+  start: seconds(OFFICE_START_SECONDS),
   frames: framesOf('office', OFFICE_FRAME_COUNT),
 };
 
@@ -74,8 +80,8 @@ export const STUDIO_CLIPS: readonly ReferenceClip[] = [STUDIO_SAILING, STUDIO_OF
 /**
  * The recording's time of the export's frame.
  */
-export function recordingTimeOf(clip: ReferenceClip, frame: ReferenceFrame): number {
-  return clip.start + frame.time;
+export function recordingTimeOf(clip: ReferenceClip, frame: ReferenceFrame): Seconds {
+  return seconds(clip.start + frame.time);
 }
 
 const RGBA = 4;
@@ -105,7 +111,7 @@ export async function loadGreyImage(url: string): Promise<GreyImage> {
   context.drawImage(bitmap, 0, 0);
   bitmap.close();
   const image = context.getImageData(0, 0, canvas.width, canvas.height);
-  return { width: canvas.width, height: canvas.height, data: greyOf(image.data, false, canvas) };
+  return { width: canvas.width, height: canvas.height, data: greyOf(image.data, canvas) };
 }
 
 /**
@@ -126,17 +132,33 @@ export function greyCanvasOf(image: GreyImage): HTMLCanvasElement {
 }
 
 /**
- * The luma of RGBA pixels, read from the top down; `isBottomUp` for what `readPixels` returns.
+ * The luma of RGBA pixels whose rows run from the top down, as a 2D canvas holds them.
  */
-export function greyOf(
+export function greyOf(pixels: Uint8ClampedArray, size: GreySize): Uint8Array {
+  return lumaOf(pixels, size, (row) => row);
+}
+
+/**
+ * The luma of RGBA pixels read back from a WebGL canvas, whose rows run from the bottom up.
+ */
+export function greyOfDrawn(pixels: Uint8ClampedArray, size: GreySize): Uint8Array {
+  return lumaOf(pixels, size, (row) => size.height - 1 - row);
+}
+
+interface GreySize {
+  readonly width: number;
+  readonly height: number;
+}
+
+function lumaOf(
   pixels: Uint8ClampedArray,
-  isBottomUp: boolean,
-  size: { readonly width: number; readonly height: number },
+  size: GreySize,
+  sourceRowOf: (row: number) => number,
 ): Uint8Array {
   const { width, height } = size;
   const grey = new Uint8Array(width * height);
   for (let row = 0; row < height; row += 1) {
-    const sourceRow = isBottomUp ? height - 1 - row : row;
+    const sourceRow = sourceRowOf(row);
     for (let column = 0; column < width; column += 1) {
       const offset = (sourceRow * width + column) * RGBA;
       grey[row * width + column] = Math.round(

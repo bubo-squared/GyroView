@@ -1,10 +1,20 @@
 import { MISMATCH_CAP, SEAM_BIN_COUNT, type SeamBinCost, type SeamBinCosts } from '@gyroview/core';
 
-import { RGBA_CHANNELS } from '../seamMeter/rowMeans';
+import { RGBA_CHANNELS } from '../../seamMeter/rowMeans';
 
+/**
+ * The mismatch travels as a 16-bit code in two 8-bit channels; the mismatch shader encodes it with
+ * these, as preprocessor defines.
+ */
 const CHANNEL_MAX = 255;
-const BYTE = 256;
+const BYTE_VALUES = 256;
 const CODE_MAX = 65_535;
+
+export const MISMATCH_ENCODING_DEFINES: readonly (readonly [string, number])[] = [
+  ['MISMATCH_CHANNEL_MAX', CHANNEL_MAX],
+  ['MISMATCH_BYTE_VALUES', BYTE_VALUES],
+  ['MISMATCH_CODE_MAX', CODE_MAX],
+];
 
 /**
  * The bin costs of each candidate from the rows the mismatch program wrote, in candidate order:
@@ -19,7 +29,7 @@ export function decodeBinCosts(pixels: Uint8Array, candidateCount: number): Seam
 }
 
 function binCostAt(pixels: Uint8Array, offset: number): SeamBinCost {
-  const code = (pixels[offset] ?? 0) * BYTE + (pixels[offset + 1] ?? 0);
+  const code = (pixels[offset] ?? 0) * BYTE_VALUES + (pixels[offset + 1] ?? 0);
   return {
     mismatch: (code / CODE_MAX) * MISMATCH_CAP,
     validity: (pixels[offset + 2] ?? 0) / CHANNEL_MAX,

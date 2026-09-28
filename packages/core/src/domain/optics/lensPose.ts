@@ -17,10 +17,10 @@ import {
 /**
  * The roll the rotation applies for a calibration roll: mirrored about the sensor's mounting,
  * the quarter turn nearest to it. The strings measure the in-plane roll in the other sense than
- * the lens frame turns: registering each X5 lens alone on Insta360 Studio's stitch of the sailing
- * recording, about its own axis, found the back lens turned 1.0 degree from the front one as
- * written and 0.04 degrees apart mirrored (ADR 0025). The mounting itself is kept, so a sensor mounted
- * sideways, as on the X5, or upright stays so.
+ * the lens frame turns: registered alone on Insta360 Studio's stitch, about its own axis, the
+ * back lens sits 0.83 degrees from the front one on the sailing X5 read as written, and 0.07
+ * read mirrored; on the office X5, 0.88 and 0.09 (ADR 0025). The mounting itself is kept, so a
+ * sensor mounted sideways, as on the X5, or upright stays so.
  */
 export function mirroredRoll(roll: Degrees): Degrees {
   const mounting = Math.round(roll / QUARTER_TURN) * QUARTER_TURN;
@@ -36,9 +36,9 @@ export function mirroredRoll(roll: Degrees): Degrees {
  * about the lateral axis to face backwards, its sensor upside down relative to the front one
  * (ADR 0008); then the roll turns the image about the optical axis, read mirrored
  * ({@link mirroredRoll}). Registering each X5 lens alone on Insta360 Studio's stitch of the
- * sailing recording measured this order (ADR 0025): with the half turn first, as before, the
- * back lens's yaw acted in the other sense and the lenses sat 1.1 degrees apart about the
- * vertical. The X5 strings carry a roll near 90 degrees for both lenses and no half turn, which
+ * sailing recording measured this order (ADR 0025): the half turn first would turn the back
+ * lens's yaw the other way and leave the lenses 1.1 degrees apart about the vertical. The X5
+ * strings carry a roll near 90 degrees for both lenses and no half turn, which
  * is why the facing is part of the convention.
  */
 export function lensRotation(lens: LensCalibration): Matrix3 {

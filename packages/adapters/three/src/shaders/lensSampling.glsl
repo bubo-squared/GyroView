@@ -40,12 +40,11 @@ vec2 canvasPixel(int i, vec3 d, float theta, out bool isKnown) {
   return uLensPrincipalPoint[i];
 }
 
-// What lens i shows in a body direction through a given body-to-lens rotation, read as
-// `sampling` says, if it images it at all: outside its field, or beyond the window the frame
-// shows, nothing. The footprint is taken in every fragment before the gates, so its
-// derivatives are defined.
-LensSample sampleLensWith(int i, mat3 rotation, vec3 dirBody, int sampling) {
-  vec3 d = rotation * dirBody;
+// What lens i shows in a body direction, read as `sampling` says, if it images it at all:
+// outside its field, or beyond the window the frame shows, nothing. The footprint is taken in
+// every fragment before the gates, so its derivatives are defined.
+LensSample sampleLensWith(int i, vec3 dirBody, int sampling) {
+  vec3 d = uLensRotation[i] * dirBody;
   // atan keeps its precision near the axis where acos loses it.
   float theta = atan(length(d.xy), d.z);
   bool isKnown;
@@ -61,7 +60,7 @@ LensSample sampleLensWith(int i, mat3 rotation, vec3 dirBody, int sampling) {
   return result;
 }
 
-// What lens i shows in a body direction through its own pose, read as the picture is.
+// What lens i shows in a body direction, read as the picture is.
 LensSample sampleLensAt(int i, vec3 dirBody) {
-  return sampleLensWith(i, uLensRotation[i], dirBody, uSampling);
+  return sampleLensWith(i, dirBody, uSampling);
 }

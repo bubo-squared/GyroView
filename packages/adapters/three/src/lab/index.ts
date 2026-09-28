@@ -1,0 +1,1 @@
+export { LabRenderer } from './LabRenderer';

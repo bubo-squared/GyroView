@@ -1,47 +1,77 @@
-import { multiplyMatrices, stabilizerFor, type PoseDelta } from '@gyroview/core';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { saveMeasurement } from '../browser/artifacts';
-import { blockFieldOf } from '../browser/blockField';
-import { readingsOf, setupOf, verticalStretchOf, withRadialScale } from '../browser/lensReadings';
-import { openSample } from '../browser/realRecordingSupport';
-import { alignToReference, renderUnder, rotationOf } from '../browser/referenceAlignment';
-import { radialScaleErrorOf } from '../browser/radialFit';
-import { loadGreyImage, recordingTimeOf, STUDIO_CLIPS } from '../browser/referenceFrames';
-import { equirectangularRenderingOf, motionOf } from '../browser/rendering';
+import { readingsOf, setupOf, withRadialScale, type LensReading } from '../browser/lensReadings';
+import {
+  alignToReference,
+  refineAlignment,
+  type Alignment,
+  type ViewTurn,
+} from '../browser/referenceAlignment';
+import { REFERENCE_PANORAMA_SIZE, STUDIO_CLIPS } from '../browser/referenceFrames';
+import { renderingOfSetup } from '../browser/rendering';
 import { isServed } from '../browser/sampleUrls';
 import { matchedGains, measuredDisparity, type MeasuredDisparity } from '../browser/seamJoins';
-import { closeMoment, decodeMoment } from '../browser/SharedSample';
+import { quartilesOf } from '../browser/statistics';
+import { openStudioMoment, type StudioMoment } from '../browser/studioFrame';
 
-const PANORAMA_SIZE = { width: 1536, height: 768 };
 const COMPARED_TIMES = new Set([55, 100, 175]);
 /**
- * The radial scales tried on each reading, against the reading as the core reads it: from two
- * percent smaller to five larger, which spans the legacy radius at 98 degrees (0.98) and at
- * omnikit's 95 degrees (1.01), and the Mei model's best on the X5 units (1.02 to 1.04).
+ * The radial scales tried on each reading, against the reading as the core reads it: the legacy
+ * radius at 96 to 98 degrees for the equidistant model, the Mei model up to its best on the two
+ * X5 units (ADR 0023); the polynomial reading, a fallback, as it is.
  */
-const RADIAL_SCALES = [0.98, 0.99, 1, 1.02, 1.04, 1.053];
+const RADIAL_SCALES: Readonly<Record<string, readonly number[]>> = {
+  equidistant: [1, 0.99, 0.98],
+  mei: [1, 1.02, 1.04],
+  polynomial: [1],
+};
 /**
- * Twenty-one candidates, each aligned and block-matched, take a few minutes per frame.
+ * Nine candidates, each aligned and its seam measured, take about half a minute per frame.
  */
-const FRAME_TIMEOUT_MS = 900_000;
+const FRAME_TIMEOUT_MS = 300_000;
+
+function candidatesOf(readings: readonly LensReading[]): LensReading[] {
+  return readings.flatMap((reading) =>
+    (RADIAL_SCALES[reading.name] ?? [1]).map((scale) => withRadialScale(reading, scale)),
+  );
+}
 
 function trustedDisparities(seam: MeasuredDisparity): number[] {
   return seam.bins.filter((bin) => bin.isTrusted).map((bin) => bin.disparity);
 }
 
-function quartilesOf(values: readonly number[]): { lower: number; median: number; upper: number } {
-  const sorted = values.toSorted((a, b) => a - b);
-  const at = (share: number): number => sorted[Math.floor(share * (sorted.length - 1))] ?? NaN;
-  return { lower: at(0.25), median: at(0.5), upper: at(0.75) };
+/**
+ * The reading drawn, turned onto the reference (from the first reading's turn, which lies
+ * close), with the disparity it leaves at the seam.
+ */
+async function scoreOf(
+  studio: StudioMoment,
+  candidate: LensReading,
+  near: ViewTurn | undefined,
+): Promise<Alignment & { readonly seamDisparity: object }> {
+  const { canvas, renderer, dispose } = renderingOfSetup(
+    setupOf(candidate, studio.opened.layout),
+    REFERENCE_PANORAMA_SIZE,
+  );
+  try {
+    const rendering = { renderer, canvas, pair: studio.moment.first, lock: studio.lock };
+    const alignment =
+      near === undefined
+        ? alignToReference(studio.reference, rendering)
+        : refineAlignment(studio.reference, rendering, near);
+    const seam = await measuredDisparity(renderer, await matchedGains(renderer));
+    return { ...alignment, seamDisparity: quartilesOf(trustedDisparities(seam)) };
+  } finally {
+    dispose();
+  }
 }
 
 /**
  * Which reading of the calibration, at which radial scale, draws the far field where Insta360
- * Studio draws it. Every candidate is aligned to the reference on its own; the far-field cost
- * and the block field's vertical stretch decide. And how far apart the reading draws the two
- * lenses' images at the seam: parallax only ever moves them apart, so the disparity of the far
- * bins, the lower quartile, is the reading's own error there.
+ * Studio draws it, and how far apart it draws the two lenses' images at the seam: parallax only
+ * ever moves them apart, so the disparity of the far bins, the lower quartile, is the reading's
+ * own error there, and needs no reference (ADR 0023).
  */
 for (const clip of STUDIO_CLIPS) {
   describe(`lens readings against the Studio export of ${clip.sample.name}`, () => {
@@ -57,60 +87,16 @@ for (const clip of STUDIO_CLIPS) {
         `scores every reading and radial scale on the Studio frame at ${frame.time} s`,
         async (context) => {
           if (!(await isServed(frame.url))) context.skip(`no Studio frame at ${frame.time} s`);
-          const reference = await loadGreyImage(frame.url);
-          const opened = await openSample(context, clip.sample);
-          cleanups.push(() => {
-            opened.dispose();
-          });
-          const { orientations } = motionOf(opened);
-          const moment = await decodeMoment(opened, recordingTimeOf(clip, frame));
-          cleanups.push(() => {
-            closeMoment(moment);
-          });
-          const pair = moment.first;
-          const lock = stabilizerFor('lock').nextRotation(
-            orientations.orientationAt(pair.timestamp),
-            pair.timestamp,
-          );
-          const candidates = readingsOf(opened).flatMap((reading) =>
-            reading.name === 'polynomial'
-              ? [reading]
-              : RADIAL_SCALES.map((scale) => withRadialScale(reading, scale)),
-          );
+          const studio = await openStudioMoment(context, { clip, frame, cleanups });
           const scores = [];
-          let from: PoseDelta | undefined;
+          let near: ViewTurn | undefined;
+          const candidates = candidatesOf(readingsOf(studio.opened));
           for (const candidate of candidates) {
-            const { canvas, renderer, dispose } = equirectangularRenderingOf(
-              setupOf(candidate, opened.layout),
-              PANORAMA_SIZE,
-            );
-            const renderable = { renderer, canvas, pair, lock };
-            const alignment = alignToReference(reference, renderable, from);
-            from ??= alignment.rotation;
-            const field = blockFieldOf(reference, renderUnder(renderable, alignment.rotation));
-            const viewToBody = multiplyMatrices(lock, rotationOf(alignment.rotation));
-            const radial = radialScaleErrorOf(field, PANORAMA_SIZE, viewToBody);
-            const seam = await measuredDisparity(renderer, await matchedGains(renderer));
-            dispose();
-            scores.push({
-              reading: candidate.name,
-              radialScale: candidate.radialScale,
-              cost: alignment.cost,
-              rotation: alignment.rotation,
-              stretch: verticalStretchOf(field, PANORAMA_SIZE.height),
-              epsilon: radial.epsilon,
-              radialBlocks: radial.blocksUsed,
-              impliedScale: candidate.radialScale * (1 + radial.epsilon),
-              seamDisparity: quartilesOf(trustedDisparities(seam)),
-              viewToBody,
-              field,
-            });
+            const score = await scoreOf(studio, candidate, near);
+            near ??= score.turn;
+            scores.push({ reading: candidate.name, radialScale: candidate.radialScale, ...score });
           }
-          await saveMeasurement(`${clip.slug}-${frame.time}s-lens-readings`, {
-            scales: RADIAL_SCALES,
-            scores,
-          });
-          expect(scores).toHaveLength(candidates.length);
+          await saveMeasurement(`${clip.slug}-${frame.time}s-lens-readings`, { scores });
           expect(scores.every((score) => Number.isFinite(score.cost))).toBe(true);
         },
         FRAME_TIMEOUT_MS,

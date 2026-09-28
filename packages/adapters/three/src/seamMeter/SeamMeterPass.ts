@@ -11,7 +11,7 @@ import {
 
 import { rowMeansOf } from './rowMeans';
 import { compileAndProve } from '../compileAndProve';
-import { createFullscreenTriangle, createPassMaterial } from '../fullscreenPass';
+import { createFullscreenTriangle, createPassMaterial, programOf } from '../fullscreenPass';
 import { RGBA_CHANNELS } from './rowMeans';
 import { renderInto } from '../renderInto';
 import { MAX_LENSES, type RendererUniforms } from '../rendererUniforms';
@@ -46,7 +46,7 @@ export class SeamMeterPass implements SeamMeter {
     uniforms: RendererUniforms,
     private readonly lensCount: number,
   ) {
-    this.material = createPassMaterial(uniforms, SEAM_ANALYSIS);
+    this.material = createPassMaterial(uniforms, programOf(SEAM_ANALYSIS));
     this.scene.add(new Mesh(this.geometry, this.material));
     try {
       compileAndProve(renderer, this.scene, this.camera);

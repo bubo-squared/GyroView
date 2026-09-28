@@ -1,5 +1,7 @@
-import type { SeamBinCosts } from './seamMismatch';
-import { seamBinAzimuth, type StripShift } from './seamStrip';
+import type { SeamBinCost, SeamBinCosts } from './seamMismatch';
+import { seamBinAzimuth } from './seamStrip';
+import { ensureInvariant } from '../../shared/errors/GyroViewError';
+import { indexOfLeast, parabolicOffset } from '../../shared/math/minimum';
 import { degrees, type Degrees } from '../../shared/units/angle';
 
 /**
@@ -21,8 +23,8 @@ export interface DisparityRange {
 
 /**
  * From below the error the lens models leave at the seam (the legacy equidistant reading draws
- * far content up to a degree and a half too close together there on the X5 recordings), so
- * that a far bin's minimum is a trusted interior one, to beyond what the overlap leaves room
+ * far content up to 3.5 degrees too close together there on the office X5, about 1.5 per lens),
+ * so that a far bin's minimum is a trusted interior one, to beyond what the overlap leaves room
  * for: an object 20 centimetres from the camera, with lenses 3.2 centimetres apart. The step is
  * a quarter of a degree, refined by a parabola.
  */
@@ -66,24 +68,20 @@ const MIN_CONTRAST = 0.2;
  */
 const MIN_VALIDITY = 0.25;
 /**
- * The parabola through three points refines the minimum by up to half a step either way.
- */
-const MAX_REFINEMENT_STEPS = 0.5;
-/**
  * A minimum within this many steps of either end of the range, or of candidates both lenses
  * image too little of, is not trusted: the cost may fall further beyond, and on thin repeating
  * lines (rigging, railings) a wrong alignment can win at the edge of what is compared.
  */
 const EDGE_STEPS = 2;
 
-export function disparityCandidatesOf(
-  range: DisparityRange = DEFAULT_DISPARITY_RANGE,
-): StripShift[] {
+/**
+ * The slides of lens 0's sampling across the ring the range tries, in order.
+ */
+export function disparityCandidatesOf(range: DisparityRange = DEFAULT_DISPARITY_RANGE): Degrees[] {
   const count = Math.round((range.most - range.least) / range.step) + 1;
-  return Array.from({ length: count }, (_unused, index) => ({
-    along: degrees(0),
-    across: degrees(range.least + index * range.step),
-  }));
+  return Array.from({ length: count }, (_unused, index) =>
+    degrees(range.least + index * range.step),
+  );
 }
 
 /**
@@ -94,6 +92,11 @@ export function binDisparitiesOf(
   costsByCandidate: readonly SeamBinCosts[],
   range: DisparityRange = DEFAULT_DISPARITY_RANGE,
 ): BinDisparity[] {
+  const candidateCount = disparityCandidatesOf(range).length;
+  ensureInvariant(
+    costsByCandidate.length === candidateCount,
+    `${costsByCandidate.length} rows of costs for ${candidateCount} candidates`,
+  );
   const binCount = costsByCandidate[0]?.length ?? 0;
   return Array.from({ length: binCount }, (_unused, bin) => {
     const costs = costsByCandidate.map((byBin) => usableCost(byBin[bin]));
@@ -101,8 +104,9 @@ export function binDisparitiesOf(
   });
 }
 
-function usableCost(cost: SeamBinCosts[number] | undefined): number {
-  return cost !== undefined && cost.validity >= MIN_VALIDITY ? cost.mismatch : Infinity;
+function usableCost(cost: SeamBinCost | undefined): number {
+  const isUsable = cost !== undefined && cost.validity >= MIN_VALIDITY;
+  return isUsable && Number.isFinite(cost.mismatch) ? cost.mismatch : Infinity;
 }
 
 function binDisparityOf(
@@ -110,10 +114,10 @@ function binDisparityOf(
   costs: readonly number[],
   range: DisparityRange,
 ): BinDisparity {
-  const best = indexOfMinimum(costs);
+  const best = indexOfLeast(costs);
   const isInside = isUsableAround(costs, best);
   const contrast = contrastOf(costs, best);
-  const steps = best + (isInside ? refinement(costs, best) : 0);
+  const steps = best + (isInside ? parabolicOffset(costs, best) : 0);
   return {
     bin,
     azimuth: seamBinAzimuth(bin),
@@ -130,14 +134,6 @@ function isUsableAround(costs: readonly number[], index: number): boolean {
   return true;
 }
 
-function indexOfMinimum(values: readonly number[]): number {
-  let best = 0;
-  for (const [index, value] of values.entries()) {
-    if (value < (values[best] ?? Infinity)) best = index;
-  }
-  return best;
-}
-
 /**
  * How far below the median of the usable costs the minimum lies, as a share of the median.
  */
@@ -147,17 +143,4 @@ function contrastOf(costs: readonly number[], best: number): number {
   const minimum = costs[best];
   const isMeasured = median !== undefined && minimum !== undefined && median > 0;
   return isMeasured ? (median - minimum) / median : 0;
-}
-
-/**
- * The sub-step offset of the minimum of the parabola through the best cost and its neighbours.
- */
-function refinement(costs: readonly number[], best: number): number {
-  const before = costs[best - 1] ?? Infinity;
-  const at = costs[best] ?? Infinity;
-  const after = costs[best + 1] ?? Infinity;
-  const curvature = before - 2 * at + after;
-  if (!Number.isFinite(curvature) || curvature <= 0) return 0;
-  const offset = (before - after) / (2 * curvature);
-  return Math.max(-MAX_REFINEMENT_STEPS, Math.min(MAX_REFINEMENT_STEPS, offset));
 }

@@ -7,8 +7,6 @@ import {
 import { parseOffsetString } from '@gyroview/core/testing';
 import type { OpenedRecording } from '@gyroview/player/composition';
 
-import type { BlockShift } from './blockField';
-
 /**
  * One way of reading the recording's calibration strings into lens models, and a factor on
  * the radius every model draws: what the reference decides between.
@@ -69,23 +67,4 @@ export function setupOf(reading: LensReading, layout: LensLayout): StitchingSetu
   };
 }
 
-/**
- * How the block field stretches away from the horizon: the mean vertical shift of the trusted
- * blocks above the middle row minus that below it, in pixels. Negative when GyroView's content
- * sits further from the horizon than the reference's on both sides.
- */
-export function verticalStretchOf(field: readonly BlockShift[], height: number): number {
-  const trusted = field.filter((block) => block.contrast > MIN_CONTRAST);
-  const upper = trusted.filter((block) => block.row < height / 2);
-  const lower = trusted.filter((block) => block.row >= height / 2);
-  return meanOf(upper.map((block) => block.dy)) - meanOf(lower.map((block) => block.dy));
-}
-
-const MIN_CONTRAST = 0.3;
 const SCALE_DECIMALS = 3;
-
-function meanOf(values: readonly number[]): number {
-  let total = 0;
-  for (const value of values) total += value;
-  return values.length > 0 ? total / values.length : 0;
-}

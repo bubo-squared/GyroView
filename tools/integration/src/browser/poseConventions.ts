@@ -11,6 +11,7 @@ import {
   rotationAboutZ,
   transformVector,
   transposeMatrix,
+  type Degrees,
   type EulerDegrees,
   type LensCalibration,
   type Matrix3,
@@ -103,8 +104,8 @@ const ROTATIONS_ABOUT: Readonly<Record<BodyAxis, (angle: Radians) => Matrix3>> =
 /**
  * A turn about a body axis, in degrees, applied to the body before the lens's own rotation.
  */
-export function withTurnAbout(rotation: Matrix3, axis: BodyAxis, angle: number): Matrix3 {
-  const turn = ROTATIONS_ABOUT[axis](degreesToRadians(degrees(angle)));
+export function withTurnAbout(rotation: Matrix3, axis: BodyAxis, angle: Degrees): Matrix3 {
+  const turn = ROTATIONS_ABOUT[axis](degreesToRadians(angle));
   return multiplyMatrices(rotation, turn);
 }
 

@@ -10,40 +10,41 @@ import {
   type Matrix3 as CoreMatrix3,
   type PictureRenderer,
   type Presentation,
-  type SeamAlignment,
   type SeamMeter,
-  type SeamMismatchMeter,
   type StitchingSetup,
   type Vector3 as CoreVector3,
   viewModeRulesFor,
   type ViewMode,
   type ViewportSize,
 } from '@gyroview/core';
+import type { WebGLRenderer } from 'three';
 import {
   Camera,
   Mesh,
   Scene,
-  WebGLRenderer,
   type VideoFrameTexture,
   type BufferGeometry,
+  type IUniform,
   type RawShaderMaterial,
 } from 'three';
 
 import { createFullscreenTriangle } from './fullscreenPass';
+import { createRenderer, type ThreeFrameRendererOptions } from './webglRenderer';
+
+export type { ThreeFrameRendererOptions } from './webglRenderer';
 import { SeamMeterPass } from './seamMeter/SeamMeterPass';
-import { applySeamAlignment } from './seamJoin';
-import { SeamMismatchPass } from './seamMismatch/SeamMismatchPass';
 import { applySamplingStrategy, createLensTextures } from './lensTextures';
 import { SAMPLING_STRATEGIES } from './samplingStrategies';
 import {
   compilePictureMaterials,
   createPictureMaterials,
   disposePictureMaterials,
+  PLAYER_PICTURES,
   type PictureMaterials,
+  type PictureProgramSet,
 } from './pictureMaterials';
 import {
   applyLensGain,
-  applyLensPose,
   applyPicture,
   applySampling,
   applyStabilization,
@@ -53,12 +54,23 @@ import {
   type RendererUniforms,
 } from './rendererUniforms';
 
-export interface ThreeFrameRendererOptions {
-  /**
-   * Keep the drawing buffer after a frame, so tests can read it back and captures can save it;
-   * costs a copy per frame, so off by default.
-   */
-  readonly preserveDrawingBuffer?: boolean;
+/**
+ * What a renderer draws its pictures with beyond the shared uniforms: the programs, and the
+ * uniforms only they read.
+ */
+export interface RendererPictures {
+  readonly programs: PictureProgramSet;
+  readonly uniforms: Readonly<Record<string, IUniform>>;
+}
+
+const PLAYER_RENDERER_PICTURES: RendererPictures = { programs: PLAYER_PICTURES, uniforms: {} };
+
+/**
+ * How a renderer is opened: its context's options and what it draws with.
+ */
+interface Opening {
+  readonly options: ThreeFrameRendererOptions;
+  readonly pictures: RendererPictures;
 }
 
 /**
@@ -68,7 +80,7 @@ interface Meter {
   dispose(): void;
 }
 
-interface RendererParts {
+export interface RendererParts {
   readonly renderer: WebGLRenderer;
   readonly scene: Scene;
   readonly camera: Camera;
@@ -94,6 +106,7 @@ interface RendererParts {
  * each lens image in a tile of its own.
  */
 export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
+  protected readonly meters = new Set<Meter>();
   private framing: Framing = DEFAULT_FRAMING;
   private viewMode: ViewMode = DEFAULT_VIEW_MODE;
   /**
@@ -102,10 +115,9 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
    */
   private hasFrames = false;
   private isDisposed = false;
-  private readonly meters = new Set<Meter>();
 
-  private constructor(
-    private readonly parts: RendererParts,
+  protected constructor(
+    protected readonly parts: RendererParts,
     private readonly canvas: HTMLCanvasElement,
   ) {
     this.applyFraming();
@@ -117,10 +129,23 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     setup: StitchingSetup,
     options: ThreeFrameRendererOptions = {},
   ): ThreeFrameRenderer {
+    const opening = { options, pictures: PLAYER_RENDERER_PICTURES };
+    return new this(this.openParts(canvas, setup, opening), canvas);
+  }
+
+  /**
+   * The context, textures, uniforms and compiled programs of a renderer that draws with the
+   * given pictures.
+   */
+  protected static openParts(
+    canvas: HTMLCanvasElement,
+    setup: StitchingSetup,
+    opening: Opening,
+  ): RendererParts {
     ensureDrawable(setup);
-    const renderer = createRenderer(canvas, options);
+    const renderer = createRenderer(canvas, opening.options);
     try {
-      return new ThreeFrameRenderer(assembleParts(renderer, setup), canvas);
+      return assembleParts(renderer, setup, opening.pictures);
     } catch (error) {
       // A shader the GPU refuses fails here; what was built goes with it.
       renderer.dispose();
@@ -187,39 +212,6 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     return meter;
   }
 
-  public setLensPose(lensIndex: number, rotation: CoreMatrix3): void {
-    this.ensureLive();
-    applyLensPose(this.parts.uniforms, lensIndex, rotation);
-    this.render();
-  }
-
-  /**
-   * As {@link createSeamMeter}: the meter shares this renderer's frames, poses and context.
-   */
-  public createSeamMismatchMeter(): SeamMismatchMeter {
-    this.ensureLive();
-    const pass = new SeamMismatchPass(
-      this.parts.renderer,
-      this.parts.uniforms,
-      this.parts.lensCount,
-    );
-    const meter: SeamMismatchMeter = {
-      measure: (request) => pass.measure(request),
-      dispose: (): void => {
-        this.meters.delete(meter);
-        pass.dispose();
-      },
-    };
-    this.meters.add(meter);
-    return meter;
-  }
-
-  public setSeamAlignment(alignment: SeamAlignment): void {
-    this.ensureLive();
-    applySeamAlignment(this.parts.uniforms, alignment);
-    this.render();
-  }
-
   /**
    * Turns the whole picture: the stabilized frame the viewer looks around in, into the body.
    * Does not redraw by itself: the stabilizing sink calls it right before presenting a pair.
@@ -266,6 +258,15 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     this.parts.renderer.dispose();
   }
 
+  protected render(): void {
+    if (!this.hasFrames) return;
+    this.parts.renderer.render(this.parts.scene, this.parts.camera);
+  }
+
+  protected ensureLive(): void {
+    ensureInvariant(!this.isDisposed, 'the renderer has been disposed');
+  }
+
   /**
    * Three.js builds its state anew on a restored context but draws nothing: a paused picture
    * (iOS drops the context of a tab in the background) comes back only through a redraw, which
@@ -274,11 +275,6 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   private readonly onContextRestored = (): void => {
     this.render();
   };
-
-  private render(): void {
-    if (!this.hasFrames) return;
-    this.parts.renderer.render(this.parts.scene, this.parts.camera);
-  }
 
   /**
    * Asks the view mode what to draw for the framing on this canvas, and switches to that
@@ -292,10 +288,6 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     });
     this.parts.pass.material = this.parts.materials[picture.kind];
     applyPicture(this.parts.uniforms, picture, aspectOf(viewport));
-  }
-
-  private ensureLive(): void {
-    ensureInvariant(!this.isDisposed, 'the renderer has been disposed');
   }
 }
 
@@ -316,28 +308,27 @@ function ensureDrawable(setup: StitchingSetup): void {
  */
 function sharedParts(
   setup: StitchingSetup,
+  pictures: RendererPictures,
 ): Pick<RendererParts, 'textures' | 'uniforms' | 'materials'> {
   const strategy = SAMPLING_STRATEGIES[DEFAULT_PICTURE_QUALITY];
   const textures = createLensTextures(setup.frameSlotCount, strategy);
   const uniforms = createRendererUniforms(setup, textures);
   applySampling(uniforms, strategy);
-  return { textures, uniforms, materials: createPictureMaterials(uniforms) };
+  const materials = createPictureMaterials(
+    { ...uniforms, ...pictures.uniforms },
+    pictures.programs,
+  );
+  return { textures, uniforms, materials };
 }
 
-function assembleParts(renderer: WebGLRenderer, setup: StitchingSetup): RendererParts {
-  const { textures, uniforms, materials } = sharedParts(setup);
+function assembleParts(
+  renderer: WebGLRenderer,
+  setup: StitchingSetup,
+  pictures: RendererPictures,
+): RendererParts {
+  const { textures, uniforms, materials } = sharedParts(setup, pictures);
   const pass = new Mesh(createFullscreenTriangle(), materials.rectilinear);
-  let seamProof: SeamMeterPass;
-  try {
-    compilePictureMaterials(renderer, pass.geometry, materials);
-    // The seam meter's program too: gain matching asks for one at every load.
-    seamProof = new SeamMeterPass(renderer, uniforms, setup.lenses.length);
-  } catch (error) {
-    disposePictureMaterials(materials);
-    pass.geometry.dispose();
-    for (const texture of textures) texture.dispose();
-    throw error;
-  }
+  const seamProof = provenPrograms(renderer, { pass, materials, textures, uniforms });
   const scene = new Scene();
   scene.add(pass);
   return {
@@ -353,42 +344,22 @@ function assembleParts(renderer: WebGLRenderer, setup: StitchingSetup): Renderer
   };
 }
 
-function createRenderer(
-  canvas: HTMLCanvasElement,
-  options: ThreeFrameRendererOptions,
-): WebGLRenderer {
-  // The context attributes must be given here: three keeps a context it is handed as it is.
-  const context = canvas.getContext('webgl2', {
-    preserveDrawingBuffer: options.preserveDrawingBuffer ?? false,
-    antialias: false,
-    alpha: false,
-    depth: false,
-    stencil: false,
-  });
-  if (!context) {
-    throw new GyroViewError('render-unavailable', 'this browser has no WebGL2 context');
-  }
-  const renderer = new WebGLRenderer({ canvas, context });
-  renderer.setPixelRatio(1);
-  renderer.debug.onShaderError = (gl, program, ...shaders): void => {
-    rejectProgram(gl, program, shaders);
-  };
-  return renderer;
-}
-
 /**
- * A shader that does not compile or link is a defect, not something to log and draw black over.
- * A compile failure's reason is in its shader's log, a link failure's in the program's.
+ * Compiles and proves every picture program and the seam meter's (gain matching asks for one at
+ * every load), and returns the proven meter; what was built goes if a program fails.
  */
-function rejectProgram(
-  gl: WebGLRenderingContext,
-  program: WebGLProgram,
-  shaders: readonly WebGLShader[],
-): never {
-  const logs = [
-    gl.getProgramInfoLog(program),
-    ...shaders.map((shader) => gl.getShaderInfoLog(shader)),
-  ];
-  const log = logs.filter(Boolean).join('\n');
-  throw new GyroViewError('render-unavailable', `a shader did not compile or link: ${log}`);
+function provenPrograms(
+  renderer: WebGLRenderer,
+  built: Pick<RendererParts, 'pass' | 'materials' | 'textures' | 'uniforms'>,
+): SeamMeterPass {
+  const { pass, materials, textures, uniforms } = built;
+  try {
+    compilePictureMaterials(renderer, pass.geometry, materials);
+    return new SeamMeterPass(renderer, uniforms, uniforms.uLensCount.value);
+  } catch (error) {
+    disposePictureMaterials(materials);
+    pass.geometry.dispose();
+    for (const texture of textures) texture.dispose();
+    throw error;
+  }
 }

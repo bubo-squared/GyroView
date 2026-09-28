@@ -1,9 +1,16 @@
-import { ThreeFrameRenderer } from '@gyroview/adapter-three';
+import { LabRenderer } from '@gyroview/adapter-three/lab';
 import {
   buildStitchingSetup,
+  degreesToRadians,
+  HALF_TURN,
+  QUARTER_TURN,
+  stabilizerFor,
   type CalibrationSet,
+  type FramePair,
+  type Matrix3,
   type MotionSetup,
   type StitchingSetup,
+  type Vector3,
 } from '@gyroview/core';
 import type { OpenedRecording } from '@gyroview/player/composition';
 
@@ -17,7 +24,7 @@ export interface CanvasSize {
  */
 export interface EquirectangularRendering {
   readonly canvas: HTMLCanvasElement;
-  readonly renderer: ThreeFrameRenderer;
+  readonly renderer: LabRenderer;
   readonly dispose: () => void;
 }
 
@@ -33,6 +40,16 @@ export function motionOf(opened: OpenedRecording): MotionSetup {
 }
 
 /**
+ * The gyro's lock stabilization of the pair: the stabilized frame into the body.
+ */
+export function lockOf(opened: OpenedRecording, pair: FramePair<VideoFrame>): Matrix3 {
+  return stabilizerFor('lock').nextRotation(
+    motionOf(opened).orientations.orientationAt(pair.timestamp),
+    pair.timestamp,
+  );
+}
+
+/**
  * The sample stitched into a panorama on a canvas of `size`, its pixels kept for reading back.
  */
 export function equirectangularRendering(
@@ -40,21 +57,21 @@ export function equirectangularRendering(
   size: CanvasSize,
 ): EquirectangularRendering {
   const setup = buildStitchingSetup({ calibration: calibrationOf(opened), layout: opened.layout });
-  return equirectangularRenderingOf(setup, size);
+  return renderingOfSetup(setup, size);
 }
 
 /**
  * As {@link equirectangularRendering}, for a stitching setup of the caller's own: another
  * reading of the calibration, or a scaled one.
  */
-export function equirectangularRenderingOf(
+export function renderingOfSetup(
   setup: StitchingSetup,
   size: CanvasSize,
 ): EquirectangularRendering {
   const canvas = document.createElement('canvas');
   canvas.width = size.width;
   canvas.height = size.height;
-  const renderer = ThreeFrameRenderer.create(canvas, setup, { preserveDrawingBuffer: true });
+  const renderer = LabRenderer.create(canvas, setup, { preserveDrawingBuffer: true });
   renderer.setViewMode('equirectangular');
   return {
     canvas,
@@ -63,4 +80,28 @@ export function equirectangularRenderingOf(
       renderer.dispose();
     },
   };
+}
+
+const SILENT: Vector3 = [0, 0, 0];
+
+/**
+ * The gains that draw only `lensIndex`, at its own gain: the others silenced, it fills its
+ * whole field up to where its feather ends, and every other pixel is black.
+ */
+export function gainsShowingOnly(gains: readonly Vector3[], lensIndex: number): Vector3[] {
+  return gains.map((gain, index) => (index === lensIndex ? gain : SILENT));
+}
+
+const PIXEL_CENTRE = 0.5;
+const HALF_TURN_RADIANS = degreesToRadians(HALF_TURN);
+const QUARTER_TURN_RADIANS = degreesToRadians(QUARTER_TURN);
+
+/**
+ * The direction seen through the centre of a pixel of the panorama, counted from the top-left,
+ * in the view frame: the inverse of the stitching shader's ray.
+ */
+export function viewDirectionOf(column: number, row: number, size: CanvasSize): Vector3 {
+  const yaw = ((column + PIXEL_CENTRE) / size.width) * 2 * HALF_TURN_RADIANS - HALF_TURN_RADIANS;
+  const pitch = -(((row + PIXEL_CENTRE) / size.height) * 2 - 1) * QUARTER_TURN_RADIANS;
+  return [Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)];
 }

@@ -94,14 +94,6 @@ export {
   ZERO_POSE_DELTA,
   type PoseDelta,
 } from './domain/optics/poseDelta';
-export {
-  DEFAULT_SEARCH_STAGES,
-  gridAround,
-  searchPose,
-  type CostEvaluator,
-  type PoseSearchResult,
-  type SearchStage,
-} from './domain/stitching/poseSearch';
 export { DEFAULT_MAX_GAIN, gainsMatching } from './domain/optics/gainMatch';
 export { clampView, DEFAULT_VIEW, isSameView, type ViewState } from './domain/view/ViewState';
 export {
@@ -188,14 +180,6 @@ export {
   type AzimuthArc,
   type StripShift,
 } from './domain/stitching/seamStrip';
-export {
-  DEFAULT_SHIFT_GRID,
-  localShiftsOf,
-  shiftGridOf,
-  type BinShift,
-  type ShiftGrid,
-} from './domain/stitching/seamShiftField';
-export { fitPoseToShifts, type PoseFit } from './domain/stitching/poseFit';
 export {
   DEFAULT_SEAM_COST_RULE,
   seamCostOf,

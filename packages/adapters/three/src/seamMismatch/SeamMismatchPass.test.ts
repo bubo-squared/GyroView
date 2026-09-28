@@ -1,25 +1,19 @@
 import {
   buildStitchingSetup,
   clamp,
-  correctedLensRotation,
   degrees,
   degreesToRadians,
-  fitPoseToShifts,
   IDENTITY_MATRIX3,
-  localShiftsOf,
   multiplyMatrices,
   rotationAboutZ,
   seamCostOf,
   seconds,
-  shiftGridOf,
   transformVector,
   transposeMatrix,
-  type BinShift,
   type CalibrationSet,
   type DecodedFrame,
   type LensCalibration,
   type Matrix3,
-  type PoseDelta,
   type SeamBinCosts,
   type SeamCandidates,
   type SeamMismatchMeter,
@@ -52,15 +46,6 @@ const AGREEMENT = 0.01;
  * the range, the cap.
  */
 const CLEAR_DISAGREEMENT = 0.1;
-/**
- * A tenth of a degree, the resolution the refinement is asked for.
- */
-const FIT_TOLERANCE = 0.1;
-/**
- * One percent more radius at 90 degrees from the axis is 0.9 degrees of slide across the ring.
- */
-const SCALE_SLIDE_MIN = 0.6;
-const SCALE_SLIDE_MAX = 1.2;
 const CLEAR_RATIO = 3;
 const HAIR = 1e-9;
 
@@ -86,10 +71,6 @@ interface Recording {
   readonly calibration: CalibrationSet;
   readonly bodyToLens: Matrix3;
   readonly brightness?: number;
-  /**
-   * How much larger the lens draws its image than its calibration says.
-   */
-  readonly radialScale?: number;
 }
 
 /**
@@ -101,7 +82,6 @@ function recordedFrame({
   calibration,
   bodyToLens,
   brightness = 1,
-  radialScale = 1,
 }: Recording): DecodedFrame<VideoFrame> {
   const lensToBody = transposeMatrix(bodyToLens);
   const side = calibration.canvas.height;
@@ -109,7 +89,7 @@ function recordedFrame({
   const { principalPoint, halfFieldOfView } = lens.model;
   const rim = lens.model.project([Math.sin(halfFieldOfView), 0, Math.cos(halfFieldOfView)]);
   if (!rim) throw new Error('the lens images its own rim');
-  const edgeRadius = (rim.x - principalPoint.x) * radialScale;
+  const edgeRadius = rim.x - principalPoint.x;
   return paintedFrame(FRAME_SIZE, (column, row) => {
     const dx = squareX + ((column + 0.5) / FRAME_SIZE) * side - principalPoint.x;
     const dy = ((row + 0.5) / FRAME_SIZE) * side - principalPoint.y;
@@ -140,7 +120,6 @@ interface Scene {
 interface BackLens {
   readonly turn?: Matrix3;
   readonly brightness?: number;
-  readonly radialScale?: number;
 }
 
 function rotationsOf(rotations: readonly Matrix3[]): SeamCandidates {
@@ -163,25 +142,6 @@ function costOf(bins: SeamBinCosts | undefined): number {
   const cost = bins ? seamCostOf(bins) : undefined;
   if (cost === undefined) throw new Error('the strip was not measured');
   return cost;
-}
-
-/**
- * The shift field of the frames on screen over the default grid.
- */
-async function fieldOf(meter: SeamMismatchMeter): Promise<BinShift[]> {
-  const measured = await meter.measure({
-    lensIndex: 1,
-    candidates: { kind: 'shifts', shifts: shiftGridOf() },
-    gains: UNIT_GAINS,
-  });
-  if (!measured) throw new Error('the strip was not measured');
-  return localShiftsOf(measured);
-}
-
-function expectDelta(actual: PoseDelta, expected: PoseDelta): void {
-  expect(Math.abs(actual.yaw - expected.yaw)).toBeLessThan(FIT_TOLERANCE);
-  expect(Math.abs(actual.pitch - expected.pitch)).toBeLessThan(FIT_TOLERANCE);
-  expect(Math.abs(actual.roll - expected.roll)).toBeLessThan(FIT_TOLERANCE);
 }
 
 describe('SeamMismatchPass', () => {
@@ -281,24 +241,6 @@ describe('SeamMismatchPass', () => {
       const best = shifts[costs.indexOf(Math.min(...costs))]?.along ?? NaN;
       expect(Math.abs(best - PAINTED_TURN_DEGREES)).toBeLessThanOrEqual(SWEEP_STEP_DEGREES + HAIR);
     }
-  });
-
-  it('recovers a turn about every axis from the shift field, with no symmetric part', async () => {
-    const injected: PoseDelta = { yaw: degrees(0.4), pitch: degrees(-0.3), roll: degrees(0.7) };
-    const { meter } = openScene({ turn: correctedLensRotation(IDENTITY_MATRIX3, injected) });
-    const fit = fitPoseToShifts(await fieldOf(meter));
-    if (!fit) throw new Error('no fit');
-    expectDelta(fit.delta, injected);
-    expect(Math.abs(fit.symmetric)).toBeLessThan(FIT_TOLERANCE);
-  });
-
-  it('reads a lens drawn larger than its calibration as a symmetric slide, not a turn', async () => {
-    const { meter } = openScene({ radialScale: 1.01 });
-    const fit = fitPoseToShifts(await fieldOf(meter));
-    if (!fit) throw new Error('no fit');
-    expectDelta(fit.delta, { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) });
-    expect(Math.abs(fit.symmetric)).toBeGreaterThan(SCALE_SLIDE_MIN);
-    expect(Math.abs(fit.symmetric)).toBeLessThan(SCALE_SLIDE_MAX);
   });
 
   it('measures more candidates than fit one batch, in their order', async () => {

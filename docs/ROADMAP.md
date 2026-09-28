@@ -3,7 +3,7 @@
 What the player does today, what is verified on real material, what is waiting on something
 external, and what a next step could be. Dated so a reader can tell how current it is.
 
-## Done (as of 2026-09-28)
+## Done (as of 2026-09-29)
 
 **Playback of raw recordings.** Opens `.insv` files over HTTP byte ranges or from local
 files; reads the Insta360 trailer (indexed or bare, `inst`-wrapped or not), the protobuf info
@@ -39,9 +39,9 @@ origin-checked message protocol; a developer page.
 8K30, firmware 1.7 and 1.11, and a second 8K30 recording of the 8K unit): layout, calibration,
 timing, the canvas-to-frame mapping (by the image circle's centre in every frame, ADR 0014),
 the X5 IMU frame (by a world-stillness ranking), lock and horizon stabilization, seam
-continuity, audio-locked playback and seeking; the legacy radius and the lens pose against
-Insta360 Studio's stitch of the sailing recording (ADR 0023, ADR 0025). Other cameras and
-layouts are covered by synthetic fixtures built from the documented format variants.
+continuity, audio-locked playback and seeking; the lens pose against Insta360 Studio's stitch
+of both units' recordings (ADR 0025). Other cameras and layouts are covered by synthetic
+fixtures built from the documented format variants.
 
 ## Waiting on something only a user can supply
 
@@ -54,30 +54,22 @@ layouts are covered by synthetic fixtures built from the documented format varia
   audio, hardware decoder limits with several players on a page, the pinned fullscreen
   fallback, that the volume slider hides where the volume cannot be set, and that the
   `balanced` quality holds the recording's frame rate.
-- **An Insta360 Studio export of the office recording**, made like the sailing one: the
-  office camera is a second X5 unit, so it would confirm the lens pose of ADR 0025 beyond one
-  camera, and settle whether the front lens's roll is read mirrored like the back lens's (on
-  the sailing unit the two readings of the front lens differ by 0.14 degrees, too little to
-  tell; on the office unit by 1.05).
 
 ## Known limits
 
 - Stitching is a fixed template: objects closer than about three metres show parallax
   ghosting in the blend band, and people within a metre of the camera are cut or doubled
-  along the seam.
-- The vertical step at the side seams, the strip missing near the nadir and the doubling near
-  the zenith of the X5 files came from the lens pose: the calibration's roll read in the wrong
-  sense and the back lens's yaw applied after its half turn. Measured against Insta360 Studio's
-  stitch of the sailing recording (ADR 0025), the two lenses now agree to about 0.3 degrees,
-  from 1.8. What remains at the seams is parallax, and the pitch sign is a convention. A rigid refinement
-  of the back lens's pose and the radial scale, estimated from the seam while the recording
-  plays, was built and withdrawn the same day: on the office recording it removed the step,
-  on the sailing recording the people within a metre of the camera dominated the estimate,
-  the biased correction misaligned everything else, and the near people stayed torn, since
-  no rigid calibration aligns two depths at once with lenses 3.2 cm apart.
-- The frame is mapped onto the whole calibration square, and the legacy radius spans 96 degrees,
-  known to about a degree from the Studio export of the sailing recording (ADR 0023); the
-  mid-field shape of the lens (equidistant against the Mei string's curve) is not settled.
+  along the seam. A seam bent by the disparity measured across it draws them single down to
+  about half a metre (ADR 0026), but measuring the disparity takes 10 to 35 ms, too much for
+  playback.
+- The lens pose is measured against Insta360 Studio's stitch on two X5 units (ADR 0025): the
+  lenses agree to about 0.3 degrees about every axis on the sailing unit, and about the lens
+  axis on the office unit, whose clip shows no far content near the lens axes. The pitch sign
+  and the Euler order are conventions.
+- The lens model's radius at the seam differs between the units: the legacy radius at 96
+  degrees leaves the sailing unit's seam at zero and the office unit's about 2 degrees short,
+  which doubles far content there slightly; the office unit wants 97 degrees, or the Mei
+  string's model scaled by 1.02, whose shape also fits its far field better (ADR 0023).
 - Recordings split into several `_NNN` segment files play one segment at a time.
 - Playback speed is 1x: another speed needs the decoders to keep up with it, which an 8K
   recording's barely do at 1x, and the sound to follow at that rate.
@@ -89,19 +81,18 @@ layouts are covered by synthetic fixtures built from the documented format varia
 
 ## Possible next steps
 
-In rough order of value. The second is planned next: first a trial in `pnpm measure` against
-the Studio exports, then in the player only if it removes the ghosting without new artifacts.
+In rough order of value:
 
 1. Device-orientation look-around on phones (turn the phone to look).
-2. Parallax-aware stitching. A single stitching distance (the calibration's lens translation
-   and a chosen depth) helps only what sits at that depth; serving near people and a far
-   horizon at once needs a local alignment of the blend band per azimuth, measured from what
-   both lenses see there (optical-flow style, what Insta360 calls dynamic stitching), which
-   would also absorb what remains of the lens pose without a rigid correction.
-3. WebGPU external textures for the frame upload, once WebGPU video import is broad enough.
-4. Multi-segment recordings played as one.
-5. `.insp` photos through the same stitcher.
-6. The decode pipeline in a worker, if main-thread scheduling ever shows in profiles (it did
+2. The lens model's radius measured per recording at the seam, where far content's disparity
+   must be zero (ADR 0023, ADR 0026): one measurement over a few frames at load, no reference
+   needed; and a choice between the equidistant and the Mei shapes from a second reference.
+3. The bent seam in the player (ADR 0026), once measuring the disparity is ten times cheaper:
+   fewer sub-samples, a coarse-to-fine slide, a measurement every few frames.
+4. WebGPU external textures for the frame upload, once WebGPU video import is broad enough.
+5. Multi-segment recordings played as one.
+6. `.insp` photos through the same stitcher.
+7. The decode pipeline in a worker, if main-thread scheduling ever shows in profiles (it did
    not on an M4 Pro).
 
 ## History

@@ -1,7 +1,8 @@
 # ADR 0023: The legacy radius spans 96 degrees, and the legacy string is the default reading
 
 Status: accepted (2026-09-28); supersedes the v1 reading and the model preference of ADR 0005,
-and closes the scale question of ADR 0014
+and closes the scale question of ADR 0014. Contradicted on a second unit (2026-09-29): the angle
+and the model are open again
 
 ## Context
 
@@ -60,6 +61,36 @@ further out. The far field cannot say which shape is right mid-field.
 - The `ready` metadata reports `offset` as the calibration version on an X5.
 - The angle is known to about a degree. A second reference (an omnikit stitch, another Studio
   export) and the block field in `pnpm measure` can refine it, and settle the mid-field shape.
+
+## On a second unit (2026-09-29)
+
+Insta360 Studio's export of the office recording (another X5 unit, 5.7K) joined the measurement,
+and the lens readings record a second, reference-free measure: the disparity each reading leaves
+between the lenses at the seam (ADR 0026). Parallax only moves the lenses' images of a near
+object apart, so the far bins' disparity is the reading's own error there; a percent of radius
+moves it by about 1.8 degrees. Median over the trusted bins, three frames each:
+
+| Reading, radial scale against the core's | Sailing seam (°) | Office seam (°)  | Office far field |
+| ---------------------------------------- | ---------------- | ---------------- | ---------------- |
+| equidistant, radius at 96° (the core's)  | +1.6, −0.2, −0.7 | −1.5, −2.1, −2.4 | 12.3             |
+| equidistant, radius at 97° (0.99)        | +4.0, +1.7, +0.7 | +0.1, −0.4, −1.1 | 11.6             |
+| equidistant, radius at 98° (0.98)        | +6.0, +4.3, +4.3 | +1.9, +1.6, +0.7 | 11.0             |
+| Mei, 1.02                                | +5.0, +3.0, +2.5 | +0.6, +0.4, −0.5 | 8.8              |
+| Mei, 1.04                                | +0.8, −0.1, −0.5 | −2.6, −3.0, −1.9 | 10.4             |
+
+- On the sailing unit the core's reading leaves the seam at zero, as does Mei at 1.04. On the
+  office unit it leaves about −2 degrees, doubling far content at the seam, and the seam wants
+  the radius at 97 degrees, or Mei at 1.02: the scale differs by about a percent between the
+  units (or between their 8K and 5.7K modes).
+- On the office unit the far field fits Studio better through the Mei model at any scale tried
+  than through the equidistant one at any scale (8.8 against 11.0 and more): mid-field, the Mei
+  shape is the lens's there.
+- The far-field cost depends by about a level on where each candidate's alignment starts (the
+  same reading scored 9.8 and 11.0 on sailing in two runs), so it cannot rank readings within a
+  level; the seam's disparity does not depend on the alignment.
+
+No reading fits both units at one scale. The recording itself can measure the scale at the seam,
+without a reference: the far bins' disparity at zero.
 
 ## Alternatives considered
 

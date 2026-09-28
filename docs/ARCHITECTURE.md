@@ -93,10 +93,11 @@ renderer binds (each frame shows its whole calibration square, ADR 0014) and ord
 sources the session decodes (`lensFrameOrder`). The seam instruments measure how well the
 lenses agree without drawing a picture: `seamStrip` (the band of body directions 83 to 97
 degrees from lens 0's axis, in 5-degree azimuth bins), `seamMismatch` (a robust cost over the
-bins), `seamShiftField` (per bin, the slide of the back lens's sampling that aligns it),
-`poseFit` (the turn that explains a shift field) and `poseSearch` (a coarse-to-fine search of
-a `PoseDelta`). On the recordings measured so far, near objects own every seam, so these serve
-`pnpm measure` and not playback (ADR 0025).
+bins) and `seamDisparity` (per bin, the slide of lens 0's sampling across the ring that aligns
+it with lens 1). `seamDisparityField` makes a field of the bins' disparities, smoothed around
+the ring and eased over time, and `seamJoin` names what a stitch does with it: the fixed
+template, the lenses' images bent toward each other, or a cut. They serve `pnpm measure`; the
+player draws the fixed join (ADR 0026).
 
 **`playback`**: `PlayerStateMachine` with the exhaustive transition table
 (`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`).
@@ -208,7 +209,9 @@ One package per external technology; none imports another.
   `rectilinearRays` or `equirectangularRays` chunk) turns every pixel of the picture's area into
   a ray, applies the view and stabilization rotations, projects through each lens model and
   blends across the feather band; `rawLenses.frag.glsl` copies each lens's frame region into its
-  tile. `shaderPrograms` is the only place the order of GLSL chunks is known, `fullscreenPass`
+  tile; `seamJoin.glsl` decides where each lens is read and across which band it is blended at
+  the seam, fixed or bent by the disparity field `seamJoin` binds. `shaderPrograms` is the only
+  place the order of GLSL chunks is known, `fullscreenPass`
   holds the triangle and material setup every pass shares, and `rendererUniforms` is the only
   place uniform names are spelled (a test checks them against the chunks). `seamMeter/SeamMeterPass`
   is the `SeamMeter`: it renders the seam ring per lens into a tiny target and reads it back.

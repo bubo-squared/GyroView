@@ -16,11 +16,11 @@ import { closeMoment, decodeMoment } from '../browser/SharedSample';
 const PANORAMA_SIZE = { width: 1536, height: 768 };
 const COMPARED_TIMES = new Set([55, 100, 175]);
 /**
- * The radial scales tried on each reading: from four percent smaller to six larger, which
- * spans the 5312 window's 0.988, the whole square's 1, and omnikit's 95-degree reading of
- * the legacy radius, 1.053.
+ * The radial scales tried on each reading, against the reading as the core reads it: from two
+ * percent smaller to five larger, which spans the legacy radius at 98 degrees (0.98) and at
+ * omnikit's 95 degrees (1.01), and the Mei model's best on the X5 units (1.02 to 1.04).
  */
-const RADIAL_SCALES = [1, 1.02, 1.04, 1.053];
+const RADIAL_SCALES = [0.98, 0.99, 1, 1.02, 1.04, 1.053];
 /**
  * Twenty-one candidates, each aligned and block-matched, take a few minutes per frame.
  */

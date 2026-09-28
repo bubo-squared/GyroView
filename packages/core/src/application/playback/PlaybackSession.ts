@@ -166,7 +166,7 @@ export class PlaybackSession<Handle = unknown> {
         return;
       }
       const now = this.parts.clock.currentTime;
-      if (this.clockWatch.wasMovedFromOutside(now, this.lifecycle.is('playing'))) {
+      if (this.clockWatch.wasMovedFromOutside({ now, state: this.lifecycle.current })) {
         this.followMoveFromOutside(now);
         return;
       }
@@ -315,7 +315,7 @@ export class PlaybackSession<Handle = unknown> {
    * Ticks were missed while the clock ran on; an ended clock is left to end the session.
    */
   private haveTicksStopped(now: Seconds): boolean {
-    const wereMissed = this.clockWatch.wereTicksMissed(now, this.lifecycle.is('playing'));
+    const wereMissed = this.clockWatch.wereTicksMissed({ now, state: this.lifecycle.current });
     return wereMissed && !this.parts.clock.hasEnded;
   }
 

@@ -1,3 +1,4 @@
+import type { PlayerState } from '../../domain/playback/PlayerState';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
 import type { Seconds } from '../../shared/units/time';
 
@@ -13,6 +14,14 @@ const MISSED_TICKS_SECONDS = 1;
  * a second between two ticks.
  */
 const OUTSIDE_MOVE_SECONDS = 0.25;
+
+/**
+ * What a tick reads: the clock's time, and the state the session is in at it.
+ */
+export interface TickReading {
+  readonly now: Seconds;
+  readonly state: PlayerState;
+}
 
 /**
  * What a playback session's ticks notice about its clock between them: that the platform moved
@@ -49,18 +58,19 @@ export class ClockWatch {
    * Whether the clock is not where it was last seen or put: moved back while playing, or moved at
    * all while standing still. Notes where it is now.
    */
-  public wasMovedFromOutside(now: Seconds, isPlaying: boolean): boolean {
+  public wasMovedFromOutside({ now, state }: TickReading): boolean {
     const known = this.position;
     this.position = now;
     if (known === undefined) return false;
-    const distance = isPlaying ? known - now : Math.abs(now - known);
+    const distance = state === 'playing' ? known - now : Math.abs(now - known);
     return distance > OUTSIDE_MOVE_SECONDS;
   }
 
   /**
    * Whether the clock ran on for a while since the last playing tick. Notes this tick.
    */
-  public wereTicksMissed(now: Seconds, isPlaying: boolean): boolean {
+  public wereTicksMissed({ now, state }: TickReading): boolean {
+    const isPlaying = state === 'playing';
     const previous = this.previousPlayingTick;
     this.previousPlayingTick = isPlaying ? now : undefined;
     const gap = previous === undefined ? 0 : now - previous;

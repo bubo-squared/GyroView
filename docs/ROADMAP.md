@@ -93,7 +93,8 @@ In rough order of value, none started:
 
 ## History
 
-The work was planned and delivered in phases, recorded in the ADRs and commit history:
+The work was delivered in phases, each recorded in the ADRs and the commit history:
 feasibility (`docs/FEASIBILITY.md`), format and CLI, media pipeline, stitching,
-stabilization, player and embed, hardening. The phase plan itself lived outside the
-repository; this roadmap replaces it as the statement of where the project stands.
+stabilization, player and embed, hardening. Everything a contributor needs to know about why
+the code is as it is lives in this repository: the ADRs for the decisions, this roadmap for
+where the project stands.

@@ -77,7 +77,7 @@ the body-to-lens rotation from the calibration's yaw, pitch and roll (ADR 0008).
 holds the exposure-matching model (ADR 0012).
 
 **`motion`: time and orientation.** `CaptureClock` relates the camera's microsecond clock to
-video time. `FrameTimes` and the `FrameTimeSource` strategies (exposure record, track
+video time. `FrameTimes` and the frame time sources (exposure record, track
 timestamps, nominal rate) give every frame its mid-exposure instant, and find the frame shown at
 a time by its place on the track's frame grid, since the camera's clock drifts from the track's
 (over a frame in four minutes on the X5). `GyroTrack` is the IMU
@@ -155,6 +155,10 @@ Use cases that orchestrate the domain through ports.
 | `PictureRenderer`    | a `FrameSink` that also takes the stabilization rotation, framing, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
 | `SeamMeter`          | the mean colour each lens shows along the seam                                                                                                  | `SeamMeterPass`                                                       |
 | `ResourceLocator`    | does this URL exist                                                                                                                             | `HttpResourceLocator`                                                 |
+
+`WallClock` is the one port implementation in the core: it reads time the host hands it (the
+page's monotonic clock) and holds no timer, so it is as pure as the rest; the player uses it when
+a recording has no sound this browser plays.
 
 Every port whose adapter talks to the platform has a contract suite that runs against its fake
 in `core/src/testing` and the real adapters alike (`RandomAccessSource`, `Demuxer`,

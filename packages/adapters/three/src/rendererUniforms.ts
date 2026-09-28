@@ -20,6 +20,13 @@ import {
 } from '@gyroview/core';
 import { Matrix3, Vector2, Vector3, Vector4, type IUniform, type Texture } from 'three';
 
+import {
+  SAMPLING_BILINEAR,
+  SAMPLING_SUPERSAMPLED,
+  SAMPLING_TRILINEAR,
+  type SamplingStrategy,
+} from './samplingStrategies';
+
 /**
  * The shader draws at most this many lenses; the Insta360 X series has two.
  */
@@ -53,6 +60,9 @@ export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntri
   ['SEAM_STRIP_THETA_START_RADIANS', degreesToRadians(SEAM_STRIP_THETA_START)],
   ['CANDIDATE_ROTATIONS', CANDIDATE_ROTATIONS],
   ['CANDIDATE_SHIFTS', CANDIDATE_SHIFTS],
+  ['SAMPLING_BILINEAR', SAMPLING_BILINEAR],
+  ['SAMPLING_TRILINEAR', SAMPLING_TRILINEAR],
+  ['SAMPLING_SUPERSAMPLED', SAMPLING_SUPERSAMPLED],
 ]);
 
 /**
@@ -80,6 +90,7 @@ export interface RendererUniforms {
   readonly uLensRegion: IUniform<Vector4[]>;
   readonly uLensTexture: IUniform<number[]>;
   readonly uLensGain: IUniform<Vector3[]>;
+  readonly uSampling: IUniform<number>;
   readonly uTexture0: IUniform<Texture | null>;
   readonly uTexture1: IUniform<Texture | null>;
 }
@@ -192,7 +203,10 @@ function slotOf(projection: LensProjectionParameters): ProjectionSlot {
 
 function samplingUniforms(
   lenses: readonly LensStitch[],
-): Pick<RendererUniforms, 'uLensWindow' | 'uLensRegion' | 'uLensTexture' | 'uLensGain'> {
+): Pick<
+  RendererUniforms,
+  'uLensWindow' | 'uLensRegion' | 'uLensTexture' | 'uLensGain' | 'uSampling'
+> {
   return {
     uLensWindow: {
       value: lenses.map(
@@ -206,7 +220,12 @@ function samplingUniforms(
     },
     uLensTexture: { value: lenses.map((lens) => lens.frameSlot) },
     uLensGain: { value: lenses.map(() => new Vector3(1, 1, 1)) },
+    uSampling: { value: SAMPLING_BILINEAR },
   };
+}
+
+export function applySampling(uniforms: RendererUniforms, strategy: SamplingStrategy): void {
+  uniforms.uSampling.value = strategy.sampling;
 }
 
 export function applyStabilization(uniforms: RendererUniforms, rotation: CoreMatrix3): void {

@@ -1,8 +1,11 @@
+// The depth is positive for every direction inside a lens's field; directions behind it are
+// projected too, for the footprint's derivatives, and must not divide by zero.
+const float MIN_DEPTH = 1e-3;
+
 // Canvas pixel of a unit direction in the lens frame under the unified (Mei) model: project onto
-// the unit sphere, then from xi behind its centre onto the image plane, distort, scale. The
-// depth is positive for every direction inside a lens's field, which the caller has checked.
+// the unit sphere, then from xi behind its centre onto the image plane, distort, scale.
 vec2 projectMei(vec3 d, float xi, vec2 focal, vec2 principalPoint, vec3 radial, vec2 tangential) {
-  float depth = d.z + xi;
+  float depth = max(d.z + xi, MIN_DEPTH);
   vec2 m = d.xy / depth;
   float r2 = dot(m, m);
   float radialFactor = 1.0 + radial.x * r2 + radial.y * r2 * r2 + radial.z * r2 * r2 * r2;

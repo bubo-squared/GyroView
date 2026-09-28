@@ -46,7 +46,7 @@ vec3 directionOf(vec2 angles) {
 }
 
 float lumaOf(int i, mat3 rotation, vec3 dirBody, out bool isImaged) {
-  LensSample seen = sampleLensWith(i, rotation, dirBody);
+  LensSample seen = sampleLensWith(i, rotation, dirBody, SAMPLING_BILINEAR);
   isImaged = seen.isImaged;
   return dot(uMismatchGain[i] * seen.color, LUMA);
 }

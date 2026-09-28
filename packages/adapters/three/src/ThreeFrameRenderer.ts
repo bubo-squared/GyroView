@@ -1,10 +1,12 @@
 import {
   aspectOf,
   DEFAULT_FRAMING,
+  DEFAULT_PICTURE_QUALITY,
   DEFAULT_VIEW_MODE,
   ensureInvariant,
   GyroViewError,
   type Framing,
+  type PictureQuality,
   type Matrix3 as CoreMatrix3,
   type PictureRenderer,
   type Presentation,
@@ -18,12 +20,10 @@ import {
 } from '@gyroview/core';
 import {
   Camera,
-  LinearFilter,
   Mesh,
-  NoColorSpace,
   Scene,
-  VideoFrameTexture,
   WebGLRenderer,
+  type VideoFrameTexture,
   type BufferGeometry,
   type RawShaderMaterial,
 } from 'three';
@@ -31,6 +31,8 @@ import {
 import { createFullscreenTriangle } from './fullscreenPass';
 import { SeamMeterPass } from './seamMeter/SeamMeterPass';
 import { SeamMismatchPass } from './seamMismatch/SeamMismatchPass';
+import { applySamplingStrategy, createLensTextures } from './lensTextures';
+import { SAMPLING_STRATEGIES } from './samplingStrategies';
 import {
   compilePictureMaterials,
   createPictureMaterials,
@@ -41,6 +43,7 @@ import {
   applyLensGain,
   applyLensPose,
   applyPicture,
+  applySampling,
   applyStabilization,
   createRendererUniforms,
   LENS_TEXTURES,
@@ -138,6 +141,21 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     this.ensureLive();
     this.viewMode = mode;
     this.applyFraming();
+    this.render();
+  }
+
+  /**
+   * The frames standing on screen are uploaded again with the new filters and mip chain, so the
+   * change shows at once, even while paused.
+   */
+  public setQuality(quality: PictureQuality): void {
+    this.ensureLive();
+    const strategy = SAMPLING_STRATEGIES[quality];
+    for (const texture of this.parts.textures) {
+      applySamplingStrategy(texture, strategy);
+      if (this.hasFrames) texture.needsUpdate = true;
+    }
+    applySampling(this.parts.uniforms, strategy);
     this.render();
   }
 
@@ -285,10 +303,21 @@ function ensureDrawable(setup: StitchingSetup): void {
   );
 }
 
-function assembleParts(renderer: WebGLRenderer, setup: StitchingSetup): RendererParts {
-  const textures = Array.from({ length: setup.frameSlotCount }, () => createLensTexture());
+/**
+ * The textures, uniforms and programs every picture shares, read at the default quality.
+ */
+function sharedParts(
+  setup: StitchingSetup,
+): Pick<RendererParts, 'textures' | 'uniforms' | 'materials'> {
+  const strategy = SAMPLING_STRATEGIES[DEFAULT_PICTURE_QUALITY];
+  const textures = createLensTextures(setup.frameSlotCount, strategy);
   const uniforms = createRendererUniforms(setup, textures);
-  const materials = createPictureMaterials(uniforms);
+  applySampling(uniforms, strategy);
+  return { textures, uniforms, materials: createPictureMaterials(uniforms) };
+}
+
+function assembleParts(renderer: WebGLRenderer, setup: StitchingSetup): RendererParts {
+  const { textures, uniforms, materials } = sharedParts(setup);
   const pass = new Mesh(createFullscreenTriangle(), materials.rectilinear);
   let seamProof: SeamMeterPass;
   try {
@@ -354,14 +383,4 @@ function rejectProgram(
   ];
   const log = logs.filter(Boolean).join('\n');
   throw new GyroViewError('render-unavailable', `a shader did not compile or link: ${log}`);
-}
-
-function createLensTexture(): VideoFrameTexture {
-  const texture = new VideoFrameTexture();
-  texture.flipY = false;
-  texture.colorSpace = NoColorSpace;
-  texture.minFilter = LinearFilter;
-  texture.magFilter = LinearFilter;
-  texture.generateMipmaps = false;
-  return texture;
 }

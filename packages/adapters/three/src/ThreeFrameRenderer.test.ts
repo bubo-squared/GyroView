@@ -25,7 +25,13 @@ import { equirectangularPixelOf, parseOffsetString } from '@gyroview/core/testin
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { readPixels } from './test/readPixels';
-import { gradientFrame, GRADIENT_SIZE, halvesFrame, solidFrame } from './test/syntheticFrames';
+import {
+  gradientFrame,
+  GRADIENT_SIZE,
+  halvesFrame,
+  solidFrame,
+  stripesFrame,
+} from './test/syntheticFrames';
 import { MULTI_TRACK, PACKED, syntheticCalibration } from './test/syntheticStitching';
 import { ThreeFrameRenderer } from './ThreeFrameRenderer';
 
@@ -46,6 +52,13 @@ const MIXED = 60;
  * Just before and after the yaw-90 seam the two lens weights swap; the fainter lens still shows.
  */
 const FAINT = 15;
+/**
+ * The finest stripes average to the middle grey; a block reads even when its levels stay
+ * within this much of each other.
+ */
+const GREY = 128;
+const EVEN = 24;
+const BLOCK_SIDE = 8;
 const RGBA = 4;
 /**
  * A colour channel encodes a canvas coordinate in 256 steps; the parity check allows two.
@@ -109,6 +122,25 @@ function afterNextTask(): Promise<void> {
 
 function pixelTowards(renderer: ThreeFrameRenderer, direction: Vector3, size = SIZE): Rgb {
   return pixelAt(renderer, equirectangularPixelOf(direction, size), size);
+}
+
+interface BlockStats {
+  readonly mean: number;
+  readonly spread: number;
+}
+
+/**
+ * The red channel over a square block of pixels centred on a position: its mean and its range.
+ */
+function blockStats(renderer: ThreeFrameRenderer, centre: Position, side: number): BlockStats {
+  const levels: number[] = [];
+  for (let row = centre.row - side / 2; row < centre.row + side / 2; row += 1) {
+    for (let column = centre.column - side / 2; column < centre.column + side / 2; column += 1) {
+      levels.push(pixelAt(renderer, { column, row }).r);
+    }
+  }
+  const mean = levels.reduce((total, level) => total + level, 0) / levels.length;
+  return { mean, spread: Math.max(...levels) - Math.min(...levels) };
 }
 
 describe('ThreeFrameRenderer', () => {
@@ -446,6 +478,60 @@ describe('ThreeFrameRenderer', () => {
       expect(Math.abs(sampled.r / 255 - u)).toBeLessThan(GRADIENT_TOLERANCE + 1 / GRADIENT_SIZE);
       expect(Math.abs(sampled.g / 255 - v)).toBeLessThan(GRADIENT_TOLERANCE + 1 / GRADIENT_SIZE);
     }
+  });
+
+  it('averages the finest stripes toward grey where the panorama minifies them, in balanced and high quality', () => {
+    const renderer = open();
+    renderer.setViewMode('equirectangular');
+    present(renderer, [stripesFrame(), solidFrame('#000000')]);
+    for (const quality of ['balanced', 'high'] as const) {
+      renderer.setQuality(quality);
+      const { mean, spread } = blockStats(renderer, CENTRE, BLOCK_SIDE);
+      expect(Math.abs(mean - GREY)).toBeLessThan(EVEN);
+      expect(spread).toBeLessThan(EVEN);
+    }
+  });
+
+  it('lets the finest stripes alias in fast quality: one tap lands anywhere between black and white', () => {
+    const renderer = open();
+    renderer.setViewMode('equirectangular');
+    renderer.setQuality('fast');
+    present(renderer, [stripesFrame(), solidFrame('#000000')]);
+    expect(blockStats(renderer, CENTRE, BLOCK_SIDE).spread).toBeGreaterThan(MIXED);
+  });
+
+  it('keeps a solid colour exact through every quality, on the frames standing on screen', () => {
+    const renderer = open();
+    renderer.setViewMode('equirectangular');
+    present(renderer, [solidFrame(`rgb(${GREY}, ${GREY}, ${GREY})`), solidFrame('#000000')]);
+    for (const quality of ['fast', 'high', 'balanced'] as const) {
+      renderer.setQuality(quality);
+      expect(Math.abs(pixelAt(renderer, CENTRE).r - GREY)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('does not bleed the other half of a packed frame across the raw tiles’ inner edge', () => {
+    const size = { width: 256, height: 128 };
+    const renderer = open(
+      buildStitchingSetup({ calibration: syntheticCalibration(), layout: PACKED }),
+      size,
+    );
+    renderer.setViewMode('raw-lenses');
+    present(renderer, [halvesFrame('#ff0000', '#0000ff')]);
+    const lastOfLeftTile = pixelAt(
+      renderer,
+      { column: size.width / 2 - 1, row: size.height / 2 },
+      size,
+    );
+    const firstOfRightTile = pixelAt(
+      renderer,
+      { column: size.width / 2, row: size.height / 2 },
+      size,
+    );
+    expect(lastOfLeftTile.r).toBeGreaterThan(BRIGHT);
+    expect(lastOfLeftTile.b).toBeLessThan(DIM);
+    expect(firstOfRightTile.b).toBeGreaterThan(BRIGHT);
+    expect(firstOfRightTile.r).toBeLessThan(DIM);
   });
 
   it('turns one lens to a new pose: the back lens turned to face forward shows with the front, and the back goes black', () => {

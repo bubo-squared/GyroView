@@ -16,6 +16,6 @@ void main() {
     outColor = vec4(0.0);
     return;
   }
-  LensSample seen = sampleLensAt(lens, dirBody);
+  LensSample seen = sampleLensWith(lens, uLensRotation[lens], dirBody, SAMPLING_BILINEAR);
   outColor = seen.isImaged ? vec4(seen.color, 1.0) : vec4(0.0);
 }

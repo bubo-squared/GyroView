@@ -68,6 +68,14 @@ export function paintedFrame(
 }
 
 /**
+ * Black and white columns one pixel wide: the finest texture a frame can hold, which minified
+ * must average to grey and read one tap at a time lands anywhere between.
+ */
+export function stripesFrame(): DecodedFrame<VideoFrame> {
+  return paintedFrame(GRADIENT_SIZE, (column) => column % 2);
+}
+
+/**
  * Red encodes the frame's x, green its y, so a sampled colour tells which frame pixel was read.
  */
 export function gradientFrame(): DecodedFrame<VideoFrame> {

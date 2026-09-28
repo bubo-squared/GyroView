@@ -20,16 +20,12 @@ import {
  * then a word whose low bits hold the lens type. The word's upper bits differ between cameras
  * (1 on the X5, 3 on the ONE R), so they are not treated as a version.
  */
-export class LegacyCalibrationLayout implements CalibrationStringLayout {
-  public readonly version = CalibrationVersion.Legacy;
-  public readonly lensTokens = V1_LENS_TOKENS;
-  public readonly trailingTokens = V1_TRAILING_TOKENS;
+export const LEGACY_CALIBRATION_LAYOUT: CalibrationStringLayout = {
+  version: CalibrationVersion.Legacy,
+  lensTokens: V1_LENS_TOKENS,
+  trailingTokens: V1_TRAILING_TOKENS,
 
-  public versionWordProblem(): string | undefined {
-    return undefined;
-  }
-
-  public parseLens(block: LensBlock, lensIndex: number): LensCalibration {
+  parseLens(block: LensBlock, lensIndex: number): LensCalibration {
     return {
       lensIndex,
       model: new EquidistantModel({
@@ -39,14 +35,14 @@ export class LegacyCalibrationLayout implements CalibrationStringLayout {
       orientation: eulerDegrees(block(V1Token.Yaw), block(V1Token.Pitch), block(V1Token.Roll)),
       translation: [0, 0, 0],
     };
-  }
+  },
 
-  public canvasOf(numbers: readonly number[]): CanvasSize {
+  canvasOf(numbers: readonly number[]): CanvasSize {
     const lensCount = numbers[LENS_COUNT_TOKEN] ?? 0;
-    const trailingStart = FIRST_LENS_TOKEN + lensCount * this.lensTokens;
+    const trailingStart = FIRST_LENS_TOKEN + lensCount * V1_LENS_TOKENS;
     return {
       width: numbers[trailingStart + V1Trailing.CanvasWidth] ?? 0,
       height: numbers[trailingStart + V1Trailing.CanvasHeight] ?? 0,
     };
-  }
-}
+  },
+};

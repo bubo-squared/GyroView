@@ -14,16 +14,15 @@ import { V3_LENS_TOKENS, V3Token, VERSIONED_TRAILING_TOKENS } from '../offsetTok
  * `offset_v3`: `xi fx fy cx cy yaw pitch roll tx ty tz k1 k2 k3 p1 p2 width height type` per
  * lens, then a version word with 3 in its high 16 bits.
  */
-export class MeiCalibrationLayout implements CalibrationStringLayout {
-  public readonly version = CalibrationVersion.Mei;
-  public readonly lensTokens = V3_LENS_TOKENS;
-  public readonly trailingTokens = VERSIONED_TRAILING_TOKENS;
+export const MEI_CALIBRATION_LAYOUT: CalibrationStringLayout = {
+  version: CalibrationVersion.Mei,
+  lensTokens: V3_LENS_TOKENS,
+  trailingTokens: VERSIONED_TRAILING_TOKENS,
 
-  public versionWordProblem(versionWord: number): string | undefined {
-    return versionWordMismatch(versionWord, this.version);
-  }
+  versionWordProblem: (versionWord: number): string | undefined =>
+    versionWordMismatch(versionWord, CalibrationVersion.Mei),
 
-  public parseLens(block: LensBlock, lensIndex: number): LensCalibration {
+  parseLens(block: LensBlock, lensIndex: number): LensCalibration {
     return {
       lensIndex,
       model: new MeiModel({
@@ -40,9 +39,9 @@ export class MeiCalibrationLayout implements CalibrationStringLayout {
         block(V3Token.TranslationZ),
       ],
     };
-  }
+  },
 
-  public canvasOf(_numbers: readonly number[], blocks: readonly LensBlock[]): CanvasSize {
+  canvasOf(_numbers: readonly number[], blocks: readonly LensBlock[]): CanvasSize {
     return canvasOfFirstBlock(blocks, V3Token.CanvasWidth, V3Token.CanvasHeight);
-  }
-}
+  },
+};

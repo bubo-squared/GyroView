@@ -9,17 +9,18 @@ import { VERSION_WORD_SHIFT } from '../offsetTokens';
 export type LensBlock = (token: number) => number;
 
 /**
- * One version of the calibration string. Detection happens by token count; each layout knows
- * how to validate its version word, read a lens block and find the canvas size.
+ * One version of the calibration string, as data: detection happens by token count; each layout
+ * knows how to validate its version word, read a lens block and find the canvas size.
  */
 export interface CalibrationStringLayout {
   readonly version: CalibrationVersion;
   readonly lensTokens: number;
   readonly trailingTokens: number;
   /**
-   * Returns a message when the version word contradicts this layout, undefined when it fits.
+   * A message when the version word contradicts this layout, undefined when it fits; a layout
+   * whose last word is no version (the legacy string's) has nothing to check.
    */
-  versionWordProblem(versionWord: number): string | undefined;
+  readonly versionWordProblem?: (versionWord: number) => string | undefined;
   parseLens(block: LensBlock, lensIndex: number): LensCalibration;
   canvasOf(numbers: readonly number[], blocks: readonly LensBlock[]): CanvasSize;
 }

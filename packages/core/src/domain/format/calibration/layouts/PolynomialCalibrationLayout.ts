@@ -14,16 +14,15 @@ import { PolynomialModel } from '../../../optics/PolynomialModel';
  * `offset_v2`: `r cx cy yaw pitch roll tx ty tz c1 c2 c3 c4 width height type` per lens, then
  * a version word with 2 in its high 16 bits.
  */
-export class PolynomialCalibrationLayout implements CalibrationStringLayout {
-  public readonly version = CalibrationVersion.Polynomial;
-  public readonly lensTokens = V2_LENS_TOKENS;
-  public readonly trailingTokens = VERSIONED_TRAILING_TOKENS;
+export const POLYNOMIAL_CALIBRATION_LAYOUT: CalibrationStringLayout = {
+  version: CalibrationVersion.Polynomial,
+  lensTokens: V2_LENS_TOKENS,
+  trailingTokens: VERSIONED_TRAILING_TOKENS,
 
-  public versionWordProblem(versionWord: number): string | undefined {
-    return versionWordMismatch(versionWord, this.version);
-  }
+  versionWordProblem: (versionWord: number): string | undefined =>
+    versionWordMismatch(versionWord, CalibrationVersion.Polynomial),
 
-  public parseLens(block: LensBlock, lensIndex: number): LensCalibration {
+  parseLens(block: LensBlock, lensIndex: number): LensCalibration {
     return {
       lensIndex,
       model: new PolynomialModel({
@@ -38,9 +37,9 @@ export class PolynomialCalibrationLayout implements CalibrationStringLayout {
         block(V2Token.TranslationZ),
       ],
     };
-  }
+  },
 
-  public canvasOf(_numbers: readonly number[], blocks: readonly LensBlock[]): CanvasSize {
+  canvasOf(_numbers: readonly number[], blocks: readonly LensBlock[]): CanvasSize {
     return canvasOfFirstBlock(blocks, V2Token.CanvasWidth, V2Token.CanvasHeight);
-  }
-}
+  },
+};

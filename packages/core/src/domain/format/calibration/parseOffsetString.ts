@@ -1,8 +1,8 @@
 import type { VersionedCalibration } from './CalibrationVersion';
 import { type CalibrationStringLayout, type LensBlock } from './layouts/CalibrationStringLayout';
-import { LegacyCalibrationLayout } from './layouts/LegacyCalibrationLayout';
-import { MeiCalibrationLayout } from './layouts/MeiCalibrationLayout';
-import { PolynomialCalibrationLayout } from './layouts/PolynomialCalibrationLayout';
+import { LEGACY_CALIBRATION_LAYOUT } from './layouts/LegacyCalibrationLayout';
+import { MEI_CALIBRATION_LAYOUT } from './layouts/MeiCalibrationLayout';
+import { POLYNOMIAL_CALIBRATION_LAYOUT } from './layouts/PolynomialCalibrationLayout';
 import {
   FIRST_LENS_TOKEN,
   LENS_COUNT_TOKEN,
@@ -14,9 +14,9 @@ import { GyroViewError } from '../../../shared/errors/GyroViewError';
 const TOKEN_SEPARATOR = '_';
 
 const LAYOUTS: readonly CalibrationStringLayout[] = [
-  new LegacyCalibrationLayout(),
-  new PolynomialCalibrationLayout(),
-  new MeiCalibrationLayout(),
+  LEGACY_CALIBRATION_LAYOUT,
+  POLYNOMIAL_CALIBRATION_LAYOUT,
+  MEI_CALIBRATION_LAYOUT,
 ];
 
 /**
@@ -67,7 +67,7 @@ function detectLayout(
 }
 
 function ensureVersionWordFits(layout: CalibrationStringLayout, versionWord: number): void {
-  const problem = layout.versionWordProblem(versionWord);
+  const problem = layout.versionWordProblem?.(versionWord);
   if (problem !== undefined) {
     throw new GyroViewError(
       'invalid-calibration',

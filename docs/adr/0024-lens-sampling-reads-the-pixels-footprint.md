@@ -41,9 +41,28 @@ the frames standing on screen.
 - Minified detail averages instead of aliasing in `balanced` and `high`: the renderer's test
   reads 2-pixel stripes minified about seven times as grey in both, and lets `fast` alias. A
   solid colour stays exact through all three, so the qualities differ only where detail does.
-- Each uploaded frame pays a `generateMipmap` in `balanced` and `high`. The developer page shows
-  the frame rate, the buffer size and the screen ratio beside the quality to judge it on a
-  machine; `pnpm measure` records flicker, aliasing and timing per quality.
+- Measured (2026-09-28, `pnpm measure`, `samplingQuality.test.ts`) on a 1536 x 768 panorama
+  under lock, on the sharpest 96 x 96 region of the `fast` picture, in levels of 255: the
+  flicker is the mean difference between two consecutive frames, the aliasing the mean
+  difference between the picture and the picture drawn at twice the size then box-filtered
+  down. Chromium and WebKit draw the same picture to the level.
+
+  | Sample        | Quality    | Flicker | Aliasing |
+  | ------------- | ---------- | ------- | -------- |
+  | office (5.7K) | `fast`     | 12.2    | 5.2      |
+  |               | `balanced` | 6.0     | 3.0      |
+  |               | `high`     | 6.6     | 1.5      |
+  | sailing (8K)  | `fast`     | 39.1    | 11.3     |
+  |               | `balanced` | 25.2    | 4.7      |
+  |               | `high`     | 27.2    | 2.8      |
+
+  The flicker that remains is the scene's own motion under lock (the office clip is handheld,
+  the boat rolls). Each uploaded frame pays a `generateMipmap` in `balanced` and `high`; on an
+  M4 Pro the render of a frame, upload included, stays within the run-to-run noise of `fast`
+  (4 to 6 ms in Chromium, 1 to 4 ms in WebKit, at both sizes). The developer page shows the
+  frame rate, the buffer size and the screen ratio beside the quality to judge it on other
+  machines; `high` remains opt-in until a phone has been measured.
+
 - `quality` is an attribute, a property, `setQuality` and `qualitychange` on the element, an
   option and a command of the embed, and `Player.setQuality` in the library.
 - Bicubic magnification for the normal view, which magnifies the source on most screens, is not

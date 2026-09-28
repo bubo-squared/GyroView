@@ -1,9 +1,9 @@
 import { defineGyroView } from './index';
 
 /**
- * `gyroview/standalone`: the package as one file with Three.js and mediabunny inside, for a page
- * without a bundler, loaded by a `<script type="module">` or imported from a CDN. It exports
- * what the package does, and registers `<gyro-view>` when loaded.
+ * `@bubo-squared/gyroview/standalone`: the package as one file with Three.js and mediabunny
+ * inside, for a page without a bundler, loaded by a `<script type="module">` or imported from a
+ * CDN. It exports what the package does, and registers `<gyro-view>` when loaded.
  */
 export * from './index';
 

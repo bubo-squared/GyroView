@@ -7,15 +7,15 @@ the API.
 
 The first release:
 
-- `<gyro-view>`, registered by `gyroview/define` or `defineGyroView()`, safe to import while a
-  server renders the page. It runs under a strict CSP (`trusted-types gyroview`, no inline
-  styles), speaks the page's language through `messages`, shows visitors plain failure texts
-  and names its overlays as parts.
+- `<gyro-view>`, registered by `@bubo-squared/gyroview/define` or `defineGyroView()`, safe to
+  import while a server renders the page. It runs under a strict CSP (`trusted-types gyroview`,
+  no inline styles), speaks the page's language through `messages`, shows visitors plain failure
+  texts and names its overlays as parts.
 - `createBrowserPlayer`, the player without the element, for an interface of your own, with
   `attachViewGestures` and `attachKeyboard` for the element's gestures and shortcuts.
 - `inspectRecording`, which reads what a recording holds from a file or a URL.
-- `gyroview/standalone`, one file with Three.js and mediabunny inside, for a page without a
-  bundler.
+- `@bubo-squared/gyroview/standalone`, one file with Three.js and mediabunny inside, for a page
+  without a bundler.
 - Events in media-element terms, each `warning` with a `code` a page can act on beside its
   message; times, durations and views in plain seconds and degrees.
 - `GyroViewError` and its codes (`GYRO_VIEW_ERROR_CODES`), and the types of the settings,

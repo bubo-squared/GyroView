@@ -1,4 +1,4 @@
-# ADR 0020: One npm package, `gyroview`, bundles the core and the adapters
+# ADR 0020: One npm package, `@bubo-squared/gyroview`, bundles the core and the adapters
 
 Status: accepted (2026-09-27); amended (2026-09-28): the third-party dependencies are caret
 ranges, since an exact version gave a page on any other patch a second Three.js; the build
@@ -13,7 +13,7 @@ users: a page needs the element, the player without the element, and the types t
 
 ## Decision
 
-`apps/library` builds and publishes one package, `gyroview`, under the MIT license:
+`apps/library` builds and publishes one package, `@bubo-squared/gyroview`, under the MIT license:
 
 - Vite bundles the player with the core and the adapters into unminified ES modules, one file
   per source module under its path in the repository, beside the entries `dist/index.js` and
@@ -29,12 +29,12 @@ users: a page needs the element, the player without the element, and the types t
   that exports only the names `src/index.ts` chooses; the types those need are declared, not
   exported. The build type-checks a consumer (`consumer/usage.ts`, with `skipLibCheck` off)
   against it and lints the manifest with publint.
-- `gyroview` has no side effects; `gyroview/define` registers `<gyro-view>` when imported, as
-  `gyro-view.js` does.
-- `gyroview/standalone` (`dist/standalone.js`) is the package as one minified module with
-  Three.js and mediabunny inside, for a page without a bundler or a CDN link: it registers the
-  element and exports what `gyroview` does. It names mediabunny's MPL-2.0 and where its source
-  is, as that license asks of a compiled copy.
+- `@bubo-squared/gyroview` has no side effects; `@bubo-squared/gyroview/define` registers
+  `<gyro-view>` when imported, as `gyro-view.js` does.
+- `@bubo-squared/gyroview/standalone` (`dist/standalone.js`) is the package as one minified
+  module with Three.js and mediabunny inside, for a page without a bundler or a CDN link: it
+  registers the element and exports what `@bubo-squared/gyroview` does. It names mediabunny's
+  MPL-2.0 and where its source is, as that license asks of a compiled copy.
 - A tag `v<version>` publishes it from GitHub Actions through npm trusted publishing, with
   provenance and no stored token.
 

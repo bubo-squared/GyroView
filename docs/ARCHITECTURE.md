@@ -16,7 +16,7 @@ and `dependency-cruiser` fails the build on a violation.
  (site, iframe bridge)     (composition root,            (one external technology     (domain, use cases,
                             <gyro-view>, controls)        each, implementing ports)    ports; no dependencies)
  apps/library ───────────▶ packages/player
- (the npm package gyroview: the player bundled with the core and the adapters)
+ (the npm package @bubo-squared/gyroview: the player bundled with the core and the adapters)
 
  tools/insv-inspect ──▶ adapters/node + core        tools/fixtures ──▶ core        tools/integration ──▶ everything
 ```
@@ -280,7 +280,7 @@ The composition root and the user-facing element, in three layers.
   `inspectRecording`, `GyroViewError`, the view and stabilization modes, and the types of the
   metadata, settings, events and inspection. The player types `<gyro-view>` in
   `HTMLElementTagNameMap`, and its events in `GyroViewElementEventMap`. `src/define.ts` registers the
-  element when imported (`gyroview/define`).
+  element when imported (`@bubo-squared/gyroview/define`).
 - The build bundles the player, the core and the adapters, one file per module so a page's
   bundler drops what it does not reach, and leaves Three.js and mediabunny to the page's
   install; `dts-bundle-generator` writes one self-contained `index.d.ts`, without what is marked

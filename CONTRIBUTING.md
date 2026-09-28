@@ -70,14 +70,15 @@ describes the components layer by layer:
   `Player` and the `<gyro-view>` element with its controls and gestures.
 - `apps/embed`: the static site: embed page, `embed.js` snippet with the postMessage bridge,
   `gyro-view.js` bundle, developer page. Apps import the player, never the adapters.
-- `apps/library`: the npm package `gyroview` (ADR 0020); its public API is `src/index.ts`.
+- `apps/library`: the npm package `@bubo-squared/gyroview` (ADR 0020); its public API is
+  `src/index.ts`.
 - `tools/*`: developer CLIs (`insv-inspect`), the fixture builder (`fixtures`) and the
   end-to-end tests over the real recordings (`integration`).
 
 ## Releasing the npm package
 
-`.github/workflows/release.yml` publishes `apps/library` to npm as `gyroview` when a version tag
-is pushed:
+`.github/workflows/release.yml` publishes `apps/library` to npm as `@bubo-squared/gyroview` when
+a version tag is pushed:
 
 1. Set the new version in `apps/library/package.json` (semantic versioning, 0.x while the API
    settles) and commit it.
@@ -86,8 +87,11 @@ is pushed:
 
 Once, for the first version: npm trusts a workflow only for a package that already exists.
 
-1. Publish the first version by hand: `npm login`, `pnpm --filter gyroview build`, then in
-   `apps/library` `pnpm pack` and `npm publish gyroview-<version>.tgz --access public`.
+1. Publish the first version by hand, from an npm account that may publish under the
+   `@bubo-squared` scope: `npm login`, `pnpm --filter @bubo-squared/gyroview build`, then in
+   `apps/library` `pnpm pack` and `npm publish bubo-squared-gyroview-<version>.tgz`. The
+   manifest's `publishConfig` names the registry, so a `~/.npmrc` that sends the scope to GitHub
+   Packages does not divert it.
 2. On npmjs.com, in the package's settings, add a trusted publisher: GitHub Actions, owner
    `bubo-squared`, repository `GyroView`, workflow `release.yml`, environment `npm`.
 3. On GitHub, in the repository's settings, give the `npm` environment (created by the first

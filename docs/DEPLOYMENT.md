@@ -16,8 +16,8 @@ The bundles are plain files: any static host, object store or CDN serves them. S
 with long cache lifetimes under a versioned path; `embed.html` should be revalidated so it
 picks up new asset names.
 
-A site built with a bundler can install the npm package `gyroview` in place of `gyro-view.js`;
-the recordings' host needs the same headers either way.
+A site built with a bundler can install the npm package `@bubo-squared/gyroview` in place of
+`gyro-view.js`; the recordings' host needs the same headers either way.
 
 ## The player page must be a secure context
 

@@ -1,8 +1,8 @@
 // What a React 19 page does with the element, as the README shows it: declares <gyro-view> for
 // JSX from the package's attribute type, and hears its events through a ref.
 import { useEffect, useRef, type DetailedHTMLProps, type HTMLAttributes, type JSX } from 'react';
-import type { GyroViewAttributes, GyroViewElement } from 'gyroview';
-import 'gyroview/define';
+import type { GyroViewAttributes, GyroViewElement } from '@bubo-squared/gyroview';
+import '@bubo-squared/gyroview/define';
 
 declare module 'react' {
   namespace JSX {

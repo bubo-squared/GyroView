@@ -6,7 +6,7 @@ import { defineConfig } from 'vite';
  * The notice the standalone file carries for what it bundles: mediabunny's MPL-2.0 asks that
  * whoever receives it in compiled form learns where its source is.
  */
-const THIRD_PARTY_NOTICE = `/*! gyroview (MIT). Bundles three.js (MIT, https://github.com/mrdoob/three.js) and
+const THIRD_PARTY_NOTICE = `/*! @bubo-squared/gyroview (MIT). Bundles three.js (MIT, https://github.com/mrdoob/three.js) and
  mediabunny (MPL-2.0, source at https://github.com/Vanilagy/mediabunny). */`;
 
 /**

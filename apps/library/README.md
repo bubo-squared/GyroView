@@ -1,4 +1,4 @@
-# gyroview
+# @bubo-squared/gyroview
 
 Play raw Insta360 `.insv` recordings (X3, X4, X5) in the browser. `<gyro-view>` reads the
 camera's dual-fisheye file directly, over HTTP byte ranges or from a local file, decodes both
@@ -8,7 +8,7 @@ Studio export step.
 ## Install
 
 ```sh
-npm install gyroview
+npm install @bubo-squared/gyroview
 ```
 
 It brings Three.js 0.186 and mediabunny 1 along. A page that uses Three.js 0.186 itself shares
@@ -20,7 +20,7 @@ ES modules only: CommonJS code loads it with `import()`.
 Register the element once, then use it like a video element:
 
 ```ts
-import 'gyroview/define';
+import '@bubo-squared/gyroview/define';
 ```
 
 ```html
@@ -40,14 +40,17 @@ A page without a bundler loads the standalone file, which has Three.js and media
 (about 280 KB compressed) and registers the element; it exports what the package does:
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/gyroview@0.1/dist/standalone.js"></script>
+<script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/@bubo-squared/gyroview@0.1/dist/standalone.js"
+></script>
 <script type="module">
-  import { inspectRecording } from 'https://cdn.jsdelivr.net/npm/gyroview@0.1/dist/standalone.js';
+  import { inspectRecording } from 'https://cdn.jsdelivr.net/npm/@bubo-squared/gyroview@0.1/dist/standalone.js';
 </script>
 ```
 
-Bundling it next to a Three.js of the page's own ships two copies; `gyroview` and
-`gyroview/define` share the page's instead.
+Bundling it next to a Three.js of the page's own ships two copies; `@bubo-squared/gyroview`
+and `@bubo-squared/gyroview/define` share the page's instead.
 
 Play a file the visitor picks, without any server:
 
@@ -60,10 +63,10 @@ input?.addEventListener('change', () => {
 });
 ```
 
-`gyroview/define` registers `<gyro-view>` when imported. To choose the moment yourself, import
-`defineGyroView` from `gyroview` and call it. Both are safe to import in a framework that renders
-on the server: there they register nothing, and the element comes alive once the page runs in the
-browser.
+`@bubo-squared/gyroview/define` registers `<gyro-view>` when imported. To choose the moment
+yourself, import `defineGyroView` from `@bubo-squared/gyroview` and call it. Both are safe to
+import in a framework that renders on the server: there they register nothing, and the element
+comes alive once the page runs in the browser.
 
 The element's events are typed: each is a `CustomEvent` with its payload in `detail`, and
 `document.querySelector('gyro-view')` is a `GyroViewElement`.
@@ -87,7 +90,7 @@ Read what a recording holds without playing it: its trailer records, the info re
 firmware, frame rate), the lens calibration and summaries of the gyro and exposure records.
 
 ```ts
-import { inspectRecording } from 'gyroview';
+import { inspectRecording } from '@bubo-squared/gyroview';
 
 const fromFile = await inspectRecording(file);
 const fromUrl = await inspectRecording('https://media.example/VID_20260814_132640_00_013.insv');
@@ -99,7 +102,7 @@ draws on your canvas, sounds through your audio element and has the same events.
 zoom and taps, and its keyboard shortcuts; each returns what removes them.
 
 ```ts
-import { createBrowserPlayer } from 'gyroview';
+import { createBrowserPlayer } from '@bubo-squared/gyroview';
 
 const player = createBrowserPlayer({ canvas, audio });
 player.events.on('timeupdate', (time) => console.log(time));
@@ -116,9 +119,9 @@ is taken in a `frame` listener, which runs right after each picture is drawn. Th
 buffered ranges to show, since the player reads the recording as it plays, and no playback
 rates other than 1.
 
-`gyroview` also exports `GyroViewError`, the list of its codes (`GYRO_VIEW_ERROR_CODES`, with
-`isGyroViewErrorCode` to check a string against it), and the types of the element's settings,
-metadata, events and inspection.
+`@bubo-squared/gyroview` also exports `GyroViewError`, the list of its codes
+(`GYRO_VIEW_ERROR_CODES`, with `isGyroViewErrorCode` to check a string against it), and the
+types of the element's settings, metadata, events and inspection.
 
 ## Frameworks
 
@@ -132,7 +135,7 @@ declaration file of the project's own extends React's elements with the package'
 ```ts
 // gyro-view.d.ts
 import type { DetailedHTMLProps, HTMLAttributes } from 'react';
-import type { GyroViewAttributes, GyroViewElement } from 'gyroview';
+import type { GyroViewAttributes, GyroViewElement } from '@bubo-squared/gyroview';
 
 declare module 'react' {
   namespace JSX {
@@ -161,9 +164,9 @@ in the template compiler options), then binds as usual: `<gyro-view :src="url" c
 
 **Svelte 5** needs nothing: `<gyro-view src={url} controls onready={onReady} />`.
 
-In every case the element registers in the browser only: import `gyroview/define` in code that
-runs there, or call `defineGyroView()` once mounted. Importing either while the server renders
-is safe and registers nothing.
+In every case the element registers in the browser only: import `@bubo-squared/gyroview/define`
+in code that runs there, or call `defineGyroView()` once mounted. Importing either while the
+server renders is safe and registers nothing.
 
 ## Several players on one page
 

@@ -1,5 +1,5 @@
 {
-  "name": "gyroview",
+  "name": "@bubo-squared/gyroview",
   "version": "0.1.0",
   "description": "Play raw Insta360 .insv recordings (X3, X4, X5) in the browser: a <gyro-view> web component that stitches and gyro-stabilizes the camera's dual-fisheye video on the GPU.",
   "keywords": [
@@ -21,6 +21,10 @@
     "directory": "apps/library"
   },
   "bugs": "https://github.com/bubo-squared/GyroView/issues",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

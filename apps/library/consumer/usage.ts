@@ -1,6 +1,6 @@
 // What a page written in TypeScript does with the package, checked against the built types by
 // tsconfig.consumer.json: they must stand alone, naming nothing that stayed in the monorepo.
-import 'gyroview/define';
+import '@bubo-squared/gyroview/define';
 import {
   attachKeyboard,
   attachViewGestures,
@@ -17,7 +17,7 @@ import {
   type RecordingInspection,
   type ViewMode,
   type WarningCode,
-} from 'gyroview';
+} from '@bubo-squared/gyroview';
 
 const element = document.createElement('gyro-view');
 element.src = 'https://media.example/VID_20260814_132640_00_013.insv';

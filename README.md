@@ -14,8 +14,9 @@ on any website as a `<gyro-view>` web component or an iframe. No Insta360 Studio
   exposure matching between the lenses; a normal view to look around in, the whole sphere as
   an equirectangular panorama, or the two lens images raw, side by side or stacked.
 - Stabilizes from the gyro: lock, horizon or follow, sampled at each frame's mid-exposure.
-- Ships as the npm package `gyroview`, as an element (`gyro-view.js`) and as an iframe (`embed.html` plus `embed.js`) with
-  the same API and events, plus a developer page for trying recordings.
+- Ships as the npm package `@bubo-squared/gyroview`, as an element (`gyro-view.js`) and as an
+  iframe (`embed.html` plus `embed.js`) with the same API and events, plus a developer page for
+  trying recordings.
 
 Verified on Insta360 X5 recordings; other cameras' format variants are implemented from
 documentation and covered by synthetic fixtures. `docs/ROADMAP.md` says exactly what is
@@ -31,18 +32,21 @@ recordings").
 In a project with a bundler, install the npm package (`apps/library/README.md`):
 
 ```sh
-npm install gyroview
+npm install @bubo-squared/gyroview
 ```
 
 ```ts
-import 'gyroview/define'; // registers <gyro-view>
+import '@bubo-squared/gyroview/define'; // registers <gyro-view>
 ```
 
 Without a bundler, load the package's standalone file (Three.js and the demuxer inside) from
 a CDN or your own host; the site build's `gyro-view.js` registers the element the same way:
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/gyroview@0.1/dist/standalone.js"></script>
+<script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/@bubo-squared/gyroview@0.1/dist/standalone.js"
+></script>
 
 <gyro-view
   src="https://media.example/VID_20260814_132640_00_013.insv"
@@ -218,7 +222,7 @@ pnpm test:watch
 pnpm test:coverage
 pnpm --filter @gyroview/embed dev     # developer page at http://localhost:5180 with the local samples
 pnpm --filter @gyroview/embed build   # static site, embed.js and gyro-view.js in apps/embed/dist
-pnpm --filter gyroview build          # the npm package in apps/library/dist
+pnpm --filter @bubo-squared/gyroview build          # the npm package in apps/library/dist
 pnpm inspect <file.insv>              # print what the core understands about a recording
 pnpm fixtures:build                   # regenerate the synthetic recordings in test/fixtures
 pnpm measure                          # renders of the local samples in .artifacts, IMU frame ranking

@@ -56,6 +56,7 @@ interface Measured {
 
 interface MeasurementParts {
   readonly opened: OpenedRecording;
+  readonly canvas: HTMLCanvasElement;
   readonly renderer: ThreeFrameRenderer;
   readonly candidates: Candidate[];
   readonly times: readonly number[];
@@ -70,7 +71,7 @@ async function measureStillness(parts: MeasurementParts): Promise<Measured> {
   let unstabilized = 0;
   for (const time of parts.times) {
     const moment = await decodeMoment(parts.opened, time);
-    const renderable = { renderer: parts.renderer, ...moment };
+    const renderable = { canvas: parts.canvas, renderer: parts.renderer, ...moment };
     unstabilized += worldMovement(renderable, () => IDENTITY_MATRIX3);
     for (const candidate of parts.candidates) {
       candidate.total += worldMovement(renderable, (pair) =>
@@ -117,14 +118,14 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
         recording.captureClock(),
       ]);
       if (!gyro || !clock) throw new Error(`${sample.name} lacks a gyro record or a clock`);
-      const { renderer, dispose } = equirectangularRendering(opened, RANKING_SIZE);
+      const { canvas, renderer, dispose } = equirectangularRendering(opened, RANKING_SIZE);
       cleanups.push(dispose);
       const candidates = allImuFrames().map((frame) => ({
         frame,
         orientations: OrientationTrack.integrate({ gyro: gyro.track, clock, frame }),
         total: 0,
       }));
-      const measured = await measureStillness({ opened, renderer, candidates, times });
+      const measured = await measureStillness({ opened, canvas, renderer, candidates, times });
       await saveMeasurement(`${slug}-imu-frame-ranking`, measured);
       expect(measured.ranking[0]?.name).toBe(nameOf(imuFrameFor(recording.info)));
       expect(measured.ranking[0]?.stillness).toBeLessThan(measured.unstabilized);

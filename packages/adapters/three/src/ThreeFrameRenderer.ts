@@ -35,7 +35,6 @@ import {
   disposePictureMaterials,
   type PictureMaterials,
 } from './pictureMaterials';
-import { RGBA_CHANNELS } from './readback';
 import {
   applyLensGain,
   applyPicture,
@@ -190,17 +189,6 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     this.parts.renderer.setSize(size.width, size.height, false);
     this.applyFraming();
     this.render();
-  }
-
-  /**
-   * The current drawing buffer as RGBA rows from the bottom up, for tests and inspection.
-   */
-  public readPixels(): Uint8ClampedArray {
-    this.ensureLive();
-    const gl = this.parts.renderer.getContext();
-    const pixels = new Uint8ClampedArray(this.canvas.width * this.canvas.height * RGBA_CHANNELS);
-    gl.readPixels(0, 0, this.canvas.width, this.canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-    return pixels;
   }
 
   public dispose(): void {

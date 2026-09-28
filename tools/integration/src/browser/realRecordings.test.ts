@@ -1,3 +1,5 @@
+import { readPixels } from '@gyroview/adapter-three/testing';
+import { waitFor } from '@gyroview/player/testing';
 import {
   DecodePipeline,
   IDENTITY_MATRIX3,
@@ -27,7 +29,6 @@ import {
   port,
   takePairs,
   timingOf,
-  waitFor,
 } from './realRecordingSupport';
 import {
   calibrationOf,
@@ -141,8 +142,8 @@ describe('playing the real X5 recordings in the browser', () => {
     await session.play();
     await waitFor(
       () => sink.presentations.length >= PRESENTATIONS_BEFORE_SEEK,
-      DECODE_TIMEOUT_MS,
       'the first presentations',
+      DECODE_TIMEOUT_MS,
     );
     expectPictureFollowsSound(sink, OFFICE_5K7_60);
     expect(clock.failure).toBeUndefined();
@@ -150,8 +151,8 @@ describe('playing the real X5 recordings in the browser', () => {
     session.seek(SEEK_TARGET);
     await waitFor(
       () => (sink.lastTimestamp ?? 0) >= SEEK_TARGET - 1 / OFFICE_5K7_60.frameRate,
-      DECODE_TIMEOUT_MS,
       'a frame at the seek target',
+      DECODE_TIMEOUT_MS,
     );
     expect(session.state).toBe('playing');
     expect(clock.currentTime).toBeGreaterThanOrEqual(SEEK_TARGET);
@@ -187,7 +188,7 @@ describe('rendering the real recordings', () => {
       const { canvas, renderer } = panoramaOf(opened);
       renderer.present({ pair: first, mediaTime: first.timestamp });
       await saveRender(`${slug}-${MOMENT}s-equirect`, canvas);
-      expect(coverageOf(renderer.readPixels())).toBeGreaterThan(MIN_COVERAGE);
+      expect(coverageOf(readPixels(canvas))).toBeGreaterThan(MIN_COVERAGE);
       await drawAndSaveRender(`${slug}-${MOMENT}s-lens0`, canvas, () => {
         renderer.setLensGains([UNITY_GAIN, SILENCED]);
       });
@@ -235,7 +236,7 @@ describe('rendering the real recordings', () => {
       for (const mode of COMPARED_MODES) {
         sink.setStabilizer(stabilizerFor(mode));
         sink.present({ pair: first, mediaTime: first.timestamp });
-        rendered.set(mode, renderer.readPixels());
+        rendered.set(mode, readPixels(canvas));
         await saveRender(`${slug}-${MOMENT}s-${mode}`, canvas);
       }
       await drawAndSaveRender(`${slug}-${MOMENT}s-horizon`, canvas, () => {
@@ -256,8 +257,8 @@ describe('rendering the real recordings', () => {
     const opened = await sailing.open(context);
     const { first, later } = await sailing.momentAt(context, STILLNESS_MOMENT);
     const { orientations } = motionOf(opened);
-    const { renderer } = panoramaOf(opened);
-    const renderable = { renderer, first, later };
+    const { canvas, renderer } = panoramaOf(opened);
+    const renderable = { canvas, renderer, first, later };
     const lock = stabilizerFor('lock');
     const unstabilized = worldMovement(renderable, () => IDENTITY_MATRIX3);
     const locked = worldMovement(renderable, (pair) =>

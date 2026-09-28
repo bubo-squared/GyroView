@@ -22,6 +22,7 @@ import {
 import { equirectangularPixelOf, parseOffsetString } from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { readPixels } from './test/readPixels';
 import { MULTI_TRACK, PACKED, syntheticCalibration } from './test/syntheticStitching';
 import { ThreeFrameRenderer } from './ThreeFrameRenderer';
 
@@ -123,8 +124,19 @@ interface Position {
 const CENTRE: Position = { column: WIDTH / 2, row: HEIGHT / 2 };
 const RIGHT_EDGE: Position = { column: WIDTH - 1, row: HEIGHT / 2 };
 
+/**
+ * The canvas each renderer of a test draws on, where its pixels are read.
+ */
+const canvasOf = new Map<ThreeFrameRenderer, HTMLCanvasElement>();
+
+function pixelsOf(renderer: ThreeFrameRenderer): Uint8ClampedArray {
+  const canvas = canvasOf.get(renderer);
+  if (!canvas) throw new Error('the renderer was not opened by this test');
+  return readPixels(canvas);
+}
+
 function pixelAt(renderer: ThreeFrameRenderer, position: Position, size = SIZE): Rgb {
-  const pixels = renderer.readPixels();
+  const pixels = pixelsOf(renderer);
   const row = size.height - 1 - position.row;
   const offset = (row * size.width + position.column) * RGBA;
   return { r: pixels[offset] ?? -1, g: pixels[offset + 1] ?? -1, b: pixels[offset + 2] ?? -1 };
@@ -168,6 +180,7 @@ describe('ThreeFrameRenderer', () => {
       setup ?? buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
     const renderer = ThreeFrameRenderer.create(canvas, stitching, { preserveDrawingBuffer: true });
     renderers.push(renderer);
+    canvasOf.set(renderer, canvas);
     return renderer;
   }
 
@@ -486,7 +499,7 @@ describe('ThreeFrameRenderer', () => {
     const renderer = open();
     presentRedAndBlue(renderer);
     renderer.resize({ width: 128, height: 64 });
-    expect(renderer.readPixels()).toHaveLength(128 * 64 * RGBA);
+    expect(pixelsOf(renderer)).toHaveLength(128 * 64 * RGBA);
     expect(
       pixelAt(renderer, { column: 64, row: 32 }, { width: 128, height: 64 }).r,
     ).toBeGreaterThan(BRIGHT);

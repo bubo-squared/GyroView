@@ -1,19 +1,11 @@
-/**
- * How long a browser test waits for the player or the frame before it gives up, and how often
- * it looks.
- */
-const WAIT_MS = 20_000;
-const POLL_MS = 20;
+import { waitFor as waitForPlayer } from '@gyroview/player/testing';
 
 /**
- * Resolves once `isSatisfied` holds, looking every few milliseconds; fails naming `what`.
+ * How long a browser test waits for the frame before it gives up: longer than for the player
+ * alone, since the frame loads a page of its own first.
  */
-export async function waitFor(isSatisfied: () => boolean, what: string): Promise<void> {
-  const deadline = performance.now() + WAIT_MS;
-  while (!isSatisfied()) {
-    if (performance.now() > deadline) throw new Error(`timed out waiting for ${what}`);
-    await new Promise((resolve) => {
-      setTimeout(resolve, POLL_MS);
-    });
-  }
+const FRAME_WAIT_MS = 20_000;
+
+export function waitFor(isSatisfied: () => boolean, what: string): Promise<void> {
+  return waitForPlayer(isSatisfied, what, FRAME_WAIT_MS);
 }

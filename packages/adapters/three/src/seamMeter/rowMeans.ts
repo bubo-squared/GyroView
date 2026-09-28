@@ -1,7 +1,9 @@
 import type { Vector3 } from '@gyroview/core';
 
-import { RGBA_CHANNELS } from '../readback';
-
+/**
+ * Channels per pixel in the RGBA8 images read back from the GPU.
+ */
+export const RGBA_CHANNELS = 4;
 const CHANNEL_MAX = 255;
 
 /**

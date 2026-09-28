@@ -12,7 +12,7 @@ import {
 import { rowMeansOf } from './rowMeans';
 import { compileAndProve } from '../compileAndProve';
 import { createFullscreenTriangle, createPassMaterial } from '../fullscreenPass';
-import { RGBA_CHANNELS } from '../readback';
+import { RGBA_CHANNELS } from './rowMeans';
 import { renderInto } from '../renderInto';
 import { MAX_LENSES, type RendererUniforms } from '../rendererUniforms';
 import { SEAM_ANALYSIS } from '../shaderPrograms';

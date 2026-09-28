@@ -5,10 +5,15 @@ const WAIT_MS = 15_000;
 const POLL_MS = 20;
 
 /**
- * Resolves once `isSatisfied` holds, looking every few milliseconds; fails naming `what`.
+ * Resolves once `isSatisfied` holds, looking every few milliseconds; fails naming `what` after
+ * `timeoutMs`. Shared with the embed site's and the real recordings' browser tests.
  */
-export async function waitFor(isSatisfied: () => boolean, what: string): Promise<void> {
-  const deadline = performance.now() + WAIT_MS;
+export async function waitFor(
+  isSatisfied: () => boolean,
+  what: string,
+  timeoutMs = WAIT_MS,
+): Promise<void> {
+  const deadline = performance.now() + timeoutMs;
   while (!isSatisfied()) {
     if (performance.now() > deadline) throw new Error(`timed out waiting for ${what}`);
     await new Promise((resolve) => {

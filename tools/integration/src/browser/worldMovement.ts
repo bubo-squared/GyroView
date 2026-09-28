@@ -1,12 +1,14 @@
 import type { ThreeFrameRenderer } from '@gyroview/adapter-three';
+import { readPixels } from '@gyroview/adapter-three/testing';
 import type { FramePair, Matrix3 } from '@gyroview/core';
 
 const RGBA = 4;
 
 /**
- * Two pairs of one moment, and the renderer that draws them.
+ * Two pairs of one moment, and the renderer that draws them on the canvas.
  */
 export interface Renderable {
+  readonly canvas: HTMLCanvasElement;
   readonly renderer: ThreeFrameRenderer;
   readonly first: FramePair<VideoFrame>;
   readonly later: FramePair<VideoFrame>;
@@ -33,11 +35,11 @@ export function worldMovement(
   renderable: Renderable,
   rotationFor: (pair: FramePair<VideoFrame>) => Matrix3,
 ): number {
-  const { renderer, first, later } = renderable;
+  const { canvas, renderer, first, later } = renderable;
   renderer.setStabilization(rotationFor(first));
   renderer.present({ pair: first, mediaTime: first.timestamp });
-  const before = renderer.readPixels();
+  const before = readPixels(canvas);
   renderer.setStabilization(rotationFor(later));
   renderer.present({ pair: later, mediaTime: later.timestamp });
-  return difference(before, renderer.readPixels());
+  return difference(before, readPixels(canvas));
 }

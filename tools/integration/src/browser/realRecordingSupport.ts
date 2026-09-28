@@ -12,6 +12,7 @@ import {
   PAIR_QUEUE_CAPACITY,
   type OpenedRecording,
 } from '@gyroview/player/composition';
+import { waitFor } from '@gyroview/player/testing';
 import { expect, type TestContext } from 'vitest';
 
 import { isServed, type SampleRecording } from './sampleUrls';
@@ -21,7 +22,6 @@ const TIMESTAMP_DIGITS = 3;
  * How long a test waits for decoded pairs before it gives up.
  */
 export const DECODE_TIMEOUT_MS = 15_000;
-const POLL_INTERVAL_MS = 20;
 
 const ports = browserPorts();
 export const port = ports.decoderPort;
@@ -67,24 +67,6 @@ export async function openSample(
   return openedOrSkip(context, await availabilityOf(sample));
 }
 
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-export async function waitFor(
-  isSatisfied: () => boolean,
-  timeoutMs: number,
-  what: string,
-): Promise<void> {
-  const deadline = performance.now() + timeoutMs;
-  while (!isSatisfied()) {
-    if (performance.now() > deadline) throw new Error(`timed out waiting for ${what}`);
-    await wait(POLL_INTERVAL_MS);
-  }
-}
-
 /**
  * Takes the first `count` pairs the pipeline delivers from `from`, then aborts it and closes the
  * pairs decoded beyond them.
@@ -102,8 +84,8 @@ export async function takePairs(
       takeQueued(queue, taken, count);
       return taken.length >= count;
     },
-    DECODE_TIMEOUT_MS,
     `${count} decoded pairs`,
+    DECODE_TIMEOUT_MS,
   );
   pipeline.abort();
   await run;

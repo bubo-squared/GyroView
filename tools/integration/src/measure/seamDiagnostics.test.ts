@@ -2,11 +2,11 @@ import { buildStitchingSetup, degrees, type StripShift } from '@gyroview/core';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { saveMeasurement, saveRender } from '../browser/artifacts';
-import { closeAll, openSample } from '../browser/realRecordingSupport';
+import { openSample } from '../browser/realRecordingSupport';
 import { calibrationOf, equirectangularRendering } from '../browser/rendering';
 import { OFFICE_5K7_60, SAILING_8K_30 } from '../browser/sampleUrls';
 import { gainsOf, REFINED_LENS, showPair, type SeamAgreementParts } from '../browser/seamAgreement';
-import { decodeMoment } from '../browser/SharedSample';
+import { closeMoment, decodeMoment } from '../browser/SharedSample';
 import { stripImagesOf, stripSheetOf } from '../browser/stripImage';
 
 const PANORAMA_SIZE = { width: 1536, height: 768 };
@@ -57,7 +57,7 @@ describe('seam strip diagnostics', () => {
       const parts: SeamAgreementParts = { renderer, meter, factoryPose };
       const moment = await decodeMoment(opened, MOMENT);
       cleanups.push(() => {
-        closeAll([moment.first, moment.later]);
+        closeMoment(moment);
       });
 
       const images = await stripImagesOf(setup, calibration, moment.first);

@@ -40,6 +40,7 @@ export function recordingTimeOf(frame: ReferenceFrame): number {
 }
 
 const RGBA = 4;
+const OPAQUE = 255;
 const LUMA_RED = 0.299;
 const LUMA_GREEN = 0.587;
 const LUMA_BLUE = 0.114;
@@ -66,6 +67,23 @@ export async function loadGreyImage(url: string): Promise<GreyImage> {
   bitmap.close();
   const image = context.getImageData(0, 0, canvas.width, canvas.height);
   return { width: canvas.width, height: canvas.height, data: greyOf(image.data, false, canvas) };
+}
+
+/**
+ * The grey image drawn on a canvas, for saving.
+ */
+export function greyCanvasOf(image: GreyImage): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('no 2d context');
+  const pixels = new ImageData(image.width, image.height);
+  for (const [index, level] of image.data.entries()) {
+    pixels.data.set([level, level, level, OPAQUE], index * RGBA);
+  }
+  context.putImageData(pixels, 0, 0);
+  return canvas;
 }
 
 /**

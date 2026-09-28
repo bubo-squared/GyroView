@@ -4,13 +4,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { saveMeasurement } from '../browser/artifacts';
 import { blockFieldOf } from '../browser/blockField';
 import { readingsOf, setupOf, verticalStretchOf, withRadialScale } from '../browser/lensReadings';
-import { closeAll, openSample } from '../browser/realRecordingSupport';
+import { openSample } from '../browser/realRecordingSupport';
 import { alignToReference, renderUnder, rotationOf } from '../browser/referenceAlignment';
 import { radialScaleErrorOf } from '../browser/radialFit';
 import { loadGreyImage, recordingTimeOf, STUDIO_SAILING_FRAMES } from '../browser/referenceFrames';
 import { equirectangularRenderingOf, motionOf } from '../browser/rendering';
 import { isServed, SAILING_8K_30 } from '../browser/sampleUrls';
-import { decodeMoment } from '../browser/SharedSample';
+import { closeMoment, decodeMoment } from '../browser/SharedSample';
 
 const PANORAMA_SIZE = { width: 1536, height: 768 };
 /**
@@ -49,7 +49,7 @@ describe('lens readings against the Studio export', () => {
         const { orientations } = motionOf(opened);
         const moment = await decodeMoment(opened, recordingTimeOf(frame));
         cleanups.push(() => {
-          closeAll([moment.first, moment.later]);
+          closeMoment(moment);
         });
         const pair = moment.first;
         const lock = stabilizerFor('lock').nextRotation(

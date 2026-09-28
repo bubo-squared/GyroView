@@ -19,19 +19,22 @@ import type { SampleRecording } from './sampleUrls';
  * camera to turn visibly (half a second at 30 fps), close enough for the scene to stay put.
  */
 const PAIRS_PER_MOMENT = 16;
+const KEPT_AT_START = 2;
 
 /**
- * Two pairs of one moment of a sample, the first and the last of `PAIRS_PER_MOMENT` consecutive
- * pairs, which their owner closes, and the timing of all of them.
+ * Three pairs of one moment of a sample, the first two and the last of `PAIRS_PER_MOMENT`
+ * consecutive pairs, which their owner closes, and the timing of all of them. The second is the
+ * frame after the first: what changes between them on a still picture is the sampling's.
  */
 export interface Moment {
   readonly first: FramePair<VideoFrame>;
+  readonly second: FramePair<VideoFrame>;
   readonly later: FramePair<VideoFrame>;
   readonly timings: readonly PairTiming[];
 }
 
 /**
- * Decodes the moment at `time`, closing every pair but the two it keeps.
+ * Decodes the moment at `time`, closing every pair but the three it keeps.
  */
 export async function decodeMoment(opened: OpenedRecording, time: number): Promise<Moment> {
   const pipeline = new DecodePipeline<VideoFrame>(
@@ -41,15 +44,15 @@ export async function decodeMoment(opened: OpenedRecording, time: number): Promi
   );
   const pairs = await takePairs(pipeline, time, PAIRS_PER_MOMENT);
   const timings = pairs.map((pair) => timingOf(pair));
-  const [first] = pairs;
+  const [first, second] = pairs;
   const later = pairs.at(-1);
-  closeAll(pairs.slice(1, -1));
-  if (!first || !later) throw new Error(`no pairs decoded at ${time} s`);
-  return { first, later, timings };
+  closeAll(pairs.slice(KEPT_AT_START, -1));
+  if (!first || !second || !later) throw new Error(`no pairs decoded at ${time} s`);
+  return { first, second, later, timings };
 }
 
 export function closeMoment(moment: Moment): void {
-  closeAll([moment.first, moment.later]);
+  closeAll([moment.first, moment.second, moment.later]);
 }
 
 /**

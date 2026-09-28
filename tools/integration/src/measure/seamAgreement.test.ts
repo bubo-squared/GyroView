@@ -98,7 +98,7 @@ describe('seam agreement of the real recordings', () => {
         });
         const measured = await measureMoment(parts, { time, pair: moment.first });
         const laterFactoryCost = await factoryCostOf(parts, moment.later, measured.gains);
-        closeAll([moment.later]);
+        closeAll([moment.second, moment.later]);
         moments.push({ ...measured, laterFactoryCost });
         kept.push({ time, pair: moment.first });
         parts.renderer.present({ pair: moment.first, mediaTime: moment.first.timestamp });

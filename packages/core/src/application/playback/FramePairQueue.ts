@@ -107,5 +107,5 @@ export class FramePairQueue<Handle = unknown> {
 }
 
 function doNothing(): void {
-  // The default observer.
+  // A queue nobody observes has nobody to tell.
 }

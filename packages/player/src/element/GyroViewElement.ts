@@ -75,6 +75,8 @@ const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);
  */
 export class GyroViewElement extends TypedEventElement implements LiveSettings {
   public static readonly observedAttributes = OBSERVED_ATTRIBUTES;
+  // The properties below are defined on each element as it is built: the mirrored attributes by
+  // the define...Properties functions, the live settings by `defineLiveSettings` (ADR 0016).
   declare public src: string | null;
   declare public src2: string | null;
   declare public poster: string | null;

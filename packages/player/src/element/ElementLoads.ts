@@ -138,5 +138,5 @@ export class ElementLoads {
  * A failed load has already been dispatched as an `error` event; the promise adds nothing.
  */
 function ignoreReportedFailure(): void {
-  // Intentionally empty.
+  // The `error` event told the page; nobody awaits this promise.
 }

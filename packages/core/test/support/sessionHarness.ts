@@ -17,6 +17,12 @@ import { FakeVideoTrack } from '../../src/testing/FakeVideoTrack';
 import { settle } from './settle';
 
 export const FRAME_RATE = 10;
+/**
+ * The harness's recording has two lenses, each decoded into its own frames.
+ */
+export const LENSES = 2;
+export const QUEUE_CAPACITY = 4;
+export const MAX_PENDING_PACKETS = 3;
 const FRAMES = 30;
 const FRAMES_PER_GOP = 10;
 export const DURATION = seconds(FRAMES / FRAME_RATE);
@@ -66,8 +72,8 @@ export function sessionHarness(options: SessionHarnessOptions = {}): SessionHarn
     clock,
     sink,
     duration: DURATION,
-    pipeline: { maxPendingPackets: 3, pairTolerance: seconds(0.0001) },
-    queueCapacity: 4,
+    pipeline: { maxPendingPackets: MAX_PENDING_PACKETS, pairTolerance: seconds(0.0001) },
+    queueCapacity: QUEUE_CAPACITY,
     ...options.parts,
   });
   const states: PlayerState[] = [];

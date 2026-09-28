@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { seconds } from '../../shared/units/time';
-import { DURATION, FRAME_RATE, sessionHarness } from '../../../test/support/sessionHarness';
+import {
+  DURATION,
+  FRAME_RATE,
+  LENSES,
+  MAX_PENDING_PACKETS,
+  QUEUE_CAPACITY,
+  sessionHarness,
+} from '../../../test/support/sessionHarness';
 import { settle } from '../../../test/support/settle';
 
 const FRAME = 1 / FRAME_RATE;
@@ -55,7 +62,11 @@ describe('PlaybackSession transport', () => {
     const { session, decoderPort, advance } = sessionHarness();
     await session.play();
     for (let step = 0; step < 6; step += 1) await advance(150);
-    expect(decoderPort.openFrames).toBeLessThanOrEqual(2 + 2 * 4 + 2 * 3);
+    // The pair on screen, the queued pairs, and a frame per packet still pending in each decoder.
+    const presented = LENSES;
+    const queued = LENSES * QUEUE_CAPACITY;
+    const pending = LENSES * MAX_PENDING_PACKETS;
+    expect(decoderPort.openFrames).toBeLessThanOrEqual(presented + queued + pending);
     session.dispose();
     expect(decoderPort.openFrames).toBe(0);
   });

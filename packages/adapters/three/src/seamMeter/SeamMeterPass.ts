@@ -60,16 +60,16 @@ export class SeamMeterPass implements SeamMeter {
    * Mean colour (0..1) each lens shows along the seam, or undefined when a lens images none of it.
    */
   public async measure(): Promise<readonly Vector3[] | undefined> {
-    if (this.isDisposed) return undefined;
     try {
       await this.readSeam();
     } catch (error) {
-      // A lost context, or a disposal while reading back, fails the read-back; the picture comes
-      // back with the context and a later frame measures again. Anything else is a defect.
-      if (this.isGone() || this.renderer.getContext().isContextLost()) return undefined;
+      // A lost context, or a disposal before or while reading back, fails the read-back; the
+      // picture comes back with the context and a later frame measures again. Anything else is
+      // a defect.
+      if (this.isDisposed || this.renderer.getContext().isContextLost()) return undefined;
       throw error;
     }
-    return this.isGone() ? undefined : rowMeansOf(this.pixels, SEAM_SAMPLES, this.lensCount);
+    return this.isDisposed ? undefined : rowMeansOf(this.pixels, SEAM_SAMPLES, this.lensCount);
   }
 
   public dispose(): void {
@@ -78,13 +78,6 @@ export class SeamMeterPass implements SeamMeter {
     this.target.dispose();
     this.material.dispose();
     this.geometry.dispose();
-  }
-
-  /**
-   * Asked again after the read-back, which a disposal may overtake.
-   */
-  private isGone(): boolean {
-    return this.isDisposed;
   }
 
   /**

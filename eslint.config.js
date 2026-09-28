@@ -82,6 +82,9 @@ export default defineConfig(
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/prefer-readonly': 'error',
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
+      // A branded unit (`Degrees`, `Seconds`) is a number the rule does not recognise as one; the
+      // brand keeps units apart, negating one keeps its unit.
+      '@typescript-eslint/no-unsafe-unary-minus': 'off',
       '@typescript-eslint/restrict-template-expressions': [
         'error',
         { allowNumber: true, allowBoolean: false, allowNullish: false },

@@ -101,7 +101,7 @@ function pitchRaising(ray: Vector3, height: number, current: Degrees): Degrees |
   const phase = radiansToDegrees(radians(Math.atan2(z, y)));
   const spread = radiansToDegrees(radians(Math.acos(cosine)));
   const rising = wrapHalfTurn(degrees(spread - phase));
-  const falling = wrapHalfTurn(degrees(0 - spread - phase));
+  const falling = wrapHalfTurn(degrees(-spread - phase));
   return Math.abs(rising - current) <= Math.abs(falling - current) ? rising : falling;
 }
 

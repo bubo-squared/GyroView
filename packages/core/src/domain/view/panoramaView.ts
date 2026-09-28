@@ -70,7 +70,7 @@ function panPanorama(framing: Framing, delta: DragDelta, context: ViewContext): 
   const shift = shiftOf(delta, context.viewport);
   const moved = panMagnification(fitted, panorama, { across: 0, down: shift.down });
   const turned = pictureShiftOf(fitted, panorama, shift).across * FULL_TURN;
-  return withPanorama(framing, moved, degrees(0 - turned));
+  return withPanorama(framing, moved, degrees(-turned));
 }
 
 /**

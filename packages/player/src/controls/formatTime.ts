@@ -1,6 +1,5 @@
 const SECONDS_PER_MINUTE = 60;
 const MINUTES_PER_HOUR = 60;
-const TWO_DIGITS = 2;
 
 /**
  * `m:ss`, or `h:mm:ss` from one hour on, as media players show it. Negative or unknown times
@@ -17,5 +16,5 @@ export function formatTime(totalSeconds: number): string {
 }
 
 function padded(value: number): string {
-  return String(value).padStart(TWO_DIGITS, '0');
+  return String(value).padStart(2, '0');
 }

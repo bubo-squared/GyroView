@@ -257,6 +257,7 @@ browser tests; `test/fixtures/thirdparty` holds two MIT-licensed trailer fixture
 | `docs/FEASIBILITY.md`  | The measurements the design rests on.                                            |
 | `docs/adr/`            | One record per non-obvious decision, with the alternatives considered.           |
 | `CONTRIBUTING.md`      | Fast feedback, proposing a change, recipes, the dependency rule, the checklists. |
+| `SECURITY.md`          | How to report a vulnerability.                                                   |
 
 Architecture decision records: 0001 hexagonal architecture, 0002 WebCodecs over video
 elements, 0003 mediabunny as the demuxer, 0004 format variants selected from the file, 0005

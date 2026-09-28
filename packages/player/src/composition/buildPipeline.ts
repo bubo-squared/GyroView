@@ -91,7 +91,7 @@ function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
     renderer.dispose();
   });
   const { sink, stabilizing } = sinkOver(renderer, parts.opened);
-  const gainMatching = new GainMatchingFrameSink({ sink, renderer });
+  const gainMatching = new GainMatchingFrameSink(sink, renderer);
   disposables.add(() => {
     gainMatching.dispose();
   });

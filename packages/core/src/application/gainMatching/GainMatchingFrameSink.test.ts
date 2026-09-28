@@ -42,7 +42,7 @@ function subject(): {
 } {
   const sink = new FakeFrameSink<string>();
   const renderer = new FakeRenderer();
-  return { sink, renderer, matching: new GainMatchingFrameSink({ sink, renderer }) };
+  return { sink, renderer, matching: new GainMatchingFrameSink(sink, renderer) };
 }
 
 function presentAt(matching: GainMatchingFrameSink<string>, time: number): void {

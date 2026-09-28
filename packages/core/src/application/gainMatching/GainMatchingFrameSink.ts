@@ -5,17 +5,14 @@ import type { SeamMeter } from '../../ports/SeamMeter';
 import type { Vector3 } from '../../shared/math/Vector3';
 import type { Seconds } from '../../shared/units/time';
 
-export interface GainMatchingParts<Handle> {
-  readonly sink: FrameSink<Handle>;
-  /**
-   * The renderer that draws what the sink is handed: it measures its seam and takes the gains,
-   * which go back to one for each lens it draws when matching stops.
-   */
-  readonly renderer: Pick<
-    PictureRenderer<Handle>,
-    'createSeamMeter' | 'setLensGains' | 'lensCount'
-  >;
-}
+/**
+ * The renderer that draws what the sink is handed: it measures its seam and takes the gains,
+ * which go back to one for each lens it draws when matching stops.
+ */
+export type GainRenderer<Handle> = Pick<
+  PictureRenderer<Handle>,
+  'createSeamMeter' | 'setLensGains' | 'lensCount'
+>;
 
 /**
  * A matcher and the meter created for it, which live and go together.
@@ -36,11 +33,14 @@ export class GainMatchingFrameSink<Handle = unknown> implements FrameSink<Handle
   private active: ActiveMatching | undefined;
   private lastMediaTime: Seconds | undefined;
 
-  public constructor(private readonly parts: GainMatchingParts<Handle>) {}
+  public constructor(
+    private readonly sink: FrameSink<Handle>,
+    private readonly renderer: GainRenderer<Handle>,
+  ) {}
 
   public enable(): void {
     if (this.active) return;
-    const { renderer } = this.parts;
+    const { renderer } = this;
     const meter = renderer.createSeamMeter();
     const matching = new GainMatching(meter, (gains) => {
       renderer.setLensGains(gains);
@@ -50,8 +50,8 @@ export class GainMatchingFrameSink<Handle = unknown> implements FrameSink<Handle
 
   public disable(): void {
     this.stop();
-    const unitGains = Array.from({ length: this.parts.renderer.lensCount }, () => UNIT_GAIN);
-    this.parts.renderer.setLensGains(unitGains);
+    const unitGains = Array.from({ length: this.renderer.lensCount }, () => UNIT_GAIN);
+    this.renderer.setLensGains(unitGains);
   }
 
   /**
@@ -64,7 +64,7 @@ export class GainMatchingFrameSink<Handle = unknown> implements FrameSink<Handle
   }
 
   public present(presentation: Presentation<Handle>): void {
-    this.parts.sink.present(presentation);
+    this.sink.present(presentation);
     this.lastMediaTime = presentation.mediaTime;
     this.active?.matching.afterPresent(presentation.mediaTime);
   }

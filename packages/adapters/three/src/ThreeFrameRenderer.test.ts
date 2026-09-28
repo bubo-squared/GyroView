@@ -188,7 +188,7 @@ describe('ThreeFrameRenderer', () => {
    * Gain matching composed over the renderer as the player composes it, measuring its seam.
    */
   function gainMatchingOver(renderer: ThreeFrameRenderer): GainMatchingFrameSink<VideoFrame> {
-    const matching = new GainMatchingFrameSink({ sink: renderer, renderer });
+    const matching = new GainMatchingFrameSink(renderer, renderer);
     gainMatchers.push(matching);
     return matching;
   }

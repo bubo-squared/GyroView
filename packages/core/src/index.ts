@@ -15,7 +15,7 @@ export type {
   UnreadableGyro,
   UnreadExposure,
 } from './application/recording/RecordingInspection';
-export { Recording } from './application/recording/Recording';
+export type { Recording } from './application/recording/Recording';
 export { timeRecording, type RecordingTiming } from './application/recording/timeRecording';
 export type { MotionSetup } from './application/recording/motionOf';
 export { locateOtherLensFile } from './application/recording/locateOtherLensFile';
@@ -138,7 +138,7 @@ export type { PixelPoint } from './domain/optics/PixelPoint';
 export { EquidistantModel, type EquidistantParameters } from './domain/optics/EquidistantModel';
 export {
   GainMatchingFrameSink,
-  type GainMatchingParts,
+  type GainRenderer,
 } from './application/gainMatching/GainMatchingFrameSink';
 export type { SeamMeter } from './ports/SeamMeter';
 export type { CalibrationChoice } from './domain/format/calibration/selectCalibration';

@@ -90,7 +90,13 @@ rotation the renderer applies.
 **`stitching`**: `LensLayout` (where each lens's pixels are: which input, track and frame
 region) and `StitchingSetup`, which joins calibration and layout into the per-lens numbers a
 renderer binds (each frame shows its whole calibration square, ADR 0014) and orders the frame
-sources the session decodes (`lensFrameOrder`).
+sources the session decodes (`lensFrameOrder`). The seam instruments measure how well the
+lenses agree without drawing a picture: `seamStrip` (the band of body directions 83 to 97
+degrees from lens 0's axis, in 5-degree azimuth bins), `seamMismatch` (a robust cost over the
+bins), `seamShiftField` (per bin, the slide of the back lens's sampling that aligns it),
+`poseFit` (the turn that explains a shift field) and `poseSearch` (a coarse-to-fine search of
+a `PoseDelta`). On the recordings measured so far, near objects own every seam, so these serve
+`pnpm measure` and not playback (ADR 0025).
 
 **`playback`**: `PlayerStateMachine` with the exhaustive transition table
 (`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`).
@@ -154,6 +160,7 @@ Use cases that orchestrate the domain through ports.
 | `FrameSink`          | present a frame pair                                                                                                                            | `ThreeFrameRenderer`                                                  |
 | `PictureRenderer`    | a `FrameSink` that also takes the stabilization rotation, framing, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
 | `SeamMeter`          | the mean colour each lens shows along the seam                                                                                                  | `SeamMeterPass`                                                       |
+| `SeamMismatchMeter`  | per seam-strip bin, how far the lenses disagree for each candidate pose or sampling slide of one lens                                           | `SeamMismatchPass`                                                    |
 | `ResourceLocator`    | does this URL exist                                                                                                                             | `HttpResourceLocator`                                                 |
 
 `WallClock` is the one port implementation in the core: it reads time the host hands it (the
@@ -205,6 +212,8 @@ One package per external technology; none imports another.
   holds the triangle and material setup every pass shares, and `rendererUniforms` is the only
   place uniform names are spelled (a test checks them against the chunks). `seamMeter/SeamMeterPass`
   is the `SeamMeter`: it renders the seam ring per lens into a tiny target and reads it back.
+  `seamMismatch/SeamMismatchPass` is the `SeamMismatchMeter`: it samples the seam strip from both
+  lenses for a batch of candidates and reduces each bin to a cost packed in 8-bit texels.
 
 ## The player: `packages/player`
 

@@ -1,7 +1,7 @@
 import { existsSync, realpathSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { playwright } from '@vitest/browser-playwright';
 import { defineProject, type UserWorkspaceConfig } from 'vitest/config';
@@ -10,6 +10,11 @@ import { AUTOPLAY_WITHOUT_GESTURE, chromiumArguments } from '../../test/browserL
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const ARTIFACTS = path.join(REPOSITORY_ROOT, '.artifacts');
+/**
+ * Where the tests fetch the frames of the Studio exports from: Vite serves a file outside the
+ * project's root under `/@fs/` and its absolute path.
+ */
+const REFERENCE_FOLDER_URL = `/@fs${pathToFileURL(path.join(ARTIFACTS, 'reference')).pathname}/`;
 const DATA_URL_PAYLOAD = /^data:[^,]*;base64,(?<payload>.+)$/su;
 
 /**
@@ -69,7 +74,7 @@ export function browserProject(options: BrowserProjectOptions): UserWorkspaceCon
     test: {
       name: options.name,
       include: options.include,
-      provide: { savesArtifacts: options.savesArtifacts },
+      provide: { savesArtifacts: options.savesArtifacts, referenceFolder: REFERENCE_FOLDER_URL },
       testTimeout: 90_000,
       hookTimeout: 90_000,
       /**

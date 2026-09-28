@@ -1,98 +1,81 @@
+import { inject } from 'vitest';
+
+import { OFFICE_5K7_60, SAILING_8K_30, type SampleRecording } from './sampleUrls';
+
 /**
- * Frames of the Insta360 Studio export of the sailing recording (`Jedrenje 360.mp4` beside it),
- * stitched and stabilized by Insta360's own software: the external reference for GyroView's
- * geometry. Extracted beforehand, scaled to the panorama size the tests render, with
- *
- *   ffmpeg -ss <t> -i "samples/sailing/Jedrenje 360.mp4" -frames:v 1 -vf scale=1536:768 \
- *     .artifacts/reference/studio-sailing-<t>s.png
- *
- * The export runs at 30 fps where the recording runs at 29.97, so its frame at `t` is the
- * recording's frame at `t * 30 / 29.97`.
+ * A frame of an Insta360 Studio export, stitched and stabilized by Insta360's own software:
+ * the external reference for GyroView's geometry. `time` is the export's own.
  */
 export interface ReferenceFrame {
   readonly time: number;
   readonly url: string;
 }
 
-const EXPORT_FRAME_RATE = 30;
-const RECORDING_FRAME_RATE = 29.97;
-
-export const STUDIO_SAILING_FRAMES: readonly ReferenceFrame[] = [
-  {
-    time: 100,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-100s.png', import.meta.url).href,
-  },
-  {
-    time: 55,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-55s.png', import.meta.url).href,
-  },
-  {
-    time: 170,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-170s.png', import.meta.url).href,
-  },
-];
+/**
+ * A recording and frames of its Studio export, extracted beforehand at the panorama size the
+ * tests render, with
+ *
+ *   ffmpeg -ss <t> -i <export> -frames:v 1 -vf scale=1536:768 \
+ *     .artifacts/reference/studio-<slug>-<t>s.png
+ */
+export interface ReferenceClip {
+  readonly slug: string;
+  readonly sample: SampleRecording;
+  /**
+   * The recording's time at the export's first frame. Studio keeps the recording's clock at its
+   * own frame rate: cross-correlating the frame-to-frame change of the export and of both lenses
+   * matches them within a frame (office at 0 and 200 s, sailing at 150 s).
+   */
+  readonly start: number;
+  readonly frames: readonly ReferenceFrame[];
+}
 
 /**
- * More frames of the same export, spread over the clip, extracted the same way: for a
- * measurement that near objects spoil on some frames, so that the median of many decides.
+ * Frames every 15 seconds from the tenth, so that the median of many decides a measurement
+ * that near objects spoil on some.
  */
-export const STUDIO_SAILING_SPREAD: readonly ReferenceFrame[] = [
-  ...STUDIO_SAILING_FRAMES,
-  {
-    time: 10,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-10s.png', import.meta.url).href,
-  },
-  {
-    time: 20,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-20s.png', import.meta.url).href,
-  },
-  {
-    time: 25,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-25s.png', import.meta.url).href,
-  },
-  {
-    time: 40,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-40s.png', import.meta.url).href,
-  },
-  {
-    time: 70,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-70s.png', import.meta.url).href,
-  },
-  {
-    time: 85,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-85s.png', import.meta.url).href,
-  },
-  {
-    time: 115,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-115s.png', import.meta.url).href,
-  },
-  {
-    time: 130,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-130s.png', import.meta.url).href,
-  },
-  {
-    time: 135,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-135s.png', import.meta.url).href,
-  },
-  {
-    time: 145,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-145s.png', import.meta.url).href,
-  },
-  {
-    time: 160,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-160s.png', import.meta.url).href,
-  },
-  {
-    time: 185,
-    url: new URL('../../../../.artifacts/reference/studio-sailing-185s.png', import.meta.url).href,
-  },
-];
+const FIRST_FRAME_TIME = 10;
+const FRAME_SPACING = 15;
+
+function framesOf(slug: string, count: number): ReferenceFrame[] {
+  return Array.from({ length: count }, (_, index) => {
+    const time = FIRST_FRAME_TIME + index * FRAME_SPACING;
+    return { time, url: `${inject('referenceFolder')}studio-${slug}-${time}s.png` };
+  });
+}
 
 /**
- * The recording's time of the export's frame at `time`.
+ * `Jedrenje 360.mp4` beside the sailing recording: 8K at 30 fps, the whole clip, 194 s.
  */
-export function recordingTimeOf(frame: ReferenceFrame): number {
-  return (frame.time * EXPORT_FRAME_RATE) / RECORDING_FRAME_RATE;
+const SAILING_FRAME_COUNT = 13;
+
+export const STUDIO_SAILING: ReferenceClip = {
+  slug: 'sailing',
+  sample: SAILING_8K_30,
+  start: 0,
+  frames: framesOf('sailing', SAILING_FRAME_COUNT),
+};
+
+/**
+ * `Carigradska.mp4` beside the office recording: 5.7K at 60 fps, trimmed at both ends to 256 s.
+ */
+const OFFICE_FRAME_COUNT = 17;
+const OFFICE_START = 2.98;
+
+export const STUDIO_OFFICE: ReferenceClip = {
+  slug: 'office',
+  sample: OFFICE_5K7_60,
+  start: OFFICE_START,
+  frames: framesOf('office', OFFICE_FRAME_COUNT),
+};
+
+export const STUDIO_CLIPS: readonly ReferenceClip[] = [STUDIO_SAILING, STUDIO_OFFICE];
+
+/**
+ * The recording's time of the export's frame.
+ */
+export function recordingTimeOf(clip: ReferenceClip, frame: ReferenceFrame): number {
+  return clip.start + frame.time;
 }
 
 const RGBA = 4;

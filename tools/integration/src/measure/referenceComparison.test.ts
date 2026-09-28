@@ -8,7 +8,7 @@ import { alignToReference, renderUnder } from '../browser/referenceAlignment';
 import {
   loadGreyImage,
   recordingTimeOf,
-  STUDIO_SAILING_FRAMES,
+  STUDIO_SAILING,
   type GreyImage,
 } from '../browser/referenceFrames';
 import { equirectangularRendering, motionOf } from '../browser/rendering';
@@ -16,6 +16,8 @@ import { isServed, SAILING_8K_30 } from '../browser/sampleUrls';
 import { closeMoment, decodeMoment } from '../browser/SharedSample';
 
 const PANORAMA_SIZE = { width: 1536, height: 768 };
+const COMPARED_TIMES = new Set([55, 100, 175]);
+const COMPARED_FRAMES = STUDIO_SAILING.frames.filter((frame) => COMPARED_TIMES.has(frame.time));
 const DIFFERENCE_GAIN = 3;
 const CHANNEL_MAX = 255;
 
@@ -60,7 +62,7 @@ describe('GyroView against the Studio export of the sailing recording', () => {
     for (const cleanup of cleanups.splice(0).toReversed()) cleanup();
   });
 
-  for (const frame of STUDIO_SAILING_FRAMES) {
+  for (const frame of COMPARED_FRAMES) {
     it(`aligns to the Studio frame at ${frame.time} s and measures what remains`, async (context) => {
       if (!(await isServed(frame.url))) context.skip(`no Studio frame at ${frame.time} s`);
       const reference = await loadGreyImage(frame.url);
@@ -70,7 +72,7 @@ describe('GyroView against the Studio export of the sailing recording', () => {
       });
       const { canvas, renderer, dispose } = equirectangularRendering(opened, PANORAMA_SIZE);
       cleanups.push(dispose);
-      const moment = await decodeMoment(opened, recordingTimeOf(frame));
+      const moment = await decodeMoment(opened, recordingTimeOf(STUDIO_SAILING, frame));
       cleanups.push(() => {
         closeMoment(moment);
       });

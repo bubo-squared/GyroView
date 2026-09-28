@@ -4,6 +4,10 @@ declare module 'vitest' {
      * Whether the run writes renders and measurements to `.artifacts/` (`pnpm measure`).
      */
     savesArtifacts: boolean;
+    /**
+     * The URL the frames of the Studio exports are served under, `.artifacts/reference/`.
+     */
+    referenceFolder: string;
   }
 }
 

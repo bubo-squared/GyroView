@@ -5,7 +5,7 @@ import {
   type Matrix3,
   type PoseDelta,
 } from '@gyroview/core';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, type TestContext } from 'vitest';
 
 import { saveMeasurement, saveRender } from '../browser/artifacts';
 import {
@@ -35,21 +35,23 @@ import {
 import {
   loadGreyImage,
   recordingTimeOf,
-  STUDIO_SAILING_SPREAD,
+  STUDIO_CLIPS,
   type GreyImage,
+  type ReferenceClip,
+  type ReferenceFrame,
 } from '../browser/referenceFrames';
 import { calibrationOf, equirectangularRendering, motionOf } from '../browser/rendering';
-import { isServed, SAILING_8K_30 } from '../browser/sampleUrls';
+import { isServed } from '../browser/sampleUrls';
 import { closeMoment, decodeMoment } from '../browser/SharedSample';
 
 const PANORAMA_SIZE = { width: 1536, height: 768 };
 const FRAME_TIMEOUT_MS = 900_000;
 const AXES: readonly BodyAxis[] = ['x', 'y', 'z'];
 /**
- * A turn about the lens axis is read on the sky band above the boat, whole: it moves the picture
- * around the seam ring, which no parallax does.
+ * A turn about the lens axis is read on the whole band above the horizon (the sky over the boat,
+ * the office ceiling): it moves the picture around the seam ring, which no parallax does.
  */
-const SKY_BAND: RowBand = { top: 0.15, bottom: 0.5 };
+const UPPER_BAND: RowBand = { top: 0.15, bottom: 0.5 };
 /**
  * Turns about the other two axes are read near each lens's axis, where parallax vanishes, on
  * both sides of the horizon.
@@ -90,6 +92,13 @@ const CONVENTIONS: readonly Convention[] = [
     flips: [ROLL_FLIPPED, YAW_AND_ROLL_FLIPPED],
   },
   { name: 'roll as written', slug: 'roll-as-written', flips: [ROLL_FLIPPED, ROLL_FLIPPED] },
+  // Only the back lens's roll mirrored: on the sailing unit it differs from the core's reading
+  // by 0.14 degrees, on the office unit by 1.05.
+  {
+    name: "front lens's roll as written",
+    slug: 'front-roll-as-written',
+    flips: [ROLL_FLIPPED, AS_READ],
+  },
   { name: 'back lens yaw as before', slug: 'back-yaw-before', flips: [AS_READ, YAW_FLIPPED] },
   // The y-up/y-down mirror that reverses the roll would reverse the pitch as well.
   { name: 'pitch mirrored too', slug: 'pitch-mirrored', flips: [PITCH_FLIPPED, PITCH_FLIPPED] },
@@ -121,7 +130,7 @@ interface ConventionResult {
 /**
  * Every usable frame's relative turn, by reading and axis: `<name>:<axis>`.
  */
-const results = new Map<string, number[]>();
+type Results = Map<string, number[]>;
 
 function lensesOf(calibration: readonly LensCalibration[]): LensPair<LensCalibration> {
   const [first, second] = calibration.toSorted((a, b) => a.lensIndex - b.lensIndex);
@@ -137,7 +146,7 @@ interface Registration {
   readonly reference: GreyImage;
   readonly renderable: Renderable;
   readonly lenses: LensPair<LensCalibration>;
-  readonly skyBand: ComparedPixels;
+  readonly upperBand: ComparedPixels;
 }
 
 /**
@@ -153,7 +162,7 @@ function comparedFor(
   drawing: Drawing,
   search: { axis: BodyAxis; lensIndex: number },
 ): ComparedPixels {
-  if (search.axis === 'z') return registration.skyBand;
+  if (search.axis === 'z') return registration.upperBand;
   const { renderable } = registration;
   return conePixels(PANORAMA_SIZE, {
     viewToBody: multiplyMatrices(renderable.lock, rotationOf(drawing.view)),
@@ -215,17 +224,15 @@ function withoutStitch(result: ConventionResult): Omit<ConventionResult, 'stitch
   return { name, slug, about, predictedUnderCore };
 }
 
-async function saveStitches(measured: readonly ConventionResult[], time: number): Promise<void> {
-  for (const result of measured) {
-    await saveRender(`sailing-${time}s-stitch-${result.slug}`, result.stitch);
-  }
+async function saveStitches(measured: readonly ConventionResult[], prefix: string): Promise<void> {
+  for (const result of measured) await saveRender(`${prefix}-stitch-${result.slug}`, result.stitch);
 }
 
-function record(measured: readonly ConventionResult[]): void {
-  for (const result of measured) recordConvention(result);
+function record(results: Results, measured: readonly ConventionResult[]): void {
+  for (const result of measured) recordConvention(results, result);
 }
 
-function recordConvention(result: ConventionResult): void {
+function recordConvention(results: Results, result: ConventionResult): void {
   for (const axis of AXES) {
     const { relative, lenses } = result.about[axis];
     if (lenses.some((lens) => lens.isAtBoundary)) continue;
@@ -256,7 +263,7 @@ function summaryOf(values: readonly number[]): { median: number; lower: number; 
   };
 }
 
-function medianTurnOf(name: string): BodyTurn {
+function medianTurnOf(results: Results, name: string): BodyTurn {
   const median = (axis: BodyAxis): number => summaryOf(results.get(`${name}:${axis}`) ?? []).median;
   return { x: median('x'), y: median('y'), z: median('z') };
 }
@@ -282,72 +289,91 @@ function rankedReadings(lenses: LensPair<LensCalibration>, measured: BodyTurn): 
 }
 
 /**
- * Each lens registered alone on Insta360 Studio's stitch of the sailing recording by a turn
- * about each body axis, on frames spread over the clip: under the reading of the calibration
- * angles that is the camera's, both lenses need the same turns. The turn about the lens axis is
- * read on the whole sky band, the other two near each lens's axis, so parallax spoils none of
- * them; near oblique edges (the mast, the rigging) still can, so the median over the frames
- * decides, and a frame whose search pins at its range is left out for that axis.
+ * Each lens registered alone on Insta360 Studio's stitch of a recording by a turn about each
+ * body axis, on frames spread over the clip: under the reading of the calibration angles that
+ * is the camera's, both lenses need the same turns. The turn about the lens axis is read on the
+ * whole upper band, the other two near each lens's axis, so parallax spoils none of them; near
+ * oblique edges (a mast, a door frame) still can, so the median over the frames decides, and a
+ * frame whose search pins at its range is left out for that axis.
  */
-describe('the lens pose conventions against the Studio export of the sailing recording', () => {
-  const cleanups: (() => void)[] = [];
+for (const clip of STUDIO_CLIPS) {
+  describe(`the lens pose conventions against the Studio export of ${clip.sample.name}`, () => {
+    const cleanups: (() => void)[] = [];
+    const results: Results = new Map();
 
-  afterEach(() => {
-    for (const cleanup of cleanups.splice(0).toReversed()) cleanup();
-  });
-
-  for (const frame of STUDIO_SAILING_SPREAD) {
-    it(
-      `registers each lens about each axis on the Studio frame at ${frame.time} s`,
-      async (context) => {
-        if (!(await isServed(frame.url))) context.skip(`no Studio frame at ${frame.time} s`);
-        const reference = await loadGreyImage(frame.url);
-        const opened = await openSample(context, SAILING_8K_30);
-        cleanups.push(() => {
-          opened.dispose();
-        });
-        const { canvas, renderer, dispose } = equirectangularRendering(opened, PANORAMA_SIZE);
-        cleanups.push(dispose);
-        const moment = await decodeMoment(opened, recordingTimeOf(frame));
-        cleanups.push(() => {
-          closeMoment(moment);
-        });
-        const pair = moment.first;
-        const lock = stabilizerFor('lock').nextRotation(
-          motionOf(opened).orientations.orientationAt(pair.timestamp),
-          pair.timestamp,
-        );
-        const registration: Registration = {
-          reference,
-          renderable: { renderer, canvas, pair, lock },
-          lenses: lensesOf(calibrationOf(opened).lenses),
-          skyBand: bandPixels(PANORAMA_SIZE, SKY_BAND),
-        };
-        const measured = CONVENTIONS.map((convention) =>
-          measureConvention(registration, convention),
-        );
-        record(measured);
-        if (SAVED_STITCHES.has(frame.time)) await saveStitches(measured, frame.time);
-        await saveMeasurement(
-          `sailing-${frame.time}s-lens-turns`,
-          measured.map((result) => withoutStitch(result)),
-        );
-        expect(measured).toHaveLength(CONVENTIONS.length);
-      },
-      FRAME_TIMEOUT_MS,
-    );
-  }
-
-  it('summarises each reading over the frames and ranks every reading of the signs', async (context) => {
-    if (results.size === 0) context.skip('no frame was registered');
-    const opened = await openSample(context, SAILING_8K_30);
-    cleanups.push(() => {
-      opened.dispose();
+    afterEach(() => {
+      for (const cleanup of cleanups.splice(0).toReversed()) cleanup();
     });
-    const summary = [...results].map(([key, values]) => ({ key, values, ...summaryOf(values) }));
-    const measured = medianTurnOf(CORE.name);
-    const ranked = rankedReadings(lensesOf(calibrationOf(opened).lenses), measured);
-    await saveMeasurement('sailing-lens-turn-conventions', { summary, measured, ranked });
-    expect(summary.length).toBeGreaterThan(0);
+
+    for (const frame of clip.frames) {
+      it(
+        `registers each lens about each axis on the Studio frame at ${frame.time} s`,
+        async (context) => {
+          if (!(await isServed(frame.url))) context.skip(`no Studio frame at ${frame.time} s`);
+          const registration = await registrationAt(context, { clip, frame, cleanups });
+          const measured = CONVENTIONS.map((convention) =>
+            measureConvention(registration, convention),
+          );
+          record(results, measured);
+          const prefix = `${clip.slug}-${frame.time}s`;
+          if (SAVED_STITCHES.has(frame.time)) await saveStitches(measured, prefix);
+          await saveMeasurement(
+            `${prefix}-lens-turns`,
+            measured.map((result) => withoutStitch(result)),
+          );
+          expect(measured).toHaveLength(CONVENTIONS.length);
+        },
+        FRAME_TIMEOUT_MS,
+      );
+    }
+
+    it('summarises each reading over the frames and ranks every reading of the signs', async (context) => {
+      if (results.size === 0) context.skip('no frame was registered');
+      const opened = await openSample(context, clip.sample);
+      cleanups.push(() => {
+        opened.dispose();
+      });
+      const summary = [...results].map(([key, values]) => ({ key, values, ...summaryOf(values) }));
+      const measured = medianTurnOf(results, CORE.name);
+      const ranked = rankedReadings(lensesOf(calibrationOf(opened).lenses), measured);
+      await saveMeasurement(`${clip.slug}-lens-turn-conventions`, { summary, measured, ranked });
+      expect(summary.length).toBeGreaterThan(0);
+    });
   });
-});
+}
+
+/**
+ * The recording opened, drawn and decoded at the reference frame, under the lock rotation.
+ */
+async function registrationAt(
+  context: TestContext,
+  at: {
+    readonly clip: ReferenceClip;
+    readonly frame: ReferenceFrame;
+    readonly cleanups: (() => void)[];
+  },
+): Promise<Registration> {
+  const { clip, frame, cleanups } = at;
+  const reference = await loadGreyImage(frame.url);
+  const opened = await openSample(context, clip.sample);
+  cleanups.push(() => {
+    opened.dispose();
+  });
+  const { canvas, renderer, dispose } = equirectangularRendering(opened, PANORAMA_SIZE);
+  cleanups.push(dispose);
+  const moment = await decodeMoment(opened, recordingTimeOf(clip, frame));
+  cleanups.push(() => {
+    closeMoment(moment);
+  });
+  const pair = moment.first;
+  const lock = stabilizerFor('lock').nextRotation(
+    motionOf(opened).orientations.orientationAt(pair.timestamp),
+    pair.timestamp,
+  );
+  return {
+    reference,
+    renderable: { renderer, canvas, pair, lock },
+    lenses: lensesOf(calibrationOf(opened).lenses),
+    upperBand: bandPixels(PANORAMA_SIZE, UPPER_BAND),
+  };
+}

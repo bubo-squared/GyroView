@@ -93,9 +93,15 @@ async function afterDeadline<Handle>(
 
 /**
  * One frame source's probe: owns the decoder it opens so a deadline can close it from outside.
+ * Closed while its decoder works, it settles as timed out; a key frame read that never answers
+ * keeps its run pending until the track itself is let go, since track reads take no signal.
  */
 class SourceProbe<Handle> {
   private decoder: VideoDecoderHandle | undefined;
+  /**
+   * The outcome the open decoder reports into, settled by a close as well.
+   */
+  private firstOutcome: Deferred<Outcome> | undefined;
   private isClosed = false;
   private isReadingKeyFrame = false;
 
@@ -131,6 +137,7 @@ class SourceProbe<Handle> {
     this.isClosed = true;
     this.decoder?.close();
     this.decoder = undefined;
+    this.firstOutcome?.resolve(TIMED_OUT);
   }
 
   private async decodeFirst(
@@ -139,6 +146,7 @@ class SourceProbe<Handle> {
   ): Promise<Outcome> {
     if (this.isClosed) return TIMED_OUT;
     const first = new Deferred<Outcome>();
+    this.firstOutcome = first;
     const decoder = await this.openDecoder(configuration, first);
     if (decoder === undefined) return first.promise;
     this.decoder = decoder;

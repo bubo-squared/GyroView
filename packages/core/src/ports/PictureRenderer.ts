@@ -2,6 +2,7 @@ import type { FrameSink } from './FrameSink';
 import type { SeamMeter } from './SeamMeter';
 import type { SeamMismatchMeter } from './SeamMismatchMeter';
 import type { Framing } from '../domain/view/Framing';
+import type { PictureQuality } from '../domain/view/PictureQuality';
 import type { ViewportSize } from '../domain/view/screenLayout';
 import type { ViewMode } from '../domain/view/ViewMode';
 import type { Matrix3 } from '../shared/math/Matrix3';
@@ -24,6 +25,10 @@ export interface PictureRenderer<Handle = unknown> extends FrameSink<Handle> {
    */
   setFraming(framing: Framing): void;
   setViewMode(mode: ViewMode): void;
+  /**
+   * How finely the lens images are read for each screen pixel. Redraws the frames on screen.
+   */
+  setQuality(quality: PictureQuality): void;
   /**
    * Matches the drawing buffer to a new surface size, in device pixels.
    */

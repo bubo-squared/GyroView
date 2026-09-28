@@ -105,6 +105,11 @@ export {
 export { DEFAULT_MAX_GAIN, gainsMatching } from './domain/optics/gainMatch';
 export { clampView, DEFAULT_VIEW, isSameView, type ViewState } from './domain/view/ViewState';
 export {
+  DEFAULT_PICTURE_QUALITY,
+  PICTURE_QUALITIES,
+  type PictureQuality,
+} from './domain/view/PictureQuality';
+export {
   DEFAULT_VIEW_MODE,
   VIEW_MODES,
   type ViewContext,

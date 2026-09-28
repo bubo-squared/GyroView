@@ -8,6 +8,7 @@ import {
   rotationAboutY,
   rotationAboutZ,
   transformVector,
+  transposeMatrix,
   type Matrix3,
 } from './Matrix3';
 import type { Vector3 } from './Vector3';
@@ -26,6 +27,12 @@ function expectVector(actual: Vector3, expected: Vector3): void {
 }
 
 describe('Matrix3', () => {
+  it('undoes a rotation by its transpose', () => {
+    const turned = multiplyMatrices(rotationAboutZ(QUARTER_TURN), rotationAboutX(QUARTER_TURN));
+    expectVector(transformVector(transposeMatrix(turned), transformVector(turned, SKEW)), SKEW);
+    expect(transposeMatrix(DENSE_A)).toEqual([1, 4, 7, 2, 5, 8, 3, 6, 10]);
+  });
+
   it('rotates right-handedly about each axis by a quarter turn', () => {
     expectVector(transformVector(rotationAboutX(QUARTER_TURN), Y), Z);
     expectVector(transformVector(rotationAboutY(QUARTER_TURN), Z), X);

@@ -141,6 +141,32 @@ export {
   type GainRenderer,
 } from './application/gainMatching/GainMatchingFrameSink';
 export type { SeamMeter } from './ports/SeamMeter';
+export type { SeamMismatchMeter, SeamMismatchRequest } from './ports/SeamMismatchMeter';
+export {
+  isWithinArc,
+  MISMATCH_CAP,
+  NADIR_ARC,
+  SEAM_BIN_COLUMNS,
+  SEAM_BIN_COUNT,
+  SEAM_BIN_WIDTH,
+  SEAM_STRIP_COLUMNS,
+  SEAM_STRIP_ROWS,
+  SEAM_STRIP_STEP,
+  SEAM_STRIP_THETA_END,
+  SEAM_STRIP_THETA_START,
+  seamBinAzimuth,
+  seamStripAzimuth,
+  seamStripDirection,
+  seamStripTheta,
+  type AzimuthArc,
+} from './domain/stitching/seamStrip';
+export {
+  DEFAULT_SEAM_COST_RULE,
+  seamCostOf,
+  type SeamBinCost,
+  type SeamBinCosts,
+  type SeamCostRule,
+} from './domain/stitching/seamMismatch';
 export type { CalibrationChoice } from './domain/format/calibration/selectCalibration';
 
 // Shared vocabulary
@@ -161,7 +187,16 @@ export { lazy } from './shared/lazy';
 export { Outbox, type EventSink } from './shared/events/Outbox';
 export { clamp } from './shared/math/clamp';
 export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
-export { IDENTITY_MATRIX3, transformVector, type Matrix3 } from './shared/math/Matrix3';
+export {
+  IDENTITY_MATRIX3,
+  multiplyMatrices,
+  rotationAboutX,
+  rotationAboutY,
+  rotationAboutZ,
+  transformVector,
+  transposeMatrix,
+  type Matrix3,
+} from './shared/math/Matrix3';
 export {
   conjugateQuaternion,
   quaternionFromAxisAngle,
@@ -180,7 +215,14 @@ export {
   type Milliseconds,
   type Seconds,
 } from './shared/units/time';
-export { degrees, radians, type Degrees, type Radians } from './shared/units/angle';
+export {
+  degrees,
+  degreesToRadians,
+  radians,
+  radiansToDegrees,
+  type Degrees,
+  type Radians,
+} from './shared/units/angle';
 
 // Playback ports and pipeline
 export type { AudioTrackReader, DemuxedInput, Demuxer, VideoTrackReader } from './ports/Demuxer';

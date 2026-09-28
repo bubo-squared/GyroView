@@ -56,6 +56,14 @@ export function multiplyMatrices(a: Matrix3, b: Matrix3): Matrix3 {
   ];
 }
 
+/**
+ * The transpose, which for a rotation is its inverse.
+ */
+export function transposeMatrix(m: Matrix3): Matrix3 {
+  const [m00, m01, m02, m10, m11, m12, m20, m21, m22] = m;
+  return [m00, m10, m20, m01, m11, m21, m02, m12, m22];
+}
+
 export function transformVector(m: Matrix3, v: Vector3): Vector3 {
   const [m00, m01, m02, m10, m11, m12, m20, m21, m22] = m;
   const [x, y, z] = v;

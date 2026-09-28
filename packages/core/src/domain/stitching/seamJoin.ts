@@ -6,12 +6,10 @@ import { degrees, type Degrees } from '../../shared/units/angle';
  * - `fixed`: the calibration's template, every direction read where an infinitely far scene
  *   would be, blended across the feather band;
  * - `bent`: each lens's image moved across the seam by half the disparity measured there, so
- *   that a near object's two images meet, up to {@link SEAM_MAX_BEND}, and the blend narrowed
- *   as a cut join narrows it by what is left beyond;
- * - `cut`: the template, with the blend narrowed where the disparity is large, a clean cut
- *   instead of a double image.
+ *   that a near object's two images meet, up to {@link SEAM_MAX_BEND}; what is left beyond
+ *   narrows the blend to a clean cut instead of a double image.
  */
-export type SeamJoin = 'fixed' | 'bent' | 'cut';
+export type SeamJoin = 'fixed' | 'bent';
 
 /**
  * The join and the disparity it works with in every bin of the seam ring, in bin order.
@@ -43,9 +41,10 @@ const MAX_BEND_DEGREES = 4;
 export const SEAM_MAX_BEND = degrees(MAX_BEND_DEGREES);
 
 /**
- * In a cut join, the blend narrows from the feather band to this half width as the disparity
- * grows to {@link SEAM_CUT_DISPARITY}: a degree still hides the step in exposure between the
- * lenses, and a double image farther apart than three degrees reads as two objects.
+ * Beyond the most a bent join bends, the blend narrows from the feather band to this half width
+ * as the rest of the disparity grows to {@link SEAM_CUT_DISPARITY}: a degree still hides the step
+ * in exposure between the lenses, and a double image farther apart than three degrees reads as
+ * two objects.
  */
 const CUT_HALF_WIDTH_DEGREES = 1;
 const CUT_DISPARITY_DEGREES = 3;

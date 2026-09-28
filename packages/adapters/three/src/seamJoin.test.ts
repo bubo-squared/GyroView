@@ -39,11 +39,6 @@ const AZIMUTHS = Array.from({ length: 36 }, (_unused, index) => index * 10 + 5);
  * Two 8-bit frames of one smooth scene, read through bilinear taps, differ by a level or so.
  */
 const AGREEMENT_LEVELS = 1.5;
-/**
- * Lens 1's share of the blend 88 degrees from lens 0's axis, about a fifth in the fixed join,
- * shows as a few levels over the disparity's 30-level difference between the lenses.
- */
-const BLENDED_LEVELS = 3;
 const DISPARITY_TOLERANCE = 0.1;
 /**
  * The ring scene is nowhere darker than a tenth of the range; a gap between the lenses is black.
@@ -201,16 +196,6 @@ describe('the seam join', () => {
         else expect(difference, at).toBeGreaterThan(10 * AGREEMENT_LEVELS);
       }
     }
-  });
-
-  it('cuts where the disparity is large: one lens alone across most of the feather band', () => {
-    const scene = openNearScene();
-    const frontAlone = levelsAround(scene, 88, [UNIT_GAIN, SILENT]);
-    const fixed = levelsAround(scene, 88, [UNIT_GAIN, UNIT_GAIN]);
-    scene.renderer.setSeamAlignment(alignment('cut', PAINTED_DISPARITY));
-    const cut = levelsAround(scene, 88, [UNIT_GAIN, UNIT_GAIN]);
-    expect(meanDifference(fixed, frontAlone)).toBeGreaterThan(BLENDED_LEVELS);
-    expect(meanDifference(cut, frontAlone)).toBeLessThan(AGREEMENT_LEVELS);
   });
 
   it('bends by no more than the overlap allows, and cuts what is left beyond', () => {

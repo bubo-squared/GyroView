@@ -14,11 +14,9 @@ import { Vector4, type IUniform } from 'three';
 
 const SEAM_JOIN_FIXED = 0;
 const SEAM_JOIN_BENT = 1;
-const SEAM_JOIN_CUT = 2;
 const JOIN_CODES: Readonly<Record<SeamJoin, number>> = {
   fixed: SEAM_JOIN_FIXED,
   bent: SEAM_JOIN_BENT,
-  cut: SEAM_JOIN_CUT,
 };
 /**
  * The bins' disparities travel four to a `vec4`, which keeps the uniform array within the
@@ -31,7 +29,6 @@ const BINS_PER_VECTOR = 4;
  */
 export const SEAM_JOIN_DEFINES: readonly (readonly [string, number])[] = [
   ['SEAM_JOIN_BENT', SEAM_JOIN_BENT],
-  ['SEAM_JOIN_CUT', SEAM_JOIN_CUT],
   ['SEAM_BIN_COUNT', SEAM_BIN_COUNT],
   ['SEAM_BIN_WIDTH_RADIANS', degreesToRadians(SEAM_BIN_WIDTH)],
   ['SEAM_BEND_WIDTH_RADIANS', degreesToRadians(SEAM_BEND_WIDTH)],

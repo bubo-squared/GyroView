@@ -50,7 +50,7 @@ import { closeMoment, decodeMoment } from '../browser/SharedSample';
 
 const PANORAMA_SIZE = { width: 1536, height: 768 };
 const FRAME_TIMEOUT_MS = 300_000;
-const JOINS: readonly SeamJoin[] = ['fixed', 'bent', 'cut'];
+const JOINS: readonly SeamJoin[] = ['fixed', 'bent'];
 const SILENT: Vector3 = [0, 0, 0];
 const AT_REST: PoseDelta = { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) };
 /**
@@ -67,7 +67,7 @@ const BEND_CLASSES: readonly { readonly name: string; readonly isIn: (bend: numb
     { name: 'unbent', isIn: (bend) => Math.abs(bend) < 0.25 },
   ];
 /**
- * The frames whose three joins are saved beside Studio's, for the eye.
+ * The frames whose joins are saved beside Studio's, for the eye.
  */
 const SAVED_FRAMES = new Set([55, 100, 145]);
 /**
@@ -86,10 +86,10 @@ interface FrameResult {
    */
   readonly toStudio: Readonly<Record<SeamJoin, PerBin>>;
   /**
-   * Per join that moves the lenses' images, each bin's mean level difference between the two
-   * lenses drawn alone: the double image a blend makes of them.
+   * Per join, each bin's mean level difference between the two lenses drawn alone: the double
+   * image a blend makes of them.
    */
-  readonly lensDisagreement: Readonly<Record<'fixed' | 'bent', PerBin>>;
+  readonly lensDisagreement: Readonly<Record<SeamJoin, PerBin>>;
   /**
    * Each bin's change in the fixed join's difference to Studio from the frame to the next:
    * how much of a difference is the measurement's own noise.
@@ -136,7 +136,7 @@ function lockOf(pair: FramePair<VideoFrame>, opened: OpenedRecording): Matrix3 {
 }
 
 /**
- * The three joins stacked under Studio's stitch, for the eye.
+ * The joins stacked under Studio's stitch, for the eye.
  */
 function sheetOf(images: readonly GreyImage[]): HTMLCanvasElement {
   const sheet = document.createElement('canvas');
@@ -183,8 +183,8 @@ async function measureFrame(
   const disparity = await measuredDisparity(renderer, gains);
   const band = seamBandOf(PANORAMA_SIZE, multiplyMatrices(renderable.lock, rotationOf(view)));
   const images = JOINS.map((join) => withJoin(drawn, join, disparity.field));
-  const [fixed, bent, cut] = images.map((image) => binDifferences(image, reference, band));
-  if (!fixed || !bent || !cut) throw new Error('three joins expected');
+  const [fixed, bent] = images.map((image) => binDifferences(image, reference, band));
+  if (!fixed || !bent) throw new Error('two joins expected');
   const following: Drawn = {
     ...drawn,
     renderable: { ...renderable, pair: moment.second, lock: lockOf(moment.second, opened) },
@@ -197,7 +197,7 @@ async function measureFrame(
   return {
     time: frame.time,
     disparity,
-    toStudio: { fixed, bent, cut },
+    toStudio: { fixed, bent },
     lensDisagreement: {
       fixed: lensDisagreementUnder(drawn, 'fixed', { field: disparity.field, band }),
       bent: lensDisagreementUnder(drawn, 'bent', { field: disparity.field, band }),
@@ -250,12 +250,6 @@ function summaryOf(results: readonly FrameResult[]): object {
       bent: over((result) => result.lensDisagreement.bent),
     },
     noise: over((result) => result.noise),
-    bins: Object.fromEntries(
-      BEND_CLASSES.map(({ name, isIn }) => [
-        name,
-        results.flatMap((result) => result.disparity.field.filter((bend) => isIn(bend))).length,
-      ]),
-    ),
     trustedBins: results.map(
       (result) => result.disparity.bins.filter((bin) => bin.isTrusted).length,
     ),
@@ -327,7 +321,7 @@ async function steadinessOf(
       field: undefined,
       time: 0,
       images: {},
-      change: { fixed: 0, bent: 0, cut: 0 },
+      change: { fixed: 0, bent: 0 },
     };
     for (const pair of pairs) await stepSteadiness(steadiness, drawing, pair);
     const [first, second] = pairs;
@@ -360,9 +354,9 @@ function bandMean(perBin: PerBin): number {
 }
 
 /**
- * The fixed seam, the seam bent by the disparity measured across it, and the seam cut where
- * the disparity is large, each against Insta360 Studio's stitch, on frames spread over the
- * clip; and how steady and how costly each is on consecutive frames.
+ * The fixed seam and the seam bent by the disparity measured across it, each against Insta360
+ * Studio's stitch, on frames spread over the clip; and how steady and how costly each is on
+ * consecutive frames.
  */
 for (const clip of STUDIO_CLIPS) {
   describe(`the seam joins against the Studio export of ${clip.sample.name}`, () => {
@@ -375,7 +369,7 @@ for (const clip of STUDIO_CLIPS) {
 
     for (const frame of clip.frames) {
       it(
-        `joins the seam three ways on the Studio frame at ${frame.time} s`,
+        `joins the seam fixed and bent on the Studio frame at ${frame.time} s`,
         async (context) => {
           if (!(await isServed(frame.url))) context.skip(`no Studio frame at ${frame.time} s`);
           const result = await measureFrame(context, { clip, frame, cleanups });

@@ -47,15 +47,15 @@ vec3 seamReadDirection(int i, vec3 dirBody, float disparity) {
   return vec3(dirBody.xy / across * sin(bent), cos(bent));
 }
 
-// The band, in the angle from a lens's own axis where it is read, the lenses are blended across:
-// narrowed about its middle as the disparity no bend takes up grows, a clean cut instead of a
-// double image. A lens bent away from its axis is read that much nearer its rim, so the band keeps
-// half the bend on each side beyond SEAM_CUT_HALF_WIDTH_RADIANS, and the lenses still meet.
+// The band, in the angle from a lens's own axis where it is read, the lenses are blended across.
+// In a bent join, narrowed about its middle as the disparity no bend takes up grows, a clean cut
+// instead of a double image. A lens bent away from its axis is read that much nearer its rim, so
+// the band keeps half the bend on each side beyond SEAM_CUT_HALF_WIDTH_RADIANS, and the lenses
+// still meet.
 vec2 seamFeather(float disparity) {
-  bool isNarrowed = uSeamJoin == SEAM_JOIN_CUT || uSeamJoin == SEAM_JOIN_BENT;
+  if (uSeamJoin != SEAM_JOIN_BENT) return uFeather;
   float bend = seamBend(disparity);
-  float unbent = isNarrowed ? abs(disparity - bend) : 0.0;
-  float narrowing = clamp(unbent / SEAM_CUT_DISPARITY_RADIANS, 0.0, 1.0);
+  float narrowing = clamp(abs(disparity - bend) / SEAM_CUT_DISPARITY_RADIANS, 0.0, 1.0);
   float narrowest = SEAM_CUT_HALF_WIDTH_RADIANS + 0.5 * max(bend, 0.0);
   float middle = 0.5 * (uFeather.x + uFeather.y);
   float halfWidth = mix(0.5 * (uFeather.y - uFeather.x), narrowest, narrowing);

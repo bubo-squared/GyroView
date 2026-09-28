@@ -20,6 +20,7 @@ import {
 } from '@gyroview/core';
 import { Matrix3, Vector2, Vector3, Vector4, type IUniform, type Texture } from 'three';
 
+import { createSeamJoinUniforms, SEAM_JOIN_DEFINES, type SeamJoinUniforms } from './seamJoin';
 import {
   SAMPLING_BILINEAR,
   SAMPLING_SUPERSAMPLED,
@@ -63,13 +64,14 @@ export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntri
   ['SAMPLING_BILINEAR', SAMPLING_BILINEAR],
   ['SAMPLING_TRILINEAR', SAMPLING_TRILINEAR],
   ['SAMPLING_SUPERSAMPLED', SAMPLING_SUPERSAMPLED],
+  ...SEAM_JOIN_DEFINES,
 ]);
 
 /**
  * Every uniform the renderer's programs declare, named exactly as in the GLSL chunks and shared
  * by all programs as the same objects; the only place the TypeScript side spells uniform names.
  */
-export interface RendererUniforms {
+export interface RendererUniforms extends SeamJoinUniforms {
   readonly uLensCount: IUniform<number>;
   readonly uViewRotation: IUniform<Matrix3>;
   readonly uStabilization: IUniform<Matrix3>;
@@ -104,6 +106,7 @@ export function createRendererUniforms(
     ...viewUniforms(setup),
     ...projectionUniforms(lenses),
     ...samplingUniforms(lenses),
+    ...createSeamJoinUniforms(),
     uTexture0: { value: textures[0] ?? null },
     uTexture1: { value: textures[1] ?? null },
   };

@@ -9,6 +9,7 @@ import lensTextures from './shaders/lensTextures.glsl?raw';
 import rawLensesFragment from './shaders/rawLenses.frag.glsl?raw';
 import rectilinearRays from './shaders/rectilinearRays.glsl?raw';
 import screenAreas from './shaders/screenAreas.glsl?raw';
+import seamJoin from './shaders/seamJoin.glsl?raw';
 import seamMismatchFragment from './shaders/seamMismatch.frag.glsl?raw';
 import stitchFragment from './shaders/stitch.frag.glsl?raw';
 
@@ -19,7 +20,7 @@ import stitchFragment from './shaders/stitch.frag.glsl?raw';
 const LENS_PROJECTION = [lensTextures, lensModels, lensSampling];
 
 function stitchThrough(rays: string): readonly string[] {
-  return [header, screenAreas, rays, ...LENS_PROJECTION, stitchFragment];
+  return [header, screenAreas, rays, ...LENS_PROJECTION, seamJoin, stitchFragment];
 }
 
 /**

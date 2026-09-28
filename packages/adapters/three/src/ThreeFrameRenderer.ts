@@ -10,6 +10,7 @@ import {
   type Matrix3 as CoreMatrix3,
   type PictureRenderer,
   type Presentation,
+  type SeamAlignment,
   type SeamMeter,
   type SeamMismatchMeter,
   type StitchingSetup,
@@ -30,6 +31,7 @@ import {
 
 import { createFullscreenTriangle } from './fullscreenPass';
 import { SeamMeterPass } from './seamMeter/SeamMeterPass';
+import { applySeamAlignment } from './seamJoin';
 import { SeamMismatchPass } from './seamMismatch/SeamMismatchPass';
 import { applySamplingStrategy, createLensTextures } from './lensTextures';
 import { SAMPLING_STRATEGIES } from './samplingStrategies';
@@ -210,6 +212,12 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     };
     this.meters.add(meter);
     return meter;
+  }
+
+  public setSeamAlignment(alignment: SeamAlignment): void {
+    this.ensureLive();
+    applySeamAlignment(this.parts.uniforms, alignment);
+    this.render();
   }
 
   /**

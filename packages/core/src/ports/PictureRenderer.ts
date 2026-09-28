@@ -1,6 +1,7 @@
 import type { FrameSink } from './FrameSink';
 import type { SeamMeter } from './SeamMeter';
 import type { SeamMismatchMeter } from './SeamMismatchMeter';
+import type { SeamAlignment } from '../domain/stitching/seamJoin';
 import type { Framing } from '../domain/view/Framing';
 import type { PictureQuality } from '../domain/view/PictureQuality';
 import type { ViewportSize } from '../domain/view/screenLayout';
@@ -58,5 +59,10 @@ export interface PictureRenderer<Handle = unknown> extends FrameSink<Handle> {
    * still live when it is disposed itself.
    */
   createSeamMismatchMeter(): SeamMismatchMeter;
+  /**
+   * How the stitched pictures join the lenses at the seam, and the disparity they bend or cut
+   * by. Redraws the frames on screen.
+   */
+  setSeamAlignment(alignment: SeamAlignment): void;
   dispose(): void;
 }

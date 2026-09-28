@@ -8,11 +8,7 @@ import {
   rotationAboutZ,
   seamCostOf,
   seconds,
-  transformVector,
-  transposeMatrix,
-  type CalibrationSet,
   type DecodedFrame,
-  type LensCalibration,
   type Matrix3,
   type SeamBinCosts,
   type SeamCandidates,
@@ -22,11 +18,10 @@ import {
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { MAX_CANDIDATES_PER_BATCH } from './SeamMismatchPass';
-import { paintedFrame } from '../test/syntheticFrames';
+import { recordedFrame } from '../test/recordedFrames';
 import { MULTI_TRACK, syntheticCalibration } from '../test/syntheticStitching';
 import { ThreeFrameRenderer } from '../ThreeFrameRenderer';
 
-const FRAME_SIZE = 256;
 const CANVAS = { width: 64, height: 32 };
 const UNIT_GAIN: Vector3 = [1, 1, 1];
 const DOUBLED_GAIN: Vector3 = [2, 2, 2];
@@ -66,47 +61,7 @@ function sceneLuma(direction: Vector3): number {
   );
 }
 
-interface Recording {
-  readonly lens: LensCalibration;
-  readonly calibration: CalibrationSet;
-  readonly bodyToLens: Matrix3;
-  readonly brightness?: number;
-}
-
-/**
- * What an ideal equidistant lens with the given body-to-lens rotation records of the scene:
- * each frame pixel is mapped back through the lens to its body direction.
- */
-function recordedFrame({
-  lens,
-  calibration,
-  bodyToLens,
-  brightness = 1,
-}: Recording): DecodedFrame<VideoFrame> {
-  const lensToBody = transposeMatrix(bodyToLens);
-  const side = calibration.canvas.height;
-  const squareX = Math.floor(lens.model.principalPoint.x / side) * side;
-  const { principalPoint, halfFieldOfView } = lens.model;
-  const rim = lens.model.project([Math.sin(halfFieldOfView), 0, Math.cos(halfFieldOfView)]);
-  if (!rim) throw new Error('the lens images its own rim');
-  const edgeRadius = rim.x - principalPoint.x;
-  return paintedFrame(FRAME_SIZE, (column, row) => {
-    const dx = squareX + ((column + 0.5) / FRAME_SIZE) * side - principalPoint.x;
-    const dy = ((row + 0.5) / FRAME_SIZE) * side - principalPoint.y;
-    const radius = Math.hypot(dx, dy);
-    const theta = (radius / edgeRadius) * halfFieldOfView;
-    if (theta > halfFieldOfView) return 0;
-    const lateral = radius > 0 ? [dx / radius, dy / radius] : [0, 0];
-    const inLens: Vector3 = [
-      Math.sin(theta) * (lateral[0] ?? 0),
-      Math.sin(theta) * (lateral[1] ?? 0),
-      Math.cos(theta),
-    ];
-    return brightness * sceneLuma(transformVector(lensToBody, inLens));
-  });
-}
-
-interface Scene {
+interface OpenScene {
   readonly meter: SeamMismatchMeter;
   /**
    * The back lens's calibrated body-to-lens rotation.
@@ -153,7 +108,7 @@ describe('SeamMismatchPass', () => {
    * Both lenses recording the scene, the back one painted beyond its calibration as `back`
    * says, on screen with a meter over them.
    */
-  function openScene(back: BackLens = {}): Scene {
+  function openScene(back: BackLens = {}): OpenScene {
     const calibration = syntheticCalibration();
     const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
     const [front, rear] = calibration.lenses;
@@ -166,14 +121,19 @@ describe('SeamMismatchPass', () => {
     canvases.push(canvas);
     const renderer = ThreeFrameRenderer.create(canvas, setup);
     renderers.push(renderer);
-    const { turn = IDENTITY_MATRIX3, ...painting } = back;
+    const { turn = IDENTITY_MATRIX3, brightness = 1 } = back;
     const pair = [
-      recordedFrame({ lens: front, calibration, bodyToLens: frontStitch.rotation }),
+      recordedFrame({
+        lens: front,
+        calibration,
+        bodyToLens: frontStitch.rotation,
+        scene: sceneLuma,
+      }),
       recordedFrame({
         lens: rear,
         calibration,
         bodyToLens: multiplyMatrices(rearStitch.rotation, turn),
-        ...painting,
+        scene: (direction) => brightness * sceneLuma(direction),
       }),
     ];
     frames.push(...pair);

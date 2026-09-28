@@ -232,8 +232,8 @@ The composition root and the user-facing element, in three layers.
   seconds and degrees, as a page gives them; the core's unit types start inside it. It loads, unloads,
   relays the session's states as media-element events (`SessionRelay`, `transportEventsFor`),
   ticks the session
-  from a `FrameLoop`, keeps the canvas sized (`DrawingBufferFit`), and owns the settings (view and view
-  mode in `PlayerView`, stabilization and gain matching in `PictureSettings`, sound in
+  from a `FrameLoop`, keeps the canvas sized (`DrawingBufferFit`, whose ratio cap the quality sets), and owns the settings (view and view
+  mode in `PlayerView`, stabilization, gain matching and quality in `PictureSettings`, sound in
   `PlayerSound`, loop) across loads (ADR 0016). It and its parts announce through one `Outbox`,
   so a change is heard once it is whole (ADR 0021). Its
   life with a recording is one `PlayerPhase`. The element drives it; the embed bridge drives the element.

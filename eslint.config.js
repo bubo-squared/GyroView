@@ -104,7 +104,11 @@ export default defineConfig(
           modifiers: ['const', 'global'],
           format: ['camelCase', 'UPPER_CASE', 'PascalCase'],
         },
-        { selector: 'objectLiteralProperty', format: ['camelCase', 'PascalCase'] },
+        // PascalCase for enum-like keys, and for a constructor a type names as a global does.
+        {
+          selector: ['objectLiteralProperty', 'typeProperty'],
+          format: ['camelCase', 'PascalCase'],
+        },
         // A key that needs quotes is data spelled as the outside world spells it (an attribute
         // name, a kebab-case choice), not an identifier this codebase names.
         {

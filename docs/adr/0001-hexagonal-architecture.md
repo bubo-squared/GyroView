@@ -1,6 +1,7 @@
 # ADR 0001: Hexagonal architecture with an enforced dependency rule
 
-Status: accepted (2026-09-18)
+Status: accepted (2026-09-18); amended (2026-09-28): the core uses the WHATWG `TextDecoder`
+global, which every runtime it runs in has, instead of a UTF-8 decoder of its own.
 
 ## Context
 
@@ -23,5 +24,6 @@ the build on violations; the core's tsconfig excludes DOM and Node type librarie
 ## Consequences
 
 Parsers and models are testable in milliseconds with in-memory sources. Adapters need contract
-tests against both fakes and real implementations. Small conveniences such as `TextDecoder` are
-unavailable in the core and are reimplemented or injected.
+tests against both fakes and real implementations. The core's types name neither the DOM nor Node:
+a platform global it uses (the WHATWG `TextDecoder`, which browsers, Node and Deno all have) is
+declared where it is used, as narrowly as it is used.

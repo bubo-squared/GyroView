@@ -73,7 +73,7 @@ export class ByteReader {
   }
 
   public asciiAt(offset: number, length: number): string {
-    return String.fromCodePoint(...this.bytesAt(offset, length));
+    return Array.from(this.bytesAt(offset, length), (byte) => String.fromCodePoint(byte)).join('');
   }
 
   private toSafeNumber(value: bigint, offset: number): number {

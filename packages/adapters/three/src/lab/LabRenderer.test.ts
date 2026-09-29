@@ -1,5 +1,6 @@
 import {
   buildStitchingSetup,
+  degrees,
   multiplyMatrices,
   radians,
   rotationAboutY,
@@ -11,7 +12,7 @@ import { equirectangularPixelOf } from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { LabRenderer } from './LabRenderer';
-import { nearScenePair } from '../test/nearScene';
+import { nearScenePair } from './test/nearScene';
 import { readPixels } from '../test/readPixels';
 import { solidFrame } from '../test/syntheticFrames';
 import { MULTI_TRACK, syntheticCalibration } from '../test/syntheticStitching';
@@ -62,7 +63,7 @@ describe('LabRenderer', () => {
       const renderer = kind.create(canvas, setup, { preserveDrawingBuffer: true });
       renderers.push(renderer);
       renderer.setViewMode('equirectangular');
-      present(renderer, nearScenePair({ calibration, setup, disparity: () => NEAR }));
+      present(renderer, nearScenePair({ calibration, setup, disparity: () => degrees(NEAR) }));
       return readPixels(canvas);
     });
     expect(drawn[1]).toEqual(drawn[0]);

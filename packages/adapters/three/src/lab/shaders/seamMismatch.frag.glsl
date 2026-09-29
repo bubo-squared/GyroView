@@ -14,6 +14,9 @@ out vec4 outColor;
 
 // Rec. 601 luma of the gamma-encoded RGB the frames hold.
 const vec3 LUMA = vec3(0.299, 0.587, 0.114);
+// Lens 0 is the one slid; lens 1 is read where the strip lies.
+const int SLID_LENS = 0;
+const int OTHER_LENS = 1;
 // Each sub-sample at the centre of its share of the cell.
 const float SUB_SAMPLE_CENTRE = 0.5;
 // The 16-bit code of the mismatch in two 8-bit channels, as decodeBinCosts reads it.
@@ -53,7 +56,7 @@ vec4 encode(float mismatchOfCap, float validity) {
 void main() {
   int bin = int(gl_FragCoord.x);
   int row = int(gl_FragCoord.y);
-  if (row >= uSlideCount || uLensCount < 2) {
+  if (row >= uSlideCount) {
     outColor = vec4(0.0);
     return;
   }
@@ -69,8 +72,8 @@ void main() {
           vec2 angles = stripAngles(cell, ivec2(subColumn, subRow));
           bool seesSlid;
           bool seesOther;
-          float slidLuma = lumaOf(0, directionOf(angles + slide), seesSlid);
-          float otherLuma = lumaOf(1, directionOf(angles), seesOther);
+          float slidLuma = lumaOf(SLID_LENS, directionOf(angles + slide), seesSlid);
+          float otherLuma = lumaOf(OTHER_LENS, directionOf(angles), seesOther);
           if (!(seesSlid && seesOther)) continue;
           sum += min(abs(slidLuma - otherLuma), uMismatchCap);
           imaged++;

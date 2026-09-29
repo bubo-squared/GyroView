@@ -8,8 +8,7 @@ import {
   turnRegistering,
   type ComparedPixels,
   type LineMinimum,
-  type RowBand,
-} from '../browser/lensRegistration';
+} from './support/lensRegistration';
 import {
   everySignFlip,
   flippedLensRotation,
@@ -18,33 +17,30 @@ import {
   type BodyAxis,
   type BodyTurn,
   type SignFlips,
-} from '../browser/poseConventions';
+} from './support/poseConventions';
 import { openSample } from '../browser/realRecordingSupport';
 import {
   alignToReference,
+  FAR_FIELD_BAND,
   renderUnder,
   rotationOf,
   type LockedRendering,
+  type RowBand,
   type ViewTurn,
-} from '../browser/referenceAlignment';
+} from './support/referenceAlignment';
 import {
   greyCanvasOf,
   REFERENCE_PANORAMA_SIZE,
   STUDIO_CLIPS,
   type GreyImage,
-} from '../browser/referenceFrames';
+} from './support/referenceFrames';
 import { calibrationOf } from '../browser/rendering';
 import { isServed } from '../browser/sampleUrls';
-import { quartilesOf, type Quartiles } from '../browser/statistics';
-import { openStudioFrame } from '../browser/studioFrame';
+import { quartilesOf, type Quartiles } from './support/statistics';
+import { openStudioFrame } from './support/studioFrame';
 
 const FRAME_TIMEOUT_MS = 300_000;
 const AXES: readonly BodyAxis[] = ['x', 'y', 'z'];
-/**
- * A turn about the lens axis is read on the whole band above the horizon (the sky over the boat,
- * the office ceiling): it moves the picture around the seam ring, which no parallax does.
- */
-const UPPER_BAND: RowBand = { top: 0.15, bottom: 0.5 };
 /**
  * Turns about the other two axes are read near each lens's axis, where parallax vanishes, on
  * both sides of the horizon.
@@ -55,7 +51,7 @@ const AS_READ: SignFlips = { yaw: false, pitch: false, roll: false };
 /**
  * The frame whose stitch is saved beside the measurement, for the eye.
  */
-const SAVED_STITCH = 100;
+const SAVED_STITCH_SECONDS = 100;
 
 type LensPair<Value> = readonly [Value, Value];
 
@@ -76,6 +72,10 @@ interface Registration {
    * The view turn that puts the whole stitch on the reference.
    */
   readonly view: ViewTurn;
+  /**
+   * A turn about the lens axis is read on the whole band above the horizon, the far field the
+   * alignment compares too: it moves the picture around the seam ring, which no parallax does.
+   */
   readonly upperBand: ComparedPixels;
 }
 
@@ -184,10 +184,10 @@ for (const clip of STUDIO_CLIPS) {
             rendering: studio.rendering,
             poses,
             view,
-            upperBand: bandPixels(REFERENCE_PANORAMA_SIZE, UPPER_BAND),
+            upperBand: bandPixels(REFERENCE_PANORAMA_SIZE, FAR_FIELD_BAND),
           };
           const prefix = `${clip.slug}-${frame.time}s`;
-          if (frame.time === SAVED_STITCH) {
+          if (frame.time === SAVED_STITCH_SECONDS) {
             await saveRender(`${prefix}-stitch`, greyCanvasOf(renderUnder(studio.rendering, view)));
           }
           const about = Object.fromEntries(

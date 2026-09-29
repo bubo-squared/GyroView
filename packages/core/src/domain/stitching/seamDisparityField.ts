@@ -5,7 +5,7 @@ import { seconds, type Seconds } from '../../shared/units/time';
 
 /**
  * The trusted disparities of neighbouring bins weigh in as a Gaussian of their distance, in
- * bins, as far as `REACH_BINS` either side, where the weight has fallen to an eighth: a person a
+ * bins, as far as `REACH_BINS` either side, where the weight has fallen to about a seventh: a person a
  * metre away spans several 5-degree bins, and a bin between two trusted ones over a plain shirt
  * takes theirs.
  */

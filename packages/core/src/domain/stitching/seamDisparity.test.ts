@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { binDisparitiesOf, disparityCandidatesOf, type DisparityRange } from './seamDisparity';
+import { binDisparitiesOf, slidesOf, type DisparityRange } from './seamDisparity';
 import type { SeamBinCosts } from './seamMismatch';
 import { SEAM_BIN_COUNT } from './seamStrip';
 import { degrees } from '../../shared/units/angle';
@@ -22,7 +22,7 @@ function bowlCosts(
   floor: number,
   validityAt: (disparity: number) => number = () => 1,
 ): SeamBinCosts[] {
-  return disparityCandidatesOf(RANGE).map((disparity) =>
+  return slidesOf(RANGE).map((disparity) =>
     Array.from({ length: SEAM_BIN_COUNT }, () => ({
       mismatch: FLOOR_COST + (disparity - floor) ** 2,
       validity: validityAt(disparity),
@@ -41,9 +41,9 @@ function shrinkingBeyondTwo(disparity: number): number {
   return disparity > 2 ? 0.1 : 1;
 }
 
-describe('disparityCandidatesOf', () => {
+describe('slidesOf', () => {
   it('slides the sampling from the least disparity to the most, a step apart', () => {
-    const candidates = disparityCandidatesOf(RANGE);
+    const candidates = slidesOf(RANGE);
     expect(candidates).toHaveLength(CANDIDATE_COUNT);
     expect(candidates[0]).toBe(-1);
     expect(candidates[1]).toBe(-0.75);
@@ -63,7 +63,7 @@ describe('binDisparitiesOf', () => {
   });
 
   it('does not trust a bin whose costs are flat: sky or sea tell no disparity from another', () => {
-    const flat = disparityCandidatesOf(RANGE).map(() =>
+    const flat = slidesOf(RANGE).map(() =>
       Array.from({ length: SEAM_BIN_COUNT }, () => ({ mismatch: FLOOR_COST, validity: 1 })),
     );
     for (const bin of binDisparitiesOf(flat, RANGE)) {
@@ -77,11 +77,16 @@ describe('binDisparitiesOf', () => {
     expect(binDisparitiesOf(bowlCosts(-3), RANGE)[0]?.isTrusted).toBe(false);
   });
 
+  it('trusts a minimum two steps inside the range, and not one step inside', () => {
+    expect(binDisparitiesOf(bowlCosts(-0.75), RANGE)[0]?.isTrusted).toBe(false);
+    expect(binDisparitiesOf(bowlCosts(-0.5), RANGE)[0]?.isTrusted).toBe(true);
+    expect(binDisparitiesOf(bowlCosts(3.75), RANGE)[0]?.isTrusted).toBe(false);
+    expect(binDisparitiesOf(bowlCosts(3.5), RANGE)[0]?.isTrusted).toBe(true);
+  });
+
   it('leaves out a candidate the lenses image too little of, so its few directions cannot win', () => {
     const costs = bowlCosts(1, shrinkingBeyondTwo).map((byBin, index) =>
-      disparityCandidatesOf(RANGE)[index] === 3
-        ? byBin.map((cost) => ({ ...cost, mismatch: 0 }))
-        : byBin,
+      slidesOf(RANGE)[index] === 3 ? byBin.map((cost) => ({ ...cost, mismatch: 0 })) : byBin,
     );
     const [bin] = binDisparitiesOf(costs, RANGE);
     expect(Math.abs((bin?.disparity ?? 0) - 1)).toBeLessThan(REFINED_TOLERANCE);
@@ -94,7 +99,7 @@ describe('binDisparitiesOf', () => {
   });
 
   it('does not trust a minimum too shallow to tell one disparity from another', () => {
-    const shallow = disparityCandidatesOf(RANGE).map((disparity) =>
+    const shallow = slidesOf(RANGE).map((disparity) =>
       Array.from({ length: SEAM_BIN_COUNT }, () => ({
         mismatch: 1 + 0.001 * (disparity - 1.5) ** 2,
         validity: 1,
@@ -118,6 +123,10 @@ describe('binDisparitiesOf', () => {
       expect.objectContaining({ code: 'invariant-violation' }),
     );
     expect(() => binDisparitiesOf([], RANGE)).toThrow(
+      expect.objectContaining({ code: 'invariant-violation' }),
+    );
+    const shortRows = bowlCosts(1).map((byBin) => byBin.slice(1));
+    expect(() => binDisparitiesOf(shortRows, RANGE)).toThrow(
       expect.objectContaining({ code: 'invariant-violation' }),
     );
   });

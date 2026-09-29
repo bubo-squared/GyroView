@@ -23,8 +23,7 @@ void main() {
     if (all(equal(uLensGain[i], vec3(0.0)))) continue;
     LensSample lens = sampleLensAt(i, seamReadDirection(i, dirBody, disparity));
     if (!lens.isImaged) continue;
-    // Weighed where the lens is read: a lens bent towards its rim fades out, so the band the
-    // lenses share narrows by the disparity, as it does in the scene.
+    // Weighed by the angle from the lens's axis where it is read, which a seam join may move.
     float weight = 1.0 - smoothstep(feather.x, feather.y, lens.theta);
     sum += weight * uLensGain[i] * lens.color;
     weightSum += weight;

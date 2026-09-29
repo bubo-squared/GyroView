@@ -7,7 +7,7 @@ import type { Degrees } from '../shared/units/angle';
  * over the frames on screen.
  */
 export interface SeamMismatchRequest {
-  readonly disparities: readonly Degrees[];
+  readonly slides: readonly Degrees[];
   /**
    * Per-channel gains applied to each lens before their lumas are compared, one per lens in
    * lens order: the exposure matching the picture applies, so the cost is alignment alone.

@@ -1,4 +1,4 @@
-import { LabRenderer } from '@gyroview/adapter-three/lab';
+import { ThreeFrameRenderer, type ThreeFrameRendererOptions } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
   degreesToRadians,
@@ -22,11 +22,22 @@ export interface CanvasSize {
 /**
  * A renderer drawing a sample as an equirectangular panorama, and the canvas it draws on.
  */
-export interface EquirectangularRendering {
+export interface EquirectangularRendering<
+  Renderer extends ThreeFrameRenderer = ThreeFrameRenderer,
+> {
   readonly canvas: HTMLCanvasElement;
-  readonly renderer: LabRenderer;
+  readonly renderer: Renderer;
   readonly dispose: () => void;
 }
+
+/**
+ * How a kind of renderer is made on a canvas: the player's, or the lab's.
+ */
+export type RendererMaker<Renderer extends ThreeFrameRenderer> = (
+  canvas: HTMLCanvasElement,
+  setup: StitchingSetup,
+  options: ThreeFrameRendererOptions,
+) => Renderer;
 
 export function calibrationOf(opened: OpenedRecording): CalibrationSet {
   const { calibration } = opened.recording.calibration;
@@ -50,28 +61,33 @@ export function lockOf(opened: OpenedRecording, pair: FramePair<VideoFrame>): Ma
 }
 
 /**
- * The sample stitched into a panorama on a canvas of `size`, its pixels kept for reading back.
+ * The sample stitched by the player's renderer into a panorama on a canvas of `size`, its pixels
+ * kept for reading back.
  */
 export function equirectangularRendering(
   opened: OpenedRecording,
   size: CanvasSize,
 ): EquirectangularRendering {
-  const setup = buildStitchingSetup({ calibration: calibrationOf(opened), layout: opened.layout });
-  return renderingOfSetup(setup, size);
+  const make: RendererMaker<ThreeFrameRenderer> = (canvas, setup, options) =>
+    ThreeFrameRenderer.create(canvas, setup, options);
+  return renderingWith(make, { setup: setupOf(opened), size });
+}
+
+export function setupOf(opened: OpenedRecording): StitchingSetup {
+  return buildStitchingSetup({ calibration: calibrationOf(opened), layout: opened.layout });
 }
 
 /**
- * As {@link equirectangularRendering}, for a stitching setup of the caller's own: another
- * reading of the calibration, or a scaled one.
+ * A panorama of the setup drawn by the kind of renderer `make` makes.
  */
-export function renderingOfSetup(
-  setup: StitchingSetup,
-  size: CanvasSize,
-): EquirectangularRendering {
+export function renderingWith<Renderer extends ThreeFrameRenderer>(
+  make: RendererMaker<Renderer>,
+  drawn: { readonly setup: StitchingSetup; readonly size: CanvasSize },
+): EquirectangularRendering<Renderer> {
   const canvas = document.createElement('canvas');
-  canvas.width = size.width;
-  canvas.height = size.height;
-  const renderer = LabRenderer.create(canvas, setup, { preserveDrawingBuffer: true });
+  canvas.width = drawn.size.width;
+  canvas.height = drawn.size.height;
+  const renderer = make(canvas, drawn.setup, { preserveDrawingBuffer: true });
   renderer.setViewMode('equirectangular');
   return {
     canvas,

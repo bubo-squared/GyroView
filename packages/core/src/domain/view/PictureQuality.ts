@@ -1,9 +1,8 @@
 /**
- * How finely the renderer reads the lens images for each screen pixel, and how many device
- * pixels per CSS pixel the drawing buffer holds: `fast` reads one bilinear tap of the frame as
- * decoded, one device pixel per CSS pixel; `balanced` reads through a mip chain over the
- * pixel's footprint, which stops the shimmer where the frame is minified, up to two; `high`
- * adds extra taps, up to three (ADR 0024).
+ * How finely the renderer reads the lens images for each screen pixel, and how many device pixels
+ * per CSS pixel the drawing buffer may hold ({@link pixelRatioCapOf}): `fast` reads one bilinear
+ * tap of the frame as decoded; `balanced` reads through a mip chain over the pixel's footprint,
+ * which stops the shimmer where the frame is minified; `high` adds extra taps (ADR 0024).
  */
 export type PictureQuality = 'fast' | 'balanced' | 'high';
 

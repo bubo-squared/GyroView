@@ -11,7 +11,7 @@ import { MISMATCH_ENCODING_DEFINES } from './seamMismatch/decodeBinCosts';
 import { SEAM_JOIN_DEFINES } from './seamJoin';
 import bentJoin from './shaders/bentJoin.glsl?raw';
 import seamMismatchFragment from './shaders/seamMismatch.frag.glsl?raw';
-import type { PictureProgramSet } from '../pictureMaterials';
+import type { PictureShaders } from '../pictureMaterials';
 import { SHADER_DEFINES } from '../rendererUniforms';
 import { chunksOf, lensProjectionProgram, pictureProgramsWith } from '../shaderPrograms';
 
@@ -42,7 +42,7 @@ export const LAB_DEFINES: Readonly<Record<string, number>> = {
  * The pictures the lab draws: the stitch through the bent seam join, whose fixed join draws what
  * the player draws.
  */
-export const LAB_PICTURES: PictureProgramSet = {
+export const LAB_SHADERS: PictureShaders = {
   programs: pictureProgramsWith(bentJoin),
   defines: LAB_DEFINES,
 };
@@ -55,4 +55,4 @@ export const SEAM_MISMATCH = lensProjectionProgram(seamMismatchFragment);
 /**
  * Every chunk of the lab's programs once, for checking them against the TypeScript side.
  */
-export const LAB_CHUNKS = chunksOf([...Object.values(LAB_PICTURES.programs), SEAM_MISMATCH]);
+export const LAB_CHUNKS = chunksOf([...Object.values(LAB_SHADERS.programs), SEAM_MISMATCH]);

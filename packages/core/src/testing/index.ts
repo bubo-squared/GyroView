@@ -32,6 +32,7 @@ export { minimalInfoRecord, type MinimalInfo } from './minimalInfoRecord';
 export { InfoRecordFormat, RecordType } from '../domain/format/constants';
 export { parseOffsetString } from '../domain/format/calibration/parseOffsetString';
 export {
+  equirectangularDirectionOf,
   equirectangularPixelOf,
   type EquirectangularPixel,
   type PixelSize,

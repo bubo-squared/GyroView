@@ -156,20 +156,15 @@ export {
   SEAM_BIN_COUNT,
   SEAM_BIN_WIDTH,
   SEAM_CELL_SUBSAMPLES,
-  SEAM_RING_ANGLE,
   SEAM_STRIP_ROWS,
   SEAM_STRIP_STEP,
   SEAM_STRIP_THETA_START,
   seamBinAzimuth,
   type AzimuthArc,
 } from './domain/stitching/seamStrip';
+export { SEAM_RING_ANGLE } from './domain/stitching/seamRing';
 export { MISMATCH_CAP, type SeamBinCost, type SeamBinCosts } from './domain/stitching/seamMismatch';
-export {
-  binDisparitiesOf,
-  disparityCandidatesOf,
-  type BinDisparity,
-  type DisparityRange,
-} from './domain/stitching/seamDisparity';
+export { binDisparitiesOf, slidesOf, type BinDisparity } from './domain/stitching/seamDisparity';
 export { disparityFieldOf, easedDisparities } from './domain/stitching/seamDisparityField';
 export {
   FIXED_SEAM_ALIGNMENT,

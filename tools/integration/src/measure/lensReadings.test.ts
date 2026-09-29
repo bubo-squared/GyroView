@@ -1,19 +1,20 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { saveMeasurement } from '../browser/artifacts';
-import { readingsOf, setupOf, withRadialScale, type LensReading } from '../browser/lensReadings';
+import { readingsOf, setupOf, withRadialScale, type LensReading } from './support/lensReadings';
 import {
   alignToReference,
   refineAlignment,
   type Alignment,
+  type LockedRendering,
   type ViewTurn,
-} from '../browser/referenceAlignment';
-import { REFERENCE_PANORAMA_SIZE, STUDIO_CLIPS } from '../browser/referenceFrames';
-import { renderingOfSetup } from '../browser/rendering';
+} from './support/referenceAlignment';
+import { REFERENCE_PANORAMA_SIZE, STUDIO_CLIPS } from './support/referenceFrames';
 import { isServed } from '../browser/sampleUrls';
-import { matchedGains, measuredDisparity, type MeasuredDisparity } from '../browser/seamJoins';
-import { quartilesOf } from '../browser/statistics';
-import { openStudioMoment, type StudioMoment } from '../browser/studioFrame';
+import { labRenderingOfSetup } from './support/labRendering';
+import { matchedGains, measuredDisparity, type MeasuredDisparity } from './support/seamJoins';
+import { quartilesOf } from './support/statistics';
+import { openStudioMoment, type StudioMoment } from './support/studioFrame';
 
 const COMPARED_TIMES = new Set([55, 100, 175]);
 /**
@@ -27,7 +28,7 @@ const RADIAL_SCALES: Readonly<Record<string, readonly number[]>> = {
   polynomial: [1],
 };
 /**
- * Nine candidates, each aligned and its seam measured, take about half a minute per frame.
+ * Seven candidates, each aligned and its seam measured, take about half a minute per frame.
  */
 const FRAME_TIMEOUT_MS = 300_000;
 
@@ -41,25 +42,33 @@ function trustedDisparities(seam: MeasuredDisparity): number[] {
   return seam.bins.filter((bin) => bin.isTrusted).map((bin) => bin.disparity);
 }
 
+type Aligner = (studio: StudioMoment, rendering: LockedRendering) => Alignment;
+
+const alignFully: Aligner = (studio, rendering) => alignToReference(studio.reference, rendering);
+
 /**
- * The reading drawn, turned onto the reference (from the first reading's turn, which lies
- * close), with the disparity it leaves at the seam.
+ * Aligns from a turn already close: the first reading's, since readings differ in scale, not in
+ * pose.
+ */
+function alignNear(turn: ViewTurn): Aligner {
+  return (studio, rendering) => refineAlignment(studio.reference, rendering, turn);
+}
+
+/**
+ * The reading drawn, turned onto the reference, with the disparity it leaves at the seam.
  */
 async function scoreOf(
   studio: StudioMoment,
   candidate: LensReading,
-  near: ViewTurn | undefined,
+  align: Aligner,
 ): Promise<Alignment & { readonly seamDisparity: object }> {
-  const { canvas, renderer, dispose } = renderingOfSetup(
+  const { canvas, renderer, dispose } = labRenderingOfSetup(
     setupOf(candidate, studio.opened.layout),
     REFERENCE_PANORAMA_SIZE,
   );
   try {
     const rendering = { renderer, canvas, pair: studio.moment.first, lock: studio.lock };
-    const alignment =
-      near === undefined
-        ? alignToReference(studio.reference, rendering)
-        : refineAlignment(studio.reference, rendering, near);
+    const alignment = align(studio, rendering);
     const seam = await measuredDisparity(renderer, await matchedGains(renderer));
     return { ...alignment, seamDisparity: quartilesOf(trustedDisparities(seam)) };
   } finally {
@@ -88,12 +97,12 @@ for (const clip of STUDIO_CLIPS) {
         async (context) => {
           if (!(await isServed(frame.url))) context.skip(`no Studio frame at ${frame.time} s`);
           const studio = await openStudioMoment(context, { clip, frame, cleanups });
-          const scores = [];
-          let near: ViewTurn | undefined;
-          const candidates = candidatesOf(readingsOf(studio.opened));
-          for (const candidate of candidates) {
-            const score = await scoreOf(studio, candidate, near);
-            near ??= score.turn;
+          const [first, ...others] = candidatesOf(readingsOf(studio.opened));
+          if (!first) throw new Error('the recording carries no calibration reading');
+          const firstScore = await scoreOf(studio, first, alignFully);
+          const scores = [{ reading: first.name, radialScale: first.radialScale, ...firstScore }];
+          for (const candidate of others) {
+            const score = await scoreOf(studio, candidate, alignNear(firstScore.turn));
             scores.push({ reading: candidate.name, radialScale: candidate.radialScale, ...score });
           }
           await saveMeasurement(`${clip.slug}-${frame.time}s-lens-readings`, { scores });

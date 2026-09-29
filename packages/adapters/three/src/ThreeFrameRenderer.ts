@@ -31,22 +31,21 @@ import {
 import { createFullscreenTriangle } from './fullscreenPass';
 import { createRenderer, type ThreeFrameRendererOptions } from './webglRenderer';
 
-export type { ThreeFrameRendererOptions } from './webglRenderer';
 import { SeamMeterPass } from './seamMeter/SeamMeterPass';
-import { applySamplingStrategy, createLensTextures } from './lensTextures';
+import { applyTextureFilters, createLensTextures } from './lensTextures';
 import { SAMPLING_STRATEGIES } from './samplingStrategies';
 import {
   compilePictureMaterials,
   createPictureMaterials,
   disposePictureMaterials,
-  PLAYER_PICTURES,
+  PLAYER_SHADERS,
   type PictureMaterials,
-  type PictureProgramSet,
+  type PictureShaders,
 } from './pictureMaterials';
 import {
   applyLensGain,
   applyPicture,
-  applySampling,
+  applyShaderSampling,
   applyStabilization,
   createRendererUniforms,
   LENS_TEXTURES,
@@ -59,11 +58,11 @@ import {
  * uniforms only they read.
  */
 export interface RendererPictures {
-  readonly programs: PictureProgramSet;
+  readonly shaders: PictureShaders;
   readonly uniforms: Readonly<Record<string, IUniform>>;
 }
 
-const PLAYER_RENDERER_PICTURES: RendererPictures = { programs: PLAYER_PICTURES, uniforms: {} };
+const PLAYER_PICTURES: RendererPictures = { shaders: PLAYER_SHADERS, uniforms: {} };
 
 /**
  * How a renderer is opened: its context's options and what it draws with.
@@ -79,6 +78,8 @@ interface Opening {
 interface Meter {
   dispose(): void;
 }
+
+export type { ThreeFrameRendererOptions } from './webglRenderer';
 
 export interface RendererParts {
   readonly renderer: WebGLRenderer;
@@ -106,7 +107,6 @@ export interface RendererParts {
  * each lens image in a tile of its own.
  */
 export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
-  protected readonly meters = new Set<Meter>();
   private framing: Framing = DEFAULT_FRAMING;
   private viewMode: ViewMode = DEFAULT_VIEW_MODE;
   /**
@@ -115,9 +115,10 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
    */
   private hasFrames = false;
   private isDisposed = false;
+  private readonly meters = new Set<Meter>();
 
   protected constructor(
-    protected readonly parts: RendererParts,
+    private readonly parts: RendererParts,
     private readonly canvas: HTMLCanvasElement,
   ) {
     this.applyFraming();
@@ -129,7 +130,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     setup: StitchingSetup,
     options: ThreeFrameRendererOptions = {},
   ): ThreeFrameRenderer {
-    const opening = { options, pictures: PLAYER_RENDERER_PICTURES };
+    const opening = { options, pictures: PLAYER_PICTURES };
     return new this(this.openParts(canvas, setup, opening), canvas);
   }
 
@@ -179,10 +180,10 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     this.ensureLive();
     const strategy = SAMPLING_STRATEGIES[quality];
     for (const texture of this.parts.textures) {
-      applySamplingStrategy(texture, strategy);
+      applyTextureFilters(texture, strategy);
       if (this.hasFrames) texture.needsUpdate = true;
     }
-    applySampling(this.parts.uniforms, strategy);
+    applyShaderSampling(this.parts.uniforms, strategy);
     this.render();
   }
 
@@ -201,15 +202,12 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   public createSeamMeter(): SeamMeter {
     this.ensureLive();
     const pass = new SeamMeterPass(this.parts.renderer, this.parts.uniforms, this.parts.lensCount);
-    const meter: SeamMeter = {
+    return this.tracked({
       measure: () => pass.measure(),
-      dispose: (): void => {
-        this.meters.delete(meter);
+      dispose: () => {
         pass.dispose();
       },
-    };
-    this.meters.add(meter);
-    return meter;
+    });
   }
 
   /**
@@ -256,6 +254,33 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     disposePictureMaterials(this.parts.materials);
     this.parts.pass.geometry.dispose();
     this.parts.renderer.dispose();
+  }
+
+  /**
+   * The WebGL renderer and the shared uniforms, for a subclass's own passes and settings.
+   */
+  protected get webgl(): WebGLRenderer {
+    return this.parts.renderer;
+  }
+
+  protected get uniforms(): RendererUniforms {
+    return this.parts.uniforms;
+  }
+
+  /**
+   * A meter over a pass that shares this renderer's context, which the renderer disposes with
+   * itself unless it is disposed first.
+   */
+  protected tracked<M extends Meter>(meter: M): M {
+    const kept: M = {
+      ...meter,
+      dispose: (): void => {
+        this.meters.delete(kept);
+        meter.dispose();
+      },
+    };
+    this.meters.add(kept);
+    return kept;
   }
 
   protected render(): void {
@@ -313,11 +338,8 @@ function sharedParts(
   const strategy = SAMPLING_STRATEGIES[DEFAULT_PICTURE_QUALITY];
   const textures = createLensTextures(setup.frameSlotCount, strategy);
   const uniforms = createRendererUniforms(setup, textures);
-  applySampling(uniforms, strategy);
-  const materials = createPictureMaterials(
-    { ...uniforms, ...pictures.uniforms },
-    pictures.programs,
-  );
+  applyShaderSampling(uniforms, strategy);
+  const materials = createPictureMaterials({ ...uniforms, ...pictures.uniforms }, pictures.shaders);
   return { textures, uniforms, materials };
 }
 
@@ -328,7 +350,7 @@ function assembleParts(
 ): RendererParts {
   const { textures, uniforms, materials } = sharedParts(setup, pictures);
   const pass = new Mesh(createFullscreenTriangle(), materials.rectilinear);
-  const seamProof = provenPrograms(renderer, { pass, materials, textures, uniforms });
+  const seamProof = provenSeamMeter(renderer, { pass, materials, textures, uniforms });
   const scene = new Scene();
   scene.add(pass);
   return {
@@ -345,10 +367,10 @@ function assembleParts(
 }
 
 /**
- * Compiles and proves every picture program and the seam meter's (gain matching asks for one at
- * every load), and returns the proven meter; what was built goes if a program fails.
+ * Compiles and proves every picture program, then opens the seam meter, which proves its own
+ * (gain matching asks for one at every load); what was built goes if a program fails.
  */
-function provenPrograms(
+function provenSeamMeter(
   renderer: WebGLRenderer,
   built: Pick<RendererParts, 'pass' | 'materials' | 'textures' | 'uniforms'>,
 ): SeamMeterPass {

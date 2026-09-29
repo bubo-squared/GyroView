@@ -17,13 +17,13 @@ export const MISMATCH_ENCODING_DEFINES: readonly (readonly [string, number])[] =
 ];
 
 /**
- * The bin costs of each candidate from the rows the mismatch program wrote, in candidate order:
- * the mismatch's two bytes (a share of the cap) in red and green, the validity in blue.
+ * The bin costs of each slide from the rows the mismatch program wrote, in slide order: the
+ * mismatch's two bytes (a share of the cap) in red and green, the validity in blue.
  */
-export function decodeBinCosts(pixels: Uint8Array, candidateCount: number): SeamBinCosts[] {
-  return Array.from({ length: candidateCount }, (_unused, candidate) =>
+export function decodeBinCosts(pixels: Uint8Array, slideCount: number): SeamBinCosts[] {
+  return Array.from({ length: slideCount }, (_unused, slide) =>
     Array.from({ length: SEAM_BIN_COUNT }, (_alsoUnused, bin) =>
-      binCostAt(pixels, (candidate * SEAM_BIN_COUNT + bin) * RGBA_CHANNELS),
+      binCostAt(pixels, (slide * SEAM_BIN_COUNT + bin) * RGBA_CHANNELS),
     ),
   );
 }

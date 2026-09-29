@@ -34,8 +34,8 @@ export const LENS_TEXTURES = 2;
 const LENS_MEI = 0;
 const LENS_RADIAL_POLYNOMIAL = 1;
 /**
- * The constants the GLSL sources refer to, injected as preprocessor defines so that this file is
- * their only home.
+ * The constants the player's GLSL sources refer to, injected as preprocessor defines so that
+ * this file is their only home; the lab adds its own.
  */
 export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntries([
   ['MAX_LENSES', MAX_LENSES],
@@ -47,8 +47,9 @@ export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntri
 ]);
 
 /**
- * Every uniform the renderer's programs declare, named exactly as in the GLSL chunks and shared
- * by all programs as the same objects; the only place the TypeScript side spells uniform names.
+ * Every uniform the player's programs declare, named exactly as in the GLSL chunks and shared by
+ * all programs as the same objects; the only place the TypeScript side spells the shared uniform
+ * names (the lab spells the ones only its programs add).
  */
 export interface RendererUniforms {
   readonly uLensCount: IUniform<number>;
@@ -205,8 +206,8 @@ function samplingUniforms(
   };
 }
 
-export function applySampling(uniforms: RendererUniforms, strategy: SamplingStrategy): void {
-  uniforms.uSampling.value = strategy.sampling;
+export function applyShaderSampling(uniforms: RendererUniforms, strategy: SamplingStrategy): void {
+  uniforms.uSampling.value = strategy.shaderSampling;
 }
 
 export function applyStabilization(uniforms: RendererUniforms, rotation: CoreMatrix3): void {
@@ -228,6 +229,15 @@ export function applyLensGain(
 /**
  * Replaces one lens's body-to-lens rotation; a lens the setup does not have is a defect.
  */
+export function applyLensPose(
+  uniforms: RendererUniforms,
+  lensIndex: number,
+  rotation: CoreMatrix3,
+): void {
+  ensureIndexInRange(lensIndex, uniforms.uLensCount.value, 'lens');
+  uniforms.uLensRotation.value[lensIndex]?.set(...rotation);
+}
+
 /**
  * What one picture sets; a value a picture's program does not read stays neutral.
  */

@@ -1,5 +1,5 @@
 import type { FrameRegion, LensLayout, LensSource } from './LensLayout';
-import { SEAM_RING_ANGLE } from './seamStrip';
+import { SEAM_RING_ANGLE } from './seamRing';
 import type { CalibrationSet, LensCalibration } from '../optics/LensCalibration';
 import type { LensProjectionParameters } from '../optics/LensModel';
 import { lensRotation } from '../optics/lensPose';

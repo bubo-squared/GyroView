@@ -9,11 +9,13 @@ uniform vec4 uSeamDisparity[SEAM_BIN_COUNT / SEAM_BINS_PER_VECTOR];
 const float AXIS_NEIGHBOURHOOD = 1e-6;
 // A bin's disparity holds at its centre.
 const float BIN_CENTRE = 0.5;
+// Each lens takes half the bend.
+const float HALF_EACH = 0.5;
 
 // The disparity of a bin, `bin` running from -1 to SEAM_BIN_COUNT around the ring: the two
 // neighbours of the first and the last bins wrap to the other end.
 float binDisparity(int bin) {
-  int wrapped = bin < 0 ? bin + SEAM_BIN_COUNT : bin >= SEAM_BIN_COUNT ? bin - SEAM_BIN_COUNT : bin;
+  int wrapped = (bin + SEAM_BIN_COUNT) % SEAM_BIN_COUNT;
   return uSeamDisparity[wrapped / SEAM_BINS_PER_VECTOR][wrapped % SEAM_BINS_PER_VECTOR];
 }
 
@@ -47,20 +49,20 @@ vec3 seamReadDirection(int i, vec3 dirBody, float disparity) {
     i == 0
       ? smoothstep(SEAM_RING_RADIANS - SEAM_BEND_WIDTH_RADIANS, SEAM_RING_RADIANS, theta)
       : 1.0 - smoothstep(SEAM_RING_RADIANS, SEAM_RING_RADIANS + SEAM_BEND_WIDTH_RADIANS, theta);
-  float bent = theta + (i == 0 ? 0.5 : -0.5) * bend * ramp;
+  float bent = theta + (i == 0 ? HALF_EACH : -HALF_EACH) * bend * ramp;
   return vec3(dirBody.xy / across * sin(bent), cos(bent));
 }
 
-// The band, in the angle from a lens's own axis where it is read, the lenses are blended across,
-// centred on the seam ring. In the bent join, narrowed as the disparity no bend takes up grows,
-// a clean cut instead of a double image. A lens bent away from its axis is read that much nearer
-// its rim, so the band keeps half the bend on each side beyond SEAM_CUT_HALF_WIDTH_RADIANS, and
-// the lenses still meet.
+// The band the lenses are blended across, in the angle from each lens's own axis where it is
+// read, centred on the seam ring. In the bent join it narrows as the disparity no bend takes up
+// grows, a clean cut instead of a double image; since a lens bent away from its axis is read that
+// much nearer its rim, the band keeps half the bend on each side beyond
+// SEAM_CUT_HALF_WIDTH_RADIANS, and the lenses still meet.
 vec2 seamFeather(float disparity) {
   if (uSeamJoin != SEAM_JOIN_BENT) return uFeather;
   float bend = seamBend(disparity);
   float narrowing = clamp(abs(disparity - bend) / SEAM_CUT_DISPARITY_RADIANS, 0.0, 1.0);
-  float narrowest = SEAM_CUT_HALF_WIDTH_RADIANS + 0.5 * max(bend, 0.0);
+  float narrowest = SEAM_CUT_HALF_WIDTH_RADIANS + HALF_EACH * max(bend, 0.0);
   float halfWidth = mix(0.5 * (uFeather.y - uFeather.x), narrowest, narrowing);
   return vec2(SEAM_RING_RADIANS - halfWidth, SEAM_RING_RADIANS + halfWidth);
 }

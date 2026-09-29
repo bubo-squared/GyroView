@@ -1,4 +1,4 @@
-import type { FrameRegion } from '@gyroview/core';
+import { degreesToRadians, QUARTER_TURN, type FrameRegion } from '@gyroview/core';
 
 export interface PixelPoint {
   readonly x: number;
@@ -35,8 +35,8 @@ const RIM_THRESHOLD = 90;
 const RADIUS_STEP = 0.5;
 const CHANNELS = 4;
 const CORNER_COUNT = 4;
-const QUARTER_TURN = Math.PI / 2;
-const FIRST_DIAGONAL = QUARTER_TURN / 2;
+const QUARTER_TURN_RADIANS = degreesToRadians(QUARTER_TURN);
+const FIRST_DIAGONAL = QUARTER_TURN_RADIANS / 2;
 const TRIMMING_PASSES = 3;
 const TRIM_SIGMAS = 2;
 const MIN_TRIM_DISTANCE = 1.5;
@@ -83,7 +83,7 @@ function regionLuminance(frame: VideoFrame, region: FrameRegion): Luminance {
 function rimPoints(luminance: Luminance): PixelPoint[] {
   const points: PixelPoint[] = [];
   for (let corner = 0; corner < CORNER_COUNT; corner += 1) {
-    const diagonal = FIRST_DIAGONAL + corner * QUARTER_TURN;
+    const diagonal = FIRST_DIAGONAL + corner * QUARTER_TURN_RADIANS;
     const from = diagonal - CORNER_SPREAD_RADIANS;
     const to = diagonal + CORNER_SPREAD_RADIANS;
     for (let angle = from; angle <= to; angle += RAY_STEP_RADIANS) {

@@ -1,12 +1,5 @@
+import { SEAM_RING_ANGLE } from './seamRing';
 import { degrees, type Degrees } from '../../shared/units/angle';
-
-/**
- * The seam ring: the body directions 90 degrees from body +z, lens 0's nominal axis, halfway
- * between the two lenses' axes. The feather band, the seam strip and the bent join are all laid
- * out about it.
- */
-const SEAM_RING_DEGREES = 90;
-export const SEAM_RING_ANGLE = degrees(SEAM_RING_DEGREES);
 
 /**
  * An arc of azimuths around the seam ring: from `start` up to `end`, in degrees from body +x
@@ -36,7 +29,7 @@ const FULL_CIRCLE_DEGREES = 360;
  */
 const CELL_CENTRE = 0.5;
 
-export const SEAM_STRIP_THETA_START = degrees(SEAM_RING_DEGREES - STRIP_HALF_WIDTH_DEGREES);
+export const SEAM_STRIP_THETA_START = degrees(SEAM_RING_ANGLE - STRIP_HALF_WIDTH_DEGREES);
 export const SEAM_STRIP_STEP = degrees(STRIP_STEP_DEGREES);
 export const SEAM_BIN_WIDTH = degrees(BIN_WIDTH_DEGREES);
 

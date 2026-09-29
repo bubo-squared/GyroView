@@ -32,3 +32,15 @@ export function equirectangularPixelOf(direction: Vector3, size: PixelSize): Equ
     row: Math.min(size.height - 1, Math.floor(((1 - pitch / QUARTER_TURN) / 2) * size.height)),
   };
 }
+
+const PIXEL_CENTRE = 0.5;
+
+/**
+ * The direction through the centre of a pixel of an equirectangular image: the inverse of
+ * {@link equirectangularPixelOf}, the ray the stitching shader casts for that pixel.
+ */
+export function equirectangularDirectionOf(pixel: EquirectangularPixel, size: PixelSize): Vector3 {
+  const yaw = (((pixel.column + PIXEL_CENTRE) / size.width) * 2 - 1) * HALF_TURN;
+  const pitch = (1 - ((pixel.row + PIXEL_CENTRE) / size.height) * 2) * QUARTER_TURN;
+  return [Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)];
+}

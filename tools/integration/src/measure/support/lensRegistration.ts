@@ -11,9 +11,14 @@ import {
 } from '@gyroview/core';
 
 import { withTurnAbout, type BodyAxis } from './poseConventions';
-import { renderUnder, type LockedRendering, type ViewTurn } from './referenceAlignment';
+import {
+  renderUnder,
+  type LockedRendering,
+  type RowBand,
+  type ViewTurn,
+} from './referenceAlignment';
 import type { GreyImage } from './referenceFrames';
-import { gainsShowingOnly, viewDirectionOf, type CanvasSize } from './rendering';
+import { gainsShowingOnly, viewDirectionOf, type CanvasSize } from '../../browser/rendering';
 
 /**
  * A level difference counts at most this much: where Studio's dynamic stitching warps a near
@@ -32,14 +37,6 @@ const COMPARED = 1;
  * The panorama's pixels a cost reads: `COMPARED` where it counts one.
  */
 export type ComparedPixels = Uint8Array;
-
-/**
- * A band of rows, as fractions of the panorama's height from the top.
- */
-export interface RowBand {
-  readonly top: number;
-  readonly bottom: number;
-}
 
 /**
  * Every pixel of the band.

@@ -43,7 +43,7 @@ function entryAt(matrix: Matrix3, row: number, column: number): number {
 /**
  * The turn a rotation makes: its axis scaled by its angle.
  */
-export function turnOf(matrix: Matrix3): BodyTurn {
+function turnOf(matrix: Matrix3): BodyTurn {
   const trace = entryAt(matrix, 0, 0) + entryAt(matrix, 1, 1) + entryAt(matrix, 2, 2);
   const angle = Math.acos(Math.min(1, Math.max(-1, (trace - 1) * HALF)));
   const scale = angle < SMALL_ANGLE ? HALF : angle / (2 * Math.sin(angle));

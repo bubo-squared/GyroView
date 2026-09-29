@@ -14,15 +14,12 @@ export function createLensTextures(count: number, strategy: SamplingStrategy): V
     texture.flipY = false;
     texture.colorSpace = NoColorSpace;
     texture.magFilter = LinearFilter;
-    applySamplingStrategy(texture, strategy);
+    applyTextureFilters(texture, strategy);
     return texture;
   });
 }
 
-export function applySamplingStrategy(
-  texture: VideoFrameTexture,
-  strategy: SamplingStrategy,
-): void {
+export function applyTextureFilters(texture: VideoFrameTexture, strategy: SamplingStrategy): void {
   texture.minFilter = strategy.minFilter;
   texture.generateMipmaps = strategy.generateMipmaps;
   texture.anisotropy = strategy.anisotropy;

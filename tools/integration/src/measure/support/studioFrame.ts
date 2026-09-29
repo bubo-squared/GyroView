@@ -2,7 +2,7 @@ import type { Matrix3 } from '@gyroview/core';
 import type { OpenedRecording } from '@gyroview/player/composition';
 import type { TestContext } from 'vitest';
 
-import { openSample } from './realRecordingSupport';
+import { openSample } from '../../browser/realRecordingSupport';
 import type { LockedRendering } from './referenceAlignment';
 import {
   loadGreyImage,
@@ -12,8 +12,10 @@ import {
   type ReferenceClip,
   type ReferenceFrame,
 } from './referenceFrames';
-import { equirectangularRendering, lockOf } from './rendering';
-import { closeMoment, decodeMoment, type Moment } from './SharedSample';
+import { lockOf } from '../../browser/rendering';
+
+import { labRendering } from './labRendering';
+import { closeMoment, decodeMoment, type Moment } from '../../browser/SharedSample';
 
 /**
  * Which Studio frame to open, and where the test collects what closes it again.
@@ -41,6 +43,14 @@ export async function openStudioMoment(
 ): Promise<StudioMoment> {
   const { clip, frame, cleanups } = request;
   const reference = await loadGreyImage(frame.url);
+  const isOfTheirSize =
+    reference.width === REFERENCE_PANORAMA_SIZE.width &&
+    reference.height === REFERENCE_PANORAMA_SIZE.height;
+  if (!isOfTheirSize) {
+    throw new Error(
+      `${frame.url} is ${reference.width}x${reference.height}, not the panoramas' size`,
+    );
+  }
   const opened = await openSample(context, clip.sample);
   cleanups.push(() => {
     opened.dispose();
@@ -61,10 +71,7 @@ export async function openStudioFrame(
   request: StudioFrameRequest,
 ): Promise<StudioMoment & { readonly rendering: LockedRendering }> {
   const studio = await openStudioMoment(context, request);
-  const { canvas, renderer, dispose } = equirectangularRendering(
-    studio.opened,
-    REFERENCE_PANORAMA_SIZE,
-  );
+  const { canvas, renderer, dispose } = labRendering(studio.opened, REFERENCE_PANORAMA_SIZE);
   request.cleanups.push(dispose);
   const rendering = { renderer, canvas, pair: studio.moment.first, lock: studio.lock };
   return { ...studio, rendering };

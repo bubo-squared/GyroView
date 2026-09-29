@@ -1,7 +1,7 @@
 import { seconds, type Seconds } from '@gyroview/core';
 import { inject } from 'vitest';
 
-import { OFFICE_5K7_60, SAILING_8K_30, type SampleRecording } from './sampleUrls';
+import { OFFICE_5K7_60, SAILING_8K_30, type SampleRecording } from '../../browser/sampleUrls';
 
 /**
  * A frame of an Insta360 Studio export, stitched and stabilized by Insta360's own software:
@@ -134,7 +134,7 @@ export function greyCanvasOf(image: GreyImage): HTMLCanvasElement {
 /**
  * The luma of RGBA pixels whose rows run from the top down, as a 2D canvas holds them.
  */
-export function greyOf(pixels: Uint8ClampedArray, size: GreySize): Uint8Array {
+function greyOf(pixels: Uint8ClampedArray, size: GreySize): Uint8Array {
   return lumaOf(pixels, size, (row) => row);
 }
 

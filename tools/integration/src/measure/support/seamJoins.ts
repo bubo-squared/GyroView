@@ -2,9 +2,9 @@ import type { LabRenderer } from '@gyroview/adapter-three/lab';
 import { readPixels } from '@gyroview/adapter-three/testing';
 import {
   binDisparitiesOf,
+  FULL_TURN,
   degrees,
   DEFAULT_MAX_GAIN,
-  disparityCandidatesOf,
   disparityFieldOf,
   gainsMatching,
   isWithinArc,
@@ -14,6 +14,8 @@ import {
   radiansToDegrees,
   SEAM_BIN_COUNT,
   SEAM_BIN_WIDTH,
+  SEAM_RING_ANGLE,
+  slidesOf,
   transformVector,
   type BinDisparity,
   type Degrees,
@@ -24,15 +26,13 @@ import {
 
 import type { LockedRendering } from './referenceAlignment';
 import type { GreyImage } from './referenceFrames';
-import { viewDirectionOf, type CanvasSize } from './rendering';
+import { viewDirectionOf, type CanvasSize } from '../../browser/rendering';
 
 /**
- * The pixels compared around the seam: within this many degrees of the ring 90 degrees from
- * body +z, the span a bend moves content over at the seam.
+ * The pixels compared around the seam: within this many degrees of the seam ring, the 5-degree
+ * feather band and a degree beyond.
  */
-const BAND_HALF_WIDTH = 6;
-const QUARTER_TURN = 90;
-const FULL_TURN = 360;
+const BAND_HALF_WIDTH_DEGREES = 6;
 /**
  * A pixel no seam bin holds: outside the band, under the camera, or left out of a comparison.
  */
@@ -52,7 +52,7 @@ export function seamBandOf(size: CanvasSize, viewToBody: Matrix3): SeamBand {
   for (let index = 0; index < band.length; index += 1) {
     const view = viewDirectionOf(index % size.width, Math.floor(index / size.width), size);
     const { theta, azimuth } = seamAnglesOf(transformVector(viewToBody, view));
-    const isInBand = Math.abs(theta - QUARTER_TURN) <= BAND_HALF_WIDTH;
+    const isInBand = Math.abs(theta - SEAM_RING_ANGLE) <= BAND_HALF_WIDTH_DEGREES;
     if (isInBand && !isWithinArc(azimuth, NADIR_ARC)) {
       band[index] = Math.floor(azimuth / SEAM_BIN_WIDTH);
     }
@@ -135,7 +135,7 @@ export async function measuredDisparity(
   const meter = renderer.createSeamMismatchMeter();
   try {
     const started = performance.now();
-    const costs = await meter.measure({ disparities: disparityCandidatesOf(), gains });
+    const costs = await meter.measure({ slides: slidesOf(), gains });
     if (!costs) throw new Error('the seam strip was not measured');
     const milliseconds = sinceStart(started);
     const bins = binDisparitiesOf(costs);

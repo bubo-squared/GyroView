@@ -9,6 +9,7 @@ describe('indexOfLeast', () => {
 
   it('never picks a value that is not finite', () => {
     expect(indexOfLeast([NaN, 2, Infinity, 1])).toBe(3);
+    expect(indexOfLeast([1, -Infinity, 0])).toBe(2);
     expect(indexOfLeast([NaN, NaN])).toBe(0);
   });
 });
@@ -25,7 +26,7 @@ describe('parabolicOffset', () => {
     expect(parabolicOffset([1, 2, 1], 1)).toBe(0);
   });
 
-  it('stays within half a step', () => {
-    expect(parabolicOffset([10, 0, 0.001], 1)).toBeLessThanOrEqual(0.5);
+  it('stays within half a step of an index that is not the least', () => {
+    expect(parabolicOffset([0, 1, 3], 1)).toBe(-0.5);
   });
 });

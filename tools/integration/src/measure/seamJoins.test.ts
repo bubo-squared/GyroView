@@ -25,15 +25,16 @@ import {
   rotationOf,
   type LockedRendering,
   type ViewTurn,
-} from '../browser/referenceAlignment';
+} from './support/referenceAlignment';
 import {
   greyCanvasOf,
   REFERENCE_PANORAMA_SIZE,
   STUDIO_CLIPS,
   type GreyImage,
-} from '../browser/referenceFrames';
-import { equirectangularRendering, gainsShowingOnly, lockOf } from '../browser/rendering';
+} from './support/referenceFrames';
+import { gainsShowingOnly, lockOf } from '../browser/rendering';
 import { isServed } from '../browser/sampleUrls';
+import { labRendering } from './support/labRendering';
 import {
   bandShownBy,
   binDifferences,
@@ -43,9 +44,9 @@ import {
   seamBandOf,
   type MeasuredDisparity,
   type SeamBand,
-} from '../browser/seamJoins';
-import { meanOf } from '../browser/statistics';
-import { openStudioFrame, type StudioFrameRequest } from '../browser/studioFrame';
+} from './support/seamJoins';
+import { meanOf } from './support/statistics';
+import { openStudioFrame, type StudioFrameRequest } from './support/studioFrame';
 
 const FRAME_TIMEOUT_MS = 300_000;
 /**
@@ -68,14 +69,14 @@ const SAVED_FRAMES = new Set([55, 100, 145]);
 /**
  * The moment whose consecutive frames show how steady each join is, and how many of them.
  */
-const STEADINESS_TIME = 100;
+const STEADINESS_START_SECONDS = 100;
 const STEADINESS_PAIRS = 16;
 
 type PerBin = readonly number[];
 type PerJoin<Value> = Readonly<Record<SeamJoin, Value>>;
 
 interface FrameResult {
-  readonly time: number;
+  readonly time: Seconds;
   readonly disparity: MeasuredDisparity;
   /**
    * Per join, each bin's mean level difference to Studio's stitch.
@@ -169,20 +170,34 @@ async function measureFrame(
     ...drawn,
     rendering: { ...rendering, pair: moment.second, lock: lockOf(opened, moment.second) },
   };
-  const next = binDifferences(withJoin(following, FIXED_SEAM_ALIGNMENT), reference, band);
   const toStudio = perJoin((join) => binDifferences(images[join], reference, band));
-  const { time } = request.frame;
-  if (SAVED_FRAMES.has(time)) {
-    const sheet = sheetOf([reference, images.fixed, images.bent]);
-    await saveRender(`${request.clip.slug}-${time}s-seam-joins`, sheet);
-  }
+  await saveSheetIfChosen(request, [reference, images.fixed, images.bent]);
   return {
-    time,
+    time: request.frame.time,
     disparity,
     toStudio,
     lensDisagreement: lensDisagreements(drawn, disparity.field, band),
-    noise: toStudio.fixed.map((difference, bin) => Math.abs(difference - (next[bin] ?? NaN))),
+    noise: noiseOf(
+      toStudio.fixed,
+      binDifferences(withJoin(following, FIXED_SEAM_ALIGNMENT), reference, band),
+    ),
   };
+}
+
+/**
+ * How much each bin's difference to Studio changes from the frame to the next.
+ */
+function noiseOf(atFrame: PerBin, atNext: PerBin): PerBin {
+  return atFrame.map((difference, bin) => Math.abs(difference - (atNext[bin] ?? NaN)));
+}
+
+async function saveSheetIfChosen(
+  request: StudioFrameRequest,
+  images: readonly GreyImage[],
+): Promise<void> {
+  const { time } = request.frame;
+  if (!SAVED_FRAMES.has(time)) return;
+  await saveRender(`${request.clip.slug}-${time}s-seam-joins`, sheetOf(images));
 }
 
 function finite(values: PerBin): number[] {
@@ -281,7 +296,7 @@ async function steadinessOf(
   opened: OpenedRecording,
   pairs: readonly FramePair<VideoFrame>[],
 ): Promise<object> {
-  const { canvas, renderer, dispose } = equirectangularRendering(opened, REFERENCE_PANORAMA_SIZE);
+  const { canvas, renderer, dispose } = labRendering(opened, REFERENCE_PANORAMA_SIZE);
   try {
     const [first, second] = pairs;
     if (!first || !second) throw new Error('two pairs expected');
@@ -350,7 +365,11 @@ for (const clip of STUDIO_CLIPS) {
           port,
           DECODE_PIPELINE_OPTIONS,
         );
-        const pairs = await takePairs(pipeline, clip.start + STEADINESS_TIME, STEADINESS_PAIRS);
+        const pairs = await takePairs(
+          pipeline,
+          clip.start + STEADINESS_START_SECONDS,
+          STEADINESS_PAIRS,
+        );
         cleanups.push(() => {
           closeAll(pairs);
         });

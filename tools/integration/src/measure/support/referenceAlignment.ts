@@ -1,3 +1,4 @@
+import type { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import type { LabRenderer } from '@gyroview/adapter-three/lab';
 import { readPixels } from '@gyroview/adapter-three/testing';
 import {
@@ -20,8 +21,8 @@ import { greyOfDrawn, type GreyImage } from './referenceFrames';
  * A renderer showing one pair under the gyro's lock stabilization, on top of which the
  * alignment turns the panorama.
  */
-export interface LockedRendering {
-  readonly renderer: LabRenderer;
+export interface LockedRendering<Renderer extends ThreeFrameRenderer = LabRenderer> {
+  readonly renderer: Renderer;
   readonly canvas: HTMLCanvasElement;
   readonly pair: FramePair<VideoFrame>;
   /**
@@ -51,18 +52,28 @@ export interface Alignment {
 }
 
 /**
- * The rows compared: the upper band, above the horizon (the sky and the far coast over the
- * boat, the ceiling and the upper walls indoors).
+ * A band of rows, as fractions of the panorama's height from the top.
+ */
+export interface RowBand {
+  readonly top: number;
+  readonly bottom: number;
+}
+
+/**
+ * The rows the alignment compares: the upper band, above the horizon (the sky and the far coast
+ * over the boat, the ceiling and the upper walls indoors).
  */
 const FAR_FIELD_TOP = 0.15;
 const FAR_FIELD_BOTTOM = 0.5;
+export const FAR_FIELD_BAND: RowBand = { top: FAR_FIELD_TOP, bottom: FAR_FIELD_BOTTOM };
 const COMPARISON_STRIDE = 2;
 const COARSE_YAW_STEP_PIXELS = 4;
 /**
  * A search from nothing takes a column search for the yaw and this many rounds of one-axis
- * searches; a search from a turn already close takes one round.
+ * searches; a search from a turn already close takes fewer.
  */
 const DESCENT_ROUNDS = 3;
+const REFINEMENT_ROUNDS = 1;
 /**
  * The angles tried around the current best in each round, per axis.
  */
@@ -79,7 +90,10 @@ export function rotationOf(turn: ViewTurn): Matrix3 {
 /**
  * GyroView's panorama under the given turn, as a grey image from the top down.
  */
-export function renderUnder(rendering: LockedRendering, turn: ViewTurn): GreyImage {
+export function renderUnder(
+  rendering: LockedRendering<ThreeFrameRenderer>,
+  turn: ViewTurn,
+): GreyImage {
   const { renderer, canvas, pair, lock } = rendering;
   renderer.setStabilization(multiplyMatrices(lock, rotationOf(turn)));
   renderer.present({ pair, mediaTime: pair.timestamp });
@@ -165,7 +179,7 @@ export function refineAlignment(
   rendering: LockedRendering,
   from: ViewTurn,
 ): Alignment {
-  return descended({ reference, rendering }, from, 1);
+  return descended({ reference, rendering }, from, REFINEMENT_ROUNDS);
 }
 
 function descended(comparison: Comparison, start: ViewTurn, rounds: number): Alignment {

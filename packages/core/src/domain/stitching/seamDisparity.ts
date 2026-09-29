@@ -1,12 +1,12 @@
 import type { SeamBinCost, SeamBinCosts } from './seamMismatch';
-import { seamBinAzimuth } from './seamStrip';
+import { SEAM_BIN_COUNT, seamBinAzimuth } from './seamStrip';
 import { ensureInvariant } from '../../shared/errors/GyroViewError';
 import { indexOfLeast, parabolicOffset } from '../../shared/math/minimum';
 import { degrees, type Degrees } from '../../shared/units/angle';
 
 /**
- * The disparities tried in every bin of the seam strip: slides of lens 0's sampling across the
- * ring, away from its axis, from `least` to `most` in steps of `step`.
+ * The disparities tried in every bin of the seam strip, as slides of lens 0's sampling across
+ * the ring, away from its axis, from `least` to `most` in steps of `step`.
  *
  * The lenses sit on one axis, so a near object's two images differ only across the ring, and
  * always the same way: each lens sees the object farther from its own axis than the fixed
@@ -22,13 +22,13 @@ export interface DisparityRange {
 }
 
 /**
- * From below the error the lens models leave at the seam (the legacy equidistant reading draws
- * far content up to 3.5 degrees too close together there on the office X5, about 1.5 per lens),
- * so that a far bin's minimum is a trusted interior one, to beyond what the overlap leaves room
- * for: an object 20 centimetres from the camera, with lenses 3.2 centimetres apart. The step is
- * a quarter of a degree, refined by a parabola.
+ * From well below the error the lens models leave at the seam (the legacy equidistant reading
+ * draws far content 3.5 degrees too close together and more there on the office X5, 1.75 per
+ * lens), so that a far bin's minimum is a trusted interior one, to beyond what the overlap leaves
+ * room for: an object 20 centimetres from the camera, with lenses 3.2 centimetres apart. The
+ * step is a quarter of a degree, refined by a parabola.
  */
-const LEAST_DISPARITY_DEGREES = -4;
+const LEAST_DISPARITY_DEGREES = -6;
 const MOST_DISPARITY_DEGREES = 10;
 const DISPARITY_STEP_DEGREES = 0.25;
 
@@ -46,14 +46,14 @@ export interface BinDisparity {
   readonly azimuth: Degrees;
   readonly disparity: Degrees;
   /**
-   * How much lower the best candidate's cost is than the bin's typical cost, as a share of the
+   * How much lower the best slide's cost is than the bin's typical cost, as a share of the
    * typical cost: near zero over sky, sea or a blank wall, where nothing tells one disparity
    * from another.
    */
   readonly contrast: number;
   /**
    * Whether the disparity may bend the seam: its costs have contrast, and their minimum lies
-   * well inside the range, among candidates both lenses image.
+   * well inside the range, among slides both lenses image.
    */
   readonly isTrusted: boolean;
 }
@@ -63,13 +63,13 @@ export interface BinDisparity {
  */
 const MIN_CONTRAST = 0.2;
 /**
- * A candidate imaged by both lenses over less of the bin than this is left out: the larger the
+ * A slide both lenses image less of the bin under than this is left out: the larger the
  * disparity, the fewer of the strip's rows both lenses see, and a few rows can agree by chance.
  */
 const MIN_VALIDITY = 0.25;
 /**
- * A minimum within this many steps of either end of the range, or of candidates both lenses
- * image too little of, is not trusted: the cost may fall further beyond, and on thin repeating
+ * A minimum within this many steps of either end of the range, or of slides both lenses image
+ * too little of, is not trusted: the cost may fall further beyond, and on thin repeating
  * lines (rigging, railings) a wrong alignment can win at the edge of what is compared.
  */
 const EDGE_STEPS = 2;
@@ -77,7 +77,7 @@ const EDGE_STEPS = 2;
 /**
  * The slides of lens 0's sampling across the ring the range tries, in order.
  */
-export function disparityCandidatesOf(range: DisparityRange = DEFAULT_DISPARITY_RANGE): Degrees[] {
+export function slidesOf(range: DisparityRange = DEFAULT_DISPARITY_RANGE): Degrees[] {
   const count = Math.round((range.most - range.least) / range.step) + 1;
   return Array.from({ length: count }, (_unused, index) =>
     degrees(range.least + index * range.step),
@@ -85,21 +85,24 @@ export function disparityCandidatesOf(range: DisparityRange = DEFAULT_DISPARITY_
 }
 
 /**
- * Each bin's disparity from the costs of every candidate, `costsByCandidate[k][bin]` being the
- * cost of `disparityCandidatesOf(range)[k]` in that bin.
+ * Each bin's disparity from the costs of every slide, `costsBySlide[k][bin]` being the cost of
+ * `slidesOf(range)[k]` in that bin: a row per slide of the range, a cost per seam bin in each.
  */
 export function binDisparitiesOf(
-  costsByCandidate: readonly SeamBinCosts[],
+  costsBySlide: readonly SeamBinCosts[],
   range: DisparityRange = DEFAULT_DISPARITY_RANGE,
 ): BinDisparity[] {
-  const candidateCount = disparityCandidatesOf(range).length;
+  const slideCount = slidesOf(range).length;
   ensureInvariant(
-    costsByCandidate.length === candidateCount,
-    `${costsByCandidate.length} rows of costs for ${candidateCount} candidates`,
+    costsBySlide.length === slideCount,
+    `${costsBySlide.length} rows of costs for ${slideCount} slides`,
   );
-  const binCount = costsByCandidate[0]?.length ?? 0;
-  return Array.from({ length: binCount }, (_unused, bin) => {
-    const costs = costsByCandidate.map((byBin) => usableCost(byBin[bin]));
+  ensureInvariant(
+    costsBySlide.every((byBin) => byBin.length === SEAM_BIN_COUNT),
+    `a row of costs without one per seam bin (${SEAM_BIN_COUNT})`,
+  );
+  return Array.from({ length: SEAM_BIN_COUNT }, (_unused, bin) => {
+    const costs = costsBySlide.map((byBin) => usableCost(byBin[bin]));
     return binDisparityOf(bin, costs, range);
   });
 }

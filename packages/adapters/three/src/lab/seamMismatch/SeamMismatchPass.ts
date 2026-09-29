@@ -31,7 +31,7 @@ import { RGBA_CHANNELS } from '../../seamMeter/rowMeans';
 import { LAB_DEFINES, SEAM_MISMATCH } from '../labPrograms';
 
 /**
- * The most slides one measurement takes, one row of the target each: the disparity range's 57
+ * The most slides one measurement takes, one row of the target each: the disparity range's 65
  * with room to spare, few enough that the read-back stays small.
  */
 export const MAX_SLIDES = 256;
@@ -109,7 +109,7 @@ export class SeamMismatchPass implements SeamMismatchMeter {
   public async measure(request: SeamMismatchRequest): Promise<readonly SeamBinCosts[] | undefined> {
     if (this.isDisposed) return undefined;
     this.apply(request);
-    const count = request.disparities.length;
+    const count = request.slides.length;
     // Each measurement reads into its own pixels: one started while another reads back must not
     // overwrite what the other decodes.
     const pixels = new Uint8Array(SEAM_BIN_COUNT * count * RGBA_CHANNELS);
@@ -146,7 +146,8 @@ export class SeamMismatchPass implements SeamMismatchMeter {
 
   /**
    * Whether the pass has been disposed by now: it can be while a measurement waits for the
-   * read-back, which the narrowing of the field after the first look does not know.
+   * read-back. TypeScript narrows `isDisposed` to false after the first look and keeps it so
+   * across the await; a method call is not narrowed.
    */
   private hasBeenDisposed(): boolean {
     return this.isDisposed;
@@ -156,20 +157,20 @@ export class SeamMismatchPass implements SeamMismatchMeter {
    * Each slide's angle, in radians, in the first channel of its row's texel; the gains per lens.
    */
   private apply(request: SeamMismatchRequest): void {
-    const { disparities, gains } = request;
+    const { slides, gains } = request;
     ensureInvariant(
-      disparities.length > 0 && disparities.length <= MAX_SLIDES,
-      `${disparities.length} slides, where one measurement takes 1 to ${MAX_SLIDES}`,
+      slides.length > 0 && slides.length <= MAX_SLIDES,
+      `${slides.length} slides, where one measurement takes 1 to ${MAX_SLIDES}`,
     );
     ensureInvariant(
       gains.length === COMPARED_LENSES,
       `${gains.length} gains for ${COMPARED_LENSES} lenses`,
     );
-    for (const [row, disparity] of disparities.entries()) {
-      this.slideData[row * RGBA_CHANNELS] = degreesToRadians(disparity);
+    for (const [row, slide] of slides.entries()) {
+      this.slideData[row * RGBA_CHANNELS] = degreesToRadians(slide);
     }
     this.slides.needsUpdate = true;
-    this.uniforms.uSlideCount.value = disparities.length;
+    this.uniforms.uSlideCount.value = slides.length;
     for (const [lensIndex, gain] of gains.entries()) {
       this.uniforms.uMismatchGain.value[lensIndex]?.set(...gain);
     }

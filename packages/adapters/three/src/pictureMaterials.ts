@@ -21,7 +21,7 @@ export type PictureMaterials = Readonly<Record<PictureKind, RawShaderMaterial>>;
 /**
  * The picture programs a renderer draws with and the constants they refer to.
  */
-export interface PictureProgramSet {
+export interface PictureShaders {
   readonly programs: PicturePrograms;
   readonly defines: Readonly<Record<string, number>>;
 }
@@ -29,7 +29,7 @@ export interface PictureProgramSet {
 /**
  * The pictures the player draws: the stitch through the fixed seam join.
  */
-export const PLAYER_PICTURES: PictureProgramSet = {
+export const PLAYER_SHADERS: PictureShaders = {
   programs: PICTURE_PROGRAMS,
   defines: SHADER_DEFINES,
 };
@@ -39,10 +39,10 @@ export const PLAYER_PICTURES: PictureProgramSet = {
  */
 export function createPictureMaterials(
   uniforms: RendererUniforms,
-  pictures: PictureProgramSet,
+  shaders: PictureShaders,
 ): PictureMaterials {
   const materialOf = (kind: PictureKind): RawShaderMaterial =>
-    createPassMaterial(uniforms, { chunks: pictures.programs[kind], defines: pictures.defines });
+    createPassMaterial(uniforms, { chunks: shaders.programs[kind], defines: shaders.defines });
   return {
     rectilinear: materialOf('rectilinear'),
     equirectangular: materialOf('equirectangular'),

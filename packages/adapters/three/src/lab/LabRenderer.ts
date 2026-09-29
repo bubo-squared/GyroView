@@ -1,14 +1,14 @@
 import {
-  ensureIndexInRange,
   type Matrix3 as CoreMatrix3,
   type SeamAlignment,
   type SeamMismatchMeter,
   type StitchingSetup,
 } from '@gyroview/core';
 
-import { LAB_PICTURES } from './labPrograms';
+import { LAB_SHADERS } from './labPrograms';
 import { applySeamAlignment, createSeamJoinUniforms, type SeamJoinUniforms } from './seamJoin';
 import { SeamMismatchPass } from './seamMismatch/SeamMismatchPass';
+import { applyLensPose } from '../rendererUniforms';
 import {
   ThreeFrameRenderer,
   type RendererParts,
@@ -35,7 +35,7 @@ export class LabRenderer extends ThreeFrameRenderer {
     options: ThreeFrameRendererOptions = {},
   ): LabRenderer {
     const join = createSeamJoinUniforms();
-    const pictures = { programs: LAB_PICTURES, uniforms: { ...join } };
+    const pictures = { shaders: LAB_SHADERS, uniforms: { ...join } };
     return new this(super.openParts(canvas, setup, { options, pictures }), canvas, join);
   }
 
@@ -45,8 +45,7 @@ export class LabRenderer extends ThreeFrameRenderer {
    */
   public setLensPose(lensIndex: number, rotation: CoreMatrix3): void {
     this.ensureLive();
-    ensureIndexInRange(lensIndex, this.parts.uniforms.uLensCount.value, 'lens');
-    this.parts.uniforms.uLensRotation.value[lensIndex]?.set(...rotation);
+    applyLensPose(this.uniforms, lensIndex, rotation);
     this.render();
   }
 
@@ -67,15 +66,12 @@ export class LabRenderer extends ThreeFrameRenderer {
    */
   public createSeamMismatchMeter(): SeamMismatchMeter {
     this.ensureLive();
-    const pass = new SeamMismatchPass(this.parts.renderer, this.parts.uniforms);
-    const meter: SeamMismatchMeter = {
+    const pass = new SeamMismatchPass(this.webgl, this.uniforms);
+    return this.tracked({
       measure: (request) => pass.measure(request),
-      dispose: (): void => {
-        this.meters.delete(meter);
+      dispose: () => {
         pass.dispose();
       },
-    };
-    this.meters.add(meter);
-    return meter;
+    });
   }
 }

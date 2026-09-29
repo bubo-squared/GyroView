@@ -124,10 +124,11 @@ module.exports = {
           '\\.test\\.ts$',
           '\\.contract\\.ts$',
           '/src/test/',
+          '/src/lab/test/',
           '^packages/core/src/testing/',
         ],
       },
-      to: { path: ['^packages/core/src/testing/', '/src/test/'] },
+      to: { path: ['^packages/core/src/testing/', '/src/test/', '/src/lab/test/'] },
     },
     {
       name: 'ports-do-not-know-use-cases',
@@ -179,6 +180,14 @@ module.exports = {
         path: '^(packages|apps)/',
         pathNot: ['^packages/adapters/three/src/lab/', '\\.test\\.ts$'],
       },
+      to: { path: '^packages/adapters/three/src/lab/' },
+    },
+    {
+      name: 'the-lab-is-for-the-measurements',
+      comment:
+        'Of the tools, only the pnpm measure runs draw through the lab; the regression tests draw the picture the player draws.',
+      severity: 'error',
+      from: { path: '^tools/', pathNot: '^tools/integration/src/measure/' },
       to: { path: '^packages/adapters/three/src/lab/' },
     },
     {

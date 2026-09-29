@@ -11,7 +11,7 @@ import {
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { MAX_SLIDES } from './SeamMismatchPass';
-import { nearScenePair, type NearScene } from '../../test/nearScene';
+import { nearScenePair, type NearScene } from '../test/nearScene';
 import { MULTI_TRACK, syntheticCalibration } from '../../test/syntheticStitching';
 import { LabRenderer } from '../LabRenderer';
 
@@ -34,7 +34,7 @@ const PAINTED_DISPARITY = 1.5;
  */
 const CLEAR_RATIO = 5;
 
-function slides(...values: readonly number[]): Degrees[] {
+function slidesAt(...values: readonly number[]): Degrees[] {
   return values.map((value) => degrees(value));
 }
 
@@ -77,15 +77,15 @@ describe('SeamMismatchPass', () => {
   });
 
   it('finds no disagreement unslid over a far scene, on a strip both lenses image whole', async () => {
-    const meter = meterOver({ disparity: () => 0 });
-    const [bins = []] = (await meter.measure({ disparities: slides(0), gains: UNIT_GAINS })) ?? [];
+    const meter = meterOver({ disparity: () => degrees(0) });
+    const [bins = []] = (await meter.measure({ slides: slidesAt(0), gains: UNIT_GAINS })) ?? [];
     for (const bin of bins) expect(bin.validity).toBe(1);
     expect(meanOf(bins)).toBeLessThan(AGREEMENT);
   });
 
   it('measures the slides in their order, one row each', async () => {
-    const meter = meterOver({ disparity: () => PAINTED_DISPARITY });
-    const measured = await meter.measure({ disparities: slides(3, 0, 1.5), gains: UNIT_GAINS });
+    const meter = meterOver({ disparity: () => degrees(PAINTED_DISPARITY) });
+    const measured = await meter.measure({ slides: slidesAt(3, 0, 1.5), gains: UNIT_GAINS });
     const [farther, unslid, painted] = (measured ?? []).map((bins) => meanOf(bins));
     expect(painted).toBeLessThan(AGREEMENT);
     expect(farther).toBeGreaterThan(CLEAR_RATIO * (painted ?? NaN));
@@ -93,23 +93,23 @@ describe('SeamMismatchPass', () => {
   });
 
   it('applies the gains before comparing, so a darker back lens agrees at its gain', async () => {
-    const meter = meterOver({ disparity: () => 0, backBrightness: 0.5 });
-    const [unmatched] = (await meter.measure({ disparities: slides(0), gains: UNIT_GAINS })) ?? [];
+    const meter = meterOver({ disparity: () => degrees(0), backBrightness: 0.5 });
+    const [unmatched] = (await meter.measure({ slides: slidesAt(0), gains: UNIT_GAINS })) ?? [];
     const matched = await meter.measure({
-      disparities: slides(0),
+      slides: slidesAt(0),
       gains: [UNIT_GAIN, DOUBLED_GAIN],
     });
     expect(meanOf(unmatched)).toBeGreaterThan(CLEAR_DISAGREEMENT);
     expect(meanOf(matched?.[0])).toBeLessThan(AGREEMENT);
   });
 
-  it('refuses no slides, more than one measurement takes, and gains for another lens count', async () => {
-    const meter = meterOver({ disparity: () => 0 });
-    const tooMany = slides(...Array.from({ length: MAX_SLIDES + 1 }, () => 0));
+  it('refuses an empty list of slides, more slides than one measurement takes, and gains for another number of lenses', async () => {
+    const meter = meterOver({ disparity: () => degrees(0) });
+    const tooMany = slidesAt(...Array.from({ length: MAX_SLIDES + 1 }, () => 0));
     const requests = [
-      { disparities: [], gains: UNIT_GAINS },
-      { disparities: tooMany, gains: UNIT_GAINS },
-      { disparities: slides(0), gains: [UNIT_GAIN, UNIT_GAIN, UNIT_GAIN] },
+      { slides: [], gains: UNIT_GAINS },
+      { slides: tooMany, gains: UNIT_GAINS },
+      { slides: slidesAt(0), gains: [UNIT_GAIN, UNIT_GAIN, UNIT_GAIN] },
     ];
     for (const request of requests) {
       await expect(meter.measure(request)).rejects.toThrow(
@@ -118,10 +118,22 @@ describe('SeamMismatchPass', () => {
     }
   });
 
+  it('keeps two measurements begun together apart: each reads back its own slides', async () => {
+    const meter = meterOver({ disparity: () => degrees(PAINTED_DISPARITY) });
+    const [atPainted, atZero] = await Promise.all([
+      meter.measure({ slides: slidesAt(PAINTED_DISPARITY), gains: UNIT_GAINS }),
+      meter.measure({ slides: slidesAt(0, 0), gains: UNIT_GAINS }),
+    ]);
+    expect(atPainted).toHaveLength(1);
+    expect(atZero).toHaveLength(2);
+    expect(meanOf(atPainted?.[0])).toBeLessThan(AGREEMENT);
+    expect(meanOf(atZero?.[1])).toBeGreaterThan(CLEAR_RATIO * meanOf(atPainted?.[0]));
+  });
+
   it('measures nothing once disposed', async () => {
-    const meter = meterOver({ disparity: () => 0 });
+    const meter = meterOver({ disparity: () => degrees(0) });
     meter.dispose();
-    await expect(meter.measure({ disparities: slides(0), gains: UNIT_GAINS })).resolves.toBe(
+    await expect(meter.measure({ slides: slidesAt(0), gains: UNIT_GAINS })).resolves.toBe(
       undefined,
     );
   });

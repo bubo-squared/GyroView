@@ -6,7 +6,7 @@ export function indexOfLeast(values: readonly number[]): number {
   let best = 0;
   let least = Infinity;
   for (const [index, value] of values.entries()) {
-    if (!(value < least)) continue;
+    if (!Number.isFinite(value) || !(value < least)) continue;
     best = index;
     least = value;
   }
@@ -16,7 +16,8 @@ export function indexOfLeast(values: readonly number[]): number {
 /**
  * Where the parabola through the values at `index` and its two neighbours has its vertex, in
  * steps from `index`: nothing when a neighbour is missing or not finite, or the three do not bend
- * upwards; at most half a step either way, where the neighbours sit.
+ * upwards; clamped to half a step either way, the most it can be when the value at `index` is the
+ * least of the three.
  */
 export function parabolicOffset(values: readonly number[], index: number): number {
   const before = values[index - 1] ?? Infinity;
@@ -29,7 +30,6 @@ export function parabolicOffset(values: readonly number[], index: number): numbe
 }
 
 /**
- * The best sample's neighbours bound the vertex of a parabola through three samples that bends
- * upwards to half a step either way.
+ * Past half a step the vertex lies nearer a neighbour than `index`, which then was not the least.
  */
 const HALF_STEP = 0.5;

@@ -61,4 +61,4 @@ export function chunksOf(programs: readonly (readonly string[])[]): readonly str
   return [...new Set(programs.flat())];
 }
 
-export const ALL_CHUNKS = chunksOf([...Object.values(PICTURE_PROGRAMS), SEAM_ANALYSIS]);
+export const PLAYER_CHUNKS = chunksOf([...Object.values(PICTURE_PROGRAMS), SEAM_ANALYSIS]);

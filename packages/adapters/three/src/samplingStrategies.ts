@@ -21,7 +21,7 @@ export interface SamplingStrategy {
    * poles and the rectilinear edges stretch a pixel's footprint several times longer than wide).
    */
   readonly anisotropy: number;
-  readonly sampling: number;
+  readonly shaderSampling: number;
 }
 
 const ISOTROPIC = 1;
@@ -36,18 +36,18 @@ export const SAMPLING_STRATEGIES: Readonly<Record<PictureQuality, SamplingStrate
     minFilter: LinearFilter,
     generateMipmaps: false,
     anisotropy: ISOTROPIC,
-    sampling: SAMPLING_BILINEAR,
+    shaderSampling: SAMPLING_BILINEAR,
   },
   balanced: {
     minFilter: LinearMipmapLinearFilter,
     generateMipmaps: true,
     anisotropy: ANISOTROPY_BALANCED,
-    sampling: SAMPLING_TRILINEAR,
+    shaderSampling: SAMPLING_TRILINEAR,
   },
   high: {
     minFilter: LinearMipmapLinearFilter,
     generateMipmaps: true,
     anisotropy: ANISOTROPY_HIGH,
-    sampling: SAMPLING_SUPERSAMPLED,
+    shaderSampling: SAMPLING_SUPERSAMPLED,
   },
 };

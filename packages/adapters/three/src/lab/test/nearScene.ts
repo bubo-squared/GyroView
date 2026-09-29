@@ -5,12 +5,13 @@ import {
   radians,
   radiansToDegrees,
   type CalibrationSet,
+  type Degrees,
   type DecodedFrame,
   type StitchingSetup,
   type Vector3,
 } from '@gyroview/core';
 
-import { recordedFrame, type Scene } from './recordedFrames';
+import { recordedFrame, type Scene } from '../../test/recordedFrames';
 
 /**
  * A luma that varies 24 times around the ring and falls across it, so a slide across the ring
@@ -27,18 +28,18 @@ export function ringScene([x, y, z]: Vector3): number {
 }
 
 /**
- * The body direction `theta` degrees from body +z at `azimuth` degrees from +x towards +y.
+ * The body direction `theta` from body +z at `azimuth` from +x towards +y.
  */
-export function directionAt(theta: number, azimuth: number): Vector3 {
-  const t = degreesToRadians(degrees(theta));
-  const a = degreesToRadians(degrees(azimuth));
+export function directionAt(theta: Degrees, azimuth: Degrees): Vector3 {
+  const t = degreesToRadians(theta);
+  const a = degreesToRadians(azimuth);
   return [Math.sin(t) * Math.cos(a), Math.sin(t) * Math.sin(a), Math.cos(t)];
 }
 
 /**
- * A disparity in degrees for each azimuth in degrees.
+ * A disparity for each azimuth.
  */
-export type DisparityProfile = (azimuth: number) => number;
+export type DisparityProfile = (azimuth: Degrees) => Degrees;
 
 /**
  * The scene as a lens sees it that sees everything `by(azimuth)` degrees farther from body +z
@@ -47,9 +48,9 @@ export type DisparityProfile = (azimuth: number) => number;
 function displacedAcross(scene: Scene, by: DisparityProfile): Scene {
   return ([x, y, z]) => {
     const azimuth = Math.atan2(y, x);
-    const azimuthDegrees = radiansToDegrees(radians(azimuth));
-    const shift = degreesToRadians(degrees(by(azimuthDegrees)));
-    const theta = Math.atan2(Math.hypot(x, y), z) - shift;
+    const azimuthInDegrees = radiansToDegrees(radians(azimuth));
+    const displacement = degreesToRadians(by(azimuthInDegrees));
+    const theta = Math.atan2(Math.hypot(x, y), z) - displacement;
     return scene([
       Math.sin(theta) * Math.cos(azimuth),
       Math.sin(theta) * Math.sin(azimuth),
@@ -82,7 +83,7 @@ export function nearScenePair(near: NearScene): DecodedFrame<VideoFrame>[] {
     if (!stitch) throw new Error(`no lens ${index} in the setup`);
     const side = index === 0 ? 1 : -1;
     const brightness = index === 0 ? 1 : backBrightness;
-    const seen = displacedAcross(ringScene, (azimuth) => (side * disparity(azimuth)) / 2);
+    const seen = displacedAcross(ringScene, (azimuth) => degrees((side * disparity(azimuth)) / 2));
     return recordedFrame({
       lens,
       calibration,

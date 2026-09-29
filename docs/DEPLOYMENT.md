@@ -61,6 +61,38 @@ the player never plays them.
 Object stores: enable byte-range serving (on by default for S3, GCS, R2 and Azure Blob) and
 add a CORS rule with the headers above. Recordings are large; a CDN in front caches ranges.
 
+## Recordings behind the visitor's cookies
+
+A host that keeps recordings private behind a login or signed cookies (CloudFront signed
+cookies, a file server behind a session) answers only a request that carries them. Across
+origins the element sends them only with `crossorigin="use-credentials"`, and a page driving
+`createBrowserPlayer` only with `credentials: 'include'` on the URL it loads; otherwise, as a
+media element's `anonymous` does, the player sends them to the page's own origin alone. They
+then go with every request for the recording: its size, its byte ranges and the look for the
+other lens's file (ADR 0027). The host must:
+
+- name the page's origin in `Access-Control-Allow-Origin`: the browser refuses `*` for a
+  request with credentials, and the player reports `cors`;
+- add `Access-Control-Allow-Credentials: true`;
+- answer a CORS preflight (`OPTIONS`) without asking for the cookies, which the browser never
+  sends with one; browsers differ on whether a `Range` request needs a preflight.
+
+```
+Access-Control-Allow-Origin: https://your-site.example
+Access-Control-Allow-Credentials: true
+Access-Control-Allow-Methods: GET, HEAD
+Access-Control-Allow-Headers: Range
+Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges
+Vary: Origin
+```
+
+The cookies go only where the browser's cookie rules let them: a host on the same site as the
+page (`app.example.com` and `media.example.com`) gets them as it gets any other request's; a
+host on another site needs them set `SameSite=None; Secure`, and a browser that blocks
+third-party cookies may still hold them back. The `poster` loads as an image does, with the
+cookies whatever `crossorigin` says, and local files handed to `loadFiles` are not fetched at
+all.
+
 ## Embedding
 
 The iframe needs `allow="fullscreen; autoplay"` to fill the screen and to start muted
@@ -70,7 +102,9 @@ puts in the URL (`origin=`), or the referrer's. Frames opened directly play stan
 The frame fetches the recordings itself, so their host must allow the frame's origin (see
 above). Host `embed.html` on an origin that holds no credentials for private recordings: any
 page may frame it and ask it to load a URL, and the frame fetches with its own origin's cookies,
-so a page could learn whether a cookie-protected file exists and what it holds. `GyroView.embed` resolves a relative `src` against the embedding page, so a clip next
+so a page could learn whether a cookie-protected file exists and what it holds. For the same
+reason the frame never takes `crossorigin`: reading with its cookies across origins would hand
+every page that frames it what those cookies open on other hosts (ADR 0027). `GyroView.embed` resolves a relative `src` against the embedding page, so a clip next
 to a blog post is fetched from the blog's host, across origins from the frame.
 
 A page with a Content Security Policy needs, for the iframe form, `frame-src` for the frame's

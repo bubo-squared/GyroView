@@ -58,20 +58,21 @@ a CDN or your own host; the site build's `gyro-view.js` registers the element th
 
 Attributes:
 
-| Attribute                   | Values                                    | What it does                                                                                                        |
-| --------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `src`                       | URL                                       | The recording; a relative URL resolves against the page.                                                            |
-| `src2`                      | URL                                       | The other lens's file of a split-file recording; found by itself when it sits beside `src` under the camera's name. |
-| `autoplay`                  | boolean                                   | Starts once ready; a refusal is an `autoplay-blocked` warning.                                                      |
-| `muted`, `loop`, `controls` | boolean                                   | As on a video element; `controls` shows the bar.                                                                    |
-| `poster`                    | URL                                       | Shown until the first picture.                                                                                      |
-| `preload`                   | `auto`, `none`                            | `none` keeps the decoders idle until play; otherwise the first frame shows at once.                                 |
-| `gain-match`                | `on`, `off`                               | `off` leaves the lenses' exposure as recorded.                                                                      |
-| `stabilization`             | `off`, `lock`, `horizon`, `follow`        | How the gyro steadies the picture.                                                                                  |
-| `view-mode`                 | `raw-lenses`, `equirectangular`, `normal` | What the picture shows (below); the raw lenses until set.                                                           |
-| `quality`                   | `fast`, `balanced`, `high`                | How finely the lens images are read and how many device pixels are drawn (below); `balanced` until set.             |
-| `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees.                                                             |
-| `yaw`, `pitch`              | degrees                                   | Where the normal view looks: yaw positive to the right, pitch positive up.                                          |
+| Attribute                   | Values                                    | What it does                                                                                                          |
+| --------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `src`                       | URL                                       | The recording; a relative URL resolves against the page.                                                              |
+| `src2`                      | URL                                       | The other lens's file of a split-file recording; found by itself when it sits beside `src` under the camera's name.   |
+| `crossorigin`               | `anonymous`, `use-credentials`            | As on a video element: `use-credentials` fetches the recording with the visitor's cookies (see "Serving recordings"). |
+| `autoplay`                  | boolean                                   | Starts once ready; a refusal is an `autoplay-blocked` warning.                                                        |
+| `muted`, `loop`, `controls` | boolean                                   | As on a video element; `controls` shows the bar.                                                                      |
+| `poster`                    | URL                                       | Shown until the first picture.                                                                                        |
+| `preload`                   | `auto`, `none`                            | `none` keeps the decoders idle until play; otherwise the first frame shows at once.                                   |
+| `gain-match`                | `on`, `off`                               | `off` leaves the lenses' exposure as recorded.                                                                        |
+| `stabilization`             | `off`, `lock`, `horizon`, `follow`        | How the gyro steadies the picture.                                                                                    |
+| `view-mode`                 | `raw-lenses`, `equirectangular`, `normal` | What the picture shows (below); the raw lenses until set.                                                             |
+| `quality`                   | `fast`, `balanced`, `high`                | How finely the lens images are read and how many device pixels are drawn (below); `balanced` until set.               |
+| `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees.                                                               |
+| `yaw`, `pitch`              | degrees                                   | Where the normal view looks: yaw positive to the right, pitch positive up.                                            |
 
 The element opens on `raw-lenses`, the decoded lens images side by side or stacked, whichever
 shows them larger, unstitched and as recorded; the camera records a square a little smaller
@@ -90,7 +91,8 @@ The settings (`stabilization`, `view-mode`, `quality`, `fov`, `yaw`, `pitch`, `m
 are applied when their attribute changes, and their properties (`viewMode` for `view-mode`,
 plus `volume`) report and change the setting in effect, as a video's `muted` property does, however
 it was last changed. The other attributes are mirrored by properties (`gainMatch` for
-`gain-match`); `preload` and `gainMatch` read the keyword in effect.
+`gain-match`, `crossOrigin` for `crossorigin`); `preload` and `gainMatch` read the keyword in
+effect, and `crossOrigin` reads `null` while its attribute is absent, as a video's does.
 
 Methods and properties:
 
@@ -212,9 +214,11 @@ The player reads the multi-gigabyte file in byte ranges straight from the camera
 the server hosting the recordings must answer `Range` requests with `206` (a `HEAD` with
 `Content-Length` saves a request, but is not required), and send CORS headers when the player
 runs on another origin, which for the iframe form is the one serving `embed.html` (a refusal is
-reported as `cors`). The player page itself must be served over HTTPS, because WebCodecs
-exists only in secure contexts. `docs/DEPLOYMENT.md` has the exact headers, the hosting layout
-and the error codes.
+reported as `cors`). A recording kept behind the visitor's cookies on another origin needs
+`crossorigin="use-credentials"`, and a host that names the page's origin (not `*`) with
+`Access-Control-Allow-Credentials: true`. The player page itself must be served over HTTPS,
+because WebCodecs exists only in secure contexts. `docs/DEPLOYMENT.md` has the exact headers,
+the hosting layout and the error codes.
 
 Browsers decode HEVC only in hardware: 5.7K plays on recent laptops and phones, 8K needs a
 Level 6 decoder (Apple Silicon, recent NVIDIA and Intel). A recording this browser cannot decode

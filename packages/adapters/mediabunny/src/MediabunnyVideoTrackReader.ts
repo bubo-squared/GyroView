@@ -10,7 +10,7 @@ import {
 } from '@gyroview/core';
 import { EncodedPacketSink, type EncodedPacket, type InputVideoTrack } from 'mediabunny';
 
-import { copyOfBytes } from './bufferSources';
+import { videoConfigurationOf } from './decoderConfigurations';
 
 /**
  * Container metadata may mark a packet as a key packet that is not one; the bitstream decides.
@@ -58,13 +58,7 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
         `video track ${this.description.trackIndex} (${this.description.codec}) cannot be configured for decoding`,
       );
     }
-    return {
-      codec: config.codec,
-      codedWidth: config.codedWidth ?? this.description.codedWidth,
-      codedHeight: config.codedHeight ?? this.description.codedHeight,
-      description: config.description === undefined ? undefined : copyOfBytes(config.description),
-      isFullRange: config.colorSpace?.fullRange ?? undefined,
-    };
+    return videoConfigurationOf(config, this.description);
   }
 
   public async keyframeAt(time: Seconds): Promise<KeyframeTime | undefined> {

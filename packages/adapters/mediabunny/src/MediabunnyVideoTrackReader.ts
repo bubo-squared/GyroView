@@ -11,13 +11,12 @@ import {
 import { EncodedPacketSink, type EncodedPacket, type InputVideoTrack } from 'mediabunny';
 
 import { videoConfigurationOf } from './decoderConfigurations';
+import { PacketCursor } from './PacketCursor';
 
 /**
  * Container metadata may mark a packet as a key packet that is not one; the bitstream decides.
  */
 const VERIFIED = { verifyKeyPackets: true };
-
-const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
 
 /**
  * VideoTrackReader over one mediabunny video track; the packets it hands out are plain data.
@@ -72,7 +71,7 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
   public packetsFrom(time: Seconds): AsyncIterable<EncodedVideoPacket> {
     return {
       [Symbol.asyncIterator]: (): AsyncIterator<EncodedVideoPacket> =>
-        new PacketCursor(() => this.packetsFromKeyAt(time)),
+        new PacketCursor(() => this.packetsFromKeyAt(time), plainPacketOf),
     };
   }
 
@@ -99,44 +98,6 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
       );
     }
     return this.sink.packets(start)[Symbol.asyncIterator]();
-  }
-}
-
-/**
- * One iteration over mediabunny's packets, opened on the first packet asked for. Returning it
- * returns mediabunny's own iterator, which ends a read awaited meanwhile; mediabunny stops
- * reading ahead for it at once.
- */
-class PacketCursor implements AsyncIterator<EncodedVideoPacket> {
-  private packets: AsyncIterator<EncodedPacket> | undefined;
-  private isOpen = true;
-
-  public constructor(private readonly open: () => Promise<AsyncIterator<EncodedPacket>>) {}
-
-  public async next(): Promise<IteratorResult<EncodedVideoPacket>> {
-    this.packets ??= await this.open();
-    if (this.wasReturned()) return this.returnPackets();
-    const result = await this.packets.next();
-    return result.done === true || this.wasReturned()
-      ? DONE
-      : { done: false, value: plainPacketOf(result.value) };
-  }
-
-  public async return(): Promise<IteratorResult<EncodedVideoPacket>> {
-    this.isOpen = false;
-    return this.returnPackets();
-  }
-
-  /**
-   * Asked afresh after every wait: a return may come while a packet is awaited.
-   */
-  private wasReturned(): boolean {
-    return !this.isOpen;
-  }
-
-  private async returnPackets(): Promise<IteratorReturnResult<undefined>> {
-    await this.packets?.return?.();
-    return DONE;
   }
 }
 

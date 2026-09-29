@@ -3,13 +3,14 @@ import {
   GyroViewError,
   isAbortError,
   seconds,
+  type AudioSegmentSource,
   type DemuxedInput,
   type Demuxer,
   type RandomAccessSource,
 } from '@gyroview/core';
 import { ALL_FORMATS, CustomSource, Input } from 'mediabunny';
 
-import { MediabunnyAudioSegments } from './MediabunnyAudioSegments';
+import { openAudioSegments } from './MediabunnyAudioSegments';
 import { MediabunnyVideoTrackReader } from './MediabunnyVideoTrackReader';
 
 /**
@@ -67,8 +68,7 @@ async function describeInput(input: Input, name: string | undefined): Promise<De
       videoTracks.map((track, trackIndex) => MediabunnyVideoTrackReader.open(track, trackIndex)),
     ),
     audioTracks: audioTracks.map((track, trackIndex) => ({
-      openSegments: (): Promise<MediabunnyAudioSegments> =>
-        MediabunnyAudioSegments.open(track, trackIndex),
+      openSegments: (): Promise<AudioSegmentSource> => openAudioSegments(track, trackIndex),
     })),
     dispose: (): void => {
       input.dispose();

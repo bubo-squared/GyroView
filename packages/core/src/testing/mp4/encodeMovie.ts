@@ -10,6 +10,7 @@ import {
   MEDIA_HEADER,
   MOVIE_HEADER,
   TABLE_ENTRIES_OFFSET,
+  UNIT_MEDIA_RATE,
   TABLE_ENTRY_COUNT_OFFSET,
   TRACK_HEADER_ID,
   type HeaderTiming,
@@ -74,7 +75,6 @@ const DATA_REFERENCE = 'dref';
 const DATA_ENTRY_URL = 'url ';
 const DATA_IN_THIS_FILE = 1;
 const ONE_ENTRY = 1;
-const UNIT_MEDIA_RATE = 1;
 const TIME_FIELD_BYTES: Readonly<Record<IntegerField['kind'], number>> = {
   uint16: 2,
   uint32: 4,

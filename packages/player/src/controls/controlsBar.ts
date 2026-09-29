@@ -18,5 +18,5 @@ export function bindControlsBar(root: ParentNode, host: ControlsHost): void {
   bindViewButtons(parts, host);
   new SeekBar(parts, host);
   new SoundControls(parts, host.player);
-  new PictureMenus(root, parts, host.player);
+  new PictureMenus(root, parts, { player: host.player, wording: host.wording });
 }

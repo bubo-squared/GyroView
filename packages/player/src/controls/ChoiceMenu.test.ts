@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ChoiceMenu, type ChoiceMenuParts } from './ChoiceMenu';
-import { choiceItem, removeRenderedControls, renderControls } from '../test/controls';
+import { Wording } from './Wording';
+import { choiceItem, labelledName, removeRenderedControls, renderControls } from '../test/controls';
 
 interface World {
   readonly parts: ChoiceMenuParts;
@@ -29,8 +30,11 @@ function world(): World {
     escapedKeys.push(event.key);
   });
   const chosen: string[] = [];
-  const menu = new ChoiceMenu(bar, parts.viewMode, (choice) => {
-    chosen.push(choice);
+  const menu = new ChoiceMenu(bar, parts.viewMode, {
+    wording: new Wording(),
+    choose: (choice): void => {
+      chosen.push(choice);
+    },
   });
   menu.markChosen('equirectangular');
   return {
@@ -41,6 +45,13 @@ function world(): World {
     outside: parts.play,
     item: (choice) => choiceItem(parts.viewMode.popup, choice),
   };
+}
+
+/**
+ * The icon an element shows, as markup to compare.
+ */
+function iconOf(element: Element): string | undefined {
+  return element.querySelector(':scope svg')?.outerHTML;
 }
 
 function press(target: Element, key: string, isShiftPressed = false): void {
@@ -72,6 +83,25 @@ describe('ChoiceMenu', () => {
       item(choice).getAttribute('aria-checked'),
     );
     expect(checked).toEqual(['true', 'false', 'false']);
+  });
+
+  it("shows the checked choice's icon on its button, named by what it sets and the choice", () => {
+    const { parts, menu, item } = world();
+    menu.markChosen('raw-lenses');
+    expect(labelledName(parts.button)).toBe('View Raw lenses');
+    expect(iconOf(parts.button)).toBe(iconOf(item('raw-lenses')));
+    menu.markChosen('normal');
+    expect(labelledName(parts.button)).toBe('View Normal');
+    expect(iconOf(parts.button)).toBe(iconOf(item('normal')));
+    expect(parts.button.querySelectorAll(':scope svg')).toHaveLength(1);
+  });
+
+  it('closes on its close button and hands the focus back to its button', () => {
+    const { parts } = world();
+    parts.button.click();
+    parts.close.click();
+    expect(parts.popup.hidden).toBe(true);
+    expect(document.activeElement).toBe(parts.button);
   });
 
   it('reports a choice, closes and hands the focus back to its button', () => {

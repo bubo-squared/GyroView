@@ -1,6 +1,14 @@
 /*
  * The controls' own styles: the big play button, the bar, its buttons, sliders and menus, and the
- * grab hand over the picture. The host's custom properties (`--gyro-view-*`) theme them.
+ * grab hand over the picture. The host's custom properties (`--gyro-view-*`) theme them. Secondary
+ * words, fills and tracks are the text colour at lower strengths, so a page that changes the text
+ * colour changes them with it.
+ *
+ * Two things change the bar. A coarse pointer makes every target 44 pixels and leaves the
+ * volume to the device's own buttons. A narrow player, whatever the pointer, gives up the volume
+ * slider, shows the menus over the whole player, and past that gives up the time and then Reset
+ * view (the widths below). Sizes are in rem like the page's text, so larger text moves the widths
+ * with it.
  */
 
 .big-play {
@@ -10,11 +18,8 @@
   width: 4.5rem;
   height: 4.5rem;
   transform: translate(-50%, -50%);
-  border: 0;
   border-radius: 50%;
   background: var(--gyro-view-controls-background);
-  color: var(--gyro-view-text);
-  cursor: pointer;
 }
 
 .big-play .icon {
@@ -28,13 +33,28 @@
 }
 
 .controls {
+  /* The buttons, and the seek bar's hit area, which reaches up over the shade. */
+  --target: 2.25rem;
+  --seek-height: 1rem;
+
   position: absolute;
   inset: auto 0 0 0;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
-  padding: 0.25rem 0.5rem 0.5rem;
-  background: linear-gradient(to top, var(--gyro-view-controls-background), transparent);
+  gap: 0.25rem;
+  padding: 0 1rem 0.625rem;
   transition: opacity 0.25s;
+}
+
+/* The shade behind the bar, reaching 3rem above it without taking the picture's presses there. */
+.controls::before {
+  content: '';
+  position: absolute;
+  inset: -3rem 0 0;
+  z-index: -1;
+  background: linear-gradient(to top, var(--gyro-view-controls-background), transparent);
+  pointer-events: none;
 }
 
 /* A failed player has nothing to control: the error says so, and a press would only fail again. */
@@ -62,19 +82,13 @@
   flex: 1;
 }
 
-.time {
-  font-size: 0.8rem;
-  font-variant-numeric: tabular-nums;
-  padding: 0 0.5rem;
-  white-space: nowrap;
-}
-
 button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.25rem;
-  height: 2.25rem;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
   border: 0;
   border-radius: var(--gyro-view-radius);
   background: transparent;
@@ -83,39 +97,120 @@ button {
   cursor: pointer;
 }
 
+button[hidden] {
+  display: none;
+}
+
 .icon {
+  flex: none;
   width: 1.25rem;
   height: 1.25rem;
   pointer-events: none;
 }
 
-button:hover,
-button:focus-visible {
-  background: rgb(255 255 255 / 15%);
+.icon-button {
+  flex: none;
+  width: var(--target);
+  height: var(--target);
 }
 
-button:focus-visible,
-input:focus-visible {
+.icon-button:hover,
+.icon-button:focus-visible {
+  background: color-mix(in srgb, var(--gyro-view-text) 12%, transparent);
+}
+
+:focus-visible {
   outline: 2px solid var(--gyro-view-accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
+.time {
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.elapsed {
+  opacity: 0.85;
+}
+
+.total {
+  opacity: 0.5;
+}
+
+/* The sliders: a 3-pixel track in the text colour, filled and handled in the accent. Chrome and
+   Safari draw the filled part from `--fill`, which the controls keep; Firefox draws it itself. */
 input[type='range'] {
-  accent-color: var(--gyro-view-accent);
+  --track: color-mix(in srgb, var(--gyro-view-text) 28%, transparent);
+
   margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
 }
 
+input[type='range']::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 1.5px;
+  background: linear-gradient(
+    to right,
+    var(--gyro-view-accent) calc(var(--fill, 0) * 100%),
+    var(--track) 0
+  );
+}
+
+input[type='range']::-webkit-slider-thumb {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-top: calc((3px - 0.75rem) / 2);
+  border: 0;
+  border-radius: 50%;
+  background: var(--gyro-view-accent);
+  appearance: none;
+}
+
+input[type='range']::-moz-range-track {
+  height: 3px;
+  border-radius: 1.5px;
+  background: var(--track);
+}
+
+input[type='range']::-moz-range-progress {
+  height: 3px;
+  border-radius: 1.5px;
+  background: var(--gyro-view-accent);
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--gyro-view-accent);
+}
+
+/* Taller than it looks: the hit area grows upward over the shade, leaving the bar's layout be. */
 .seek {
   width: 100%;
-  height: 1.25rem;
+  height: var(--seek-height);
+  margin-top: calc(1rem - var(--seek-height));
 }
 
 .volume {
-  width: 5rem;
+  flex: none;
+  width: 4rem;
+  height: var(--target);
 }
 
-button[hidden] {
-  display: none;
+/* A setting button shows the icon of the choice in effect, and stays lit while its menu is open. */
+.setting-icon {
+  display: inline-flex;
+}
+
+.setting[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--gyro-view-text) 20%, transparent);
 }
 
 .choice {
@@ -123,31 +218,49 @@ button[hidden] {
   display: flex;
 }
 
-/* A menu opens upward from the bar and never past the player's top, which would hide its first
-   items out of reach: what does not fit scrolls. The bar's row and gaps take the 3.75rem. */
+/* A menu opens upward, right-aligned with its button, as wide as its longest line within limits,
+   so a description fits on one line unless a translation makes it long; and never past the
+   player's top, which would put its first choices out of reach: what does not fit scrolls. */
 .popup {
   position: absolute;
   right: 0;
-  bottom: calc(100% + 0.5rem);
+  bottom: calc(100% + 0.625rem);
+  z-index: 1;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  max-height: calc(100cqh - 3.75rem);
+  width: max-content;
+  min-width: 16.25rem;
+  max-width: min(22rem, 100cqw - 2rem);
+  max-height: calc(100cqh - var(--target) - 2rem);
   overflow-y: auto;
-  min-width: 9rem;
-  padding: 0.35rem;
-  border-radius: var(--gyro-view-radius);
-  background: var(--gyro-view-controls-background);
+  padding: 0.375rem;
+  border-radius: calc(var(--gyro-view-radius) * 1.5);
+  background: var(--gyro-view-menu-background);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 35%);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 
 .popup[hidden] {
   display: none;
 }
 
+.popup-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .popup-title {
-  margin: 0.2rem 0.5rem 0.35rem;
+  margin: 0.375rem 0.5rem 0.25rem;
   font-size: 0.75rem;
-  opacity: 0.7;
+  opacity: 0.55;
+}
+
+.popup-close {
+  display: none;
 }
 
 [role='menu'] {
@@ -155,52 +268,192 @@ button[hidden] {
   flex-direction: column;
 }
 
+/* A choice: its icon, its name over a line describing it, and a check on the right while it is in
+   effect. */
 [role='menuitemradio'] {
-  justify-content: flex-start;
-  gap: 0.4rem;
-  height: 2rem;
-  padding: 0 0.75rem 0 0.4rem;
-  font-size: 0.9rem;
-  white-space: nowrap;
+  display: grid;
+  grid-template-columns: 1.25rem 1fr 1rem;
+  column-gap: 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0.625rem;
+  text-align: start;
 }
 
-[role='menuitemradio']::before {
+[role='menuitemradio']:hover,
+[role='menuitemradio']:focus-visible {
+  background: color-mix(in srgb, var(--gyro-view-text) 8%, transparent);
+}
+
+[role='menuitemradio']::after {
   content: '\2713';
-  width: 1rem;
+  grid-area: 1 / 3 / span 2;
+  font-size: 0.875rem;
   color: var(--gyro-view-accent);
   visibility: hidden;
 }
 
-[role='menuitemradio'][aria-checked='true']::before {
+[role='menuitemradio'][aria-checked='true']::after {
   visibility: visible;
 }
 
-/* A narrowing player, on a phone or in a narrow column, gives up in turn the stop button (play
-   pauses), the volume slider (mute stays), the time and Reset view (the 0 key stays), so the
-   other buttons stay in reach. Each width is where the bar stops fitting with the part, with
-   times up to an hour, in rem like the bar itself, so larger page text moves them with it (490,
-   450, 360 and 256 px at 16 px a rem). */
-@container (max-width: 30.625rem) {
-  .stop {
-    display: none;
-  }
+.choice-icon {
+  display: inline-flex;
+  grid-area: 1 / 1 / span 2;
 }
 
-@container (max-width: 28.125rem) {
+.choice-name {
+  grid-column: 2;
+  font-size: 0.875rem;
+}
+
+.choice-description {
+  grid-column: 2;
+  font-size: 0.75rem;
+  opacity: 0.55;
+}
+
+/* Touch: 44-pixel targets, and the volume left to the device. */
+@media (pointer: coarse) {
+  .controls {
+    --target: 2.75rem;
+    --seek-height: 2.75rem;
+  }
+
   .volume {
     display: none;
   }
 }
 
-@container (max-width: 22.5rem) {
+/* A narrow player: no volume slider, and menus over the whole player, each with a close button
+   and 44-pixel rows. */
+@container (max-width: 37.5rem) {
+  .volume {
+    display: none;
+  }
+
+  .choice {
+    position: static;
+  }
+
+  .popup {
+    inset: auto 0 0;
+    width: auto;
+    max-width: none;
+    height: 100cqh;
+    max-height: none;
+    padding: 0 0.5rem 0.5rem;
+    border-radius: 0;
+    box-shadow: none;
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+
+  .popup-header {
+    padding-left: 0.5rem;
+  }
+
+  .popup-title {
+    margin: 0;
+    font-size: 0.8125rem;
+  }
+
+  .popup-close {
+    display: inline-flex;
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  [role='menuitemradio'] {
+    min-height: 2.75rem;
+    padding-block: 0;
+  }
+
+  /* Without the descriptions a choice has one line, which its icon and check keep level with. */
+  .choice-icon,
+  [role='menuitemradio']::after {
+    grid-row: 1;
+  }
+
+  .choice-name {
+    font-size: 0.9375rem;
+  }
+
+  .choice-description {
+    display: none;
+  }
+}
+
+/*
+ * Narrower still, the bar gives up the time (the seek bar still shows where playback is), then
+ * Reset view (the 0 key stays). Each width is where the bar stops fitting with the part, measured
+ * with stabilization offered and times up to an hour; touch's larger targets move each width out.
+ */
+@container (max-width: 23.5rem) {
   .time {
     display: none;
   }
 }
 
-@container (max-width: 16rem) {
+@container (max-width: 17.5rem) {
+  .controls {
+    padding-inline: 0.5rem;
+  }
+
   .reset-view {
     display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  @container (max-width: 26.5rem) {
+    .time {
+      display: none;
+    }
+  }
+
+  @container (max-width: 20.5rem) {
+    .controls {
+      padding-inline: 0.5rem;
+    }
+
+    .reset-view {
+      display: none;
+    }
+  }
+}
+
+/* Without a blur behind it, or for a viewer who asked for less transparency, a menu is laid
+   twice over itself: its own colour, near enough opaque. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .popup {
+    background:
+      linear-gradient(var(--gyro-view-menu-background), var(--gyro-view-menu-background)),
+      var(--gyro-view-menu-background);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .popup {
+    background:
+      linear-gradient(var(--gyro-view-menu-background), var(--gyro-view-menu-background)),
+      var(--gyro-view-menu-background);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Forced colours: the sliders keep a visible track and handle, and the menus an edge, in the
+   system's colours. */
+@media (forced-colors: active) {
+  input[type='range'] {
+    --track: GrayText;
+    --gyro-view-accent: Highlight;
+
+    forced-color-adjust: none;
+  }
+
+  .popup {
+    border: 1px solid CanvasText;
   }
 }
 

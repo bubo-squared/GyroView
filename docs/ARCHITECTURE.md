@@ -267,8 +267,9 @@ The composition root and the user-facing element, in three layers.
   page's own through the element's `messages` property). `bindControlsBar` binds `TransportButtons`, the view buttons (Reset view,
   Fullscreen), `SeekBar` (key-frame
   scrubbing), `SoundControls` and `PictureMenus` (the view mode and stabilization menus, each a
-  `ChoiceMenu` behind an icon button; stabilization is offered only for a recording with a gyro
-  in a stitched view mode). The bar's markup and styles come from `controlsMarkup` and
+  `ChoiceMenu` behind a button that shows the icon of the choice in effect; stabilization is offered
+  only for a recording with a gyro in a stitched view mode). How much the bar shows follows the
+  player's width and the pointer (ADR 0028). The bar's markup and styles come from `controlsMarkup` and
   `controls.css`, which the element's template takes in, and every icon button draws an SVG
   from `icons`, cloned from one parsed copy when a button changes its icon. `ViewGestures` turns drags,
   pinches and wheel turns into view changes; `keyboard` maps keys to commands;

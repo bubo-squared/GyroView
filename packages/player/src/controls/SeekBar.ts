@@ -4,9 +4,10 @@ import type { ControlParts } from './controlParts';
 import type { ControlsHost } from './ControlsHost';
 import { formatTime } from './formatTime';
 import { SEEK_STEP_SECONDS } from './keyboard';
+import { showSliderFill } from './sliderFill';
 import type { Player } from '../player/Player';
 
-export type SeekParts = Pick<ControlParts, 'seek' | 'time'>;
+export type SeekParts = Pick<ControlParts, 'seek' | 'elapsed' | 'total'>;
 
 /**
  * The slider's arrow keys and the direction each seeks in: the native step is the one the
@@ -134,14 +135,16 @@ export class SeekBar {
   }
 
   /**
-   * The time beside the bar, and the same time for screen readers, which would read the slider's
-   * raw seconds.
+   * The time beside the bar and the bar filled up to it, and the same time for screen readers,
+   * which would read the slider's raw seconds.
    */
   private showTime(time: number): void {
     const [shown, total] = [formatTime(time), formatTime(this.host.player.duration)];
-    this.parts.time.textContent = `${shown} / ${total}`;
+    this.parts.elapsed.textContent = shown;
+    this.parts.total.textContent = `/ ${total}`;
     const { position } = this.host.wording.current.labels;
     const spoken = position.replaceAll('{time}', () => shown).replaceAll('{duration}', () => total);
     this.parts.seek.setAttribute('aria-valuetext', spoken);
+    showSliderFill(this.parts.seek);
   }
 }

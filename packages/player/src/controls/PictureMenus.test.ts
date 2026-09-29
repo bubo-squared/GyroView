@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ChoiceMenuParts } from './ChoiceMenu';
 import { PictureMenus, type PictureMenuParts, type PicturePlayer } from './PictureMenus';
+import { Wording } from './Wording';
 import type { PlayerEvents } from '../player/PlayerEvents';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import { choiceItem, removeRenderedControls, renderControls } from '../test/controls';
@@ -75,7 +76,7 @@ function item(parts: ChoiceMenuParts, choice: string): HTMLElement {
 function pictureMenus(): { parts: PictureMenuParts; player: FakePicturePlayer } {
   const { root, parts } = renderControls();
   const player = new FakePicturePlayer();
-  new PictureMenus(root, parts, player);
+  new PictureMenus(root, parts, { player, wording: new Wording() });
   return { parts, player };
 }
 

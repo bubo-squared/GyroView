@@ -12,7 +12,6 @@ export interface GyroViewLabels {
   readonly loading: string;
   readonly play: string;
   readonly pause: string;
-  readonly stop: string;
   readonly seek: string;
   /**
    * How the seek bar tells assistive technology where it is: `{time}` and `{duration}` are
@@ -25,6 +24,10 @@ export interface GyroViewLabels {
   readonly stabilization: string;
   readonly viewMode: string;
   readonly fullscreen: string;
+  /**
+   * The button that closes a menu shown over the whole player, as it is on a narrow one.
+   */
+  readonly close: string;
 }
 
 export type LabelName = keyof GyroViewLabels;
@@ -36,7 +39,15 @@ export type LabelName = keyof GyroViewLabels;
 export interface GyroViewMessages {
   readonly labels: GyroViewLabels;
   readonly stabilizationModes: Readonly<Record<StabilizationMode, string>>;
+  /**
+   * One line under each choice of the Stabilization menu, where there is room for it.
+   */
+  readonly stabilizationModeDescriptions: Readonly<Record<StabilizationMode, string>>;
   readonly viewModes: Readonly<Record<ViewMode, string>>;
+  /**
+   * One line under each choice of the View menu, where there is room for it.
+   */
+  readonly viewModeDescriptions: Readonly<Record<ViewMode, string>>;
   /**
    * What a visitor reads when a recording cannot play, by the failure's code. The `error`
    * event carries the developer's account of it.
@@ -51,7 +62,33 @@ export type GyroViewMessageOverrides = {
   readonly [Table in keyof GyroViewMessages]?: Partial<GyroViewMessages[Table]>;
 };
 
-export type ChoiceTable = 'stabilizationModes' | 'viewModes';
+/**
+ * The tables that name a menu's choices, by the choice.
+ */
+export type ChoiceTable =
+  'stabilizationModes' | 'stabilizationModeDescriptions' | 'viewModes' | 'viewModeDescriptions';
+
+/**
+ * The words one menu gives each choice: its name and its description.
+ */
+export interface ChoiceWords {
+  readonly names: ChoiceTable;
+  readonly descriptions: ChoiceTable;
+}
+
+export const STABILIZATION_WORDS: ChoiceWords = {
+  names: 'stabilizationModes',
+  descriptions: 'stabilizationModeDescriptions',
+};
+
+export const VIEW_MODE_WORDS: ChoiceWords = {
+  names: 'viewModes',
+  descriptions: 'viewModeDescriptions',
+};
+
+const CHOICE_TABLES: ReadonlySet<string> = new Set(
+  [STABILIZATION_WORDS, VIEW_MODE_WORDS].flatMap((words) => [words.names, words.descriptions]),
+);
 
 const UNREACHABLE = 'The video could not be loaded.';
 const UNSUPPORTED_BROWSER = 'This browser cannot play this video.';
@@ -97,7 +134,6 @@ export const DEFAULT_MESSAGES: GyroViewMessages = {
     loading: 'Loading',
     play: 'Play',
     pause: 'Pause',
-    stop: 'Stop',
     seek: 'Seek',
     position: '{time} of {duration}',
     mute: 'Mute',
@@ -106,9 +142,21 @@ export const DEFAULT_MESSAGES: GyroViewMessages = {
     stabilization: 'Stabilization',
     viewMode: 'View',
     fullscreen: 'Fullscreen',
+    close: 'Close',
   },
   stabilizationModes: { off: 'Off', lock: 'Lock', horizon: 'Horizon', follow: 'Follow' },
+  stabilizationModeDescriptions: {
+    off: 'Footage as the camera moved',
+    lock: 'Orientation fixed to the world',
+    horizon: 'Level horizon, follows heading',
+    follow: 'Follows turns, smooths out shake',
+  },
   viewModes: { 'raw-lenses': 'Raw lenses', equirectangular: 'Equirectangular', normal: 'Normal' },
+  viewModeDescriptions: {
+    'raw-lenses': 'Both fisheye images as recorded',
+    equirectangular: 'The full 360° frame, unwrapped',
+    normal: 'Standard view, drag to look around',
+  },
   errors: ERRORS,
 };
 
@@ -121,7 +169,15 @@ export function messagesWith(overrides: unknown): GyroViewMessages {
   return {
     labels: tableWith(DEFAULT_MESSAGES.labels, given['labels']),
     stabilizationModes: tableWith(DEFAULT_MESSAGES.stabilizationModes, given['stabilizationModes']),
+    stabilizationModeDescriptions: tableWith(
+      DEFAULT_MESSAGES.stabilizationModeDescriptions,
+      given['stabilizationModeDescriptions'],
+    ),
     viewModes: tableWith(DEFAULT_MESSAGES.viewModes, given['viewModes']),
+    viewModeDescriptions: tableWith(
+      DEFAULT_MESSAGES.viewModeDescriptions,
+      given['viewModeDescriptions'],
+    ),
     errors: tableWith(DEFAULT_MESSAGES.errors, given['errors']),
   };
 }
@@ -131,7 +187,7 @@ export function isLabelName(name: string | null): name is LabelName {
 }
 
 export function isChoiceTable(name: string | null): name is ChoiceTable {
-  return name === 'stabilizationModes' || name === 'viewModes';
+  return name !== null && CHOICE_TABLES.has(name);
 }
 
 function tableWith<Table extends object>(defaults: Table, overrides: unknown): Table {

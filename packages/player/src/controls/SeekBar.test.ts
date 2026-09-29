@@ -51,7 +51,11 @@ function seekBar(): World {
   const seek = document.createElement('input');
   seek.type = 'range';
   seek.step = 'any';
-  const parts = { seek, time: document.createElement('span') };
+  const parts = {
+    seek,
+    elapsed: document.createElement('span'),
+    total: document.createElement('span'),
+  };
   const transport = new FakeTransport();
   const warnings: PlayerWarning[] = [];
   new SeekBar(parts, {
@@ -79,16 +83,23 @@ function seekBar(): World {
   };
 }
 
+/**
+ * The time beside the bar as it reads: where playback is, then the length after a slash.
+ */
+function shownTime(parts: SeekParts): string {
+  return `${parts.elapsed.textContent} ${parts.total.textContent}`;
+}
+
 describe('SeekBar', () => {
   it('spans the loaded recording, and nothing once a load fails or it is unloaded', () => {
     const { parts, transport } = seekBar();
     transport.becomeReady(3);
     expect(parts.seek.max).toBe('3');
-    expect(parts.time.textContent).toBe('0:00 / 0:03');
+    expect(shownTime(parts)).toBe('0:00 / 0:03');
     transport.duration = seconds(0);
     transport.events.emit('statuschange', 'error');
     expect(parts.seek.max).toBe('0');
-    expect(parts.time.textContent).toBe('0:00 / 0:00');
+    expect(shownTime(parts)).toBe('0:00 / 0:00');
   });
 
   it('follows playback while not held, and stays with the thumb while it is dragged', () => {
@@ -99,8 +110,19 @@ describe('SeekBar', () => {
     drag(4);
     transport.events.emit('timeupdate', seconds(2));
     expect(parts.seek.value).toBe('4');
-    expect(parts.time.textContent).toBe('0:04 / 0:10');
+    expect(shownTime(parts)).toBe('0:04 / 0:10');
     expect(parts.seek.getAttribute('aria-valuetext')).toBe('0:04 of 0:10');
+  });
+
+  it('fills the bar up to where playback is, and up to the thumb while it is dragged', () => {
+    const { parts, transport, drag } = seekBar();
+    const fill = (): string => parts.seek.style.getPropertyValue('--fill');
+    expect(fill()).toBe('0');
+    transport.becomeReady(10);
+    transport.events.emit('timeupdate', seconds(5));
+    expect(fill()).toBe('0.5');
+    drag(8);
+    expect(fill()).toBe('0.8');
   });
 
   it("seeks five seconds with the slider's arrow keys, not its hundredth-of-a-second step", () => {

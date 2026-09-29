@@ -6,7 +6,7 @@ import { GyroViewElement } from './GyroViewElement';
 import { queryShadow } from '../controls/controlParts';
 import { choiceMenuClasses, type ChoiceMenuName } from '../controls/controlsMarkup';
 import type { PlayerWarning } from '../player/PlayerEvents';
-import { expectIconOnly } from '../test/controls';
+import { expectIconOnly, labelledName } from '../test/controls';
 import { fetchBytes, X5_RECORDING_URL, X5_RECORDING_WITH_AUDIO_URL } from '../test/recordings';
 import { nextEvent, settle, waitFor } from '../test/waiting';
 
@@ -335,11 +335,15 @@ describe('<gyro-view>', () => {
     expect(element.getAttribute('aria-label')).toBe('Lecteur vidéo 360°');
     expect(named.getAttribute('aria-label')).toBe('Harbour at dawn');
     expect(control(element, '.play', HTMLButtonElement).getAttribute('aria-label')).toBe('Lecture');
-    expect(control(element, '.view-mode-button', HTMLButtonElement).ariaLabel).toBe('Vue');
-    expect(viewMenu.querySelector('[data-choice="raw-lenses"]')?.textContent).toBe(
-      'Objectifs bruts',
+    expect(labelledName(control(element, '.view-mode-button', HTMLButtonElement))).toBe(
+      'Vue Objectifs bruts',
     );
-    expect(control(element, '.stop', HTMLButtonElement).getAttribute('aria-label')).toBe('Stop');
+    expect(
+      viewMenu.querySelector(':scope [data-choice="raw-lenses"] .choice-name')?.textContent,
+    ).toBe('Objectifs bruts');
+    expect(
+      viewMenu.querySelector(':scope [data-choice="raw-lenses"] .choice-description')?.textContent,
+    ).toBe('Both fisheye images as recorded');
     expect(element.messages.labels.play).toBe('Lecture');
 
     element.messages = null;
@@ -371,9 +375,7 @@ describe('<gyro-view>', () => {
     expect(play.getAttribute('aria-label')).toBe('Play');
     expect(getComputedStyle(controls).display).not.toBe('none');
     const stage = control(element, '.stage', HTMLElement);
-    const buttons = stage.querySelectorAll(
-      ':scope .big-play, :scope .row button:not([role="menuitemradio"])',
-    );
+    const buttons = stage.querySelectorAll(':scope .big-play, :scope .icon-button:not(.setting)');
     for (const button of buttons) {
       expect(button.getAttribute('aria-label')).not.toBeNull();
       expectIconOnly(button);
@@ -852,13 +854,14 @@ describe('<gyro-view>', () => {
 
   it('keeps every control of the bar within the player at every width, whatever the text size', async () => {
     await page.viewport(WIDE_PAGE.width, WIDE_PAGE.height);
-    const element = await createReady();
+    // The longest choices shown, stabilization offered: the widest the bar gets.
+    const element = await createReady({ 'view-mode': 'equirectangular', stabilization: 'horizon' });
     const root = document.documentElement;
     try {
       for (const remInPixels of [16, 20]) {
         root.style.fontSize = `${remInPixels}px`;
         // Just above each breakpoint, where the most parts show, and the narrowest player.
-        for (const widthInRem of [31, 28.5, 23, 16.5, 14]) {
+        for (const widthInRem of [38, 24, 18, 14]) {
           element.style.width = `${widthInRem * remInPixels}px`;
           expectBarWithin(element);
         }
@@ -887,12 +890,58 @@ describe('<gyro-view>', () => {
     }
   });
 
-  it('shows the stop button, the volume and the time where there is room', async () => {
-    const element = await createReady();
-    element.style.width = '640px';
-    for (const part of ['.stop', '.volume', '.time']) {
+  it('shows the volume and the time where there is room', async () => {
+    const element = await createReady({ 'view-mode': 'normal' });
+    element.style.width = '960px';
+    for (const part of ['.volume', '.time']) {
       expect(getComputedStyle(control(element, part, HTMLElement)).display).not.toBe('none');
     }
+  });
+
+  it('shows the icon of the choice in effect on each setting button, named by the setting and the choice', async () => {
+    const element = await createReady({ 'view-mode': 'equirectangular', stabilization: 'horizon' });
+    const view = control(element, '.view-mode-button', HTMLButtonElement);
+    const stabilization = control(element, '.stabilization-button', HTMLButtonElement);
+    for (const width of [960, 520, 320]) {
+      element.style.width = `${width}px`;
+      expect(labelledName(view)).toBe('View Equirectangular');
+      expect(labelledName(stabilization)).toBe('Stabilization Horizon');
+    }
+    element.setViewMode('normal');
+    expect(labelledName(view)).toBe('View Normal');
+    for (const button of [view, stabilization]) {
+      expect(button.querySelectorAll(':scope svg')).toHaveLength(1);
+      const words = [...button.querySelectorAll(':scope [id]')];
+      expect(words.some((word) => word.checkVisibility())).toBe(false);
+    }
+  });
+
+  it('shows a menu over the whole of a narrow player, closed by its own button', async () => {
+    const element = await createReady();
+    element.style.width = '400px';
+    control(element, '.view-mode-button', HTMLButtonElement).click();
+    const popup = control(element, '.view-mode-menu', HTMLElement);
+    const [shown, player] = [popup.getBoundingClientRect(), element.getBoundingClientRect()];
+    expect({ top: shown.top, left: shown.left, width: shown.width, height: shown.height }).toEqual({
+      top: player.top,
+      left: player.left,
+      width: player.width,
+      height: player.height,
+    });
+    const close = control(element, '.view-mode-menu .popup-close', HTMLButtonElement);
+    expect(getComputedStyle(close).display).not.toBe('none');
+    close.click();
+    expect(popup.hidden).toBe(true);
+    expect(shadowOf(element).activeElement).toBe(
+      control(element, '.view-mode-button', HTMLButtonElement),
+    );
+  });
+
+  it('keeps Reset view in every view mode, the raw lenses included, which zoom too', async () => {
+    const element = await createReady({ 'view-mode': 'raw-lenses' });
+    element.style.width = '960px';
+    const reset = control(element, '.reset-view', HTMLButtonElement);
+    expect(getComputedStyle(reset).display).not.toBe('none');
   });
 
   it('pins itself over the whole viewport where fullscreen is refused, whatever size the page gave it', async () => {

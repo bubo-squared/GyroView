@@ -11,12 +11,13 @@ import {
 
 const LABEL = 'data-label';
 const TEXT = 'data-text';
-const CHOICES = 'data-choices';
+const CHOICE_TEXT = 'data-choice-text';
 const ERROR = 'data-error';
 const SELECTORS = {
   label: '[data-label]',
   text: '[data-text]',
-  choices: '[data-choices]',
+  choiceText: '[data-choice-text]',
+  choice: '[data-choice]',
   error: '[data-error]',
 } as const;
 
@@ -26,7 +27,8 @@ const SELECTORS = {
  * of words.
  * - `data-label`: the label for its `aria-label`;
  * - `data-text`: the label for its text;
- * - `data-choices` on a menu: the table its items' `data-choice` are read from;
+ * - `data-choice-text`: for its text, the table's word for the choice the nearest `data-choice`,
+ *   its own or an ancestor's, names;
  * - `data-error`: the visitor's words for that failure code.
  */
 export class Wording {
@@ -65,7 +67,8 @@ export class Wording {
   public write(root: ParentNode): void {
     for (const element of root.querySelectorAll(SELECTORS.label)) this.writeLabel(element);
     for (const element of root.querySelectorAll(SELECTORS.text)) this.writeText(element);
-    for (const menu of root.querySelectorAll(SELECTORS.choices)) this.writeChoices(menu);
+    for (const element of root.querySelectorAll(SELECTORS.choiceText))
+      this.writeChoiceText(element);
     for (const element of root.querySelectorAll(SELECTORS.error)) this.writeError(element);
   }
 
@@ -79,13 +82,12 @@ export class Wording {
     if (isLabelName(name)) element.textContent = this.words.labels[name];
   }
 
-  private writeChoices(menu: Element): void {
-    const name = menu.getAttribute(CHOICES);
-    if (!isChoiceTable(name)) return;
+  private writeChoiceText(element: Element): void {
+    const name = element.getAttribute(CHOICE_TEXT);
+    const choice = element.closest<HTMLElement>(SELECTORS.choice)?.dataset['choice'];
+    if (choice === undefined || !isChoiceTable(name)) return;
     const table: Readonly<Record<string, string>> = this.words[name];
-    for (const item of menu.querySelectorAll<HTMLElement>('[data-choice]')) {
-      item.textContent = table[item.dataset['choice'] ?? ''] ?? '';
-    }
+    element.textContent = table[choice] ?? '';
   }
 
   private writeError(element: Element): void {

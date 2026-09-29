@@ -28,7 +28,6 @@ function world(): World {
       get isPaused(): boolean {
         return isPaused;
       },
-      stop: record('stop'),
     },
     togglePlay: record('toggle play'),
     wording: new Wording(),
@@ -55,22 +54,10 @@ afterEach(() => {
 describe('the transport and view buttons', () => {
   it('passes each press on to what it names', () => {
     const { parts, calls } = world();
-    for (const button of [
-      parts.play,
-      parts.bigPlay,
-      parts.stop,
-      parts.resetView,
-      parts.fullscreen,
-    ]) {
+    for (const button of [parts.play, parts.bigPlay, parts.resetView, parts.fullscreen]) {
       button.click();
     }
-    expect(calls).toEqual([
-      'toggle play',
-      'toggle play',
-      'stop',
-      'reset view',
-      'toggle fullscreen',
-    ]);
+    expect(calls).toEqual(['toggle play', 'toggle play', 'reset view', 'toggle fullscreen']);
   });
 
   it('says on both play buttons what a press does, and draws it', () => {

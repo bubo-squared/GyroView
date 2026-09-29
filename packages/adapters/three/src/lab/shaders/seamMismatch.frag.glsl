@@ -12,7 +12,7 @@ uniform float uMismatchCap;
 
 out vec4 outColor;
 
-// Rec. 601 luma of gamma-encoded RGB, as omnikit compares the lenses.
+// Rec. 601 luma of the gamma-encoded RGB the frames hold.
 const vec3 LUMA = vec3(0.299, 0.587, 0.114);
 // Each sub-sample at the centre of its share of the cell.
 const float SUB_SAMPLE_CENTRE = 0.5;

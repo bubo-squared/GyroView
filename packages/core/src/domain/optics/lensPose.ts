@@ -16,11 +16,9 @@ import {
 
 /**
  * The roll the rotation applies for a calibration roll: mirrored about the sensor's mounting,
- * the quarter turn nearest to it. The strings measure the in-plane roll in the other sense than
- * the lens frame turns: registered alone on Insta360 Studio's stitch, about its own axis, the
- * back lens sits 0.83 degrees from the front one on the sailing X5 read as written, and 0.07
- * read mirrored; on the office X5, 0.88 and 0.09 (ADR 0025). The mounting itself is kept, so a
- * sensor mounted sideways, as on the X5, or upright stays so.
+ * the quarter turn nearest to it, since the strings measure the in-plane roll in the other sense
+ * than the lens frame turns (measured on two X5 units, ADR 0025). The mounting itself is kept,
+ * so a sensor mounted sideways, as on the X5, or upright stays so.
  */
 export function mirroredRoll(roll: Degrees): Degrees {
   const mounting = Math.round(roll / QUARTER_TURN) * QUARTER_TURN;
@@ -35,11 +33,8 @@ export function mirroredRoll(roll: Degrees): Degrees {
  * lens in the body frame, alike for both lenses; then lens `i` turns half a turn per lens index
  * about the lateral axis to face backwards, its sensor upside down relative to the front one
  * (ADR 0008); then the roll turns the image about the optical axis, read mirrored
- * ({@link mirroredRoll}). Registering each X5 lens alone on Insta360 Studio's stitch of the
- * sailing recording measured this order (ADR 0025): the half turn first would turn the back
- * lens's yaw the other way and leave the lenses 1.1 degrees apart about the vertical. The X5
- * strings carry a roll near 90 degrees for both lenses and no half turn, which
- * is why the facing is part of the convention.
+ * ({@link mirroredRoll}), the order measured in ADR 0025. The X5 strings carry a roll near 90
+ * degrees for both lenses and no half turn, which is why the facing is part of the convention.
  */
 export function lensRotation(lens: LensCalibration): Matrix3 {
   const { yaw, pitch, roll } = lens.orientation;

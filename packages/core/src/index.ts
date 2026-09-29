@@ -166,7 +166,6 @@ export {
 export { MISMATCH_CAP, type SeamBinCost, type SeamBinCosts } from './domain/stitching/seamMismatch';
 export {
   binDisparitiesOf,
-  DEFAULT_DISPARITY_RANGE,
   disparityCandidatesOf,
   type BinDisparity,
   type DisparityRange,

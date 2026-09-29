@@ -9,11 +9,9 @@ const FIELD_EDGE_DEGREES = 100;
 export const HALF_FIELD_OF_VIEW = degreesToRadians(degrees(FIELD_EDGE_DEGREES));
 
 /**
- * The direction the legacy calibration's radius marks, from the lens axis. Measured against
- * Insta360 Studio's stitch of the sailing recording (ADR 0023): read as 100 degrees, both the
- * equidistant and the Mei models draw every direction 3 to 5 percent too close to the axis,
- * and the far field matches the export best with the radius at 95 to 97 degrees. omnikit reads
- * it as 95.
+ * The direction the legacy calibration's radius marks, from the lens axis: where Insta360
+ * Studio's stitch of the sailing X5 puts the far field, and where that unit's seam draws far
+ * content in one place (ADR 0023). The office X5's seam wants 97 degrees; the reading is open.
  */
 const LEGACY_RADIUS_DEGREES = 96;
 

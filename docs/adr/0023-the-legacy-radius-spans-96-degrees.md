@@ -14,7 +14,7 @@ parallax of near objects confounds. omnikit reads the same radius as spanning 95
 (`fov_deg = 190`), and its stitch looked right where GyroView's did not.
 
 Insta360 Studio's export of the sailing recording is an external reference: Insta360's own
-stitch of the same frames. Under `pnpm measure`, `referenceComparison.test.ts` turns GyroView's
+stitch of the same frames. Under `pnpm measure`, `referenceComparison.test.ts` (removed once this was settled) turns GyroView's
 panorama of a frame, under the gyro's lock, to match the export on the far-field rows (sky,
 horizon, coast) and scores what remains; `lensReadings.test.ts` does so for each reading of the
 strings and a sweep of radial scales.

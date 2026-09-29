@@ -40,3 +40,28 @@ ffmpeg -f lavfi -i "testsrc=size=64x64:rate=10" -t 3 -c:v libx264 -preset ultraf
   -pix_fmt yuv420p -tag:v avc1 -output_ts_offset 0.7 -movflags +faststart \
   test/fixtures/synthetic/late-start-64px-10fps-3s.mp4
 ```
+
+`dual-track-aac-moov-at-end-64px-10fps-3s.mp4`: `dual-track-aac-64px-10fps-3s.mp4` without
+`+faststart`, so the movie box comes after the media data, as the cameras write it. Its sound
+track groups its samples in chunks of changing size (20 sample-to-chunk entries) and its edit
+list skips the encoder's priming (media time 1024). For the sample table's agreement with
+mediabunny. Regenerate with:
+
+```sh
+ffmpeg -f lavfi -i "testsrc=size=64x64:rate=10" -f lavfi -i "testsrc2=size=64x64:rate=10" \
+  -f lavfi -i "sine=frequency=440:sample_rate=48000" -t 3 -map 0:v -map 1:v -map 2:a \
+  -c:v libx264 -preset ultrafast -g 10 -bf 0 -pix_fmt yuv420p -tag:v avc1 \
+  -c:a aac -b:a 64k -ac 2 test/fixtures/synthetic/dual-track-aac-moov-at-end-64px-10fps-3s.mp4
+```
+
+`hevc-b-frames-dual-track-64px-10fps-3s.mp4`: two 64x64 HEVC tracks (`hvc1`) with B-frames, a
+key frame every 10 frames: its composition offsets reorder the frames (30 runs) and its edit
+list starts the media at 2048 ticks. The cameras record without B-frames; the agreement with
+mediabunny covers the reordering anyway. Regenerate with:
+
+```sh
+ffmpeg -f lavfi -i "testsrc=size=64x64:rate=10" -f lavfi -i "testsrc2=size=64x64:rate=10" -t 3 \
+  -map 0:v -map 1:v -c:v libx265 -preset ultrafast \
+  -x265-params "keyint=10:min-keyint=10:bframes=2:log-level=error" -pix_fmt yuv420p -tag:v hvc1 \
+  test/fixtures/synthetic/hevc-b-frames-dual-track-64px-10fps-3s.mp4
+```

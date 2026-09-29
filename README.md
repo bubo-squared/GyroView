@@ -45,7 +45,7 @@ a CDN or your own host; the site build's `gyro-view.js` registers the element th
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/@bubo-squared/gyroview@0.1/dist/standalone.js"
+  src="https://cdn.jsdelivr.net/npm/@bubo-squared/gyroview@0.2/dist/standalone.js"
 ></script>
 
 <gyro-view

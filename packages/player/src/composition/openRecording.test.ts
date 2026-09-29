@@ -56,10 +56,10 @@ class LateKeyframeTrack extends FakeVideoTrack {
     super(options);
   }
 
-  public override async firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
+  public override async *packetsFrom(): AsyncIterable<EncodedVideoPacket> {
     await this.after;
     this.deadline.resolve();
-    return new Deferred<EncodedVideoPacket | undefined>().promise;
+    yield await new Deferred<EncodedVideoPacket>().promise;
   }
 }
 

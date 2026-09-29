@@ -121,7 +121,9 @@ describe('WebCodecsVideoDecoderPort', () => {
 
   it('reports a packet it cannot decode once, and fails every later call with that failure', async () => {
     const [track] = input.videoTracks;
-    const key = await track?.firstKeyPacket();
+    const first = await track?.firstKeyframe();
+    if (!track || !first) throw new Error('the fixture has no key frame');
+    const [key] = await Array.fromAsync(track.packetsFrom(first.timestamp));
     if (!key) throw new Error('the fixture has no key packet');
     const errors: Error[] = [];
     const decoder = await port.create(configuration, {

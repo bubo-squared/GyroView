@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { FramePair } from '../../ports/FramePair';
 import { FramePairQueue } from './FramePairQueue';
 import { DecodePipeline } from './DecodePipeline';
-import { seconds } from '../../shared/units/time';
+import { seconds, type Seconds } from '../../shared/units/time';
 import { fakeFrameNumberOf, FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../../ports/VideoTrack';
 import type {
@@ -36,8 +36,8 @@ function twoLensTracks(frameCount = FRAMES): FakeVideoTrack[] {
 class WeaklyTrackedTrack extends FakeVideoTrack {
   public readonly handedOut: WeakRef<EncodedVideoPacket>[] = [];
 
-  public override async *packetsFrom(start: EncodedVideoPacket): AsyncIterable<EncodedVideoPacket> {
-    for await (const packet of super.packetsFrom(start)) {
+  public override async *packetsFrom(time: Seconds): AsyncIterable<EncodedVideoPacket> {
+    for await (const packet of super.packetsFrom(time)) {
       const copy = { ...packet };
       this.handedOut.push(new WeakRef(copy));
       yield copy;

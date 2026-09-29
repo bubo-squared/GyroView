@@ -48,15 +48,16 @@ function failOnError(error: unknown): never {
 const QUIET = { onProgress: ignoreProgress, onFailure: failOnError };
 
 /**
- * A track whose key packet lookup fails once its gate opens, as a read over a dropped connection.
+ * A track whose first packet fails once its gate opens, as a read over a dropped connection.
  */
 class LateFailingTrack extends FakeVideoTrack {
   public readonly gate = new Deferred<void>();
   public lookups = 0;
 
-  public override async keyPacketAt(): Promise<EncodedVideoPacket | undefined> {
+  public override async *packetsFrom(): AsyncIterable<EncodedVideoPacket> {
     this.lookups += 1;
     await this.gate.promise;
+    yield* [];
     throw new GyroViewError('source-unreadable', 'the connection dropped');
   }
 }

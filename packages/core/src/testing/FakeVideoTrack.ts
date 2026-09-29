@@ -28,6 +28,7 @@ export interface FakeVideoTrackOptions {
 }
 
 const DEFAULT_CODED_SIZE = 2880;
+const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
 const FAKE_CODEC = 'fake.1';
 const BYTE_MASK = 0xff;
 const BITS_PER_BYTE = 8;
@@ -38,6 +39,10 @@ const BITS_PER_BYTE = 8;
  */
 export class FakeVideoTrack implements VideoTrackReader {
   public readonly description: VideoTrackDescription;
+  /**
+   * Packet iterations under way: started and neither finished nor returned.
+   */
+  public openCursors = 0;
   private readonly packets: readonly EncodedVideoPacket[];
 
   public constructor(private readonly options: FakeVideoTrackOptions) {
@@ -74,18 +79,10 @@ export class FakeVideoTrack implements VideoTrackReader {
     return Promise.resolve(this.packets.find((packet) => packet.isKeyFrame));
   }
 
-  public async *packetsFrom(start: EncodedVideoPacket): AsyncIterable<EncodedVideoPacket> {
-    const index = this.packets.indexOf(start);
-    if (index === -1) {
-      throw new GyroViewError(
-        'invariant-violation',
-        'packetsFrom needs a packet handed out by this track',
-      );
-    }
-    for (const packet of this.packets.slice(index)) {
-      await Promise.resolve();
-      yield packet;
-    }
+  public packetsFrom(time: Seconds): AsyncIterable<EncodedVideoPacket> {
+    return {
+      [Symbol.asyncIterator]: (): AsyncIterator<EncodedVideoPacket> => this.cursorAt(time),
+    };
   }
 
   public sampleTimestamps(): Promise<readonly Seconds[]> {
@@ -94,6 +91,19 @@ export class FakeVideoTrack implements VideoTrackReader {
 
   public frameCount(): Promise<number> {
     return Promise.resolve(this.options.frameCount);
+  }
+
+  private cursorAt(time: Seconds): FakePacketCursor {
+    const keys = this.packets.filter((packet) => packet.isKeyFrame);
+    const start = keys.findLast((packet) => packet.timestamp <= time) ?? keys[0];
+    this.openCursors += 1;
+    const onClose = (): void => {
+      this.openCursors -= 1;
+    };
+    return new FakePacketCursor(
+      start ? this.packets.slice(this.packets.indexOf(start)) : undefined,
+      onClose,
+    );
   }
 
   private packetFor(frame: number): EncodedVideoPacket {
@@ -116,6 +126,42 @@ function codedShapeOf(
     codedHeight: options.codedHeight ?? size,
     codec: options.codec ?? FAKE_CODEC,
   };
+}
+
+/**
+ * One iteration over the fake's packets, each a turn after it is asked for, as a read would come.
+ * Without packets to start from, as on a track without a key frame, it fails as a reader must.
+ */
+class FakePacketCursor implements AsyncIterator<EncodedVideoPacket> {
+  private position = 0;
+  private isOpen = true;
+
+  public constructor(
+    private readonly packets: readonly EncodedVideoPacket[] | undefined,
+    private readonly onClose: () => void,
+  ) {}
+
+  public async next(): Promise<IteratorResult<EncodedVideoPacket>> {
+    await Promise.resolve();
+    if (!this.packets) {
+      this.close();
+      throw new GyroViewError('no-key-frame', 'the fake track has no key frame');
+    }
+    const packet = this.isOpen ? this.packets[this.position] : undefined;
+    if (!packet) return this.close();
+    this.position += 1;
+    return { done: false, value: packet };
+  }
+
+  public return(): Promise<IteratorResult<EncodedVideoPacket>> {
+    return Promise.resolve(this.close());
+  }
+
+  private close(): IteratorReturnResult<undefined> {
+    if (this.isOpen) this.onClose();
+    this.isOpen = false;
+    return DONE;
+  }
 }
 
 function timeOf(packet: EncodedVideoPacket | undefined): KeyframeTime | undefined {

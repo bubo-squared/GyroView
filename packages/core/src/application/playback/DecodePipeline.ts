@@ -128,7 +128,7 @@ export class DecodePipeline<Handle = unknown> {
       },
     );
     // A run aborted before it opened, as a seek overtaken by the next one is, opens nothing.
-    const iterators = stop.wasStopped ? [] : await this.packetIteratorsFrom(from);
+    const iterators = stop.wasStopped ? [] : this.packetIteratorsFrom(from);
     const onError = (error: Error): void => {
       failure.resolve(error);
       stop.stop();
@@ -199,19 +199,8 @@ export class DecodePipeline<Handle = unknown> {
     }
   }
 
-  private packetIteratorsFrom(from: Seconds): Promise<PacketIterator[]> {
-    return Promise.all(
-      this.frameSources.map(async (track) => {
-        const start = (await track.keyPacketAt(from)) ?? (await track.firstKeyPacket());
-        if (!start) {
-          throw new GyroViewError(
-            'no-key-frame',
-            `track ${track.description.trackIndex} has no key frame`,
-          );
-        }
-        return track.packetsFrom(start)[Symbol.asyncIterator]();
-      }),
-    );
+  private packetIteratorsFrom(from: Seconds): PacketIterator[] {
+    return this.frameSources.map((track) => track.packetsFrom(from)[Symbol.asyncIterator]());
   }
 }
 

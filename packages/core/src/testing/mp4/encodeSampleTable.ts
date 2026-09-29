@@ -71,7 +71,7 @@ function compositionOffsets(track: FixtureTrack): Uint8Array[] {
   const version = track.compositionOffsets === 'version-1' ? 1 : 0;
   const runs = runsOf(track.samples.map((sample) => sample.compositionOffset ?? 0));
   const rows = runs.map((run) => ({ sampleCount: run.count, sampleOffset: run.value }));
-  const layout = COMPOSITION_OFFSET[version];
+  const layout = COMPOSITION_OFFSET;
   return [encodeTable({ type: Mp4BoxType.CompositionOffset, version, layout }, rows)];
 }
 

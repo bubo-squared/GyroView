@@ -79,24 +79,15 @@ export const TIME_TO_SAMPLE: TableLayout<'sampleCount' | 'sampleDelta'> = {
 
 /**
  * CompositionOffsetBox, `ctts` (§8.6.1.3): runs of samples presented the same time after (and in
- * version 1, possibly before) they are decoded.
+ * version 1, possibly before) they are decoded. Version 0 is unsigned by the standard, but
+ * writers put negative offsets there too, so both versions are read signed, as mediabunny and
+ * FFmpeg read them.
  */
-export const COMPOSITION_OFFSET: Readonly<
-  Record<0 | 1, TableLayout<'sampleCount' | 'sampleOffset'>>
-> = {
-  0: {
-    entrySize: 8,
-    fields: {
-      sampleCount: { offset: 0, kind: 'uint32' },
-      sampleOffset: { offset: 4, kind: 'uint32' },
-    },
-  },
-  1: {
-    entrySize: 8,
-    fields: {
-      sampleCount: { offset: 0, kind: 'uint32' },
-      sampleOffset: { offset: 4, kind: 'int32' },
-    },
+export const COMPOSITION_OFFSET: TableLayout<'sampleCount' | 'sampleOffset'> = {
+  entrySize: 8,
+  fields: {
+    sampleCount: { offset: 0, kind: 'uint32' },
+    sampleOffset: { offset: 4, kind: 'int32' },
   },
 };
 
@@ -122,7 +113,7 @@ export const EDIT_LIST: Readonly<
     fields: {
       segmentDuration: { offset: 0, kind: 'uint32' },
       mediaTime: { offset: 4, kind: 'int32' },
-      mediaRate: { offset: 8, kind: 'uint16' },
+      mediaRate: { offset: 8, kind: 'uint32' },
     },
   },
   1: {
@@ -130,11 +121,15 @@ export const EDIT_LIST: Readonly<
     fields: {
       segmentDuration: { offset: 0, kind: 'uint64' },
       mediaTime: { offset: 8, kind: 'int64' },
-      mediaRate: { offset: 16, kind: 'uint16' },
+      mediaRate: { offset: 16, kind: 'uint32' },
     },
   },
 };
 export const EMPTY_EDIT_MEDIA_TIME = -1;
+/**
+ * An edit's media rate is 16.16 fixed point; 1 plays the media at its own pace.
+ */
+export const UNIT_MEDIA_RATE = 0x00_01_00_00;
 
 /**
  * SampleToChunkBox, `stsc` (§8.7.4): from each 1-based first chunk on, how many samples a chunk

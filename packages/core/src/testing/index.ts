@@ -46,6 +46,13 @@ export {
   type IndexedLayoutOptions,
 } from './TrailerFixtureBuilder';
 export { FakeDemuxer, type FakeInputSpec } from './FakeDemuxer';
+export { FakeCodecReader } from './FakeCodecReader';
+export { describeCodecReaderContract, type CodecReaderUnderTest } from './CodecReader.contract';
+export { FakeAudioSampleSource } from './FakeAudioSampleSource';
+export {
+  describeAudioSampleSourceContract,
+  type AudioSampleSourceExpectations,
+} from './AudioSampleSource.contract';
 export { minimalInfoRecord, type MinimalInfo } from './minimalInfoRecord';
 export { InfoRecordFormat, RecordType } from '../domain/format/constants';
 export { parseOffsetString } from '../domain/format/calibration/parseOffsetString';

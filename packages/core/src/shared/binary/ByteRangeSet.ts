@@ -44,6 +44,16 @@ export class ByteRangeSet {
   }
 
   /**
+   * Whether any byte of `range` is in the set; an empty range never is.
+   */
+  public overlaps(range: ByteRange): boolean {
+    return (
+      range.length > 0 &&
+      this.ranges.some((held) => held.offset < range.end && range.offset < held.end)
+    );
+  }
+
+  /**
    * The set with every gap between two of its ranges shorter than `length` filled: fetching a
    * few unneeded bytes costs less than asking for the ranges on either side apart.
    */

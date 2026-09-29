@@ -12,6 +12,14 @@ export const BOX_SIZE_IS_LARGE = 1;
 export const BOX_SIZE_TO_END_OF_FILE = 0;
 
 /**
+ * A full box (ISO/IEC 14496-12 §4.2.2) opens its payload with a u8 version and 24 bits of flags,
+ * read together as one big-endian u32.
+ */
+export const FULL_BOX_HEADER_SIZE = 4;
+export const FULL_BOX_VERSION_OFFSET = 0;
+export const FULL_BOX_FLAG_BITS = 24;
+
+/**
  * The box types the player looks for. `inst` is Insta360's wrapper around the trailer on newer
  * firmware; older firmware appends the trailer bare, outside any box.
  */

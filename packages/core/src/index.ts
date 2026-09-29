@@ -237,6 +237,9 @@ export {
   type Radians,
 } from './shared/units/angle';
 
+// Downloading a recording while it plays
+export { SourceByteStream } from './application/download/SourceByteStream';
+
 // The container's sample tables
 export { SampleTable } from './domain/container/SampleTable';
 export {

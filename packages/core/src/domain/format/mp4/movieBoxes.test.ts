@@ -23,6 +23,28 @@ describe('boxesIn', () => {
     expect(captureError(() => boxesIn(cut))).toMatchObject({ code: 'unsupported-container' });
   });
 
+  it('refuses a later box that runs past the end, and says where', () => {
+    const second = encodeBox('trak', new Uint8Array(12)).subarray(0, 15);
+    const bytes = Uint8Array.of(...encodeBox('free', Uint8Array.of(1)), ...second);
+    expect(captureError(() => boxesIn(bytes))).toMatchObject({
+      code: 'unsupported-container',
+      message: expect.stringContaining('holds no box at byte 9 of 24') as string,
+    });
+  });
+
+  it('lists a box of a header alone at the very end', () => {
+    const bytes = Uint8Array.of(
+      ...encodeBox('free', Uint8Array.of(1)),
+      ...encodeBox('skip', new Uint8Array()),
+    );
+    expect(boxesIn(bytes).map((box) => box.type)).toEqual(['free', 'skip']);
+  });
+
+  it('leaves out fewer bytes at the end than a header takes, as padding', () => {
+    const bytes = Uint8Array.of(...encodeBox('free', Uint8Array.of(1)), 0, 0, 0, 0);
+    expect(boxesIn(bytes).map((box) => box.type)).toEqual(['free']);
+  });
+
   it('finds the box of a type, or refuses a movie box without one it needs', () => {
     const boxes = boxesIn(encodeBox('mdhd', new Uint8Array(4)));
     expect(requiredBox(boxes, 'mdhd').type).toBe('mdhd');
@@ -30,6 +52,15 @@ describe('boxesIn', () => {
     expect(captureError(() => requiredBox(boxes, 'hdlr'))).toMatchObject({
       code: 'unsupported-container',
       message: expect.stringContaining('hdlr') as string,
+    });
+  });
+
+  it('refuses a full box too short for its version and flags', () => {
+    const [box] = boxesIn(encodeBox('mvhd', Uint8Array.of(0, 0, 0)));
+    if (!box) throw new Error('no box');
+    expect(captureError(() => fullBoxOf(box))).toMatchObject({
+      code: 'unsupported-container',
+      message: expect.stringContaining('mvhd box too short') as string,
     });
   });
 
@@ -67,6 +98,7 @@ describe('readTableColumns', () => {
     const content = fullBoxOf({ ...box, body: box.body.subarray(0, -1) }).content;
     expect(captureError(() => readTableColumns(content, TIME_TO_SAMPLE))).toMatchObject({
       code: 'unsupported-container',
+      message: expect.stringContaining('1 entries that do not fit') as string,
     });
   });
 });

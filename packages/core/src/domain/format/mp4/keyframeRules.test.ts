@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { keyframeRuleFor } from './keyframeRules';
 import type { KeyframeRule } from '../../container/KeyframeRule';
@@ -26,7 +26,10 @@ function isKeyframeOf(rule: KeyframeRule, lengthSize: number, units: number[][])
 }
 
 describe('the H.264 keyframe rule', () => {
-  const rule = keyframeRuleFor({ sampleEntryType: 'avc1', nalLengthSize: 4 });
+  let rule: KeyframeRule;
+  beforeEach(() => {
+    rule = keyframeRuleFor({ sampleEntryType: 'avc1', nalLengthSize: 4 });
+  });
 
   it('takes a sample with an IDR slice for a keyframe, whatever parameter sets precede it', () => {
     expect(isKeyframeOf(rule, 4, [avcUnit(9), avcUnit(7), avcUnit(8), avcUnit(5)])).toBe(true);
@@ -39,6 +42,20 @@ describe('the H.264 keyframe rule', () => {
 
   it('does not take a recovery point for a keyframe, where decoding would start at no IDR', () => {
     expect(isKeyframeOf(rule, 4, [avcUnit(6)])).toBe(false);
+  });
+
+  it('decides on the first slice: one that is no IDR slice makes no keyframe of the sample', () => {
+    expect(isKeyframeOf(rule, 4, [avcUnit(1), avcUnit(5)])).toBe(false);
+    expect(isKeyframeOf(rule, 4, [avcUnit(4), avcUnit(5)])).toBe(false);
+  });
+
+  it('reads past a unit of an unspecified type to the slice after it', () => {
+    expect(isKeyframeOf(rule, 4, [avcUnit(0), avcUnit(5)])).toBe(true);
+  });
+
+  it('reads past a unit longer than 255 bytes to the slice after it', () => {
+    const longSei = [avcUnit(6)[0] ?? 0, ...Array.from({ length: 300 }, () => 0x11)];
+    expect(isKeyframeOf(rule, 4, [longSei, avcUnit(5)])).toBe(true);
   });
 
   it('reads the NAL lengths in as many bytes as the configuration says', () => {
@@ -54,7 +71,10 @@ describe('the H.264 keyframe rule', () => {
 });
 
 describe('the H.265 keyframe rule', () => {
-  const rule = keyframeRuleFor({ sampleEntryType: 'hvc1', nalLengthSize: 4 });
+  let rule: KeyframeRule;
+  beforeEach(() => {
+    rule = keyframeRuleFor({ sampleEntryType: 'hvc1', nalLengthSize: 4 });
+  });
 
   it('takes a sample whose first picture is an intra random access point for a keyframe', () => {
     expect(isKeyframeOf(rule, 4, [hevcUnit(32), hevcUnit(33), hevcUnit(34), hevcUnit(19)])).toBe(
@@ -68,6 +88,10 @@ describe('the H.265 keyframe rule', () => {
   it('does not take a sample of trailing pictures for one', () => {
     expect(isKeyframeOf(rule, 4, [hevcUnit(39), hevcUnit(1)])).toBe(false);
     expect(isKeyframeOf(rule, 4, [hevcUnit(0)])).toBe(false);
+  });
+
+  it('decides on the first picture: a trailing one before an intra random access point makes no keyframe', () => {
+    expect(isKeyframeOf(rule, 4, [hevcUnit(1), hevcUnit(19)])).toBe(false);
   });
 
   it('takes the other HEVC sample entry by the same rule', () => {

@@ -88,11 +88,53 @@ describe('TrackSampleTable', () => {
     const failure = captureError(
       () => new TrackSampleTable(partsOf({ sizes: Float64Array.of(1) })),
     );
-    expect(failure).toMatchObject({ code: 'invariant-violation' });
+    expect(failure).toMatchObject({
+      code: 'invariant-violation',
+      message: expect.stringContaining('track 1 disagrees') as string,
+    });
   });
 
-  it('refuses a sync sample that is not one of its samples', () => {
-    const failure = captureError(() => new TrackSampleTable(partsOf({ syncSamples: [6] })));
-    expect(failure).toMatchObject({ code: 'invariant-violation' });
+  it.each([
+    ['past its samples', [6]],
+    ['before its first sample', [-1]],
+    ['between two samples', [1.5]],
+    ['out of order', [3, 1]],
+    ['twice', [3, 3]],
+  ])('refuses a sync sample %s', (_, syncSamples) => {
+    const failure = captureError(() => new TrackSampleTable(partsOf({ syncSamples })));
+    expect(failure).toMatchObject({
+      code: 'invariant-violation',
+      message: expect.stringContaining('sync samples of track 1') as string,
+    });
+  });
+
+  it('refuses to tell of a sample it does not have', () => {
+    const table = new TrackSampleTable(partsOf());
+    for (const ask of [
+      (): unknown => table.rangeOf(6),
+      (): unknown => table.timestampOf(-1),
+      (): unknown => table.durationOf(6),
+      (): unknown => table.isSync(6),
+    ]) {
+      expect(captureError(ask)).toMatchObject({
+        code: 'index-out-of-range',
+        message: expect.stringContaining('sample of track 1') as string,
+      });
+    }
+  });
+
+  it('starts decoding at the first sample of a track that lists no sync samples, and nowhere in an empty one', () => {
+    expect(new TrackSampleTable(partsOf({ syncSamples: undefined })).firstSyncSample()).toBe(0);
+    const empty = new TrackSampleTable(
+      partsOf({
+        offsets: new Float64Array(),
+        sizes: new Float64Array(),
+        timestamps: new Float64Array(),
+        durations: new Float64Array(),
+        syncSamples: undefined,
+      }),
+    );
+    expect(empty.firstSyncSample()).toBeUndefined();
+    expect(empty.keyframeAt(seconds(1))).toBeUndefined();
   });
 });

@@ -66,6 +66,28 @@ describe('ByteReader', () => {
     });
   });
 
+  it('reads the safe integers at either end of the range', () => {
+    const lowest = new ByteReader(new Uint8Array([0xff, 0xe0, 0, 0, 0, 0, 0, 1]));
+    expect(lowest.int64BeAt(0)).toBe(Number.MIN_SAFE_INTEGER);
+    const highest = new ByteReader(new Uint8Array([0, 0x1f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]));
+    expect(highest.int64BeAt(0)).toBe(Number.MAX_SAFE_INTEGER);
+    expect(highest.uint64BeAt(0)).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it('bounds-checks every read', () => {
+    const short = new ByteReader(new Uint8Array(1));
+    for (const read of [
+      (): unknown => short.uint16LeAt(0),
+      (): unknown => short.uint32BeAt(0),
+      (): unknown => short.uint64LeAt(0),
+      (): unknown => short.uint64BeAt(0),
+      (): unknown => short.float64LeAt(0),
+      (): unknown => short.bytesAt(0, -1),
+    ]) {
+      expect(captureError(read)).toMatchObject({ code: 'binary-out-of-bounds' });
+    }
+  });
+
   it('bounds-checks the big-endian reads', () => {
     expect(captureError(() => reader.uint16BeAt(19))).toMatchObject({
       code: 'binary-out-of-bounds',

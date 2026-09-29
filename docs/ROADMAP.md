@@ -20,7 +20,7 @@ stitch, ADR 0025), with a feathered blend across the overlap and per-channel exp
 matching measured along the seam. A normal rectilinear view of 30 to 120 degrees with drag,
 pinch, wheel and keyboard look-around; the whole sphere as a level, letterboxed
 equirectangular panorama; and the raw lens images side by side or stacked, unstitched
-(ADR 0015). Every view zooms toward the pointer, the flat ones up to four times, and moves
+(ADR 0015). Every view zooms toward the pointer, the flat ones up to eight times, and moves
 once zoomed (ADR 0018).
 
 **Picture quality.** `fast`, `balanced` (the default) or `high`: the lens images are read along

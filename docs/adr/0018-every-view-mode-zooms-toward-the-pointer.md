@@ -20,7 +20,7 @@ between the fingers) where it is. The keys and `zoom(steps)` zoom about the cent
   direction under the pointer stays under it: the pitch is solved exactly from that direction's
   height, the yaw from the rest (`zoomViewAt`). Near a pole with no such turn it zooms about the
   centre.
-- **The flat pictures** are enlarged from their fitted size, 1 to 4 times, as a `Magnification`:
+- **The flat pictures** are enlarged from their fitted size, 1 to 8 times, as a `Magnification`:
   a scale and the point of the picture at the centre of the viewport. The picture never shows a
   bar it could fill, and stays centred along an axis where it is smaller than the viewport.
   - The panorama keeps its centre in the middle across: it wraps, so sideways the zoom's anchor

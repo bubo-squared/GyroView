@@ -30,10 +30,12 @@ const PICTURE_MIDDLE: ScreenPoint = { x: HALF, y: HALF };
 export const FITTED: Magnification = { scale: 1, centre: PICTURE_MIDDLE };
 
 /**
- * Close enough to read detail in the panorama and to look at a lens; beyond it the picture only
- * grows blurrier.
+ * Close enough to read fine detail in the panorama and in a lens: fitted to a 1920-pixel-wide
+ * player, a 5.7K recording's two 2880-pixel lenses side by side are shown at a third of their
+ * size, so at eight times each recorded pixel is under three pixels wide; beyond it the picture
+ * only grows blurrier.
  */
-export const MAX_MAGNIFICATION = 4;
+export const MAX_MAGNIFICATION = 8;
 
 /**
  * A scale this close to 1 is the fitted picture: zooming out notch by notch as far as it zoomed

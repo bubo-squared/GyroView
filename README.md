@@ -141,7 +141,7 @@ the first Escape itself). A focused slider keeps its arrows and a focused button
 its Space. Mouse and touch: drag to look, wheel or pinch to zoom toward the pointer or the
 fingers (the keys zoom about the centre), tap to play or pause (on touch, a tap on faded
 controls only brings them back). The equirectangular panorama and the raw lenses zoom up to
-four times; a zoomed panorama moves up and down as well as turning,
+eight times; a zoomed panorama moves up and down as well as turning,
 zoomed raw lenses move in every direction, by drags and arrows alike, and Reset view returns the
 current view to where it started. The cursor turns into a hand only where a drag moves the
 picture.

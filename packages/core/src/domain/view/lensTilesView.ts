@@ -62,8 +62,8 @@ function magnifiedTiles(framing: Framing, context: ViewContext): ScreenRectangle
 }
 
 /**
- * The decoded images as the camera recorded them, magnified up to four times toward the pointer
- * and moved within their edges once zoomed; never turned or stitched.
+ * The decoded images as the camera recorded them, magnified up to `MAX_MAGNIFICATION` toward the
+ * pointer and moved within their edges once zoomed; never turned or stitched.
  */
 export const LENS_TILES_VIEW: ViewModeRules = {
   isStabilized: false,

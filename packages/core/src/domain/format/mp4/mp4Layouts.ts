@@ -5,7 +5,7 @@
  * big-endian.
  */
 
-export type IntegerKind = 'uint16' | 'uint32' | 'uint64' | 'int32' | 'int64';
+export type IntegerKind = 'uint32' | 'uint64' | 'int32' | 'int64';
 
 export interface IntegerField {
   readonly offset: number;

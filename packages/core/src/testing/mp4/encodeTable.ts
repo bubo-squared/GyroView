@@ -12,9 +12,6 @@ type IntegerWriter = (view: DataView, offset: number, value: number) => void;
  * How each kind of integer in a box layout is written, big-endian.
  */
 const WRITERS: Readonly<Record<IntegerKind, IntegerWriter>> = {
-  uint16: (view, offset, value) => {
-    view.setUint16(offset, value);
-  },
   uint32: (view, offset, value) => {
     view.setUint32(offset, value);
   },

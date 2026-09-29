@@ -26,9 +26,10 @@ describe('magnification', () => {
     expect(magnifiedArea(PANORAMA, FITTED)).toEqual(PANORAMA);
   });
 
-  it('keeps the scale between the fitted picture and four times it', () => {
+  it('keeps the scale between the fitted picture and eight times it', () => {
     expect(clampMagnification(PANORAMA, { ...FITTED, scale: 0.5 }).scale).toBe(1);
-    expect(clampMagnification(PANORAMA, { ...FITTED, scale: 9 }).scale).toBe(MAX_MAGNIFICATION);
+    expect(clampMagnification(PANORAMA, { ...FITTED, scale: 6 }).scale).toBe(6);
+    expect(clampMagnification(PANORAMA, { ...FITTED, scale: 16 }).scale).toBe(MAX_MAGNIFICATION);
   });
 
   it('covers the viewport along an axis where the picture is larger, and centres it where smaller', () => {

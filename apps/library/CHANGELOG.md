@@ -5,6 +5,8 @@ the API.
 
 ## Unreleased
 
+- The equirectangular panorama and the raw lenses zoom up to eight times, from four, for fine
+  detail in 5.7K and 8K recordings. The normal view keeps its 30 to 120 degrees.
 - `crossorigin` on `<gyro-view>`, with a media element's keywords: `use-credentials` fetches the
   recording, its byte ranges and the other lens's file of a split pair with the visitor's
   cookies, for recordings kept private behind cookies on another origin. `crossOrigin` reflects

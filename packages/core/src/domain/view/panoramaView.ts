@@ -100,7 +100,7 @@ function zoomPanorama(framing: Framing, zoom: ZoomRequest, context: ViewContext)
 
 /**
  * Level, as an exported equirectangular video: the yaw picks the direction at the centre, and the
- * panorama magnifies up to four times and moves up and down within itself.
+ * panorama magnifies up to `MAX_MAGNIFICATION` and moves up and down within itself.
  */
 export const PANORAMA_VIEW: ViewModeRules = {
   isStabilized: true,

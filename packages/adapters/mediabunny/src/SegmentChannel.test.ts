@@ -37,7 +37,34 @@ describe('SegmentChannel', () => {
     await room;
     expect(hasRoom).toBe(true);
     channel.close();
-    await iterator.return(undefined);
+    await iterator.return();
+  });
+
+  it('ends at once when the consumer returns while it awaits a segment, and closes the channel', async () => {
+    const channel = new SegmentChannel(2);
+    let releases = 0;
+    const segments = channel.segments(() => {
+      releases += 1;
+    });
+    const awaited = segments.next();
+    await expect(segments.return()).resolves.toMatchObject({ done: true });
+    await expect(awaited).resolves.toMatchObject({ done: true });
+    expect(channel.isClosed).toBe(true);
+    await segments.next();
+    expect(releases).toBe(1);
+  });
+
+  it('tells its consumer once it ends by itself, drained after the producer closed it', async () => {
+    const channel = new SegmentChannel(2);
+    let releases = 0;
+    const segments = channel.segments(() => {
+      releases += 1;
+    });
+    channel.push(bytes(1));
+    channel.close();
+    await segments.next();
+    await expect(segments.next()).resolves.toMatchObject({ done: true });
+    expect(releases).toBe(1);
   });
 
   it('releases a waiting producer and drops later pushes once closed', async () => {

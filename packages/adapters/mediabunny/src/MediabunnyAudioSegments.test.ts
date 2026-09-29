@@ -3,7 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { seconds, type AudioSegmentSource } from '@gyroview/core';
-import { InMemoryRandomAccessSource } from '@gyroview/core/testing';
+import {
+  describeAudioSegmentSourceContract,
+  InMemoryRandomAccessSource,
+} from '@gyroview/core/testing';
 import { BufferSource, EncodedPacketSink, Input, MP4 } from 'mediabunny';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -60,17 +63,23 @@ async function parseBack(bytes: Uint8Array): Promise<{ duration: number; firstTi
   }
 }
 
+async function openFixtureAudio(): Promise<AudioSegmentSource> {
+  const input = await new MediabunnyDemuxer().open(
+    new InMemoryRandomAccessSource(readFileSync(FIXTURE)),
+    'aac fixture',
+  );
+  const [audio] = input.audioTracks;
+  if (!audio) throw new Error('fixture has no audio track');
+  return audio.openSegments();
+}
+
+describeAudioSegmentSourceContract('mediabunny', openFixtureAudio, { duration: 3 });
+
 describe('MediabunnyAudioSegments', () => {
   let source: AudioSegmentSource;
 
   beforeAll(async () => {
-    const input = await new MediabunnyDemuxer().open(
-      new InMemoryRandomAccessSource(readFileSync(FIXTURE)),
-      'aac fixture',
-    );
-    const [audio] = input.audioTracks;
-    if (!audio) throw new Error('fixture has no audio track');
-    source = await audio.openSegments();
+    source = await openFixtureAudio();
   });
 
   it('describes the output as fragmented MP4 audio with the track codec', () => {

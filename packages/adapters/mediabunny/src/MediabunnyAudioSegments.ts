@@ -77,22 +77,25 @@ export class MediabunnyAudioSegments implements AudioSegmentSource {
   }
 
   public segmentsFrom(from: Seconds): AsyncIterable<Uint8Array<ArrayBuffer>> {
-    return remux(this.parts, from);
+    return {
+      [Symbol.asyncIterator]: (): AsyncIterator<Uint8Array<ArrayBuffer>> => remux(this.parts, from),
+    };
   }
 }
 
-async function* remux(parts: RemuxParts, from: Seconds): AsyncGenerator<Uint8Array<ArrayBuffer>> {
+/**
+ * Starts re-packaging from `from` into a channel and hands out its consumer's side, which frees
+ * the muxer once the iteration ended, as soon as the producer has noticed.
+ */
+function remux(parts: RemuxParts, from: Seconds): AsyncIterator<Uint8Array<ArrayBuffer>> {
   const channel = new SegmentChannel(SEGMENTS_AHEAD);
   const output = new Output({ format: fragmentedMp4Into(channel), target: new NullTarget() });
   const source = new EncodedAudioPacketSource(parts.codec);
   output.addAudioTrack(source);
   const production = produce({ parts, from, output, source, channel });
-  try {
-    yield* channel.segments();
-  } finally {
-    channel.close();
+  return channel.segments(() => {
     void releaseAfter(production, output);
-  }
+  });
 }
 
 /**

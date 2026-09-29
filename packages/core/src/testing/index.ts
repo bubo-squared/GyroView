@@ -1,6 +1,10 @@
 export { InMemoryRandomAccessSource } from './InMemoryRandomAccessSource';
 export { describeDemuxerContract, type DemuxerUnderTest } from './Demuxer.contract';
 export { describeRandomAccessSourceContract } from './RandomAccessSource.contract';
+export {
+  describeAudioSegmentSourceContract,
+  type AudioSegmentSourceExpectations,
+} from './AudioSegmentSource.contract';
 export { describeResourceLocatorContract, type LocatorUnderTest } from './ResourceLocator.contract';
 export {
   describeVideoTrackReaderContract,

@@ -224,6 +224,30 @@ describe('DecodePipeline', () => {
     expect(decoderPort.openFrames).toBe(0);
   });
 
+  it('lets go of its packet reads the moment it is aborted, not once its awaits unwind', async () => {
+    const tracks = twoLensTracks();
+    const pipeline = new DecodePipeline(tracks, new FakeVideoDecoderPort(DECODER_LATENCY), OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    const run = pipeline.run(seconds(0), queue);
+    await settle();
+    expect(tracks.map((track) => track.openCursors)).toEqual([1, 1]);
+    pipeline.abort();
+    expect(tracks.map((track) => track.openCursors)).toEqual([0, 0]);
+    await run;
+    queue.close();
+  });
+
+  it('lets go of the packet reads of a run aborted while it opens its decoders', async () => {
+    const tracks = twoLensTracks();
+    const pipeline = new DecodePipeline(tracks, new FakeVideoDecoderPort(DECODER_LATENCY), OPTIONS);
+
+    const run = pipeline.run(seconds(0), new FramePairQueue<FakeFrameHandle>(4));
+    pipeline.abort();
+    expect(tracks.map((track) => track.openCursors)).toEqual([0, 0]);
+    await run;
+  });
+
   it('delivers the frames its decoders hold back until the end of the track, through their flush', async () => {
     const decoderPort = new FakeVideoDecoderPort({ ...DECODER_LATENCY, holdsFrames: 2 });
     const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);

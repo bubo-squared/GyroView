@@ -73,6 +73,11 @@ interface Run<Handle> {
 export class DecodePipeline<Handle = unknown> {
   private readonly stop = new RunStop();
   private hasRun = false;
+  /**
+   * The run's packet reads, which an abort returns at once: a read left to the run's unwinding
+   * would go on reading until its awaits settle.
+   */
+  private iterators: readonly PacketIterator[] = [];
 
   public constructor(
     private readonly frameSources: readonly VideoTrackReader[],
@@ -106,10 +111,12 @@ export class DecodePipeline<Handle = unknown> {
   }
 
   /**
-   * Ends the run early; pending decodes are discarded. Safe before, during and after the run.
+   * Ends the run early: its packet reads are let go of at once, pending decodes discarded. Safe
+   * before, during and after the run.
    */
   public abort(): void {
     this.stop.stop();
+    closeIterators(this.iterators);
   }
 
   private async openRun(from: Seconds, output: FramePairQueue<Handle>): Promise<Run<Handle>> {
@@ -129,6 +136,7 @@ export class DecodePipeline<Handle = unknown> {
     );
     // A run aborted before it opened, as a seek overtaken by the next one is, opens nothing.
     const iterators = stop.wasStopped ? [] : this.packetIteratorsFrom(from);
+    this.iterators = iterators;
     const onError = (error: Error): void => {
       failure.resolve(error);
       stop.stop();

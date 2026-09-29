@@ -1,7 +1,6 @@
 import {
   boxesIn,
   fullBoxOf,
-  optionalBox,
   requiredBox,
   unreadableMovie,
   type FullBox,
@@ -46,10 +45,10 @@ export interface TrackHeaders {
 /**
  * Where the length size of each codec family's NAL units is kept, by its configuration box.
  */
-const LENGTH_SIZE_OFFSETS: Readonly<Record<string, number>> = {
-  [Mp4BoxType.AvcConfiguration]: AVC_LENGTH_SIZE_OFFSET,
-  [Mp4BoxType.HevcConfiguration]: HEVC_LENGTH_SIZE_OFFSET,
-};
+const LENGTH_SIZE_OFFSETS: ReadonlyMap<string, number> = new Map([
+  [Mp4BoxType.AvcConfiguration, AVC_LENGTH_SIZE_OFFSET],
+  [Mp4BoxType.HevcConfiguration, HEVC_LENGTH_SIZE_OFFSET],
+]);
 
 /**
  * The timescale of the movie header, in which edit lists count.
@@ -125,10 +124,7 @@ function firstSampleEntryOf(sampleTable: readonly Mp4Box[]): Mp4Box {
  */
 function nalLengthSizeOf(entry: Mp4Box): number | undefined {
   const boxes = boxesIn(entry.body.subarray(VISUAL_SAMPLE_ENTRY_BOXES_OFFSET));
-  const configuration = Object.keys(LENGTH_SIZE_OFFSETS)
-    .map((type) => optionalBox(boxes, type))
-    .find((box) => box !== undefined);
-  const offset = configuration && LENGTH_SIZE_OFFSETS[configuration.type];
-  const byte = offset === undefined ? undefined : configuration?.body[offset];
+  const configuration = boxes.find((box) => LENGTH_SIZE_OFFSETS.has(box.type));
+  const byte = configuration?.body[LENGTH_SIZE_OFFSETS.get(configuration.type) ?? 0];
   return byte === undefined ? undefined : (byte & LENGTH_SIZE_MINUS_ONE_MASK) + 1;
 }

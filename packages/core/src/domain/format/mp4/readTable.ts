@@ -14,7 +14,6 @@ type IntegerReader = (reader: ByteReader, offset: number) => number;
  * How each kind of integer in a box layout is read, big-endian.
  */
 const READERS: Readonly<Record<IntegerKind, IntegerReader>> = {
-  uint16: (reader, offset) => reader.uint16BeAt(offset),
   uint32: (reader, offset) => reader.uint32BeAt(offset),
   uint64: (reader, offset) => reader.uint64BeAt(offset),
   int32: (reader, offset) => reader.int32BeAt(offset),

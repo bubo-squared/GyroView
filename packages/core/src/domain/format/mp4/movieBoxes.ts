@@ -34,7 +34,7 @@ export function boxesIn(bytes: Uint8Array): Mp4Box[] {
   let offset = 0;
   while (bytes.byteLength - offset >= BOX_HEADER_SIZE) {
     const room = bytes.byteLength - offset;
-    const headerBytes = bytes.subarray(offset, offset + Math.min(room, LARGE_BOX_HEADER_SIZE));
+    const headerBytes = bytes.subarray(offset, offset + LARGE_BOX_HEADER_SIZE);
     const header = boxHeaderOf(new ByteReader(headerBytes), room);
     if (!header) throw unreadableMovie(`holds no box at byte ${offset} of ${bytes.byteLength}`);
     const body = bytes.subarray(offset + header.headerSize, offset + header.size);

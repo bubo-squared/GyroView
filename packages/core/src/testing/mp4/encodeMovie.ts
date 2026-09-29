@@ -76,7 +76,6 @@ const DATA_ENTRY_URL = 'url ';
 const DATA_IN_THIS_FILE = 1;
 const ONE_ENTRY = 1;
 const TIME_FIELD_BYTES: Readonly<Record<IntegerField['kind'], number>> = {
-  uint16: 2,
   uint32: 4,
   int32: 4,
   uint64: 8,

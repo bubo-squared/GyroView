@@ -1,4 +1,5 @@
 import type { KeyframeRule } from './KeyframeRule';
+import { presentationOrderOf } from './presentationOrder';
 import { ByteRange } from '../../shared/binary/ByteRange';
 import type { ReadonlyFloat64Array } from '../../shared/binary/ReadonlyTypedArray';
 import { ensureIndexInRange, ensureInvariant } from '../../shared/errors/GyroViewError';
@@ -128,11 +129,6 @@ export class TrackSampleTable {
   private ensureSample(sample: number): void {
     ensureIndexInRange(sample, this.sampleCount, `sample of track ${this.trackId}`);
   }
-}
-
-function presentationOrderOf(timestamps: ReadonlyFloat64Array): number[] {
-  const decodeOrder = Array.from({ length: timestamps.length }, (_, sample) => sample);
-  return decodeOrder.toSorted((left, right) => (timestamps[left] ?? 0) - (timestamps[right] ?? 0));
 }
 
 function isAscendingWithin(samples: readonly number[], count: number): boolean {

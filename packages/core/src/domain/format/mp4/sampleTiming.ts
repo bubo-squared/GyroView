@@ -16,6 +16,7 @@ import {
 } from './mp4Layouts';
 import { readTableColumns } from './readTable';
 import { inVersion, type TrackBoxes } from './trackHeaders';
+import { presentationOrderOf } from '../../container/presentationOrder';
 import { seconds, type Seconds } from '../../../shared/units/time';
 
 /**
@@ -153,9 +154,4 @@ function endOf(timestamps: Float64Array, durations: Float64Array, timescale: num
   if (last === undefined) return seconds(0);
   const end = (timestamps[last] ?? 0) + (durations[last] ?? 0);
   return seconds(Math.round(end * timescale) / timescale);
-}
-
-function presentationOrderOf(times: Float64Array): number[] {
-  const decodeOrder = Array.from({ length: times.length }, (_, sample) => sample);
-  return decodeOrder.toSorted((left, right) => (times[left] ?? 0) - (times[right] ?? 0));
 }

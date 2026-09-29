@@ -62,6 +62,15 @@ describe('ByteRangeSet', () => {
     expect(set.covers(ByteRange.of(30, 1))).toBe(false);
   });
 
+  it('overlaps a range when any byte of it is in the set', () => {
+    const set = setOf([0, 10], [20, 30]);
+    expect(set.overlaps(ByteRange.of(9, 2))).toBe(true);
+    expect(set.overlaps(ByteRange.of(25, 100))).toBe(true);
+    expect(set.overlaps(ByteRange.of(10, 10))).toBe(false);
+    expect(set.overlaps(ByteRange.of(30, 5))).toBe(false);
+    expect(set.overlaps(ByteRange.of(5, 0))).toBe(false);
+  });
+
   it('covers an empty range anywhere', () => {
     expect(ByteRangeSet.empty.covers(ByteRange.of(12, 0))).toBe(true);
   });

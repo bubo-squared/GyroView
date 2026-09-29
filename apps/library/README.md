@@ -188,6 +188,11 @@ loads a recording only for the player in view, removing `src` from the others.
   Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges
   ```
 
+  Recordings kept behind the visitor's cookies take `crossorigin="use-credentials"` on the
+  element, or `credentials: 'include'` on a URL given to `createBrowserPlayer`'s `load`, and a
+  host that names the page's origin, never `*`, and adds
+  `Access-Control-Allow-Credentials: true`.
+
 - **A hardware HEVC decoder.** 5.7K plays on recent laptops and phones; 8K needs a Level 6
   decoder (Apple Silicon, recent NVIDIA and Intel). A recording the browser cannot decode fails
   with the `codec-unsupported` error.

@@ -3,6 +3,18 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+- `crossorigin` on `<gyro-view>`, with a media element's keywords: `use-credentials` fetches the
+  recording, its byte ranges and the other lens's file of a split pair with the visitor's
+  cookies, for recordings kept private behind cookies on another origin. `crossOrigin` reflects
+  it, `null` while absent. Changing it reloads a recording named by URL; the iframe embed never
+  carries it. Nothing changes for a page that does not set it.
+- `credentials` on a `UrlInput` (`player.load({ main: { url, credentials: 'include' } })`), in
+  place of the player's shared `http.requestInit.credentials` for that recording.
+- A `cors` error for a request sent with credentials names what the host must add: the page's
+  origin by name, not `*`, and `Access-Control-Allow-Credentials: true`.
+
 ## 0.1.0 (2026-09-29)
 
 The first release:

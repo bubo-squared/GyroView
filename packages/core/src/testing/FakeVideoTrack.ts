@@ -1,6 +1,10 @@
 import type { VideoTrackDescription } from '../ports/VideoTrack';
 import type { VideoTrackReader } from '../ports/Demuxer';
-import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../ports/VideoTrack';
+import type {
+  EncodedVideoPacket,
+  KeyframeTime,
+  VideoDecoderConfiguration,
+} from '../ports/VideoTrack';
 import { GyroViewError } from '../shared/errors/GyroViewError';
 import { seconds, type Seconds } from '../shared/units/time';
 
@@ -49,6 +53,14 @@ export class FakeVideoTrack implements VideoTrackReader {
       description: undefined,
       isFullRange: true,
     });
+  }
+
+  public async keyframeAt(time: Seconds): Promise<KeyframeTime | undefined> {
+    return timeOf(await this.keyPacketAt(time));
+  }
+
+  public async firstKeyframe(): Promise<KeyframeTime | undefined> {
+    return timeOf(await this.firstKeyPacket());
   }
 
   public keyPacketAt(time: Seconds): Promise<EncodedVideoPacket | undefined> {
@@ -104,6 +116,10 @@ function codedShapeOf(
     codedHeight: options.codedHeight ?? size,
     codec: options.codec ?? FAKE_CODEC,
   };
+}
+
+function timeOf(packet: EncodedVideoPacket | undefined): KeyframeTime | undefined {
+  return packet && { timestamp: packet.timestamp, duration: packet.duration };
 }
 
 /**

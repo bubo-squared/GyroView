@@ -7,7 +7,7 @@ import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
 const OPTIONS = { trackIndex: 0, frameRate: 10, frameCount: 30, framesPerGop: 10 };
 
 class UnreadableTrack extends FakeVideoTrack {
-  public override keyPacketAt(): Promise<undefined> {
+  public override keyframeAt(): Promise<undefined> {
     return Promise.reject(new Error('input disposed'));
   }
 }

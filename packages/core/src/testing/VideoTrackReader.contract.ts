@@ -34,6 +34,23 @@ export function describeVideoTrackReaderContract(
   const insideSecondGop = seconds(secondGopStart + 2 * frameDuration);
 
   describe(`VideoTrackReader contract (${name})`, () => {
+    it('tells when the key frame at or before a time shows, and of none before the first frame', async () => {
+      const track = await open();
+      const first = await track.keyframeAt(seconds(start));
+      expect(first?.timestamp).toBeCloseTo(start, 6);
+      const key = await track.keyframeAt(insideSecondGop);
+      expect(key?.timestamp).toBeCloseTo(secondGopStart, 6);
+      expect(key?.duration).toBeCloseTo(frameDuration, 6);
+      await expect(track.keyframeAt(seconds(start - frameDuration))).resolves.toBeUndefined();
+    });
+
+    it('tells when its first key frame shows and how long it lasts', async () => {
+      const track = await open();
+      const first = await track.firstKeyframe();
+      expect(first?.timestamp).toBeCloseTo(start, 6);
+      expect(first?.duration).toBeCloseTo(frameDuration, 6);
+    });
+
     it('finds the key packet at or before a time and none before the first packet', async () => {
       const track = await open();
       const first = await track.keyPacketAt(seconds(start));

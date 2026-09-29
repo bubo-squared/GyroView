@@ -2,6 +2,7 @@ import type { AudioSegmentSource } from './AudioSegmentSource';
 import type { RandomAccessSource } from './RandomAccessSource';
 import type {
   EncodedVideoPacket,
+  KeyframeTime,
   VideoDecoderConfiguration,
   VideoTrackDescription,
 } from './VideoTrack';
@@ -24,6 +25,14 @@ export interface AudioTrackReader {
 export interface VideoTrackReader {
   readonly description: VideoTrackDescription;
   decoderConfiguration(): Promise<VideoDecoderConfiguration>;
+  /**
+   * When the last key frame at or before `time` shows, or undefined before the first one.
+   */
+  keyframeAt(time: Seconds): Promise<KeyframeTime | undefined>;
+  /**
+   * When the track's first key frame shows; undefined for a track without one.
+   */
+  firstKeyframe(): Promise<KeyframeTime | undefined>;
   /**
    * The last key packet at or before `time`, or undefined before the first one.
    */

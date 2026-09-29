@@ -240,6 +240,7 @@ export {
 export type { AudioTrackReader, DemuxedInput, Demuxer, VideoTrackReader } from './ports/Demuxer';
 export type {
   EncodedVideoPacket,
+  KeyframeTime,
   VideoDecoderConfiguration,
   VideoTrackDescription,
 } from './ports/VideoTrack';

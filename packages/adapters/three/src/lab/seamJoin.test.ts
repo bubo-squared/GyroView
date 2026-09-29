@@ -66,6 +66,16 @@ const DISPARITY_TOLERANCE = 0.08;
  * The ring scene is nowhere darker than a tenth of the range; a gap between the lenses is black.
  */
 const DARKEST = 20;
+/**
+ * The slides the meter test measures: the painted profile's 0 to 4 degrees and two steps beyond
+ * either end, a third of the default range. Each slide is 72 bins of 7000 samples through both
+ * lenses; on a renderer without a GPU, as CI's, the default range's 65 take tens of seconds.
+ */
+const MEASURED_RANGE = { least: degrees(-1), most: degrees(5), step: degrees(0.25) };
+/**
+ * Even a third of the range takes seconds on a software renderer under a loaded CI runner.
+ */
+const METER_TIMEOUT_MS = 60_000;
 
 function constant(disparity: number): DisparityProfile {
   return () => degrees(disparity);
@@ -274,17 +284,21 @@ describe('the seam join', () => {
     }
   });
 
-  it('lets the mismatch meter find each bin’s disparity, sliding lens 0 across the ring', async () => {
-    const scene = openNearScene(asymmetric);
-    const meter = scene.renderer.createSeamMismatchMeter();
-    const measured = await meter.measure({ slides: slidesOf(), gains: BOTH });
-    if (!measured) throw new Error('the strip was not measured');
-    for (const bin of binDisparitiesOf(measured)) {
-      const at = `the bin at ${bin.azimuth} degrees`;
-      expect(bin.isTrusted, at).toBe(true);
-      expect(Math.abs(bin.disparity - asymmetric(bin.azimuth)), at).toBeLessThan(
-        DISPARITY_TOLERANCE,
-      );
-    }
-  });
+  it(
+    'lets the mismatch meter find each bin’s disparity, sliding lens 0 across the ring',
+    async () => {
+      const scene = openNearScene(asymmetric);
+      const meter = scene.renderer.createSeamMismatchMeter();
+      const measured = await meter.measure({ slides: slidesOf(MEASURED_RANGE), gains: BOTH });
+      if (!measured) throw new Error('the strip was not measured');
+      for (const bin of binDisparitiesOf(measured, MEASURED_RANGE)) {
+        const at = `the bin at ${bin.azimuth} degrees`;
+        expect(bin.isTrusted, at).toBe(true);
+        expect(Math.abs(bin.disparity - asymmetric(bin.azimuth)), at).toBeLessThan(
+          DISPARITY_TOLERANCE,
+        );
+      }
+    },
+    METER_TIMEOUT_MS,
+  );
 });

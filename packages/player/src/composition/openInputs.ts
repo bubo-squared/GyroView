@@ -97,11 +97,11 @@ async function declaredSecond(
 ): Promise<Opening[]> {
   const isDeclaredSplit = given.length === 1 && recording.info.fileLayout === 'split-files';
   if (!isDeclaredSplit || !attempt.findSecondFile) return [];
-  const url = await attempt.findSecondFile();
+  const input = await attempt.findSecondFile();
   attempt.signal.throwIfAborted();
-  if (url === undefined) return [];
-  const input = { url };
-  return [{ input, source: attempt.ports.sources.open(input, attempt.signal) }];
+  return input === undefined
+    ? []
+    : [{ input, source: attempt.ports.sources.open(input, attempt.signal) }];
 }
 
 /**

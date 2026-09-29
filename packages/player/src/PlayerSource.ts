@@ -5,6 +5,14 @@ import { fileNameOfUrl } from '@gyroview/core';
  */
 export interface UrlInput {
   readonly url: string;
+  /**
+   * Whether every request for the recording carries the visitor's cookies, in fetch's terms:
+   * `include` sends them to any origin, which must then allow the page's origin by name and
+   * with `Access-Control-Allow-Credentials: true`. Unset, the player's shared request settings
+   * decide, and fetch's `same-origin` when they do not. The element's
+   * `crossorigin="use-credentials"` sets `include`.
+   */
+  readonly credentials?: RequestCredentials | undefined;
 }
 
 /**

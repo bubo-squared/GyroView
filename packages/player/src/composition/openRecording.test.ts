@@ -18,7 +18,7 @@ import { seconds } from '@gyroview/core';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { openRecording } from './openRecording';
-import type { PlayerSource } from '../PlayerSource';
+import type { PlayerSource, UrlInput } from '../PlayerSource';
 import {
   fakePorts,
   fetchBytes,
@@ -379,6 +379,58 @@ describe('openRecording', () => {
 
     expect(failure).toMatchObject({ code: 'no-calibration' });
     expect(demuxed).toHaveLength(2);
+  });
+
+  it('looks for and reads the other lens file with the credentials of the main one', async () => {
+    const opener = new MapSourceOpener();
+    const main = opener.register(MAIN_URL, fixture.x5Bytes);
+    const second = opener.register(SECOND_URL, fixture.x5Bytes);
+    const [backTrack] = squareTracks();
+    const [screenTrack] = squareTracks();
+    const demuxer = new FakeDemuxer([
+      { source: main, duration: seconds(3), videoTracks: [backTrack!] },
+      { source: second, duration: seconds(3), videoTracks: [screenTrack!] },
+    ]);
+    const lookedBeside: UrlInput[] = [];
+    const locator = new FakeResourceLocator([SECOND_URL]);
+    const ports = {
+      ...fakePorts({ sources: opener, demuxer }),
+      locatorFor: (input: UrlInput): FakeResourceLocator => {
+        lookedBeside.push(input);
+        return locator;
+      },
+    };
+    const source = sourceOf({ main: { url: MAIN_URL, credentials: 'include' } });
+
+    const opened = await openRecording(source, ports, new AbortController().signal);
+
+    expect(lookedBeside).toEqual([{ url: MAIN_URL, credentials: 'include' }]);
+    expect(opener.inputs).toContainEqual({ url: SECOND_URL, credentials: 'include' });
+    opened.dispose();
+  });
+
+  it('reads the other lens file an info record declares with the credentials of the main one', async () => {
+    const opener = new MapSourceOpener();
+    const splitInfo = minimalInfoRecord({ model: 'Insta360 X3', fileLayout: SPLIT_FILES });
+    const main = opener.register(MAIN_URL, syntheticRecordingBytes(splitInfo));
+    const second = opener.register(SECOND_URL, new Uint8Array(4096));
+    const [backTrack] = squareTracks();
+    const [screenTrack] = squareTracks();
+    const demuxer = new FakeDemuxer([
+      { source: main, duration: seconds(3), videoTracks: [backTrack!] },
+      { source: second, duration: seconds(3), videoTracks: [screenTrack!] },
+    ]);
+    const locator = new FakeResourceLocator([SECOND_URL]);
+    const ports = fakePorts({ sources: opener, demuxer, locator });
+    const source = sourceOf({ main: { url: MAIN_URL, credentials: 'include' } });
+
+    // The minimal info record carries no calibration: the load stops once the layout is known.
+    await captureRejection(openRecording(source, ports, new AbortController().signal));
+
+    expect(opener.inputs).toEqual([
+      { url: MAIN_URL, credentials: 'include' },
+      { url: SECOND_URL, credentials: 'include' },
+    ]);
   });
 
   it('reads the trailer from the second file when the first, the _10_ half, has none', async () => {

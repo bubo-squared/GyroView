@@ -24,10 +24,10 @@ Under `pnpm measure`, `seamJoins.test.ts` on every Studio frame of both clips (1
   degrees (`seamDisparity.ts`); a bin's disparity is trusted where its costs contrast and their
   minimum lies well inside the range; `seamDisparityField.ts` smooths the trusted bins around the
   ring, pulls toward zero where none is trusted and stays flat under the camera;
-- three joins (the lab's `bentJoin.glsl` and `seamJoin.ts`): `fixed`, the template as the player
+- the joins (the lab's `bentJoin.glsl` and `seamJoin.ts`): `fixed`, the template as the player
   draws it; `bent`, each lens read across the ring by half the disparity, up to 4 degrees apart,
-  weighed where it is read, the rest cut; `cut`, the template with the blend narrowed where the
-  disparity is large;
+  weighed where it is read, the rest cut; and, in the run before it was dropped, `cut`, the
+  template with the blend narrowed where the disparity is large;
 - per seam bin, within 6 degrees of the ring: the difference of each join to Studio's frame, and
   for the fixed and bent joins the difference between the two lenses drawn alone, the double
   image a blend makes of them, over the pixels both lenses show under both joins; the change of
@@ -54,9 +54,6 @@ Mean level difference (0–255) per bin, by how far the field bends the bin:
 | 0.25 to 1°     | 168  | 12.5 → 11.2 (−10%)   | 12.6 / 12.5 / 12.6            | 0.7   |
 | under 0.25°    | 158  | 13.4 → 13.3          | 9.6 / 9.6 / 9.6               | 0.4   |
 
-(A first run compared the lenses over the pixels each join shows, which the bent join narrows: it
-overstated the office's near bins by 7 to 18 points. These numbers take the pixels both show.)
-
 - Seen side by side with Studio's frames, the bent join draws single what the fixed join doubles:
   the sailing bow's rope and rail at 1 m, the person half a metre from the office camera, the
   office cabinet's edges. Within arm's reach (legs on the sailing deck) it still ghosts: the
@@ -73,8 +70,8 @@ overstated the office's near bins by 7 to 18 points. These numbers take the pixe
   parallax over −2.5 of error, reads near +0.7 and falls among the 0.25 to 1 degree bins, and the
   office's near rows hold mostly what lies within arm's reach, beyond what a bend takes.
 - Frame-to-frame change in the band: sailing 4.49 fixed, 4.62 bent, 4.56 cut; office 4.57, 4.61,
-  4.78, within 3 percent. Draw time at 1536×768: sailing 4.53 fixed, 4.82 bent; office 2.67, 2.87
-  ms, within 7 percent.
+  4.78, the bent join within 3 percent of the fixed one. Draw time at 1536×768: sailing 4.53
+  fixed, 4.82 bent; office 2.67, 2.87 ms, within 8 percent.
 - One measurement of the field, read-back included, takes 25 to 35 ms on an M4 Pro (57 candidates,
   25 sub-samples a cell); with 4 sub-samples a cell, 10 ms and the same field (median difference
   0.01 degrees).
@@ -87,14 +84,14 @@ The trial's criteria, set before it ran:
   (12.7 levels against 2.7), not on office's near rows (1.4 against 1.2), whose visible gain on
   the person sits in the 0.25 to 1 degree bins and whose largest gain is the lens model's error;
 - far bins within the noise: met on both;
-- no more frame-to-frame change than the fixed join: within 3 percent;
+- no more frame-to-frame change than the fixed join: the bent join within 3 percent;
 - no tear or bent straight line the fixed join does not show: no tear; slight curves where the
   bend is large;
 - one measurement under a millisecond: not met, by ten times at best.
 
-The bent join stays in the renderer, and its measurement in the core, for a player-side trial once
-the measurement is cheap enough; the player draws the fixed join. The cut join is dropped: it
-trades one artefact for another.
+The bent join stays in the lab renderer, and its measurement's domain in the core, for a
+player-side trial once the measurement is cheap enough; the player draws the fixed join. The cut
+join is dropped: it trades one artefact for another.
 
 ## Consequences
 

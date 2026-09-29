@@ -310,14 +310,19 @@ The composition root and the user-facing element, in three layers.
   two-track MP4s with a real X5 trailer) that the browser tests play.
 - `tools/integration`: end-to-end tests over the real sample recordings, in Node (the core over
   the node adapter) and in real browsers, where they open the samples through the player's
-  `openRecording` with its pipeline settings, so they exercise the real composition. Without the
-  samples the Node tests skip and the browser project is not started.
+  `openRecording` with its pipeline settings, so they exercise the real composition, and draw
+  with the player's renderer. Without the samples the Node tests skip and the browser project is
+  not started. `src/measure/` holds the `pnpm measure` runs and, in `support/`, what only they
+  use: the Studio references, the lens registration, the seam joins, all drawn through the lab
+  renderer, which a dependency rule keeps out of every other tool.
 
 Tests follow the layers: pure domain tests run in Node in milliseconds and are mutation-tested
 with Stryker; adapters have contract tests against their ports and run in Chromium and WebKit
 where they need a browser; the player and the site are tested in browsers over the synthetic
 recordings; the integration suite adds the real files. `pnpm measure` also writes its renders
-to `.artifacts/` and runs the measurements behind a camera's constants (the IMU frame ranking).
+to `.artifacts/` and runs the measurements behind a camera's constants (the IMU frame ranking,
+the lens pose and the lens readings against Insta360 Studio's stitch) and behind the bent seam's
+trial (ADR 0026).
 
 ## Two flows
 

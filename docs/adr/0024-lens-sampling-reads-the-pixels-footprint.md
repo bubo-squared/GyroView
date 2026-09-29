@@ -33,17 +33,18 @@ picture program runs to its end without an early return, so the derivatives are 
 every pixel, seams included. The footprint's samples are inset half a texel from the lens's
 region of its frame, so the finest levels of a packed layout's two circles do not bleed into each
 other; the coarsest levels of the chain average across the boundary regardless, and `high`'s
-four taps sit around the inset centre, not inside it. The seam meters read the base level (`textureLod` 0), unchanged by the quality. The
-strategy is a uniform, not a define: switching quality recompiles nothing and re-uploads only
-the frames standing on screen.
+four taps sit around the inset centre, not inside it. The seam meters read the base level
+(`textureLod` 0), unchanged by the quality. The strategy is a uniform, not a define: switching
+quality recompiles nothing and re-uploads only the frames standing on screen.
 
 ## Consequences
 
 - Minified detail averages instead of aliasing in `balanced` and `high`: the renderer's test
   reads 2-pixel stripes minified about seven times as grey in both, and lets `fast` alias. A
   solid colour stays exact through all three, so the qualities differ only where detail does.
-- Measured (2026-09-28, `pnpm measure`, `samplingQuality.test.ts`, removed once this was settled) on a 1536 x 768 panorama
-  under lock, on the sharpest 96 x 96 region of the `fast` picture, in levels of 255: the
+- Measured (2026-09-28, `pnpm measure`, `samplingQuality.test.ts`, removed once this was
+  settled) on a 1536 x 768 panorama under lock, on the sharpest 96 x 96 region of the `fast`
+  picture, in levels of 255: the
   flicker is the mean difference between two consecutive frames, the aliasing the mean
   difference between the picture and the picture drawn at twice the size then box-filtered
   down. Chromium and WebKit draw the same picture to the level.

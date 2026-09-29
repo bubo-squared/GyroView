@@ -9,6 +9,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 # Actions are pinned to the commit of the release named beside each, so a moved tag cannot
 # change what runs; Dependabot proposes the updates (.github/dependabot.yml).
 jobs:

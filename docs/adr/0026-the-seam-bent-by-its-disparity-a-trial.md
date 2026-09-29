@@ -20,7 +20,7 @@ sliding one lens's sampling across the ring on the GPU.
 Under `pnpm measure`, `seamJoins.test.ts` on every Studio frame of both clips (13 sailing frames,
 17 office frames):
 
-- the mismatch meter slides lens 0's sampling across the ring from −4 to +10 degrees in quarter
+- the mismatch meter slides lens 0's sampling across the ring from −6 to +10 degrees in quarter
   degrees (`seamDisparity.ts`); a bin's disparity is trusted where its costs contrast and their
   minimum lies well inside the range; `seamDisparityField.ts` smooths the trusted bins around the
   ring, pulls toward zero where none is trusted and stays flat under the camera;
@@ -39,20 +39,24 @@ Under `pnpm measure`, `seamJoins.test.ts` on every Studio frame of both clips (1
 
 Mean level difference (0–255) per bin, by how far the field bends the bin:
 
-| Sailing, bend  | Bins | Lenses, fixed → bent | To Studio, fixed / bent / cut | Noise |
-| -------------- | ---- | -------------------- | ----------------------------- | ----- |
-| 1 to 4° (near) | 188  | 31.9 → 19.2 (−40%)   | 27.2 / 25.6 / 27.9            | 2.7   |
-| 4° or more     | 30   | 33.9 → 25.2 (−26%)   | 27.2 / 25.5 / 27.4            | 3.1   |
-| −1° or less    | 61   | 9.7 → 9.2 (−5%)      | 10.2 / 10.0 / 10.3            | 0.5   |
-| under 0.25°    | 190  | 14.1 → 14.0          | 12.0 / 12.1 / 12.1            | 0.7   |
+| Sailing, bend  | Bins | Lenses, fixed → bent | To Studio, fixed / bent | Noise |
+| -------------- | ---- | -------------------- | ----------------------- | ----- |
+| 1 to 4° (near) | 180  | 32.1 → 19.3 (−40%)   | 27.3 / 25.6             | 2.6   |
+| 4° or more     | 31   | 33.7 → 25.7 (−24%)   | 27.0 / 25.1             | 3.1   |
+| −1° or less    | 92   | 8.2 → 7.5 (−8%)      | 9.8 / 9.7               | 0.4   |
+| 0.25 to 1°     | 295  | 13.4 → 11.2 (−16%)   | 15.1 / 15.0             | 1.3   |
+| under 0.25°    | 182  | 14.6 → 14.5          | 12.4 / 12.5             | 0.8   |
 
-| Office, bend   | Bins | Lenses, fixed → bent | To Studio, fixed / bent / cut | Noise |
-| -------------- | ---- | -------------------- | ----------------------------- | ----- |
-| 1 to 4° (near) | 30   | 36.4 → 35.0 (−4%)    | 21.6 / 24.5 / 21.4            | 1.2   |
-| 4° or more     | 26   | 23.7 → 23.1 (−2%)    | 20.9 / 25.1 / 21.3            | 1.0   |
-| −1° or less    | 638  | 16.5 → 8.6 (−48%)    | 14.9 / 14.8 / 15.1            | 0.6   |
-| 0.25 to 1°     | 168  | 12.5 → 11.2 (−10%)   | 12.6 / 12.5 / 12.6            | 0.7   |
-| under 0.25°    | 158  | 13.4 → 13.3          | 9.6 / 9.6 / 9.6               | 0.4   |
+| Office, bend   | Bins | Lenses, fixed → bent | To Studio, fixed / bent | Noise |
+| -------------- | ---- | -------------------- | ----------------------- | ----- |
+| 1 to 4° (near) | 24   | 35.4 → 33.4 (−5%)    | 20.7 / 23.3             | 1.4   |
+| 4° or more     | 22   | 24.5 → 22.1 (−10%)   | 21.1 / 25.9             | 1.1   |
+| −1° or less    | 733  | 16.1 → 8.7 (−46%)    | 14.4 / 14.4             | 0.6   |
+| 0.25 to 1°     | 119  | 13.8 → 12.7 (−8%)    | 13.6 / 13.6             | 0.7   |
+| under 0.25°    | 122  | 13.9 → 13.9          | 9.3 / 9.3               | 0.4   |
+
+The cut join, measured in a run before it was dropped, came within the noise of the fixed join
+against Studio in every row (sailing 27.9 and 27.4 on the near rows against 27.2).
 
 - Seen side by side with Studio's frames, the bent join draws single what the fixed join doubles:
   the sailing bow's rope and rail at 1 m, the person half a metre from the office camera, the
@@ -65,23 +69,27 @@ Mean level difference (0–255) per bin, by how far the field bends the bin:
   them: for near objects Studio is a reference, not the truth.
 - The office recording's far and mid bins read −1.5 to −3.5 degrees. Parallax never makes a
   disparity negative, so that is the lens model's error at the seam on that unit, 1.5 degrees per
-  lens (ADR 0023, on a second unit); bending takes it up, hence the 48 percent. On that unit the
+  lens (ADR 0023, on a second unit); bending takes it up, hence the 46 percent. On that unit the
   error and a near object's parallax add up: the person half a metre away, about +3 degrees of
   parallax over −2.5 of error, reads near +0.7 and falls among the 0.25 to 1 degree bins, and the
   office's near rows hold mostly what lies within arm's reach, beyond what a bend takes.
-- Frame-to-frame change in the band: sailing 4.49 fixed, 4.62 bent, 4.56 cut; office 4.57, 4.61,
-  4.78, the bent join within 3 percent of the fixed one. Draw time at 1536×768: sailing 4.53
-  fixed, 4.82 bent; office 2.67, 2.87 ms, within 8 percent.
-- One measurement of the field, read-back included, takes 25 to 35 ms on an M4 Pro (57 candidates,
-  25 sub-samples a cell); with 4 sub-samples a cell, 10 ms and the same field (median difference
-  0.01 degrees).
+- Frame-to-frame change in the band: sailing 4.49 fixed, 4.62 bent; office 4.57, 4.61: the bent
+  join within 3 percent of the fixed one. Draw time at 1536×768: sailing 4.58 fixed, 4.85 bent;
+  office 2.72, 2.78 ms, within 6 percent.
+- Some bins find their least cost at the negative end of the range however wide it is: with the
+  range ending at −4 degrees, 253 of the office's textured bins sat there; ending at −6, 100 of
+  them found a minimum between, and 153 sat at the new end (89 on sailing). That is not a
+  disparity, and those bins stay untrusted.
+- One measurement of the field, read-back included, takes 25 to 40 ms on an M4 Pro (65 slides,
+  25 sub-samples a cell); with 4 sub-samples a cell, about 10 ms and the same field (median
+  difference 0.01 degrees).
 
 ## Decision
 
 The trial's criteria, set before it ran:
 
 - the lenses' disagreement on near bins well beyond the noise, on both clips: met on sailing
-  (12.7 levels against 2.7), not on office's near rows (1.4 against 1.2), whose visible gain on
+  (12.8 levels against 2.6), not on office's near rows (2.0 against 1.4), whose visible gain on
   the person sits in the 0.25 to 1 degree bins and whose largest gain is the lens model's error;
 - far bins within the noise: met on both;
 - no more frame-to-frame change than the fixed join: the bent join within 3 percent;

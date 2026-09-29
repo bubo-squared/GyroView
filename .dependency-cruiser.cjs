@@ -48,7 +48,7 @@ module.exports = {
         path: '^packages/core/src/(?!domain/format/|shared/|testing/)',
         pathNot: '\\.test\\.ts$',
       },
-      to: { path: '^packages/core/src/shared/(binary/ByteReader|protobuf)/' },
+      to: { path: '^packages/core/src/shared/(binary/ByteReader\\.ts$|protobuf/)' },
     },
     {
       name: 'domain-does-not-know-use-cases',

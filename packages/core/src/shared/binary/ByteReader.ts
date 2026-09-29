@@ -4,13 +4,16 @@ const UINT8_SIZE = 1;
 const UINT16_SIZE = 2;
 const UINT32_SIZE = 4;
 const UINT64_SIZE = 8;
+const INT32_SIZE = 4;
+const INT64_SIZE = 8;
 const FLOAT64_SIZE = 8;
 const IS_LITTLE_ENDIAN = true;
 const IS_BIG_ENDIAN = false;
 
 /**
- * Bounds-checked, little-endian reads over a byte array. Every read is positional, so callers
- * express the record layouts they parse as named offsets rather than as a moving cursor.
+ * Bounds-checked reads over a byte array: little-endian for Insta360's records, big-endian for
+ * ISO BMFF boxes. Every read is positional, so callers express the layouts they parse as named
+ * offsets rather than as a moving cursor.
  */
 export class ByteReader {
   private readonly view: DataView;
@@ -33,6 +36,11 @@ export class ByteReader {
     return this.view.getUint16(offset, IS_LITTLE_ENDIAN);
   }
 
+  public uint16BeAt(offset: number): number {
+    this.ensureAvailable(offset, UINT16_SIZE);
+    return this.view.getUint16(offset, IS_BIG_ENDIAN);
+  }
+
   public uint32LeAt(offset: number): number {
     this.ensureAvailable(offset, UINT32_SIZE);
     return this.view.getUint32(offset, IS_LITTLE_ENDIAN);
@@ -41,6 +49,14 @@ export class ByteReader {
   public uint32BeAt(offset: number): number {
     this.ensureAvailable(offset, UINT32_SIZE);
     return this.view.getUint32(offset, IS_BIG_ENDIAN);
+  }
+
+  /**
+   * A signed big-endian 32-bit integer, as edit lists and composition offsets store them.
+   */
+  public int32BeAt(offset: number): number {
+    this.ensureAvailable(offset, INT32_SIZE);
+    return this.view.getInt32(offset, IS_BIG_ENDIAN);
   }
 
   /**
@@ -57,6 +73,15 @@ export class ByteReader {
   public uint64BeAt(offset: number): number {
     this.ensureAvailable(offset, UINT64_SIZE);
     return this.toSafeNumber(this.view.getBigUint64(offset, IS_BIG_ENDIAN), offset);
+  }
+
+  /**
+   * A signed big-endian 64-bit integer (a version 1 edit list's media time) as a safe
+   * JavaScript number; rejects values beyond ±(2^53 - 1).
+   */
+  public int64BeAt(offset: number): number {
+    this.ensureAvailable(offset, INT64_SIZE);
+    return this.toSafeNumber(this.view.getBigInt64(offset, IS_BIG_ENDIAN), offset);
   }
 
   public float64LeAt(offset: number): number {
@@ -77,10 +102,12 @@ export class ByteReader {
   }
 
   private toSafeNumber(value: bigint, offset: number): number {
-    if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
+    const isSafe =
+      value >= BigInt(Number.MIN_SAFE_INTEGER) && value <= BigInt(Number.MAX_SAFE_INTEGER);
+    if (!isSafe) {
       throw new GyroViewError(
         'binary-unsafe-integer',
-        `uint64 at offset ${offset} (${value.toString()}) exceeds the safe integer range`,
+        `64-bit integer at offset ${offset} (${value.toString()}) exceeds the safe integer range`,
       );
     }
     return Number(value);

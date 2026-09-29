@@ -31,6 +31,53 @@ describe('ByteReader', () => {
     expect(large.uint64BeAt(0)).toBe(6_868_806_542);
   });
 
+  it('reads a big-endian uint16', () => {
+    expect(reader.uint16BeAt(0)).toBe(0x01_02);
+  });
+
+  it('reads signed big-endian 32-bit integers, as an edit list or a composition offset holds', () => {
+    const signed = new ByteReader(
+      new Uint8Array([0xff, 0xff, 0xff, 0xff, 0x80, 0, 0, 0, 0, 0, 3, 0xe9]),
+    );
+    expect(signed.int32BeAt(0)).toBe(-1);
+    expect(signed.int32BeAt(4)).toBe(-2_147_483_648);
+    expect(signed.int32BeAt(8)).toBe(1001);
+  });
+
+  it('reads a signed big-endian int64 that fits in a safe integer', () => {
+    const minusOne = new ByteReader(
+      new Uint8Array([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
+    );
+    expect(minusOne.int64BeAt(0)).toBe(-1);
+    const large = new ByteReader(new Uint8Array([0, 0, 0, 1, 0x99, 0x69, 0xab, 0x8e]));
+    expect(large.int64BeAt(0)).toBe(6_868_806_542);
+  });
+
+  it('rejects signed 64-bit values beyond the safe integer range on either side', () => {
+    const lowest = new ByteReader(new Uint8Array([0x80, 0, 0, 0, 0, 0, 0, 0]));
+    expect(captureError(() => lowest.int64BeAt(0))).toMatchObject({
+      code: 'binary-unsafe-integer',
+    });
+    const highest = new ByteReader(
+      new Uint8Array([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
+    );
+    expect(captureError(() => highest.int64BeAt(0))).toMatchObject({
+      code: 'binary-unsafe-integer',
+    });
+  });
+
+  it('bounds-checks the big-endian reads', () => {
+    expect(captureError(() => reader.uint16BeAt(19))).toMatchObject({
+      code: 'binary-out-of-bounds',
+    });
+    expect(captureError(() => reader.int32BeAt(17))).toMatchObject({
+      code: 'binary-out-of-bounds',
+    });
+    expect(captureError(() => reader.int64BeAt(13))).toMatchObject({
+      code: 'binary-out-of-bounds',
+    });
+  });
+
   it('reads a little-endian float64', () => {
     expect(reader.float64LeAt(12)).toBe(1.5);
   });

@@ -60,23 +60,12 @@ export class FakeVideoTrack implements VideoTrackReader {
     });
   }
 
-  public async keyframeAt(time: Seconds): Promise<KeyframeTime | undefined> {
-    return timeOf(await this.keyPacketAt(time));
+  public keyframeAt(time: Seconds): Promise<KeyframeTime | undefined> {
+    return Promise.resolve(timeOf(this.keyPacketAtOrBefore(time)));
   }
 
-  public async firstKeyframe(): Promise<KeyframeTime | undefined> {
-    return timeOf(await this.firstKeyPacket());
-  }
-
-  public keyPacketAt(time: Seconds): Promise<EncodedVideoPacket | undefined> {
-    const candidates = this.packets.filter(
-      (packet) => packet.isKeyFrame && packet.timestamp <= time,
-    );
-    return Promise.resolve(candidates.at(-1));
-  }
-
-  public firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
-    return Promise.resolve(this.packets.find((packet) => packet.isKeyFrame));
+  public firstKeyframe(): Promise<KeyframeTime | undefined> {
+    return Promise.resolve(timeOf(this.firstKeyPacket()));
   }
 
   public packetsFrom(time: Seconds): AsyncIterable<EncodedVideoPacket> {
@@ -93,9 +82,16 @@ export class FakeVideoTrack implements VideoTrackReader {
     return Promise.resolve(this.options.frameCount);
   }
 
+  private keyPacketAtOrBefore(time: Seconds): EncodedVideoPacket | undefined {
+    return this.packets.findLast((packet) => packet.isKeyFrame && packet.timestamp <= time);
+  }
+
+  private firstKeyPacket(): EncodedVideoPacket | undefined {
+    return this.packets.find((packet) => packet.isKeyFrame);
+  }
+
   private cursorAt(time: Seconds): FakePacketCursor {
-    const keys = this.packets.filter((packet) => packet.isKeyFrame);
-    const start = keys.findLast((packet) => packet.timestamp <= time) ?? keys[0];
+    const start = this.keyPacketAtOrBefore(time) ?? this.firstKeyPacket();
     this.openCursors += 1;
     const onClose = (): void => {
       this.openCursors -= 1;

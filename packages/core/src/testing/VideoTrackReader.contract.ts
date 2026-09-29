@@ -51,17 +51,6 @@ export function describeVideoTrackReaderContract(
       expect(first?.duration).toBeCloseTo(frameDuration, 6);
     });
 
-    it('finds the key packet at or before a time and none before the first packet', async () => {
-      const track = await open();
-      const first = await track.keyPacketAt(seconds(start));
-      expect(first?.isKeyFrame).toBe(true);
-      expect(first?.timestamp).toBeCloseTo(start, 6);
-      const key = await track.keyPacketAt(insideSecondGop);
-      expect(key?.isKeyFrame).toBe(true);
-      expect(key?.timestamp).toBeCloseTo(secondGopStart, 6);
-      await expect(track.keyPacketAt(seconds(start - frameDuration))).resolves.toBeUndefined();
-    });
-
     it('iterates the whole track from a time before its first frame', async () => {
       const track = await open();
       const packets = await collect(track.packetsFrom(seconds(start - frameDuration)));

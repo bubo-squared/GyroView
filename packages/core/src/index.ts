@@ -255,6 +255,15 @@ export type {
   VideoTrackDescription,
 } from './ports/VideoTrack';
 export type { AudioSegmentSource } from './ports/AudioSegmentSource';
+export type { AudioSampleSource } from './ports/AudioSampleSource';
+export type { AudioPackager } from './ports/AudioPackager';
+export type { AudioDecoderConfiguration, EncodedAudioSample } from './ports/AudioTrack';
+export type {
+  AudioTrackCodec,
+  CodecReader,
+  ContainerCodecs,
+  VideoTrackCodec,
+} from './ports/CodecReader';
 export type {
   DecodedFrame,
   VideoDecoderCallbacks,

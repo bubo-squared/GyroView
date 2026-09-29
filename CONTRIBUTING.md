@@ -107,11 +107,14 @@ a version tag is pushed:
 
 Once, for the first version: npm trusts a workflow only for a package that already exists.
 
-1. Publish the first version by hand, from an npm account that may publish under the
-   `@bubo-squared` scope: `npm login`, `pnpm --filter @bubo-squared/gyroview build`, then in
-   `apps/library` `pnpm pack` and `npm publish bubo-squared-gyroview-<version>.tgz`. The
-   manifest's `publishConfig` names the registry, so a `~/.npmrc` that sends the scope to GitHub
-   Packages does not divert it.
+1. Publish the first version by hand, in a terminal, from an npm account that may publish
+   under the `@bubo-squared` scope: `npm login`, `pnpm --filter @bubo-squared/gyroview build`,
+   then in `apps/library` `pnpm pack` and
+   `npm publish bubo-squared-gyroview-<version>.tgz --@bubo-squared:registry=https://registry.npmjs.org`.
+   The scope's registry is named on the command line because a `~/.npmrc` that sends the scope
+   to GitHub Packages wins over the manifest's `publishConfig` and over `--registry` (seen with
+   npm 11 when 0.1.0 was published). npm asks for the second factor through a link it shows
+   only in an interactive terminal.
 2. On npmjs.com, in the package's settings, add a trusted publisher: GitHub Actions, owner
    `bubo-squared`, repository `GyroView`, workflow `release.yml`, environment `npm`.
 3. On GitHub, in the repository's settings, give the `npm` environment (created by the first

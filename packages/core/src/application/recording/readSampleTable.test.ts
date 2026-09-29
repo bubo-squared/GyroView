@@ -64,6 +64,16 @@ describe('readSampleTable', () => {
 
   it('refuses a file without a movie box', async () => {
     const source = new InMemoryRandomAccessSource(encodeBox('ftyp', new Uint8Array(8)));
-    await expect(readSampleTable(source)).rejects.toMatchObject({ code: 'unsupported-container' });
+    await expect(readSampleTable(source)).rejects.toMatchObject({
+      code: 'unsupported-container',
+      message: expect.stringContaining('no movie box') as string,
+    });
+  });
+
+  it('hands out the movie box alone for a file without a file type box', async () => {
+    const file = buildMp4File([LENS], { movieBox: 'before-media' });
+    const withoutFileType = file.bytes.subarray(file.movieBox.offset);
+    const { movieBytes } = await readSampleTable(new InMemoryRandomAccessSource(withoutFileType));
+    expect(movieBytes).toEqual(file.bytes.subarray(file.movieBox.offset, file.movieBox.end));
   });
 });

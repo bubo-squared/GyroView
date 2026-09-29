@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { boxesIn } from './movieBoxes';
 import { parseMovie } from './parseMovie';
+import type { SampleTable } from '../../container/SampleTable';
 import { seconds } from '../../../shared/units/time';
 import { encodeBox } from '../../../testing/encodeBox';
 import {
@@ -72,8 +73,13 @@ function movieBoxOf(file: BuiltMp4File): Uint8Array {
 
 describe('parseMovie', () => {
   const tracks = [lens(1), SOUND, lens(3)];
-  const file = buildMp4File(tracks, { movieTimescale: 1000 });
-  const table = parseMovie(movieBoxOf(file));
+  let file: BuiltMp4File;
+  let table: SampleTable;
+
+  beforeAll(() => {
+    file = buildMp4File(tracks, { movieTimescale: 1000 });
+    table = parseMovie(movieBoxOf(file));
+  });
 
   it('reads every track of picture or sound, in the order of the movie box', () => {
     expect(table.tracks.map((track) => [track.trackId, track.kind])).toEqual([
@@ -134,6 +140,7 @@ describe('parseMovie', () => {
   it('refuses bytes that are not a movie box', () => {
     expect(captureError(() => parseMovie(encodeBox('free', new Uint8Array(4))))).toMatchObject({
       code: 'unsupported-container',
+      message: expect.stringContaining('not where the file says') as string,
     });
   });
 });

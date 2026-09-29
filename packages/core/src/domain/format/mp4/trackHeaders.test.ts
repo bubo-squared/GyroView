@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { boxesIn, type Mp4Box } from './movieBoxes';
 import { movieTimescaleOf, trackBoxesOf, trackHeadersOf, type TrackBoxes } from './trackHeaders';
-import { encodeBox } from '../../../testing/encodeBox';
+import { encodeBox, encodeFullBox } from '../../../testing/encodeBox';
 import { buildMp4File, type Mp4FileLayout } from '../../../testing/mp4/buildMp4File';
 import type { FixtureTrack } from '../../../testing/mp4/FixtureTrack';
 import { audioSampleEntry, videoSampleEntry } from '../../../testing/mp4/sampleEntries';
@@ -92,6 +92,51 @@ describe('trackHeadersOf', () => {
       mediaTimescale: 48_000,
       sampleEntryType: 'mp4a',
       nalLengthSize: undefined,
+    });
+  });
+
+  it('reads no NAL length size from a sound track, whatever its sample entry holds', () => {
+    const noisy: FixtureTrack = {
+      ...SOUND,
+      sampleEntry: audioSampleEntry({
+        type: 'mp4a',
+        channelCount: 2,
+        sampleRate: 48_000,
+        configuration: new Uint8Array(80).fill(0xff),
+      }),
+    };
+    const [track] = tracksOf(movieOf([noisy]));
+    expect(track && trackHeadersOf(track).nalLengthSize).toBeUndefined();
+  });
+
+  it('gives no NAL length size when the codec configuration stops before it', () => {
+    const cutShort = encodeBox('avcC', Uint8Array.of(1, 100, 0));
+    const [track] = tracksOf(movieOf([lens(1, 'avc1', cutShort)]));
+    expect(track && trackHeadersOf(track).nalLengthSize).toBeUndefined();
+  });
+
+  it('refuses a header of a version the standard does not define', () => {
+    const [track] = tracksOf(movieOf([SOUND]));
+    const [versionTwo] = boxesIn(encodeFullBox('tkhd', { version: 2 }, new Uint8Array(92)));
+    if (!track || !versionTwo) throw new Error('no track');
+    const withVersionTwo = {
+      ...track,
+      track: track.track.map((box) => (box.type === 'tkhd' ? versionTwo : box)),
+    };
+    expect(captureError(() => trackHeadersOf(withVersionTwo))).toMatchObject({
+      code: 'unsupported-container',
+      message: expect.stringContaining('tkhd box of version 2') as string,
+    });
+  });
+
+  it('refuses a track whose sample description has no entry', () => {
+    const [track] = tracksOf(movieOf([SOUND]));
+    const [noEntry] = boxesIn(encodeFullBox('stsd', { version: 0 }, Uint8Array.of(0, 0, 0, 0)));
+    if (!track || !noEntry) throw new Error('no track');
+    const sampleTable = track.sampleTable.map((box) => (box.type === 'stsd' ? noEntry : box));
+    expect(captureError(() => trackHeadersOf({ ...track, sampleTable }))).toMatchObject({
+      code: 'unsupported-container',
+      message: expect.stringContaining('without a sample entry') as string,
     });
   });
 

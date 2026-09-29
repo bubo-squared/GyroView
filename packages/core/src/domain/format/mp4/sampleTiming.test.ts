@@ -47,8 +47,11 @@ function withOffsets(offsets: readonly number[], version: 'version-0' | 'version
   });
 }
 
-function timingOf(fixture: FixtureTrack): ReturnType<typeof sampleTimingOf> {
-  const file = buildMp4File([fixture], { movieTimescale: MOVIE_TIMESCALE });
+function timingOf(
+  fixture: FixtureTrack,
+  headerVersion: 0 | 1 = 0,
+): ReturnType<typeof sampleTimingOf> {
+  const file = buildMp4File([fixture], { movieTimescale: MOVIE_TIMESCALE, headerVersion });
   const [movie] = boxesIn(file.bytes.subarray(file.movieBox.offset, file.movieBox.end));
   const trak = boxesIn(movie?.body ?? new Uint8Array()).find((box) => box.type === 'trak');
   if (!trak) throw new Error('no track');
@@ -107,6 +110,20 @@ describe('sampleTimingOf', () => {
     expect(timing.timestamps[3]).toBe(DELTA / TIMESCALE);
   });
 
+  it('reads an edit list of version 1, with 64-bit times', () => {
+    const timing = timingOf(
+      track({
+        edits: [
+          { segmentDuration: 333, mediaTime: -1 },
+          { segmentDuration: 600, mediaTime: DELTA },
+        ],
+      }),
+      1,
+    );
+    const emptyTicks = Math.round((333 / MOVIE_TIMESCALE) * TIMESCALE);
+    expect(timing.timestamps[1]).toBe(emptyTicks / TIMESCALE);
+  });
+
   it('follows only the first edit that shows media, as mediabunny does', () => {
     const timing = withEdits([
       { segmentDuration: 300, mediaTime: DELTA },
@@ -123,6 +140,7 @@ describe('sampleTimingOf', () => {
     const timescales = { media: TIMESCALE, movie: MOVIE_TIMESCALE, sampleCount: 7 };
     expect(captureError(() => sampleTimingOf(trackBoxesOf(trak), timescales))).toMatchObject({
       code: 'unsupported-container',
+      message: expect.stringContaining('times 6 samples of a track that has 7') as string,
     });
   });
 });

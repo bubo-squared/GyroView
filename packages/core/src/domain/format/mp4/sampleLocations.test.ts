@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { boxesIn, type Mp4Box } from './movieBoxes';
 import { sampleLocationsOf } from './sampleLocations';
-import { encodeBox } from '../../../testing/encodeBox';
+import { encodeBox, encodeFullBox } from '../../../testing/encodeBox';
 import type { FixtureTrack } from '../../../testing/mp4/FixtureTrack';
 import { encodeSampleTable, type ChunkPlacement } from '../../../testing/mp4/encodeSampleTable';
 import { captureError } from '../../../../test/support/errors';
@@ -76,6 +76,19 @@ describe('sampleLocationsOf', () => {
     const boxes = sampleTableBoxes(trackOfSizes([5, 6]), placement);
     expect(captureError(() => sampleLocationsOf(boxes))).toMatchObject({
       code: 'unsupported-container',
+      message: expect.stringContaining('chunks for 1 of its 2 samples') as string,
+    });
+  });
+
+  it('refuses sample sizes that do not fit in their box', () => {
+    const sizes = encodeFullBox(
+      'stsz',
+      { version: 0 },
+      Uint8Array.of(0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 1),
+    );
+    expect(captureError(() => sampleLocationsOf(boxesIn(sizes)))).toMatchObject({
+      code: 'unsupported-container',
+      message: expect.stringContaining('5 sample sizes that do not fit') as string,
     });
   });
 

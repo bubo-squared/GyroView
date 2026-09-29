@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import { defineGyroView } from './defineGyroView';
@@ -92,6 +92,13 @@ function pressKey(target: Element, key: string): KeyboardEvent {
   });
   target.dispatchEvent(event);
   return event;
+}
+
+/**
+ * The URL a fetch was asked for, however it was named.
+ */
+function requestedUrl(input: RequestInfo | URL): string {
+  return input instanceof Request ? input.url : input.toString();
 }
 
 /**
@@ -198,7 +205,12 @@ describe('<gyro-view>', () => {
 
   it('keeps the properties a page set before the element was defined', async () => {
     const element = document.createElement('gyro-view-defined-late');
-    Object.assign(element, { src: X5_RECORDING_URL, muted: true, controls: true });
+    Object.assign(element, {
+      src: X5_RECORDING_URL,
+      muted: true,
+      controls: true,
+      crossOrigin: 'use-credentials',
+    });
     element.style.width = '256px';
     document.body.append(element);
     customElements.define('gyro-view-defined-late', class extends GyroViewElement {});
@@ -206,6 +218,7 @@ describe('<gyro-view>', () => {
     elements.push(upgraded);
     expect(upgraded.getAttribute('src')).toBe(X5_RECORDING_URL);
     expect(upgraded.controls).toBe(true);
+    expect(upgraded.getAttribute('crossorigin')).toBe('use-credentials');
     await nextEvent(upgraded, 'ready');
     expect(upgraded.muted).toBe(true);
   });
@@ -749,6 +762,43 @@ describe('<gyro-view>', () => {
     const error = await failed;
     expect(error.code).toBe('source-unreadable');
     expect(element.dataset['status']).toBe('error');
+  });
+
+  it("reads its recording again, with the visitor's cookies, once crossorigin asks for them", async () => {
+    const element = await createReady();
+    const recording = new URL(X5_RECORDING_URL, document.baseURI).href;
+    const requests = vi.spyOn(globalThis, 'fetch');
+    try {
+      const ready = nextEvent(element, 'ready');
+      element.crossOrigin = 'use-credentials';
+      await ready;
+
+      const credentials = requests.mock.calls
+        .filter(([input]) => requestedUrl(input) === recording)
+        .map(([, init]) => init?.credentials);
+      expect(credentials.length).toBeGreaterThan(0);
+      expect(credentials.every((mode) => mode === 'include')).toBe(true);
+    } finally {
+      requests.mockRestore();
+    }
+  });
+
+  it('plays on the local files handed to it when crossorigin changes, as they are not fetched', async () => {
+    const element = create({ controls: '' });
+    const bytes = await fetchBytes(X5_RECORDING_URL);
+    const ready = nextEvent(element, 'ready');
+    element.loadFiles({ main: new File([bytes], 'VID_20260814_132640_00_013.insv') });
+    await ready;
+    const statuses: string[] = [];
+    element.addEventListener('statuschange', (event) => {
+      statuses.push(event.detail);
+    });
+
+    element.crossOrigin = 'use-credentials';
+    await settle();
+
+    expect(statuses).toEqual([]);
+    expect(element.status).toBe('ready');
   });
 
   it('plays local files handed to it, reloads them, and plays src again once it changes', async () => {

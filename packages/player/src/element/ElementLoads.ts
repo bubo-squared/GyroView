@@ -61,6 +61,14 @@ export class ElementLoads {
     this.schedule();
   }
 
+  /**
+   * How the recording is fetched changed: one named by URL loads again, read the new way; files
+   * handed in are not fetched, so they play on.
+   */
+  public requestChanged(): void {
+    if (this.files === undefined) this.schedule();
+  }
+
   public loadFiles(files: FileSource): void {
     this.files = files;
     this.schedule();

@@ -8,6 +8,7 @@ import type { PictureQuality, StabilizationMode, ViewMode } from '@gyroview/core
 export interface GyroViewAttributes {
   readonly src?: string | undefined;
   readonly src2?: string | undefined;
+  readonly crossorigin?: 'anonymous' | 'use-credentials' | '' | undefined;
   readonly poster?: string | undefined;
   readonly preload?: 'none' | 'auto' | undefined;
   readonly 'gain-match'?: 'on' | 'off' | undefined;

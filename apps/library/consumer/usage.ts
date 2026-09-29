@@ -82,6 +82,9 @@ const detachKeyboard = attachKeyboard(document.body, player, { toggleFullscreen:
 detachGestures();
 detachKeyboard();
 await player.load({ main: { url: 'https://media.example/VID_20260814_132640_00_013.insv' } });
+await player.load({
+  main: { url: 'https://files.example/VID_20260814_132640_00_013.insv', credentials: 'include' },
+});
 player.seek(12.5);
 player.lookAt(90, -10);
 player.turn(5, 0);
@@ -89,6 +92,8 @@ player.setView({ ...player.view, fieldOfView: 75 });
 const position: number = player.currentTime;
 const yaw: number = player.view.yaw;
 element.preload = 'none';
+element.crossOrigin = 'use-credentials';
+const reading: 'anonymous' | 'use-credentials' | null = element.crossOrigin;
 const matching: 'on' | 'off' = element.gainMatch;
 const knownCodes: readonly GyroViewErrorCode[] = GYRO_VIEW_ERROR_CODES;
 const fromMessage = isGyroViewErrorCode('cors') ? 'cors' : undefined;
@@ -101,6 +106,7 @@ export {
   matching,
   metadata,
   position,
+  reading,
   samples,
   status,
   yaw,

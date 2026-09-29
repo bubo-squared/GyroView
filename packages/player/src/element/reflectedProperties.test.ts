@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   defineBooleanProperties,
   defineKeywordProperties,
+  defineNullableKeywordProperties,
   defineStringProperties,
   propertyNameOf,
 } from './reflectedProperties';
@@ -44,6 +45,30 @@ describe('reflected properties', () => {
     expect(element.getAttribute('preload')).toBe('none');
     mirrored.preload = undefined;
     expect(element.hasAttribute('preload')).toBe(false);
+  });
+
+  it('reads an enumerated attribute whose absence is a state as null, under its own property name', () => {
+    const element = document.createElement('div');
+    defineNullableKeywordProperties(element, [
+      {
+        name: 'crossorigin',
+        property: 'crossOrigin',
+        keywords: ['anonymous', 'use-credentials'],
+        fallback: 'anonymous',
+      },
+    ]);
+    const mirrored = element as unknown as HTMLElement & { crossOrigin: string | null | undefined };
+    expect(mirrored.crossOrigin).toBeNull();
+    element.setAttribute('crossorigin', '');
+    expect(mirrored.crossOrigin).toBe('anonymous');
+    element.setAttribute('crossorigin', ' USE-CREDENTIALS ');
+    expect(mirrored.crossOrigin).toBe('use-credentials');
+    element.setAttribute('crossorigin', 'cookies');
+    expect(mirrored.crossOrigin).toBe('anonymous');
+    mirrored.crossOrigin = 'use-credentials';
+    expect(element.getAttribute('crossorigin')).toBe('use-credentials');
+    mirrored.crossOrigin = null;
+    expect(element.hasAttribute('crossorigin')).toBe(false);
   });
 
   it('coerces a boolean property as a media element does, so undefined never flips it', () => {

@@ -12,6 +12,18 @@ export const SourceAttribute = {
   Src2: 'src2',
 } as const;
 
+/**
+ * `Request` ones say how the recording is fetched; changing any of them reloads a recording
+ * named by URL. The iframe embed carries none of them (ADR 0027).
+ */
+export const RequestAttribute = {
+  /**
+   * `use-credentials` fetches with the visitor's cookies, as a media element's `crossorigin`
+   * does; `anonymous`, the default, sends them to the page's own origin only.
+   */
+  CrossOrigin: 'crossorigin',
+} as const;
+
 export const ViewAttribute = {
   FieldOfView: 'fov',
   Yaw: 'yaw',
@@ -47,6 +59,7 @@ export const PlaybackAttribute = {
 
 export const OBSERVED_ATTRIBUTES: readonly string[] = [
   ...Object.values(SourceAttribute),
+  ...Object.values(RequestAttribute),
   ...Object.values(ViewAttribute),
   ...Object.values(PlaybackAttribute),
 ];

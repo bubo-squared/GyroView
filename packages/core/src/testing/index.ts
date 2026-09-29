@@ -19,7 +19,21 @@ export {
 export { FakeFrameSink } from './FakeFrameSink';
 export { describePlaybackClockContract, type ClockUnderTest } from './PlaybackClock.contract';
 export { FakeResourceLocator } from './FakeResourceLocator';
-export { encodeBox } from './encodeBox';
+export { encodeBox, encodeFullBox, encodeLargeBox, type FullBoxHeader } from './encodeBox';
+export {
+  buildMp4File,
+  type BuiltMp4File,
+  type FixtureEdit,
+  type FixtureSample,
+  type FixtureTrack,
+  type Mp4FileLayout,
+} from './mp4/buildMp4File';
+export {
+  audioSampleEntry,
+  videoSampleEntry,
+  type AudioSampleEntrySpec,
+  type VideoSampleEntrySpec,
+} from './mp4/sampleEntries';
 export {
   TrailerFixtureBuilder,
   type BuiltTrailerFile,

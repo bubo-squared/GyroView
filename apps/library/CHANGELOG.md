@@ -3,21 +3,22 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
-## Unreleased
+## 0.2.0 (2026-09-29)
 
-- The raw lenses no longer show a faint grey line along the tiles' edges on Apple GPUs, where a
-  player's size put an edge between two pixels the GPU shades together.
+What a page may notice:
+
 - The controls are restyled, and fit the player's own width and the pointer (ADR 0028): a
   shaded bar with a thin seek bar, Stabilization and View buttons that show the icon of the
   choice in effect and open menus of the choices with their icons and a line describing each,
   and on a narrow player menus over the whole player and fewer parts; on touch, 44-pixel
-  targets. The Stop button is gone (`stop()` and the S key remain), and with it `labels.stop`.
-- `messages` takes `stabilizationModeDescriptions`, `viewModeDescriptions` and `labels.close`.
+  targets.
+- The Stop button is gone; `stop()` and the S key remain. `labels.stop` goes with it.
 - The theme's defaults follow the new look: `--gyro-view-accent` and `--gyro-view-text` are
   white, `--gyro-view-controls-background` is `rgb(0 0 0 / 60%)` and `--gyro-view-radius` is
   `8px`; `--gyro-view-menu-background` is new. A page's own values keep working.
-- The equirectangular panorama and the raw lenses zoom up to eight times, from four, for fine
-  detail in 5.7K and 8K recordings. The normal view keeps its 30 to 120 degrees.
+
+New:
+
 - `crossorigin` on `<gyro-view>`, with a media element's keywords: `use-credentials` fetches the
   recording, its byte ranges and the other lens's file of a split pair with the visitor's
   cookies, for recordings kept private behind cookies on another origin. `crossOrigin` reflects
@@ -27,6 +28,14 @@ the API.
   place of the player's shared `http.requestInit.credentials` for that recording.
 - A `cors` error for a request sent with credentials names what the host must add: the page's
   origin by name, not `*`, and `Access-Control-Allow-Credentials: true`.
+- The equirectangular panorama and the raw lenses zoom up to eight times, from four, for fine
+  detail in 5.7K and 8K recordings. The normal view keeps its 30 to 120 degrees.
+- `messages` takes `stabilizationModeDescriptions`, `viewModeDescriptions` and `labels.close`.
+
+Fixed:
+
+- The raw lenses no longer show a faint grey line along the tiles' edges on Apple GPUs, where a
+  player's size put an edge between two pixels the GPU shades together.
 
 ## 0.1.0 (2026-09-29)
 

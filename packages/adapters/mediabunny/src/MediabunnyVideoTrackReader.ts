@@ -2,6 +2,7 @@ import {
   GyroViewError,
   seconds,
   type EncodedVideoPacket,
+  type KeyframeTime,
   type Seconds,
   type VideoDecoderConfiguration,
   type VideoTrackDescription,
@@ -66,6 +67,14 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
     };
   }
 
+  public async keyframeAt(time: Seconds): Promise<KeyframeTime | undefined> {
+    return timeOf(await this.sink.getKeyPacket(time, VERIFIED));
+  }
+
+  public async firstKeyframe(): Promise<KeyframeTime | undefined> {
+    return timeOf(await this.sink.getFirstKeyPacket(VERIFIED));
+  }
+
   public async keyPacketAt(time: Seconds): Promise<EncodedVideoPacket | undefined> {
     const packet = await this.sink.getKeyPacket(time, VERIFIED);
     return packet === null ? undefined : this.wrap(packet);
@@ -109,4 +118,10 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
     this.originals.set(wrapped, packet);
     return wrapped;
   }
+}
+
+function timeOf(packet: EncodedPacket | null): KeyframeTime | undefined {
+  return packet === null
+    ? undefined
+    : { timestamp: seconds(packet.timestamp), duration: seconds(packet.duration) };
 }

@@ -8,8 +8,8 @@ import type { Seconds } from '../../shared/units/time';
  */
 export async function keyframeTimeAt(track: VideoTrackReader, time: Seconds): Promise<Seconds> {
   try {
-    const keyPacket = await track.keyPacketAt(time);
-    return keyPacket?.timestamp ?? time;
+    const keyframe = await track.keyframeAt(time);
+    return keyframe?.timestamp ?? time;
   } catch {
     return time;
   }

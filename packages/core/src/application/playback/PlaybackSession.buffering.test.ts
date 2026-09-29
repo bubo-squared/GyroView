@@ -141,7 +141,7 @@ describe('PlaybackSession buffering', () => {
   it('lets a scrub whose key frame could not be looked up go quietly once disposed', async () => {
     const lookup = new Deferred<void>();
     class LetGoTrack extends FakeVideoTrack {
-      public override async keyPacketAt(): Promise<undefined> {
+      public override async keyframeAt(): Promise<undefined> {
         await lookup.promise;
         return undefined;
       }

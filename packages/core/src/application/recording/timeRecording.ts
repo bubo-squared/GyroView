@@ -64,15 +64,15 @@ async function timeByTheClock(
 }
 
 /**
- * Where the frame source's frames lie in time: the first shows where the first key packet does
- * (a track without one does not decode), and the rest follow at that packet's duration, the
+ * Where the frame source's frames lie in time: the first shows where the first key frame does
+ * (a track without one does not decode), and the rest follow at that frame's duration, the
  * cameras recording at a constant rate.
  */
 async function timelineOf(
   recordingClock: CaptureClock,
   frameSource: VideoTrackReader,
 ): Promise<FrameTimeline> {
-  const firstKey = await frameSource.firstKeyPacket();
+  const firstKey = await frameSource.firstKeyframe();
   const hasDuration = firstKey !== undefined && firstKey.duration > 0;
   return {
     clock: recordingClock.withFirstFrameAt(firstKey?.timestamp ?? seconds(0)),

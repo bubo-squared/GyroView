@@ -26,6 +26,15 @@ export interface EncodedVideoPacket {
 }
 
 /**
+ * When a key frame shows and for how long: what the sample table tells without reading the
+ * frame itself.
+ */
+export interface KeyframeTime {
+  readonly timestamp: Seconds;
+  readonly duration: Seconds;
+}
+
+/**
  * Codec parameters a decoder needs, expressed without platform types so the core stays free of
  * DOM declarations.
  */

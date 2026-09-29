@@ -3,10 +3,17 @@ import type { PictureQuality, ScreenPoint, StabilizationMode, ViewMode } from '@
 import {
   OBSERVED_ATTRIBUTES,
   PlaybackAttribute,
+  RequestAttribute,
   SourceAttribute,
   ViewAttribute,
 } from './attributeNames';
-import { GAIN_MATCH, PRELOAD, unreadableAngleWarning, viewAfterAttribute } from './attributes';
+import {
+  CROSS_ORIGIN,
+  GAIN_MATCH,
+  PRELOAD,
+  unreadableAngleWarning,
+  viewAfterAttribute,
+} from './attributes';
 import { ElementLoads } from './ElementLoads';
 import type { FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
@@ -25,6 +32,7 @@ import {
 import {
   defineBooleanProperties,
   defineKeywordProperties,
+  defineNullableKeywordProperties,
   defineStringProperties,
   propertyNameOf,
 } from './reflectedProperties';
@@ -52,8 +60,10 @@ import type { PlayerMetadata } from '../PlayerMetadata';
  */
 const STRING_ATTRIBUTES = [...Object.values(SourceAttribute), PlaybackAttribute.Poster];
 const KEYWORD_ATTRIBUTES = [PRELOAD, GAIN_MATCH];
+const NULLABLE_KEYWORD_ATTRIBUTES = [CROSS_ORIGIN];
 const BOOLEAN_ATTRIBUTES = [PlaybackAttribute.Autoplay, PlaybackAttribute.Controls];
 const SOURCE_ATTRIBUTES: readonly string[] = Object.values(SourceAttribute);
+const REQUEST_ATTRIBUTES: readonly string[] = Object.values(RequestAttribute);
 /**
  * The properties a page may set before the element is defined, all kept for it.
  */
@@ -63,6 +73,7 @@ const PUBLIC_PROPERTIES: readonly string[] = [
     ...KEYWORD_ATTRIBUTES.map(({ name }) => name),
     ...BOOLEAN_ATTRIBUTES,
   ].map((name) => propertyNameOf(name)),
+  ...NULLABLE_KEYWORD_ATTRIBUTES.map(({ property }) => property),
   ...LIVE_SETTING_NAMES,
   'currentTime',
   'messages',
@@ -81,6 +92,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   declare public src: string | null;
   declare public src2: string | null;
   declare public poster: string | null;
+  declare public crossOrigin: 'anonymous' | 'use-credentials' | null;
   declare public preload: 'none' | 'auto';
   declare public gainMatch: 'on' | 'off';
   declare public autoplay: boolean;
@@ -110,6 +122,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     this.earlyProperties = takeEarlyProperties(this, PUBLIC_PROPERTIES);
     defineStringProperties(this, STRING_ATTRIBUTES);
     defineKeywordProperties(this, KEYWORD_ATTRIBUTES);
+    defineNullableKeywordProperties(this, NULLABLE_KEYWORD_ATTRIBUTES);
     defineBooleanProperties(this, BOOLEAN_ATTRIBUTES);
     const shadow = this.attachShadow({ mode: 'open' });
     renderShadowTree(shadow);
@@ -211,6 +224,8 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   ): void {
     if (SOURCE_ATTRIBUTES.includes(name)) {
       this.loads.sourceChanged();
+    } else if (REQUEST_ATTRIBUTES.includes(name)) {
+      this.loads.requestChanged();
     } else if (VIEW_ATTRIBUTES.includes(name)) {
       this.player.setView(viewAfterAttribute(this.player.view, name, value));
       const warning = unreadableAngleWarning(name, value);

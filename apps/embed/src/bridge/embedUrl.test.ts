@@ -1,4 +1,4 @@
-import { OBSERVED_ATTRIBUTES } from '@gyroview/player/attributes';
+import { OBSERVED_ATTRIBUTES, RequestAttribute } from '@gyroview/player/attributes';
 import { describe, expect, it } from 'vitest';
 
 import { embedAttributesOf, embedUrlFor, withAbsoluteUrls, type EmbedOptions } from './embedUrl';
@@ -50,9 +50,17 @@ describe('embedUrlFor and embedAttributesOf', () => {
     });
   });
 
-  it('has a query parameter for every attribute of the element', () => {
+  it('has a query parameter for every attribute of the element but those saying how it fetches', () => {
     const parsed = new URL(embedUrlFor(PAGE, EVERY_OPTION, SITE));
-    expect(OBSERVED_ATTRIBUTES.filter((name) => !parsed.searchParams.has(name))).toEqual([]);
+    const requestAttributes: readonly string[] = Object.values(RequestAttribute);
+    const embeddable = OBSERVED_ATTRIBUTES.filter((name) => !requestAttributes.includes(name));
+    expect(embeddable.filter((name) => !parsed.searchParams.has(name))).toEqual([]);
+  });
+
+  it("never hands the element crossorigin, which would read with the frame's cookies for any page framing it", () => {
+    expect(
+      embedAttributesOf(new URLSearchParams('src=a.insv&crossorigin=use-credentials')),
+    ).toEqual({ src: 'a.insv', controls: '' });
   });
 
   it('shows controls unless told not to and accepts several spellings of a flag', () => {

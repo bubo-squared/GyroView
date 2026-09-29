@@ -30,6 +30,7 @@ export function Recording({ url }: { readonly url: string }): JSX.Element {
     <gyro-view
       ref={player}
       src={url}
+      crossorigin="use-credentials"
       stabilization="lock"
       view-mode="normal"
       fov={75}

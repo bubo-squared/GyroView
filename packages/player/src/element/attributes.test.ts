@@ -34,6 +34,25 @@ describe('sourceFromAttributes', () => {
     expect(sourceFromAttributes(readerOf({ src: '  ' }), BASE)).toBeUndefined();
   });
 
+  it("reads both files with the visitor's cookies when crossorigin asks for them", () => {
+    const source = sourceFromAttributes(
+      readerOf({ src: 'VID_00.insv', src2: 'VID_10.insv', crossorigin: 'Use-Credentials' }),
+      BASE,
+    );
+    expect(source).toEqual({
+      main: { url: 'https://site.example/pages/VID_00.insv', credentials: 'include' },
+      second: { url: 'https://site.example/pages/VID_10.insv', credentials: 'include' },
+    });
+  });
+
+  it('names no credentials for an absent, empty, anonymous or unknown crossorigin', () => {
+    for (const crossorigin of [undefined, '', 'anonymous', 'cookies']) {
+      const attributes = crossorigin === undefined ? {} : { crossorigin };
+      const source = sourceFromAttributes(readerOf({ src: 'a.insv', ...attributes }), BASE);
+      expect(source?.main).toEqual({ url: 'https://site.example/pages/a.insv' });
+    }
+  });
+
   it('passes a src that is no URL on as written, for the load to fail on and report', () => {
     const source = sourceFromAttributes(readerOf({ src: 'http://[::1/x.insv' }), BASE);
     expect(source?.main).toEqual({ url: 'http://[::1/x.insv' });

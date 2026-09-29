@@ -69,6 +69,41 @@ export function defineKeywordProperties(
 }
 
 /**
+ * An enumerated attribute whose absence is a state of its own, as a media element's `crossorigin`
+ * is, under the property name the DOM gives it (`crossOrigin`) rather than one derived from the
+ * attribute's.
+ */
+export interface NullableKeywordAttribute<
+  Keyword extends string,
+> extends KeywordAttribute<Keyword> {
+  readonly property: string;
+}
+
+/**
+ * Enumerated attributes whose property reads `null` while the attribute is absent and the keyword
+ * in effect otherwise, the fallback for an empty or unknown value, as the DOM reflects
+ * `crossOrigin`; it writes the attribute.
+ */
+export function defineNullableKeywordProperties(
+  element: HTMLElement,
+  attributes: readonly NullableKeywordAttribute<string>[],
+): void {
+  for (const attribute of attributes) {
+    Object.defineProperty(element, attribute.property, {
+      configurable: true,
+      enumerable: true,
+      get(this: HTMLElement): string | null {
+        const value = this.getAttribute(attribute.name);
+        return value === null ? null : keywordOf(attribute, value);
+      },
+      set(this: HTMLElement, value: string | null | undefined): void {
+        writeAttribute(this, attribute.name, value);
+      },
+    });
+  }
+}
+
+/**
  * The keyword an enumerated attribute's value names, ignoring case and spacing; the fallback for
  * an absent or unknown one.
  */

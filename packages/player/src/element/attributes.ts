@@ -1,8 +1,17 @@
-import { PlaybackAttribute, SourceAttribute, ViewAttribute } from './attributeNames';
-import { keywordOf, type KeywordAttribute } from './reflectedProperties';
+import {
+  PlaybackAttribute,
+  RequestAttribute,
+  SourceAttribute,
+  ViewAttribute,
+} from './attributeNames';
+import {
+  keywordOf,
+  type KeywordAttribute,
+  type NullableKeywordAttribute,
+} from './reflectedProperties';
 import type { PlayerWarning } from '../player/PlayerEvents';
 import type { ViewAngles } from '../player/PlayerOptions';
-import type { MediaInput, PlayerSource } from '../PlayerSource';
+import type { PlayerSource, UrlInput } from '../PlayerSource';
 
 /**
  * Reads one attribute of the element, `null` when absent, like `Element.getAttribute`.
@@ -10,20 +19,36 @@ import type { MediaInput, PlayerSource } from '../PlayerSource';
 export type AttributeReader = (name: string) => string | null;
 
 /**
+ * How a URL is fetched, beside the URL itself.
+ */
+type Reading = Omit<UrlInput, 'url'>;
+
+/**
  * The source the attributes describe, or nothing when `src` is absent. URLs resolve against
- * the document, as an image's would.
+ * the document, as an image's would, and both files of a pair are read alike.
  */
 export function sourceFromAttributes(
   read: AttributeReader,
   baseUrl: string,
 ): PlayerSource | undefined {
-  const main = urlInputOf(read(SourceAttribute.Src), baseUrl);
-  return main && { main, second: urlInputOf(read(SourceAttribute.Src2), baseUrl) };
+  const reading = readingOf(read(RequestAttribute.CrossOrigin));
+  const main = urlInputOf(read(SourceAttribute.Src), baseUrl, reading);
+  return main && { main, second: urlInputOf(read(SourceAttribute.Src2), baseUrl, reading) };
 }
 
-function urlInputOf(value: string | null, baseUrl: string): MediaInput | undefined {
+function urlInputOf(value: string | null, baseUrl: string, reading: Reading): UrlInput | undefined {
   const trimmed = value?.trim() ?? '';
-  return trimmed === '' ? undefined : { url: resolvedOrAsWritten(trimmed, baseUrl) };
+  return trimmed === '' ? undefined : { url: resolvedOrAsWritten(trimmed, baseUrl), ...reading };
+}
+
+/**
+ * `use-credentials` sends the visitor's cookies to any origin; anything else leaves fetch's own
+ * default, which sends them to the page's origin only, as `anonymous` does for a media element.
+ */
+function readingOf(crossOrigin: string | null): Reading {
+  return keywordOf(CROSS_ORIGIN, crossOrigin) === 'use-credentials'
+    ? { credentials: 'include' }
+    : {};
 }
 
 /**
@@ -118,6 +143,18 @@ export const GAIN_MATCH: KeywordAttribute<'on' | 'off'> = {
   name: PlaybackAttribute.GainMatch,
   keywords: ['on', 'off'],
   fallback: 'on',
+};
+
+/**
+ * `use-credentials` fetches the recording with the visitor's cookies; `anonymous`, in effect for
+ * an empty or unknown value, without them across origins. Absent, its property reads `null`, as
+ * a media element's `crossOrigin` does.
+ */
+export const CROSS_ORIGIN: NullableKeywordAttribute<'anonymous' | 'use-credentials'> = {
+  name: RequestAttribute.CrossOrigin,
+  property: 'crossOrigin',
+  keywords: ['anonymous', 'use-credentials'],
+  fallback: 'anonymous',
 };
 
 export function shouldPreload(value: string | null): boolean {

@@ -19,6 +19,7 @@ export type { Recording } from './application/recording/Recording';
 export { timeRecording, type RecordingTiming } from './application/recording/timeRecording';
 export type { MotionSetup } from './application/recording/motionOf';
 export { locateOtherLensFile } from './application/recording/locateOtherLensFile';
+export { readSampleTable, type ReadSampleTable } from './application/recording/readSampleTable';
 
 // Ports and the values they exchange
 export type { RandomAccessSource } from './ports/RandomAccessSource';
@@ -235,6 +236,15 @@ export {
   type Degrees,
   type Radians,
 } from './shared/units/angle';
+
+// The container's sample tables
+export { SampleTable } from './domain/container/SampleTable';
+export {
+  TrackSampleTable,
+  type TrackKind,
+  type TrackSampleTableParts,
+} from './domain/container/TrackSampleTable';
+export { EVERY_SAMPLE_IS_A_KEYFRAME, type KeyframeRule } from './domain/container/KeyframeRule';
 
 // Playback ports and pipeline
 export type { AudioTrackReader, DemuxedInput, Demuxer, VideoTrackReader } from './ports/Demuxer';

@@ -22,6 +22,26 @@ The browser projects (the player, the WebCodecs, Three.js and MSE adapters, the 
 run in headless Chromium and WebKit through Playwright; `pnpm --filter
 @gyroview/adapter-webcodecs exec playwright install chromium webkit` installs them once.
 
+## On a phone
+
+The developer page (`pnpm --filter @gyroview/embed dev`) lists the recordings in `samples/` and
+streams them over byte ranges, with the frame rate and the drawing buffer beside the player.
+A phone reaches it over the local network only through HTTPS, since WebCodecs exists only in
+secure contexts, with a certificate the phone trusts. With [mkcert](https://github.com/FiloSottile/mkcert):
+
+```sh
+mkcert -install                                   # a local certificate authority, once
+mkcert -cert-file dev-cert.pem -key-file dev-key.pem "$(scutil --get LocalHostName).local" localhost
+GYROVIEW_DEV_CERT=dev-cert.pem GYROVIEW_DEV_KEY=dev-key.pem pnpm --filter @gyroview/embed dev
+```
+
+Keep the two files outside the repository, and give the dev command their full paths. On an
+iPhone, install the authority's `rootCA.pem` (in the folder `mkcert -CAROOT` prints, sent over
+AirDrop) as a profile, then turn on full trust for it in Settings, General, About, Certificate
+Trust Settings. On the same network, open `https://<LocalHostName>.local:5180/` in Safari (the
+certificate names the host, not the address the server prints, which changes). Safari's Web
+Inspector on the Mac (Develop, then the phone) shows the page's console.
+
 ## Proposing a change
 
 1. Open an issue first for anything larger than a fix, so the approach can be agreed before

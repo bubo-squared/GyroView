@@ -14,6 +14,13 @@ export const FIRST_BYTE_RANGE = 'bytes=0-0';
 export const EXPOSED_HEADERS_ADVICE =
   'Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges';
 
+/**
+ * What a server must add for a page to read it across origins. A request that carries the
+ * visitor's cookies is held to more: the Fetch standard refuses a wildcard origin for it.
+ */
+const ANONYMOUS_CORS_ADVICE = `Access-Control-Allow-Origin, ${EXPOSED_HEADERS_ADVICE}`;
+const CREDENTIALED_CORS_ADVICE = `Access-Control-Allow-Origin naming this page's origin, not *; Access-Control-Allow-Credentials: true; ${EXPOSED_HEADERS_ADVICE}`;
+
 export interface HttpRequestOptions {
   /**
    * Extra request settings, for example credentials or headers. `Range` is set by the caller.
@@ -118,7 +125,7 @@ async function diagnoseFailure(
   return isServerReachable
     ? new GyroViewError(
         'cors',
-        `${url} answered, but its server does not allow this page's origin to read it; add CORS headers (Access-Control-Allow-Origin, ${EXPOSED_HEADERS_ADVICE})`,
+        `${url} answered, but its server does not allow this page's origin to read it; add CORS headers (${corsAdviceFor(options)})`,
         { cause },
       )
     : new GyroViewError(
@@ -126,6 +133,12 @@ async function diagnoseFailure(
         `${url} could not be fetched; check the URL and the network`,
         { cause },
       );
+}
+
+function corsAdviceFor(options: HttpRequestOptions): string {
+  return options.requestInit?.credentials === 'include'
+    ? CREDENTIALED_CORS_ADVICE
+    : ANONYMOUS_CORS_ADVICE;
 }
 
 /**

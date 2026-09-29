@@ -26,6 +26,26 @@ describe('httpRequest', () => {
     });
   });
 
+  it('names the stricter rule for a CORS refusal of a request sent with credentials', async () => {
+    const failure = httpRequest(
+      URL_UNDER_TEST,
+      { method: 'GET' },
+      { fetch: blockedByCors, requestInit: { credentials: 'include' } },
+    );
+    await expect(failure).rejects.toMatchObject({
+      code: 'cors',
+      message: expect.stringMatching(/not \*.*Access-Control-Allow-Credentials: true/u) as string,
+    });
+  });
+
+  it('asks for no credentials rule when the request carried none', async () => {
+    await expect(
+      httpRequest(URL_UNDER_TEST, { method: 'GET' }, { fetch: blockedByCors }),
+    ).rejects.toMatchObject({
+      message: expect.not.stringContaining('Access-Control-Allow-Credentials') as string,
+    });
+  });
+
   it('reports an unreachable server as unreadable', async () => {
     await expect(
       httpRequest(URL_UNDER_TEST, { method: 'HEAD' }, { fetch: offline }),

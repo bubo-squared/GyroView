@@ -49,6 +49,8 @@ export { FakeDemuxer, type FakeInputSpec } from './FakeDemuxer';
 export { FakeCodecReader } from './FakeCodecReader';
 export { describeCodecReaderContract, type CodecReaderUnderTest } from './CodecReader.contract';
 export { FakeAudioSampleSource } from './FakeAudioSampleSource';
+export { describeByteStreamContract } from './ByteStream.contract';
+export { SimulatedLink, type SimulatedNetwork, type SimulatedRequest } from './SimulatedLink';
 export {
   describeAudioSampleSourceContract,
   type AudioSampleSourceExpectations,

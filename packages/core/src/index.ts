@@ -255,6 +255,7 @@ export type {
   VideoTrackDescription,
 } from './ports/VideoTrack';
 export type { AudioSegmentSource } from './ports/AudioSegmentSource';
+export type { ByteStream } from './ports/ByteStream';
 export type { AudioSampleSource } from './ports/AudioSampleSource';
 export type { AudioPackager } from './ports/AudioPackager';
 export type { AudioDecoderConfiguration, EncodedAudioSample } from './ports/AudioTrack';

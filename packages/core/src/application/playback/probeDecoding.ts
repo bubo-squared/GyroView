@@ -4,6 +4,7 @@ import type { EncodedVideoPacket, VideoDecoderConfiguration } from '../../ports/
 import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';
 import { hasErrorCode, messageOf } from '../../shared/errors/GyroViewError';
+import type { Seconds } from '../../shared/units/time';
 
 export type ProbeVerdict =
   | 'decodes'
@@ -127,8 +128,10 @@ class SourceProbe<Handle> {
     const configuration = await this.track.decoderConfiguration();
     if (!(await this.decoderPort.isSupported(configuration))) return unsupported(configuration);
     if (this.isClosed) return TIMED_OUT;
+    const firstKeyframe = await this.track.firstKeyframe();
+    if (!firstKeyframe) return NO_KEY_FRAME;
     this.isReadingKeyFrame = true;
-    const keyPacket = await this.track.firstKeyPacket();
+    const keyPacket = await firstPacketFrom(this.track, firstKeyframe.timestamp);
     this.isReadingKeyFrame = false;
     return keyPacket ? await this.decodeFirst(configuration, keyPacket) : NO_KEY_FRAME;
   }
@@ -215,4 +218,20 @@ function failedWith(error: unknown): Outcome {
     verdict: isUnsupported ? 'unsupported-configuration' : 'decode-failed',
     detail: message,
   };
+}
+
+/**
+ * The first packet the track hands out from `time`, its iteration let go of at once.
+ */
+async function firstPacketFrom(
+  track: VideoTrackReader,
+  time: Seconds,
+): Promise<EncodedVideoPacket | undefined> {
+  const packets = track.packetsFrom(time)[Symbol.asyncIterator]();
+  try {
+    const first = await packets.next();
+    return first.done === true ? undefined : first.value;
+  } finally {
+    void packets.return?.();
+  }
 }

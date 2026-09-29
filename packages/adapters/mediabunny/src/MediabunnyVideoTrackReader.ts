@@ -17,13 +17,13 @@ import { copyOfBytes } from './bufferSources';
  */
 const VERIFIED = { verifyKeyPackets: true };
 
+const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
+
 /**
- * VideoTrackReader over one mediabunny video track. Packets handed out are plain data; the
- * mediabunny packet behind each is remembered so iteration can resume from it.
+ * VideoTrackReader over one mediabunny video track; the packets it hands out are plain data.
  */
 export class MediabunnyVideoTrackReader implements VideoTrackReader {
   private readonly sink: EncodedPacketSink;
-  private readonly originals = new WeakMap<EncodedVideoPacket, EncodedPacket>();
 
   private constructor(
     private readonly track: InputVideoTrack,
@@ -77,23 +77,19 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
 
   public async keyPacketAt(time: Seconds): Promise<EncodedVideoPacket | undefined> {
     const packet = await this.sink.getKeyPacket(time, VERIFIED);
-    return packet === null ? undefined : this.wrap(packet);
+    return packet === null ? undefined : plainPacketOf(packet);
   }
 
   public async firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
     const packet = await this.sink.getFirstKeyPacket(VERIFIED);
-    return packet === null ? undefined : this.wrap(packet);
+    return packet === null ? undefined : plainPacketOf(packet);
   }
 
-  public async *packetsFrom(start: EncodedVideoPacket): AsyncIterable<EncodedVideoPacket> {
-    const original = this.originals.get(start);
-    if (!original) {
-      throw new GyroViewError(
-        'invariant-violation',
-        'packetsFrom needs a packet handed out by this reader',
-      );
-    }
-    for await (const packet of this.sink.packets(original)) yield this.wrap(packet);
+  public packetsFrom(time: Seconds): AsyncIterable<EncodedVideoPacket> {
+    return {
+      [Symbol.asyncIterator]: (): AsyncIterator<EncodedVideoPacket> =>
+        new PacketCursor(() => this.packetsFromKeyAt(time)),
+    };
   }
 
   public async sampleTimestamps(): Promise<readonly Seconds[]> {
@@ -108,16 +104,65 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
     return stats.packetCount;
   }
 
-  private wrap(packet: EncodedPacket): EncodedVideoPacket {
-    const wrapped: EncodedVideoPacket = {
-      timestamp: seconds(packet.timestamp),
-      duration: seconds(packet.duration),
-      isKeyFrame: packet.type === 'key',
-      data: packet.data,
-    };
-    this.originals.set(wrapped, packet);
-    return wrapped;
+  private async packetsFromKeyAt(time: Seconds): Promise<AsyncIterator<EncodedPacket>> {
+    const start =
+      (await this.sink.getKeyPacket(time, VERIFIED)) ??
+      (await this.sink.getFirstKeyPacket(VERIFIED));
+    if (start === null) {
+      throw new GyroViewError(
+        'no-key-frame',
+        `track ${this.description.trackIndex} has no key frame`,
+      );
+    }
+    return this.sink.packets(start)[Symbol.asyncIterator]();
   }
+}
+
+/**
+ * One iteration over mediabunny's packets, opened on the first packet asked for. Returning it
+ * returns mediabunny's own iterator, which ends a read awaited meanwhile; mediabunny stops
+ * reading ahead for it at once.
+ */
+class PacketCursor implements AsyncIterator<EncodedVideoPacket> {
+  private packets: AsyncIterator<EncodedPacket> | undefined;
+  private isOpen = true;
+
+  public constructor(private readonly open: () => Promise<AsyncIterator<EncodedPacket>>) {}
+
+  public async next(): Promise<IteratorResult<EncodedVideoPacket>> {
+    this.packets ??= await this.open();
+    if (this.wasReturned()) return this.returnPackets();
+    const result = await this.packets.next();
+    return result.done === true || this.wasReturned()
+      ? DONE
+      : { done: false, value: plainPacketOf(result.value) };
+  }
+
+  public async return(): Promise<IteratorResult<EncodedVideoPacket>> {
+    this.isOpen = false;
+    return this.returnPackets();
+  }
+
+  /**
+   * Asked afresh after every wait: a return may come while a packet is awaited.
+   */
+  private wasReturned(): boolean {
+    return !this.isOpen;
+  }
+
+  private async returnPackets(): Promise<IteratorReturnResult<undefined>> {
+    await this.packets?.return?.();
+    return DONE;
+  }
+}
+
+function plainPacketOf(packet: EncodedPacket): EncodedVideoPacket {
+  return {
+    timestamp: seconds(packet.timestamp),
+    duration: seconds(packet.duration),
+    isKeyFrame: packet.type === 'key',
+    data: packet.data,
+  };
 }
 
 function timeOf(packet: EncodedPacket | null): KeyframeTime | undefined {

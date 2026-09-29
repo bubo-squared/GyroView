@@ -9,7 +9,7 @@ import type {
 } from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
-import { seconds } from '../../shared/units/time';
+import { seconds, type Seconds } from '../../shared/units/time';
 import { FakeVideoDecoderPort } from '../../testing/FakeVideoDecoderPort';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import { settle } from '../../../test/support/settle';
@@ -76,8 +76,10 @@ class StalledPort implements VideoDecoderPort<never> {
  * A track whose video data cannot be read, as over a connection that dropped.
  */
 class UnreadableTrack extends FakeVideoTrack {
-  public override firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
-    return Promise.reject(new GyroViewError('source-unreadable', 'the connection dropped'));
+  public override async *packetsFrom(): AsyncIterable<EncodedVideoPacket> {
+    await Promise.resolve();
+    yield* [];
+    throw new GyroViewError('source-unreadable', 'the connection dropped');
   }
 }
 
@@ -88,10 +90,10 @@ class GatedTrack extends FakeVideoTrack {
   public readonly keyFrameGate = new Deferred<void>();
   public keyFrameReads = 0;
 
-  public override async firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
+  public override async *packetsFrom(time: Seconds): AsyncIterable<EncodedVideoPacket> {
     this.keyFrameReads += 1;
     await this.keyFrameGate.promise;
-    return super.firstKeyPacket();
+    yield* super.packetsFrom(time);
   }
 }
 

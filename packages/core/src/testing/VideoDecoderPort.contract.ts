@@ -39,10 +39,10 @@ interface OpenedDecoder<Handle> {
 async function firstTwoPackets(
   track: VideoTrackReader,
 ): Promise<[key: EncodedVideoPacket, delta: EncodedVideoPacket]> {
-  const key = await track.firstKeyPacket();
-  if (!key) throw new Error('the contract track has no key packet');
+  const key = await track.firstKeyframe();
+  if (!key) throw new Error('the contract track has no key frame');
   const packets: EncodedVideoPacket[] = [];
-  for await (const packet of track.packetsFrom(key)) {
+  for await (const packet of track.packetsFrom(key.timestamp)) {
     packets.push(packet);
     if (packets.length === 2) break;
   }

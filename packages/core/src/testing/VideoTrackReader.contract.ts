@@ -62,34 +62,33 @@ export function describeVideoTrackReaderContract(
       await expect(track.keyPacketAt(seconds(start - frameDuration))).resolves.toBeUndefined();
     });
 
-    it('hands out its first key packet, from which the whole track iterates', async () => {
+    it('iterates the whole track from a time before its first frame', async () => {
       const track = await open();
-      const first = await track.firstKeyPacket();
-      if (!first) throw new Error('no first key packet');
-      expect(first.isKeyFrame).toBe(true);
-      expect(first.timestamp).toBeCloseTo(start, 6);
-      await expect(collect(track.packetsFrom(first))).resolves.toHaveLength(expected.frameCount);
+      const packets = await collect(track.packetsFrom(seconds(start - frameDuration)));
+      expect(packets).toHaveLength(expected.frameCount);
+      expect(packets[0]?.isKeyFrame).toBe(true);
+      expect(packets[0]?.timestamp).toBeCloseTo(start, 6);
     });
 
-    it('iterates packets in decode order from a packet it handed out to the end of the track', async () => {
+    it('iterates packets in decode order from the key frame at or before a time to the end of the track', async () => {
       const track = await open();
-      const key = await track.keyPacketAt(insideSecondGop);
-      if (!key) throw new Error('no key packet');
-      const packets = await collect(track.packetsFrom(key));
+      const packets = await collect(track.packetsFrom(insideSecondGop));
       expect(packets).toHaveLength(expected.frameCount - expected.framesPerGop);
-      expect(packets[0]?.timestamp).toBeCloseTo(key.timestamp, 6);
+      expect(packets[0]?.isKeyFrame).toBe(true);
+      expect(packets[0]?.timestamp).toBeCloseTo(secondGopStart, 6);
       const timestamps = packets.map((packet) => packet.timestamp);
       expect(timestamps).toEqual(timestamps.toSorted((left, right) => left - right));
       expect(timestamps.at(-1)).toBeCloseTo(start + (expected.frameCount - 1) * frameDuration, 4);
     });
 
-    it('refuses to iterate from a packet it did not hand out', async () => {
+    it('lets go of its packets when returned, even while a next packet is awaited', async () => {
       const track = await open();
-      const key = await track.firstKeyPacket();
-      if (!key) throw new Error('no key packet');
-      await expect(collect(track.packetsFrom({ ...key }))).rejects.toMatchObject({
-        code: 'invariant-violation',
-      });
+      const packets = track.packetsFrom(seconds(start))[Symbol.asyncIterator]();
+      await packets.next();
+      const awaited = packets.next();
+      await expect(packets.return?.()).resolves.toMatchObject({ done: true });
+      await awaited;
+      await expect(packets.next()).resolves.toMatchObject({ done: true });
     });
 
     it('reports the frame count, sorted sample timestamps and a decoder configuration for its codec', async () => {

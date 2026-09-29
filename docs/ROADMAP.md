@@ -59,9 +59,9 @@ fixtures built from the documented format variants.
 
 - Stitching is a fixed template: objects closer than about three metres show parallax
   ghosting in the blend band, and people within a metre of the camera are cut or doubled
-  along the seam. A seam bent by the disparity measured across it draws them single down to
-  about half a metre (ADR 0026), but measuring the disparity takes 10 to 35 ms, too much for
-  playback.
+  along the seam. A seam bent by the disparity measured across it cuts the double image of
+  objects a metre or two away by 40 percent and draws a person half a metre away single (ADR
+  0026), but measuring the disparity takes 10 to 35 ms, too much for playback.
 - The lens pose is measured against Insta360 Studio's stitch on two X5 units (ADR 0025): the
   lenses agree to about 0.3 degrees about every axis on the sailing unit, and about the lens
   axis on the office unit, whose clip shows no far content near the lens axes. The pitch sign

@@ -1,7 +1,8 @@
 # ADR 0026: The seam bent by the disparity measured across it, a trial
 
-Status: trial (2026-09-29): the bent join passes on picture quality and fails on the cost of its
-measurement; the player keeps the fixed join
+Status: trial (2026-09-29): the bent join removes most of the double image where it can bend and
+the lens model's error at the seam, but its measurement costs ten times too much; the player keeps
+the fixed join
 
 ## Context
 
@@ -23,14 +24,14 @@ Under `pnpm measure`, `seamJoins.test.ts` on every Studio frame of both clips (1
   degrees (`seamDisparity.ts`); a bin's disparity is trusted where its costs contrast and their
   minimum lies well inside the range; `seamDisparityField.ts` smooths the trusted bins around the
   ring, pulls toward zero where none is trusted and stays flat under the camera;
-- three joins (`seamJoin.ts`, `seamJoin.glsl`): `fixed`, the template as the player draws it;
-  `bent`, each lens read across the ring by half the disparity, up to 4 degrees apart, weighed
-  where it is read, the rest cut; `cut`, the template with the blend narrowed where the disparity
-  is large;
+- three joins (the lab's `bentJoin.glsl` and `seamJoin.ts`): `fixed`, the template as the player
+  draws it; `bent`, each lens read across the ring by half the disparity, up to 4 degrees apart,
+  weighed where it is read, the rest cut; `cut`, the template with the blend narrowed where the
+  disparity is large;
 - per seam bin, within 6 degrees of the ring: the difference of each join to Studio's frame, and
   for the fixed and bent joins the difference between the two lenses drawn alone, the double
-  image a blend makes of them; the change of the fixed join's difference to Studio from the frame
-  to the next is the measurement's noise;
+  image a blend makes of them, over the pixels both lenses show under both joins; the change of
+  the fixed join's difference to Studio from the frame to the next is the measurement's noise;
 - on 16 consecutive frames drawn in the body frame, each frame's field eased from the one before
   as a player would: each join's mean change from frame to frame in the band, and its draw time.
 
@@ -40,17 +41,21 @@ Mean level difference (0–255) per bin, by how far the field bends the bin:
 
 | Sailing, bend  | Bins | Lenses, fixed → bent | To Studio, fixed / bent / cut | Noise |
 | -------------- | ---- | -------------------- | ----------------------------- | ----- |
-| 1 to 4° (near) | 188  | 32.1 → 19.2 (−40%)   | 27.2 / 25.6 / 27.9            | 2.7   |
-| 4° or more     | 30   | 37.5 → 25.2 (−33%)   | 27.2 / 25.5 / 27.4            | 3.1   |
-| −1° or less    | 61   | 9.7 → 9.7            | 10.2 / 10.0 / 10.3            | 0.5   |
+| 1 to 4° (near) | 188  | 31.9 → 19.2 (−40%)   | 27.2 / 25.6 / 27.9            | 2.7   |
+| 4° or more     | 30   | 33.9 → 25.2 (−26%)   | 27.2 / 25.5 / 27.4            | 3.1   |
+| −1° or less    | 61   | 9.7 → 9.2 (−5%)      | 10.2 / 10.0 / 10.3            | 0.5   |
 | under 0.25°    | 190  | 14.1 → 14.0          | 12.0 / 12.1 / 12.1            | 0.7   |
 
 | Office, bend   | Bins | Lenses, fixed → bent | To Studio, fixed / bent / cut | Noise |
 | -------------- | ---- | -------------------- | ----------------------------- | ----- |
-| 1 to 4° (near) | 30   | 39.5 → 35.0 (−11%)   | 21.6 / 24.5 / 21.4            | 1.2   |
-| 4° or more     | 26   | 28.7 → 23.1 (−20%)   | 20.9 / 25.1 / 21.3            | 1.0   |
-| −1° or less    | 638  | 16.5 → 9.3 (−44%)    | 14.9 / 14.8 / 15.1            | 0.6   |
-| under 0.25°    | 158  | 13.4 → 13.4          | 9.6 / 9.6 / 9.6               | 0.4   |
+| 1 to 4° (near) | 30   | 36.4 → 35.0 (−4%)    | 21.6 / 24.5 / 21.4            | 1.2   |
+| 4° or more     | 26   | 23.7 → 23.1 (−2%)    | 20.9 / 25.1 / 21.3            | 1.0   |
+| −1° or less    | 638  | 16.5 → 8.6 (−48%)    | 14.9 / 14.8 / 15.1            | 0.6   |
+| 0.25 to 1°     | 168  | 12.5 → 11.2 (−10%)   | 12.6 / 12.5 / 12.6            | 0.7   |
+| under 0.25°    | 158  | 13.4 → 13.3          | 9.6 / 9.6 / 9.6               | 0.4   |
+
+(A first run compared the lenses over the pixels each join shows, which the bent join narrows: it
+overstated the office's near bins by 7 to 18 points. These numbers take the pixels both show.)
 
 - Seen side by side with Studio's frames, the bent join draws single what the fixed join doubles:
   the sailing bow's rope and rail at 1 m, the person half a metre from the office camera, the
@@ -63,21 +68,29 @@ Mean level difference (0–255) per bin, by how far the field bends the bin:
   them: for near objects Studio is a reference, not the truth.
 - The office recording's far and mid bins read −1.5 to −3.5 degrees. Parallax never makes a
   disparity negative, so that is the lens model's error at the seam on that unit, 1.5 degrees per
-  lens (ADR 0023, on a second unit); bending takes it up, hence the 44 percent.
+  lens (ADR 0023, on a second unit); bending takes it up, hence the 48 percent. On that unit the
+  error and a near object's parallax add up: the person half a metre away, about +3 degrees of
+  parallax over −2.5 of error, reads near +0.7 and falls among the 0.25 to 1 degree bins, and the
+  office's near rows hold mostly what lies within arm's reach, beyond what a bend takes.
 - Frame-to-frame change in the band: sailing 4.49 fixed, 4.62 bent, 4.56 cut; office 4.57, 4.61,
-  4.78, within 3 percent. Draw time at 1536×768: sailing 4.65, 4.82, 4.76 ms; office 2.68, 2.82,
-  2.76 ms.
+  4.78, within 3 percent. Draw time at 1536×768: sailing 4.53 fixed, 4.82 bent; office 2.67, 2.87
+  ms, within 7 percent.
 - One measurement of the field, read-back included, takes 25 to 35 ms on an M4 Pro (57 candidates,
   25 sub-samples a cell); with 4 sub-samples a cell, 10 ms and the same field (median difference
   0.01 degrees).
 
 ## Decision
 
-The trial's criteria, set before it ran: the lenses' disagreement on near bins well beyond the
-noise, on both clips (met); far bins within the noise (met); no more frame-to-frame change than
-the fixed join (within 3 percent); no tear or bent straight line the fixed join does not show
-(no tear; slight curves where the bend is large); one measurement under a millisecond (not met, by
-ten times at best).
+The trial's criteria, set before it ran:
+
+- the lenses' disagreement on near bins well beyond the noise, on both clips: met on sailing
+  (12.7 levels against 2.7), not on office's near rows (1.4 against 1.2), whose visible gain on
+  the person sits in the 0.25 to 1 degree bins and whose largest gain is the lens model's error;
+- far bins within the noise: met on both;
+- no more frame-to-frame change than the fixed join: within 3 percent;
+- no tear or bent straight line the fixed join does not show: no tear; slight curves where the
+  bend is large;
+- one measurement under a millisecond: not met, by ten times at best.
 
 The bent join stays in the renderer, and its measurement in the core, for a player-side trial once
 the measurement is cheap enough; the player draws the fixed join. The cut join is dropped: it

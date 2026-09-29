@@ -5,6 +5,8 @@ the API.
 
 ## Unreleased
 
+- The raw lenses no longer show a faint grey line along the tiles' edges on Apple GPUs, where a
+  player's size put an edge between two pixels the GPU shades together.
 - The equirectangular panorama and the raw lenses zoom up to eight times, from four, for fine
   detail in 5.7K and 8K recordings. The normal view keeps its 30 to 120 degrees.
 - `crossorigin` on `<gyro-view>`, with a media element's keywords: `use-credentials` fetches the

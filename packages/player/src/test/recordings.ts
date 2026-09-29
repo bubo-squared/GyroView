@@ -68,6 +68,10 @@ export class MapSourceOpener implements SourceOpener {
    * The signal each source was opened with, in order.
    */
   public readonly signals: AbortSignal[] = [];
+  /**
+   * Each input a source was opened for, in order.
+   */
+  public readonly inputs: MediaInput[] = [];
   private readonly sources = new Map<string, InMemoryRandomAccessSource>();
 
   public register(key: string, bytes: Uint8Array): InMemoryRandomAccessSource {
@@ -78,6 +82,7 @@ export class MapSourceOpener implements SourceOpener {
 
   public open(input: MediaInput, signal: AbortSignal): InMemoryRandomAccessSource {
     this.signals.push(signal);
+    this.inputs.push(input);
     const key = isUrlInput(input) ? input.url : input.name;
     const source = this.sources.get(key);
     if (!source) throw new Error(`no bytes registered for ${key}`);
@@ -93,11 +98,12 @@ interface FakePortsParts {
 }
 
 export function fakePorts(parts: FakePortsParts): RecordingPorts {
+  const locator = parts.locator ?? new FakeResourceLocator([]);
   return {
     sources: parts.sources,
     demuxer: parts.demuxer,
     decoderPort: parts.decoderPort ?? new FakeVideoDecoderPort(),
-    locator: parts.locator ?? new FakeResourceLocator([]),
+    locatorFor: (): ResourceLocator => locator,
     probeDeadline: (): Deferred<void> => new Deferred<void>(),
   };
 }

@@ -4,7 +4,7 @@ import type { OpenedRecording } from './OpenedRecording';
 import type { OpenAttempt } from './OpenAttempt';
 import { openInputs } from './openInputs';
 import type { RecordingPorts } from './ports';
-import { isUrlInput, type PlayerSource } from '../PlayerSource';
+import { isUrlInput, type PlayerSource, type UrlInput } from '../PlayerSource';
 
 /**
  * Use case at the composition root: opens what a source names, following the data. A lone file
@@ -26,7 +26,7 @@ export async function openRecording(
     const second = await findSecondFile();
     signal.throwIfAborted();
     if (!second) throw error;
-    return openInputs([source.main, { url: second }], attempt);
+    return openInputs([source.main, second], attempt);
   }
 }
 
@@ -41,7 +41,19 @@ function attemptFor(source: PlayerSource, ports: RecordingPorts, signal: AbortSi
         signal,
         // Asked before the tracks are read and again once they fall short, the lookup would
         // otherwise ask the server twice for a file that is not there.
-        findSecondFile: lazy(() => locateOtherLensFile(main.url, ports.locator)),
+        findSecondFile: lazy(() => otherLensFileOf(main, ports)),
       }
     : { ports, signal };
+}
+
+/**
+ * The other lens file beside a lone one, when the server has it: one recording, so it is read
+ * as the lone file is, with the same credentials.
+ */
+async function otherLensFileOf(
+  main: UrlInput,
+  ports: RecordingPorts,
+): Promise<UrlInput | undefined> {
+  const url = await locateOtherLensFile(main.url, ports.locatorFor(main));
+  return url === undefined ? undefined : { ...main, url };
 }

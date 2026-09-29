@@ -232,9 +232,10 @@ The composition root and the user-facing element, in three layers.
   required, the decode probe
   (an undecodable recording is an error; nothing plays in its place, ADR 0017), then the core's
   `timeRecording`.
-  It depends on `RecordingPorts` (`SourceOpener`, `Demuxer`, `VideoDecoderPort`,
-  `ResourceLocator`, a deadline factory), so it is tested against fakes; `browserPorts` supplies
-  the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
+  It depends on `RecordingPorts` (`SourceOpener`, `Demuxer`, `VideoDecoderPort`, a
+  `ResourceLocator` for each input, so the other lens file is looked for with the main file's
+  credentials (ADR 0027), a deadline factory), so it is tested against fakes; `browserPorts`
+  supplies the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
   the renderer, the stabilizing and gain-matching sinks, the session. The player receives it as a
   `PipelineFactory` and drives the `Pipeline` contract in `composition/ports`, never the
   adapters or the sinks: it sets the stabilization mode and gain matching as commands, which

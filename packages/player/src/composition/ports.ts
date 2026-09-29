@@ -11,7 +11,7 @@ import type {
 } from '@gyroview/core';
 
 import type { OpenedRecording } from './OpenedRecording';
-import type { MediaInput } from '../PlayerSource';
+import type { MediaInput, UrlInput } from '../PlayerSource';
 
 /**
  * Turns a named input into the byte source the core reads; `signal` ends the reads of a load
@@ -29,7 +29,11 @@ export interface RecordingPorts<Handle = unknown> {
   readonly sources: SourceOpener;
   readonly demuxer: Demuxer;
   readonly decoderPort: VideoDecoderPort<Handle>;
-  readonly locator: ResourceLocator;
+  /**
+   * Looks for files beside `input` as `input` itself is read, so the other lens file of a split
+   * pair is asked for with the main file's credentials.
+   */
+  readonly locatorFor: (input: UrlInput) => ResourceLocator;
   /**
    * A fresh signal that fires when a decode probe has taken too long.
    */

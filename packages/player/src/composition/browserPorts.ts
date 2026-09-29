@@ -9,7 +9,7 @@ import { WebCodecsVideoDecoderPort } from '@gyroview/adapter-webcodecs';
 import { Deferred } from '@gyroview/core';
 
 import type { RecordingPorts, SourceOpener } from './ports';
-import { isUrlInput } from '../PlayerSource';
+import { isUrlInput, type UrlInput } from '../PlayerSource';
 
 export interface BrowserPortsOptions {
   /**
@@ -35,7 +35,7 @@ export function browserPorts(options: BrowserPortsOptions = {}): RecordingPorts<
     sources: browserSources(http),
     demuxer: new MediabunnyDemuxer(),
     decoderPort: new WebCodecsVideoDecoderPort(),
-    locator: new HttpResourceLocator(http),
+    locatorFor: (input) => new HttpResourceLocator(requestOptionsFor(http, input)),
     probeDeadline: () => deadlineIn(probeTimeoutMs),
   };
 }
@@ -47,9 +47,20 @@ export function browserSources(http: HttpRequestOptions): SourceOpener {
   return {
     open: (input, signal) =>
       isUrlInput(input)
-        ? new HttpRangeSource(input.url, http, signal)
+        ? new HttpRangeSource(input.url, requestOptionsFor(http, input), signal)
         : new BlobRandomAccessSource(input.blob),
   };
+}
+
+/**
+ * The shared request settings, with the input's own credentials in place of theirs when it names
+ * any: how the element's `crossorigin` reaches every request for its recording (ADR 0027).
+ */
+function requestOptionsFor(http: HttpRequestOptions, input: UrlInput): HttpRequestOptions {
+  const { credentials } = input;
+  return credentials === undefined
+    ? http
+    : { ...http, requestInit: { ...http.requestInit, credentials } };
 }
 
 /**

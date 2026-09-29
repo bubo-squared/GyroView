@@ -1,9 +1,10 @@
 :host {
-  --gyro-view-accent: #4cc2ff;
-  --gyro-view-controls-background: rgb(0 0 0 / 55%);
-  --gyro-view-text: #f4f4f4;
+  --gyro-view-accent: #fff;
+  --gyro-view-controls-background: rgb(0 0 0 / 60%);
+  --gyro-view-menu-background: rgb(24 24 23 / 92%);
+  --gyro-view-text: #fff;
   --gyro-view-font: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --gyro-view-radius: 6px;
+  --gyro-view-radius: 8px;
 
   display: block;
   position: relative;

@@ -1,5 +1,6 @@
 import type { ControlParts } from './controlParts';
 import { iconNode } from './icons';
+import { showSliderFill } from './sliderFill';
 import type { Player } from '../player/Player';
 
 export type SoundParts = Pick<ControlParts, 'mute' | 'volume'>;
@@ -48,5 +49,6 @@ export class SoundControls {
     this.parts.mute.setAttribute('aria-pressed', String(isMuted));
     this.parts.volume.value = String(shown);
     this.parts.volume.setAttribute('aria-valuetext', `${Math.round(shown * PERCENT)}%`);
+    showSliderFill(this.parts.volume);
   }
 }

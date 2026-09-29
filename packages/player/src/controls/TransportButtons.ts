@@ -3,18 +3,18 @@ import type { ControlsHost } from './ControlsHost';
 import { iconNode } from './icons';
 import type { Player } from '../player/Player';
 
-type TransportParts = Pick<ControlParts, 'play' | 'bigPlay' | 'stop'>;
+type TransportParts = Pick<ControlParts, 'play' | 'bigPlay'>;
 
 /**
  * What the buttons command, and the paused state they show.
  */
 interface TransportHost extends Pick<ControlsHost, 'togglePlay' | 'wording'> {
-  readonly player: Pick<Player, 'events' | 'isPaused' | 'stop'>;
+  readonly player: Pick<Player, 'events' | 'isPaused'>;
 }
 
 /**
- * Play and pause, on the bar and over the picture, and stop; the play buttons say what a press
- * does.
+ * Play and pause, on the bar and over the picture; the buttons say what a press does. Stopping
+ * is left to the S key and `stop()`.
  */
 export class TransportButtons {
   public constructor(
@@ -27,9 +27,6 @@ export class TransportButtons {
         host.togglePlay();
       });
     }
-    parts.stop.addEventListener('click', () => {
-      player.stop();
-    });
     player.events.on('statuschange', () => {
       this.reflect(player.isPaused);
     });

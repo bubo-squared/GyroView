@@ -134,6 +134,14 @@ damaged data such as no gyro or an unverified IMU frame, `no-sound` for a silent
 show or a loop that could not restart, `ignored-attribute` for a value it does not know, and
 `refused-property` for a property set before the element was defined.
 
+Controls: over the bottom of the picture, a seek bar above play, mute with a volume slider, the
+time, the Stabilization and View buttons (each showing the icon of the choice in effect and
+opening a menu of the choices, each with its icon and a line describing it), Reset view and
+Fullscreen. They fit the player's own width, not the page's: a narrower player gives up the
+volume slider and shows its menus over the whole player, then gives up the time and Reset view in
+turn. On touch every target is 44 pixels and the volume is left to the device. Stabilization is
+offered only for a recording with a gyro, in the two stitched view modes.
+
 Keyboard: space or K play/pause, J and L seek, S stops, arrows look around (Shift + arrows
 seek), plus and minus zoom, 0 resets the view, M mutes, F fills the screen, Escape closes an
 open menu first and then leaves fullscreen (in the browser's own fullscreen, the browser takes
@@ -146,19 +154,27 @@ zoomed raw lenses move in every direction, by drags and arrows alike, and Reset 
 current view to where it started. The cursor turns into a hand only where a drag moves the
 picture.
 
-Styling: the host element sizes the player (a block with a 16:9 aspect ratio by default);
-`--gyro-view-accent`, `--gyro-view-controls-background`, `--gyro-view-text`,
-`--gyro-view-font` and `--gyro-view-radius` theme the controls; `::part(stage)`,
+Styling: the host element sizes the player (a block with a 16:9 aspect ratio by default).
+Custom properties theme the controls: `--gyro-view-text` (`#fff`; secondary words, fills and
+tracks are this colour at lower strengths), `--gyro-view-accent` (`#fff`: the filled seek and
+volume, their handles, the checked choice and the focus ring), `--gyro-view-controls-background`
+(`rgb(0 0 0 / 60%)`, the shade under the bar), `--gyro-view-menu-background`
+(`rgb(24 24 23 / 92%)`, behind a blur), `--gyro-view-font` (the system stack) and
+`--gyro-view-radius` (`8px`; menus take one and a half times it). `::part(stage)`,
 `::part(canvas)`, `::part(poster)`, `::part(controls)`, `::part(big-play)`, `::part(loading)`,
 `::part(error)`, `::part(error-message)` and `::part(error-code)` reach the parts. The element
 writes its state on itself for a page's selectors, and a page never sets these: `data-status`
 (the status, as in `gyro-view[data-status='error']`), `data-has-frame` once a picture is drawn,
 `data-idle` while the controls have faded, `data-fill` while it is pinned over the page in
 place of fullscreen. Under `prefers-reduced-motion` the spinner turns slower and the controls
-do not fade.
+do not fade; under `prefers-reduced-transparency`, and where the browser has no backdrop blur,
+the menus are opaque; forced colours keep the sliders and the menus' edges visible.
 
 Words: every label, menu choice and failure message is in English until the page gives its own
-through `messages`, table by table, and `null` brings the defaults back:
+through `messages`, table by table, and `null` brings the defaults back. The tables are
+`labels`, `stabilizationModes` and `viewModes` (the choices' names, which also name the setting
+buttons for assistive technology), `stabilizationModeDescriptions` and `viewModeDescriptions` (the
+line under each choice in a menu), and `errors`:
 
 ```js
 player.messages = {

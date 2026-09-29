@@ -17,9 +17,16 @@ describe('messagesWith', () => {
     expect(messages.stabilizationModes).toBe(DEFAULT_MESSAGES.stabilizationModes);
   });
 
+  it('replaces the descriptions of the choices as it does their names', () => {
+    const messages = messagesWith({ stabilizationModeDescriptions: { lock: 'Fixée au monde' } });
+    expect(messages.stabilizationModeDescriptions.lock).toBe('Fixée au monde');
+    expect(messages.stabilizationModeDescriptions.off).toBe('Footage as the camera moved');
+    expect(messages.viewModeDescriptions).toBe(DEFAULT_MESSAGES.viewModeDescriptions);
+  });
+
   it('leaves out what is not a word, and gives the defaults for no table at all', () => {
     const messages = messagesWith({
-      labels: { play: 3, stop: undefined, bogus: 'x' },
+      labels: { play: 3, mute: undefined, bogus: 'x' },
       errors: 'no',
     });
     expect(messages.labels).toEqual(DEFAULT_MESSAGES.labels);

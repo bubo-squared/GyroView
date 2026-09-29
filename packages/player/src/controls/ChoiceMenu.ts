@@ -1,10 +1,23 @@
+import type { Wording } from './Wording';
+
 /**
- * One choice menu in the shadow tree: the button that opens it, and the popup holding the
- * choices, each a `menuitemradio` naming its choice in `data-choice`.
+ * One choice menu in the shadow tree: the button that opens it and the place on it for the
+ * chosen icon, the popup holding the choices, each a `menuitemradio` naming its choice in
+ * `data-choice` and showing its icon in `.choice-icon`, and the popup's close button.
  */
 export interface ChoiceMenuParts {
   readonly button: HTMLButtonElement;
+  readonly icon: HTMLElement;
   readonly popup: HTMLElement;
+  readonly close: HTMLButtonElement;
+}
+
+/**
+ * What a choice does, and the words the button shows the choice in effect in.
+ */
+export interface ChoiceMenuHost {
+  readonly choose: (choice: string) => void;
+  readonly wording: Pick<Wording, 'write'>;
 }
 
 type FocusStep = (index: number, count: number) => number;
@@ -26,8 +39,8 @@ const ON_THE_WAY_IN = { capture: true } as const;
 
 /**
  * A button opening a popup of choices with the current one checked, as the ARIA menu pattern
- * has it. The button toggles it; a choice, Escape, Tab, a press outside it or the focus moving
- * elsewhere closes it; the arrow keys move between the choices, which are out of the tab order.
+ * has it; the button shows the checked one. The button toggles it; a choice, its close button,
+ * Escape, Tab, a press outside it or the focus moving elsewhere closes it; the arrow keys move between the choices, which are out of the tab order.
  * A press outside only closes it, so a tap on the picture does not also toggle play, and keys
  * pressed in it stay with it, so one Escape does not also leave fullscreen and the arrows do not
  * turn the view.
@@ -38,16 +51,19 @@ export class ChoiceMenu {
   public constructor(
     root: ParentNode,
     private readonly parts: ChoiceMenuParts,
-    choose: (choice: string) => void,
+    private readonly host: ChoiceMenuHost,
   ) {
     this.items = [...parts.popup.querySelectorAll<HTMLElement>(':scope [role="menuitemradio"]')];
     for (const item of this.items) {
       item.addEventListener('click', () => {
         this.closeToButton();
         const { choice } = item.dataset;
-        if (choice !== undefined) choose(choice);
+        if (choice !== undefined) host.choose(choice);
       });
     }
+    parts.close.addEventListener('click', () => {
+      this.closeToButton();
+    });
     this.bindButton();
     this.bindDismissal(root);
     this.bindKeys(root);
@@ -57,10 +73,18 @@ export class ChoiceMenu {
     return !this.parts.popup.hidden;
   }
 
+  /**
+   * Checks `choice` and shows it on the button: its icon, and the words the button is named by.
+   */
   public markChosen(choice: string): void {
     for (const item of this.items) {
       item.setAttribute('aria-checked', String(item.dataset['choice'] === choice));
     }
+    const chosen = this.items.find((item) => item.dataset['choice'] === choice);
+    const icon = chosen?.querySelector(':scope .choice-icon > svg');
+    this.parts.icon.replaceChildren(...(icon ? [icon.cloneNode(true)] : []));
+    this.parts.button.dataset['choice'] = choice;
+    this.host.wording.write(this.parts.button);
   }
 
   /**

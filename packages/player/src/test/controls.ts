@@ -42,6 +42,17 @@ export function choiceItem(popup: HTMLElement, choice: string): HTMLElement {
 }
 
 /**
+ * A control's name as `aria-labelledby` gives it: the words of the elements it names, shown or
+ * hidden, joined by spaces.
+ */
+export function labelledName(control: Element): string {
+  const root = control.getRootNode();
+  if (!(root instanceof Document || root instanceof DocumentFragment)) return '';
+  const ids = control.getAttribute('aria-labelledby')?.split(' ') ?? [];
+  return ids.map((id) => root.querySelector(`#${CSS.escape(id)}`)?.textContent ?? '').join(' ');
+}
+
+/**
  * The button draws its state as one icon, never as a text glyph a font could colour.
  */
 export function expectIconOnly(button: Element): void {

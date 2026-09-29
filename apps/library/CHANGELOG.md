@@ -7,6 +7,15 @@ the API.
 
 - The raw lenses no longer show a faint grey line along the tiles' edges on Apple GPUs, where a
   player's size put an edge between two pixels the GPU shades together.
+- The controls are restyled, and fit the player's own width and the pointer (ADR 0028): a
+  shaded bar with a thin seek bar, Stabilization and View buttons that show the icon of the
+  choice in effect and open menus of the choices with their icons and a line describing each,
+  and on a narrow player menus over the whole player and fewer parts; on touch, 44-pixel
+  targets. The Stop button is gone (`stop()` and the S key remain), and with it `labels.stop`.
+- `messages` takes `stabilizationModeDescriptions`, `viewModeDescriptions` and `labels.close`.
+- The theme's defaults follow the new look: `--gyro-view-accent` and `--gyro-view-text` are
+  white, `--gyro-view-controls-background` is `rgb(0 0 0 / 60%)` and `--gyro-view-radius` is
+  `8px`; `--gyro-view-menu-background` is new. A page's own values keep working.
 - The equirectangular panorama and the raw lenses zoom up to eight times, from four, for fine
   detail in 5.7K and 8K recordings. The normal view keeps its 30 to 120 degrees.
 - `crossorigin` on `<gyro-view>`, with a media element's keywords: `use-credentials` fetches the

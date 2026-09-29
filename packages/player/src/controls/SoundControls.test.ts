@@ -68,11 +68,14 @@ describe('SoundControls', () => {
     expect(sound.isMuted).toBe(false);
   });
 
-  it('shows a change made elsewhere', () => {
+  it('shows a change made elsewhere, the slider filled up to it', () => {
     const { parts, sound } = soundControls();
     sound.setVolume(0.5);
     expect(parts.volume.value).toBe('0.5');
     expect(parts.volume.getAttribute('aria-valuetext')).toBe('50%');
+    expect(parts.volume.style.getPropertyValue('--fill')).toBe('0.5');
+    sound.setMuted(true);
+    expect(parts.volume.style.getPropertyValue('--fill')).toBe('0');
   });
 
   it('shows the volume slider only where the platform lets a page set the volume', () => {

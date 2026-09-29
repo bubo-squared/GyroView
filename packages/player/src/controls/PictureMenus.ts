@@ -2,6 +2,7 @@ import { viewModeRulesFor } from '@gyroview/core';
 
 import { ChoiceMenu } from './ChoiceMenu';
 import type { ControlParts } from './controlParts';
+import type { Wording } from './Wording';
 import { stabilizationModeOf, viewModeOf } from '../choices';
 import type { Player } from '../player/Player';
 
@@ -16,6 +17,14 @@ export type PicturePlayer = Pick<
 >;
 
 /**
+ * The player the menus drive, and the words their buttons show its settings in.
+ */
+export interface PictureMenusHost {
+  readonly player: PicturePlayer;
+  readonly wording: Pick<Wording, 'write'>;
+}
+
+/**
  * The view mode and stabilization menus, each behind a button of its own. A choice sets the
  * player's mode, and each menu checks the mode in effect however it was last changed.
  * Stabilization is offered only where it changes the picture: a loaded recording with a gyro,
@@ -24,20 +33,33 @@ export type PicturePlayer = Pick<
 export class PictureMenus {
   private readonly viewMode: ChoiceMenu;
   private readonly stabilization: ChoiceMenu;
+  private readonly player: PicturePlayer;
 
-  public constructor(
-    root: ParentNode,
-    parts: PictureMenuParts,
-    private readonly player: PicturePlayer,
-  ) {
-    this.viewMode = new ChoiceMenu(root, parts.viewMode, (choice) => {
-      const mode = viewModeOf(choice);
-      if (mode) player.setViewMode(mode);
+  public constructor(root: ParentNode, parts: PictureMenuParts, host: PictureMenusHost) {
+    const { player, wording } = host;
+    this.player = player;
+    this.viewMode = new ChoiceMenu(root, parts.viewMode, {
+      wording,
+      choose: (choice): void => {
+        const mode = viewModeOf(choice);
+        if (mode) player.setViewMode(mode);
+      },
     });
-    this.stabilization = new ChoiceMenu(root, parts.stabilization, (choice) => {
-      const mode = stabilizationModeOf(choice);
-      if (mode) player.setStabilization(mode);
+    this.stabilization = new ChoiceMenu(root, parts.stabilization, {
+      wording,
+      choose: (choice): void => {
+        const mode = stabilizationModeOf(choice);
+        if (mode) player.setStabilization(mode);
+      },
     });
+    this.followPlayer();
+  }
+
+  /**
+   * Each menu checks the mode in effect, now and whenever it changes.
+   */
+  private followPlayer(): void {
+    const { player } = this;
     player.events.on('viewmodechange', (mode) => {
       this.viewMode.markChosen(mode);
       this.offerStabilization();

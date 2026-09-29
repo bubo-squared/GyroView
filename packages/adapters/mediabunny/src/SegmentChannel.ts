@@ -1,5 +1,9 @@
 import { ensureInvariant, GyroViewError } from '@gyroview/core';
 
+type Segment = Uint8Array<ArrayBuffer>;
+
+const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
+
 /**
  * Hands segments from the muxer's synchronous callbacks to one asynchronous consumer, with a
  * bound on how many may wait unconsumed so re-packaging never runs far ahead of playback.
@@ -52,12 +56,20 @@ export class SegmentChannel {
     this.close();
   }
 
-  public async *segments(): AsyncGenerator<Uint8Array<ArrayBuffer>> {
-    let next = await this.take();
-    while (next) {
-      yield next;
-      next = await this.take();
-    }
+  /**
+   * The consumer's side: the segments in order until the channel is closed and drained, then
+   * the producer's failure if it had one. Returning closes the channel at once, even while a
+   * segment is awaited, which then comes as the end. `onEnd` hears once of the end, however it
+   * came: the producer's resources may go.
+   */
+  public segments(onEnd: () => void = doNothing): SegmentCursor {
+    return new SegmentCursor({
+      take: (): Promise<Segment | undefined> => this.take(),
+      close: (): void => {
+        this.close();
+      },
+      onEnd,
+    });
   }
 
   /**
@@ -93,4 +105,59 @@ export class SegmentChannel {
     this.roomWaiters = [];
     for (const resolve of waiters) resolve();
   }
+}
+
+interface CursorParts {
+  readonly take: () => Promise<Segment | undefined>;
+  readonly close: () => void;
+  readonly onEnd: () => void;
+}
+
+/**
+ * Iterates a channel's segments. A class, not a generator: a generator's return waits behind the
+ * segment it awaits, and the producer would re-package another fragment for nobody.
+ */
+class SegmentCursor implements AsyncIterableIterator<Segment> {
+  private hasEnded = false;
+
+  public constructor(private readonly parts: CursorParts) {}
+
+  public async next(): Promise<IteratorResult<Segment>> {
+    if (this.hasEnded) return DONE;
+    try {
+      const segment = await this.parts.take();
+      return segment === undefined || this.wasEnded()
+        ? this.end()
+        : { done: false, value: segment };
+    } catch (error) {
+      this.end();
+      throw error;
+    }
+  }
+
+  public return(): Promise<IteratorResult<Segment>> {
+    this.parts.close();
+    return Promise.resolve(this.end());
+  }
+
+  public [Symbol.asyncIterator](): this {
+    return this;
+  }
+
+  /**
+   * Asked afresh after the wait: the consumer may have returned meanwhile.
+   */
+  private wasEnded(): boolean {
+    return this.hasEnded;
+  }
+
+  private end(): IteratorReturnResult<undefined> {
+    if (!this.hasEnded) this.parts.onEnd();
+    this.hasEnded = true;
+    return DONE;
+  }
+}
+
+function doNothing(): void {
+  // A consumer with nothing to release.
 }

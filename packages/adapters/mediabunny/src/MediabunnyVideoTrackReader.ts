@@ -75,16 +75,6 @@ export class MediabunnyVideoTrackReader implements VideoTrackReader {
     return timeOf(await this.sink.getFirstKeyPacket(VERIFIED));
   }
 
-  public async keyPacketAt(time: Seconds): Promise<EncodedVideoPacket | undefined> {
-    const packet = await this.sink.getKeyPacket(time, VERIFIED);
-    return packet === null ? undefined : plainPacketOf(packet);
-  }
-
-  public async firstKeyPacket(): Promise<EncodedVideoPacket | undefined> {
-    const packet = await this.sink.getFirstKeyPacket(VERIFIED);
-    return packet === null ? undefined : plainPacketOf(packet);
-  }
-
   public packetsFrom(time: Seconds): AsyncIterable<EncodedVideoPacket> {
     return {
       [Symbol.asyncIterator]: (): AsyncIterator<EncodedVideoPacket> =>

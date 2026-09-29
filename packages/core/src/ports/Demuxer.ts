@@ -34,15 +34,6 @@ export interface VideoTrackReader {
    */
   firstKeyframe(): Promise<KeyframeTime | undefined>;
   /**
-   * The last key packet at or before `time`, or undefined before the first one.
-   */
-  keyPacketAt(time: Seconds): Promise<EncodedVideoPacket | undefined>;
-  /**
-   * The track's first key packet, where decoding starts for a time before any key packet, as on
-   * a track whose timestamps do not start at zero. Undefined for a track without one.
-   */
-  firstKeyPacket(): Promise<EncodedVideoPacket | undefined>;
-  /**
    * Packets in decode order from the key frame at or before `time` (the first key frame, for a
    * time before it) until the track ends; a track without a key frame fails its first packet
    * with `no-key-frame`. Returning the iterator lets go of what it reads at once, even while a

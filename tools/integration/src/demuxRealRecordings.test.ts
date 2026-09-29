@@ -27,7 +27,7 @@ describe.skipIf(!hasSamples())(
         expect(configuration.isFullRange).toBe(true);
         expect(configuration.description?.byteLength).toBeGreaterThan(100);
 
-        const key = await input.videoTracks[0]!.keyPacketAt(seconds(100));
+        const key = await input.videoTracks[0]!.keyframeAt(seconds(100));
         expect(key?.timestamp).toBeCloseTo(98.098, 3);
         await expect(input.videoTracks[0]!.frameCount()).resolves.toBe(15_710);
       } finally {

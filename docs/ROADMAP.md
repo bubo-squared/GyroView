@@ -3,7 +3,7 @@
 What the player does today, what is verified on real material, what is waiting on something
 external, and what a next step could be. Dated so a reader can tell how current it is.
 
-## Done (as of 2026-09-29)
+## Done (as of 2026-09-30)
 
 **Playback of raw recordings.** Opens `.insv` files over HTTP byte ranges or from local
 files; reads the Insta360 trailer (indexed or bare, `inst`-wrapped or not), the protobuf info
@@ -12,6 +12,13 @@ lens images are stored (two tracks, two files, one packed frame); decodes both t
 lockstep with WebCodecs; follows the recording's own audio through Media Source Extensions,
 or a silent clock without audio. Playback holds for frames rather than letting sound run
 ahead; the first frame shows before play; the seek bar scrubs to key frames.
+
+**Remote playback.** Each file is downloaded in file order as it plays, from the core's own
+reading of its sample tables (ADR 0029): the picture and the sound come from the same bytes,
+fetched about once; a seek gives up what the old position still read at once; paused after
+playing, the download stops at its budget; before the first play it reads only what opening
+and the first frame need. A range that breaks off or stalls resumes from its next byte, and a
+recording replaced at its URL while it plays fails with `source-changed`.
 
 **Stitching.** One GPU pass per frame through the factory calibration (the legacy string's
 equidistant model, its radius read as 96 degrees against Insta360 Studio's own stitch, ADR 0023;
@@ -73,8 +80,10 @@ fixtures built from the documented format variants.
 - Recordings split into several `_NNN` segment files play one segment at a time.
 - Playback speed is 1x: another speed needs the decoders to keep up with it, which an 8K
   recording's barely do at 1x, and the sound to follow at that rate.
-- No buffered ranges: the player reads the recording in byte ranges as it plays and decodes a
-  few frames ahead, so nothing lies downloaded ahead for a seek bar to show.
+- No buffered ranges on the seek bar: the download holds up to 10 s ahead, but the element
+  does not show it yet.
+- The download's budget (128 MiB ahead, 32 MiB behind, shared by a pair's files) is a
+  desktop's; an iPhone's memory under several players is still to be measured.
 - The iframe embed speaks English: the element's `messages` do not cross the embed protocol.
 - Firefox and Android are best effort: Firefox has WebCodecs only on desktop, Android
   decoders vary.

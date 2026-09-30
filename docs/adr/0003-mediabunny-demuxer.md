@@ -2,7 +2,9 @@
 
 Status: accepted (2026-09-18); amended (2026-09-27): the bytes reach mediabunny through a
 `CustomSource` over the core's `RandomAccessSource`, not `UrlSource` or `BlobSource`, so the
-fetch adapter's uncached reads (ADR 0013), retries (ADR 0019) and CORS diagnosis apply to them
+fetch adapter's uncached reads (ADR 0013), retries (ADR 0019) and CORS diagnosis apply to them;
+superseded in part (2026-09-30) by ADR 0029: mediabunny reads no file and no packet any more,
+only the decoder configurations from the movie box held in memory, and it packages the sound
 
 ## Context
 

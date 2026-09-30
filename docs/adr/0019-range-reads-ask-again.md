@@ -1,6 +1,9 @@
 # ADR 0019: A range that fails on the way is asked for again
 
-Status: accepted (2026-09-27)
+Status: accepted (2026-09-27); amended (2026-09-30): while a recording plays, its ranges stream
+through `HttpByteStream`, which asks for the rest of a range that broke off from its next byte,
+and gives up and asks again for one that brought no byte for 10 s, under the same rules; a
+recording replaced meanwhile is `source-changed` (ADR 0029)
 
 ## Context
 

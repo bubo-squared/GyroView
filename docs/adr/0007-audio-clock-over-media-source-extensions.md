@@ -2,7 +2,9 @@
 
 Status: accepted (2026-09-18); amended (2026-09-27): a seek within the buffered audio appends
 from where the buffer ends, and nothing at all once the ended stream holds the rest of the track;
-a seek to the end stands the clock there and leaves the element where it was
+a seek to the end stands the clock there and leaves the element where it was; amended (2026-09-30):
+the sound's samples come through the file download (ADR 0029) and the mediabunny adapter
+packages them (`AudioPackager`)
 
 ## Context
 

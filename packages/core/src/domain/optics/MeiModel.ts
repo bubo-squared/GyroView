@@ -1,5 +1,5 @@
 import type { LensModel, LensProjectionParameters } from './LensModel';
-import { distortMei, type MeiDistortion } from './MeiDistortion';
+import { distortMei, ensureWithinTermCapacity, type MeiDistortion } from './MeiDistortion';
 import type { PixelPoint } from './PixelPoint';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { HALF_FIELD_OF_VIEW } from './opticsConstants';
@@ -16,7 +16,7 @@ export interface MeiParameters {
 
 /**
  * Unified (Mei) omnidirectional camera model with radial, tangential and thin-prism distortion,
- * as stored in `offset_v3`. A direction is projected onto the unit sphere, then from a point
+ * as stored in `offset_v3` and `offset_v6`. A direction is projected onto the unit sphere, then from a point
  * `xi` behind the sphere centre onto the normalised image plane, then distorted and scaled.
  */
 export class MeiModel implements LensModel {
@@ -25,6 +25,7 @@ export class MeiModel implements LensModel {
   public readonly principalPoint: PixelPoint;
 
   public constructor(private readonly parameters: MeiParameters) {
+    ensureWithinTermCapacity(parameters.distortion);
     this.principalPoint = parameters.principalPoint;
   }
 

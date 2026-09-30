@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { distortMei, type MeiDistortion, type NormalisedPoint } from './MeiDistortion';
+import {
+  distortMei,
+  ensureWithinTermCapacity,
+  MEI_TERM_CAPACITY,
+  type MeiDistortion,
+  type NormalisedPoint,
+} from './MeiDistortion';
+import { captureError } from '../../../test/support/errors';
 
 const NONE: MeiDistortion = { radial: [], tangential: [], thinPrism: [] };
 const POINT: NormalisedPoint = [0.3, -0.2];
@@ -67,5 +74,33 @@ describe('distortMei', () => {
       radialX + tangentialX + prismX - 2 * X,
       radialY + tangentialY + prismY - 2 * Y,
     ]);
+  });
+});
+
+describe('ensureWithinTermCapacity', () => {
+  it('takes as many terms of each family as a string carries', () => {
+    const full: MeiDistortion = {
+      radial: Array.from({ length: MEI_TERM_CAPACITY.radial }, () => 0.1),
+      tangential: Array.from({ length: MEI_TERM_CAPACITY.tangential }, () => ({ p1: 0, p2: 0 })),
+      thinPrism: Array.from({ length: MEI_TERM_CAPACITY.thinPrism }, () => ({ x: 0, y: 0 })),
+    };
+    expect(() => {
+      ensureWithinTermCapacity(full);
+    }).not.toThrow();
+  });
+
+  it('refuses one term more of any family', () => {
+    const tooMany: readonly MeiDistortion[] = [
+      { ...NONE, radial: Array.from({ length: MEI_TERM_CAPACITY.radial + 1 }, () => 0) },
+      { ...NONE, tangential: Array.from({ length: 3 }, () => ({ p1: 0, p2: 0 })) },
+      { ...NONE, thinPrism: Array.from({ length: 3 }, () => ({ x: 0, y: 0 })) },
+    ];
+    for (const distortion of tooMany) {
+      expect(
+        captureError(() => {
+          ensureWithinTermCapacity(distortion);
+        }),
+      ).toMatchObject({ code: 'invariant-violation' });
+    }
   });
 });

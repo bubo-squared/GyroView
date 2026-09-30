@@ -4,8 +4,8 @@ import type { CalibrationSet, LensCalibration } from '../optics/LensCalibration'
 import type { LensProjectionParameters } from '../optics/LensModel';
 import { lensRotation } from '../optics/lensPose';
 import { scaledProjection } from '../optics/scaledProjection';
-import { AS_RECORDED, type DisplayConversionParameters } from '../colour/DisplayConversion';
-import { GyroViewError } from '../../shared/errors/GyroViewError';
+import type { DisplayConversion } from '../colour/DisplayConversion';
+import { ensureInvariant, GyroViewError } from '../../shared/errors/GyroViewError';
 import type { Matrix3 } from '../../shared/math/Matrix3';
 import type { Rectangle } from '../../shared/math/Rectangle';
 import { degrees, degreesToRadians, type Radians } from '../../shared/units/angle';
@@ -43,7 +43,7 @@ export interface LensStitch {
   /**
    * How the lens's texels are brought to the display (ADR 0033).
    */
-  readonly displayConversion: DisplayConversionParameters;
+  readonly displayConversion: DisplayConversion;
 }
 
 export interface StitchingSetup {
@@ -59,11 +59,10 @@ export interface StitchingInputs {
   readonly calibration: CalibrationSet;
   readonly layout: LensLayout;
   /**
-   * The conversion each frame source is shown with, in frame-slot order
-   * (`displayConversionsOf`); without them, as for SDR recordings, every lens is shown as
-   * recorded.
+   * The conversion each frame source is shown with, one per frame slot in
+   * {@link lensFrameOrder}'s order (`displayConversionsOf`).
    */
-  readonly displayConversions?: readonly DisplayConversionParameters[];
+  readonly displayConversions: readonly DisplayConversion[];
 }
 
 export interface FrameSourceKey {
@@ -110,6 +109,10 @@ export function buildStitchingSetup(inputs: StitchingInputs): StitchingSetup {
     );
   }
   const frames = lensFrameOrder(layout);
+  ensureInvariant(
+    inputs.displayConversions.length === frames.length,
+    `${inputs.displayConversions.length} display conversions for ${frames.length} frame sources`,
+  );
   const lenses = layout.sources.map((source) => {
     const lens = lensOf(calibration, source.lensIndex);
     const frameSlot = frames.findIndex((key) => isSameSource(key, source));
@@ -119,12 +122,21 @@ export function buildStitchingSetup(inputs: StitchingInputs): StitchingSetup {
       region: source.region,
       window: canvasWindowOf(calibration, lens),
       rotation: lensRotation(lens),
-      projection: scaledProjection(lens.model.projection, lens.radialScale),
+      projection: scaledProjection(lens.model.projection, calibration.radialScale),
       halfFieldOfView: lens.model.halfFieldOfView,
-      displayConversion: inputs.displayConversions?.[frameSlot] ?? AS_RECORDED.parameters,
+      displayConversion: conversionAt(inputs.displayConversions, frameSlot),
     };
   });
   return { lenses, frameSlotCount: frames.length, feather: DEFAULT_FEATHER };
+}
+
+function conversionAt(
+  conversions: readonly DisplayConversion[],
+  frameSlot: number,
+): DisplayConversion {
+  const conversion = conversions[frameSlot];
+  ensureInvariant(conversion !== undefined, `no display conversion for frame slot ${frameSlot}`);
+  return conversion;
 }
 
 function isSameSource(key: FrameSourceKey, source: LensSource): boolean {

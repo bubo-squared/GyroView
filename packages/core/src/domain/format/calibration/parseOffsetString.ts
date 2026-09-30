@@ -15,7 +15,7 @@ const TOKEN_SEPARATOR = '_';
  * Every calibration string version the player reads; their token counts never coincide for a
  * lens count.
  */
-export const CALIBRATION_LAYOUTS: readonly CalibrationStringLayout[] = [
+const CALIBRATION_LAYOUTS: readonly CalibrationStringLayout[] = [
   LEGACY_CALIBRATION_LAYOUT,
   POLYNOMIAL_CALIBRATION_LAYOUT,
   MEI_CALIBRATION_LAYOUT,
@@ -30,9 +30,9 @@ export function parseOffsetString(
   text: string,
   layouts: readonly CalibrationStringLayout[] = CALIBRATION_LAYOUTS,
 ): VersionedCalibration {
-  const numbers = text.split(TOKEN_SEPARATOR).map((token) => parseNumber(token, text));
+  const numbers = text.split(TOKEN_SEPARATOR).map((token) => parseNumber(token));
   const lensCount = numbers[LENS_COUNT_TOKEN] ?? 0;
-  const layout = detectLayout(layouts, numbers, text);
+  const layout = detectLayout(layouts, numbers);
   const versionWord = numbers.at(-1) ?? 0;
   ensureVersionWordFits(layout, versionWord);
   const blocks = Array.from({ length: lensCount }, (_unused, lensIndex) =>
@@ -42,6 +42,7 @@ export function parseOffsetString(
     version: layout.version,
     canvas: layout.canvasOf(numbers, blocks),
     lenses: blocks.map((block, lensIndex) => layout.parseLens(block, lensIndex)),
+    radialScale: layout.radialScale,
   };
 }
 
@@ -52,7 +53,6 @@ function tokenCountFor(lensCount: number, lensTokens: number, trailingTokens: nu
 function detectLayout(
   layouts: readonly CalibrationStringLayout[],
   numbers: readonly number[],
-  text: string,
 ): CalibrationStringLayout {
   const lensCount = numbers[LENS_COUNT_TOKEN] ?? 0;
   const layout = layouts.find(
@@ -62,7 +62,7 @@ function detectLayout(
   if (layout) return layout;
   throw new GyroViewError(
     'invalid-calibration',
-    `calibration string has ${numbers.length} tokens for ${lensCount} lenses, matching no known layout: ${text}`,
+    `calibration string has ${numbers.length} tokens for ${lensCount} lenses, matching no known layout`,
   );
 }
 
@@ -80,12 +80,12 @@ function lensBlock(numbers: readonly number[], start: number): LensBlock {
   return (token) => numbers[start + token] ?? NaN;
 }
 
-function parseNumber(token: string, text: string): number {
+function parseNumber(token: string): number {
   const value = Number(token);
   if (token.trim() === '' || !Number.isFinite(value)) {
     throw new GyroViewError(
       'invalid-calibration',
-      `calibration token "${token}" is not a finite number in: ${text}`,
+      `calibration token "${token}" is not a finite number`,
     );
   }
   return value;

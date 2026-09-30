@@ -1,3 +1,5 @@
+import { ensureInvariant } from '../../shared/errors/GyroViewError';
+
 /**
  * A point on the Mei model's normalised image plane, before the focal lengths scale it.
  */
@@ -45,6 +47,25 @@ export const MEI_TERM_CAPACITY = {
   tangential: 2,
   thinPrism: 2,
 } as const satisfies Readonly<Record<keyof MeiDistortion, number>>;
+
+/**
+ * Refuses a distortion with more terms of a family than {@link MEI_TERM_CAPACITY} holds: a
+ * defect of the reading that made it, found where the string is read rather than when a
+ * renderer packs it.
+ */
+export function ensureWithinTermCapacity(distortion: MeiDistortion): void {
+  ensureFamilyFits('radial', distortion.radial.length);
+  ensureFamilyFits('tangential', distortion.tangential.length);
+  ensureFamilyFits('thinPrism', distortion.thinPrism.length);
+}
+
+function ensureFamilyFits(family: keyof MeiDistortion, count: number): void {
+  const capacity = MEI_TERM_CAPACITY[family];
+  ensureInvariant(
+    count <= capacity,
+    `a Mei distortion has ${count} ${family} terms, more than the ${capacity} a string carries`,
+  );
+}
 
 export function distortMei(distortion: MeiDistortion, point: NormalisedPoint): NormalisedPoint {
   const [x, y] = point;

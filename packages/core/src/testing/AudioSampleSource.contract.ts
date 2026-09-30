@@ -11,6 +11,11 @@ export interface AudioSampleSourceExpectations {
    */
   readonly sampleDuration: number;
   readonly firstTimestamp: number;
+  /**
+   * When the last sample stops playing, where the track's last sample is shorter than the rest
+   * (as an AAC encoder cuts it); every sample lasting as long by default.
+   */
+  readonly duration?: number;
 }
 
 function collect(samples: AsyncIterable<EncodedAudioSample>): Promise<EncodedAudioSample[]> {
@@ -32,7 +37,7 @@ export function describeAudioSampleSourceContract(
   describe(`AudioSampleSource contract (${name})`, () => {
     it('lasts until its last sample stops playing', async () => {
       const source = await open();
-      expect(source.duration).toBeCloseTo(end, 6);
+      expect(source.duration).toBeCloseTo(expected.duration ?? end, 6);
     });
 
     it('hands out every sample in order from a time before the first', async () => {
@@ -40,7 +45,10 @@ export function describeAudioSampleSourceContract(
       const samples = await collect(source.samplesFrom(seconds(firstTimestamp - 1)));
       expect(samples).toHaveLength(sampleCount);
       expect(samples[0]?.timestamp).toBeCloseTo(firstTimestamp, 6);
-      expect(samples.at(-1)?.timestamp).toBeCloseTo(end - sampleDuration, 6);
+      expect(samples.at(-1)?.timestamp).toBeCloseTo(
+        firstTimestamp + (sampleCount - 1) * sampleDuration,
+        6,
+      );
       expect(samples.every((sample) => sample.data.byteLength > 0)).toBe(true);
     });
 

@@ -84,12 +84,23 @@ export function toBodyFrame(frame: ImuFrame, imuVector: Vector3): Vector3 {
 }
 
 /**
- * Measured on two X5 recordings (firmware 1.7 and 1.11, ADR 0009): the IMU sits rotated a quarter
- * turn about the camera's lateral axis, so the body's down is the IMU's z and the body's forward
- * is the IMU's minus y. Chosen by the world-stillness ranking in
- * `tools/integration/src/measure/imuFrameRanking.test.ts`, which every other arrangement loses.
+ * The IMU rotated a quarter turn about the camera's lateral axis: the body's down is the IMU's z
+ * and the body's forward is the IMU's minus y.
  */
-export const X5_IMU_FRAME = measuredImuFrame('X5', ['x', 'z', '-y']);
+const QUARTER_TURN_ABOUT_LATERAL: BodyAxes = ['x', 'z', '-y'];
+
+/**
+ * Measured on two X5 recordings (firmware 1.7 and 1.11, ADR 0009), chosen by the world-stillness
+ * ranking in `tools/integration/src/measure/imuFrameRanking.test.ts`, which every other
+ * arrangement loses.
+ */
+export const X5_IMU_FRAME = measuredImuFrame('X5', QUARTER_TURN_ABOUT_LATERAL);
+
+/**
+ * Measured on one X6 recording (ADR 0009): the X5's arrangement, which the same ranking puts
+ * first by half the unstabilized movement, the runner-up close to none.
+ */
+export const X6_IMU_FRAME = measuredImuFrame('X6', QUARTER_TURN_ABOUT_LATERAL);
 
 /**
  * Until a recording proves otherwise, the IMU is assumed aligned with the body.
@@ -105,6 +116,7 @@ export interface ImuFrameHints {
 
 const IMU_FRAMES_BY_MODEL: readonly (readonly [modelPrefix: string, frame: ImuFrame])[] = [
   ['Insta360 X5', X5_IMU_FRAME],
+  ['Insta360 X6', X6_IMU_FRAME],
 ];
 
 /**

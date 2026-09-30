@@ -52,7 +52,7 @@ class FakeHost implements CursorHost {
 }
 
 function cursorAt(sample: number, host = new FakeHost()): { cursor: SampleCursor; host: FakeHost } {
-  return { cursor: new SampleCursor(TRACK, sample, host), host };
+  return { cursor: new SampleCursor(TRACK, { sample }, host), host };
 }
 
 describe('SampleCursor', () => {

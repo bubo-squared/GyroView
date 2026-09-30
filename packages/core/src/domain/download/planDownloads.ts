@@ -128,7 +128,7 @@ interface Window {
 function wantedBytes(window: Window): ByteRangeSet {
   const { state, windowEnd } = window;
   const following = state.cursors.filter((cursor) => isFollowing(cursor, window));
-  const needs = following.flatMap((cursor) => needsOf(cursor, windowEnd));
+  const needs = following.flatMap((cursor) => needsOf(cursor, laterOf(windowEnd, cursor.target)));
   const next = following.filter((cursor) => isNextSampleOwed(cursor, windowEnd));
   const nextSamples = ByteRangeSet.of(next.map((cursor) => cursor.track.rangeOf(cursor.sample)));
   return withinBytes(ByteRangeSet.of(needs), state.policy.aheadBytes).union(nextSamples);
@@ -145,6 +145,10 @@ function isFollowing(cursor: CursorPosition, window: Window): boolean {
 function isNextSampleOwed(cursor: CursorPosition, windowEnd: Seconds): boolean {
   const isWaitingWithin = cursor.isWaiting && timeOf(cursor) <= windowEnd;
   return !isAtItsEnd(cursor) && (isPicture(cursor) || isWaitingWithin);
+}
+
+function laterOf(time: Seconds, other: Seconds | undefined): Seconds {
+  return other !== undefined && other > time ? other : time;
 }
 
 function isPicture(cursor: CursorPosition): boolean {

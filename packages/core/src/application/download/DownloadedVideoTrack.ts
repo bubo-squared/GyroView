@@ -73,7 +73,7 @@ export class DownloadedVideoTrack implements VideoTrackReader {
     const start = this.keyframeSampleAt(time) ?? this.firstKeyframeSample();
     return start === undefined
       ? undefined
-      : this.parts.download.openCursor(this.parts.track, start);
+      : this.parts.download.openCursor(this.parts.track, start, time);
   }
 
   /**

@@ -26,7 +26,7 @@ export class DownloadedAudioSamples implements AudioSampleSource {
     const { download, track } = this.parts;
     return {
       [Symbol.asyncIterator]: (): AsyncIterator<EncodedAudioSample> =>
-        new SampleReading(track, download.openCursor(track, track.sampleShownAt(time) ?? 0)),
+        new SampleReading(track, download.openCursor(track, track.sampleShownAt(time) ?? 0, time)),
     };
   }
 }

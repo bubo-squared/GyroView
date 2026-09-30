@@ -71,11 +71,11 @@ export class FileDownload implements MediaBuffer {
   }
 
   /**
-   * A reader of `track` from `sample` on.
+   * A reader of `track` from `sample` on, reading toward `target` at once.
    */
-  public openCursor(track: TrackSampleTable, sample: number): SampleCursor {
+  public openCursor(track: TrackSampleTable, sample: number, target?: Seconds): SampleCursor {
     ensureInvariant(this.parts.table.tracks.includes(track), 'the track is not one of this file');
-    const cursor = new SampleCursor(track, sample, this.host);
+    const cursor = new SampleCursor(track, { sample, target }, this.host);
     if (this.isDisposed) {
       cursor.close();
       return cursor;
@@ -172,6 +172,7 @@ export class FileDownload implements MediaBuffer {
       track: cursor.track,
       sample: cursor.position,
       isWaiting: cursor.isWaiting,
+      target: cursor.target,
     }));
   }
 

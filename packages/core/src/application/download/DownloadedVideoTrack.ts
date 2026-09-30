@@ -1,0 +1,175 @@
+import type { FileDownload } from './FileDownload';
+import type { CursorSample, SampleCursor } from './SampleCursor';
+import type { TrackSampleTable } from '../../domain/container/TrackSampleTable';
+import type { VideoTrackCodec } from '../../ports/CodecReader';
+import type { VideoTrackReader } from '../../ports/Demuxer';
+import type {
+  EncodedVideoPacket,
+  KeyframeTime,
+  VideoDecoderConfiguration,
+  VideoTrackDescription,
+} from '../../ports/VideoTrack';
+import { GyroViewError } from '../../shared/errors/GyroViewError';
+import type { Seconds } from '../../shared/units/time';
+
+export interface DownloadedVideoTrackParts {
+  readonly download: FileDownload;
+  readonly track: TrackSampleTable;
+  readonly codec: VideoTrackCodec;
+}
+
+const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
+
+/**
+ * One lens's track, its packets read through the file's download. Where decoding may start comes
+ * from the sample table; the first packet decoding starts from is checked against its own bytes,
+ * and a sync sample found not to be a keyframe is passed over from then on, so the times it tells
+ * agree with the packets it hands out.
+ */
+export class DownloadedVideoTrack implements VideoTrackReader {
+  private readonly rejected = new Set<number>();
+
+  public constructor(private readonly parts: DownloadedVideoTrackParts) {}
+
+  public get description(): VideoTrackDescription {
+    return this.parts.codec.description;
+  }
+
+  public decoderConfiguration(): Promise<VideoDecoderConfiguration> {
+    return Promise.resolve(this.parts.codec.configuration);
+  }
+
+  public keyframeAt(time: Seconds): Promise<KeyframeTime | undefined> {
+    return Promise.resolve(this.timeOf(this.keyframeSampleAt(time)));
+  }
+
+  public firstKeyframe(): Promise<KeyframeTime | undefined> {
+    return Promise.resolve(this.timeOf(this.firstKeyframeSample()));
+  }
+
+  public packetsFrom(time: Seconds): AsyncIterable<EncodedVideoPacket> {
+    return {
+      [Symbol.asyncIterator]: (): AsyncIterator<EncodedVideoPacket> =>
+        new PacketReading({
+          track: this.parts.track,
+          open: (): SampleCursor | undefined => this.cursorFrom(time),
+          reject: (sample): void => {
+            this.rejected.add(sample);
+          },
+          packetOf: (read): EncodedVideoPacket => this.packetOf(read),
+        }),
+    };
+  }
+
+  public sampleTimestamps(): Promise<readonly Seconds[]> {
+    return Promise.resolve(this.parts.track.timestampsInPresentationOrder());
+  }
+
+  public frameCount(): Promise<number> {
+    return Promise.resolve(this.parts.track.sampleCount);
+  }
+
+  private cursorFrom(time: Seconds): SampleCursor | undefined {
+    const start = this.keyframeSampleAt(time) ?? this.firstKeyframeSample();
+    return start === undefined
+      ? undefined
+      : this.parts.download.openCursor(this.parts.track, start);
+  }
+
+  /**
+   * The sync sample decoding for `time` starts at, past those found not to be keyframes.
+   */
+  private keyframeSampleAt(time: Seconds): number | undefined {
+    const { track } = this.parts;
+    let sample = track.keyframeAt(time);
+    while (sample !== undefined && this.rejected.has(sample)) {
+      sample = sample > 0 ? track.syncSampleAtOrBefore(sample - 1) : undefined;
+    }
+    return sample;
+  }
+
+  private firstKeyframeSample(): number | undefined {
+    const { track } = this.parts;
+    for (
+      let sample = track.firstSyncSample() ?? track.sampleCount;
+      sample < track.sampleCount;
+      sample += 1
+    ) {
+      if (track.isSync(sample) && !this.rejected.has(sample)) return sample;
+    }
+    return undefined;
+  }
+
+  private timeOf(sample: number | undefined): KeyframeTime | undefined {
+    const { track } = this.parts;
+    return sample === undefined
+      ? undefined
+      : { timestamp: track.timestampOf(sample), duration: track.durationOf(sample) };
+  }
+
+  private packetOf(read: CursorSample): EncodedVideoPacket {
+    const { track } = this.parts;
+    return {
+      timestamp: track.timestampOf(read.sample),
+      duration: track.durationOf(read.sample),
+      isKeyFrame: track.isSync(read.sample) && !this.rejected.has(read.sample),
+      data: read.bytes,
+    };
+  }
+}
+
+interface PacketReadingParts {
+  readonly track: TrackSampleTable;
+  readonly open: () => SampleCursor | undefined;
+  readonly reject: (sample: number) => void;
+  readonly packetOf: (read: CursorSample) => EncodedVideoPacket;
+}
+
+/**
+ * One iteration over a track's packets, its cursor opened at once so the download reads for it
+ * straight away; returning it closes the cursor at once, even while a packet is awaited.
+ */
+class PacketReading implements AsyncIterator<EncodedVideoPacket> {
+  private cursor: SampleCursor | undefined;
+  private isVerified = false;
+  private isReturned = false;
+
+  public constructor(private readonly parts: PacketReadingParts) {
+    this.cursor = parts.open();
+  }
+
+  public async next(): Promise<IteratorResult<EncodedVideoPacket>> {
+    if (this.wasReturned()) return DONE;
+    if (!this.cursor)
+      throw new GyroViewError('no-key-frame', `track ${this.parts.track.trackId} has no key frame`);
+    const read = await this.cursor.nextSample();
+    if (!read || this.wasReturned()) return DONE;
+    if (!this.isVerified && !this.parts.track.keyframeRule.isKeyframe(read.bytes))
+      return this.startEarlier(read);
+    this.isVerified = true;
+    return { done: false, value: this.parts.packetOf(read) };
+  }
+
+  public return(): Promise<IteratorResult<EncodedVideoPacket>> {
+    this.isReturned = true;
+    this.cursor?.close();
+    return Promise.resolve(DONE);
+  }
+
+  /**
+   * The sample decoding was to start at is no keyframe: starts again at the one before it.
+   */
+  private startEarlier(read: CursorSample): Promise<IteratorResult<EncodedVideoPacket>> {
+    this.parts.reject(read.sample);
+    this.cursor?.close();
+    this.cursor = this.parts.open();
+    return this.next();
+  }
+
+  /**
+   * Asked afresh after every wait: the iteration may be returned meanwhile.
+   */
+  private wasReturned(): boolean {
+    return this.isReturned;
+  }
+}

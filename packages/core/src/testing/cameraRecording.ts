@@ -1,4 +1,4 @@
-import { EVERY_SAMPLE_IS_A_KEYFRAME } from '../domain/container/KeyframeRule';
+import { EVERY_SAMPLE_IS_A_KEYFRAME, type KeyframeRule } from '../domain/container/KeyframeRule';
 import { SampleTable } from '../domain/container/SampleTable';
 import { TrackSampleTable, type TrackKind } from '../domain/container/TrackSampleTable';
 import { seconds, type Seconds } from '../shared/units/time';
@@ -13,6 +13,10 @@ export interface CameraLayout {
   readonly soundBytes: number;
   readonly frameRate: number;
   readonly framesPerGop: number;
+  /**
+   * How the lenses' keyframes are checked; every sync sample passes when absent.
+   */
+  readonly keyframeRule?: KeyframeRule;
 }
 
 export interface CameraRecording {
@@ -91,7 +95,9 @@ function trackOf(
     durations: column(() => 1 / layout.frameRate),
     syncSamples: isVideo ? syncSamplesOf(layout) : undefined,
     end: seconds(layout.frames / layout.frameRate),
-    keyframeRule: EVERY_SAMPLE_IS_A_KEYFRAME,
+    keyframeRule: isVideo
+      ? (layout.keyframeRule ?? EVERY_SAMPLE_IS_A_KEYFRAME)
+      : EVERY_SAMPLE_IS_A_KEYFRAME,
   });
 }
 

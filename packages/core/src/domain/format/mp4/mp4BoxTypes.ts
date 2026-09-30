@@ -7,7 +7,6 @@ export const Mp4BoxType = {
   Movie: 'moov',
   MovieHeader: 'mvhd',
   MovieExtends: 'mvex',
-  MovieFragment: 'moof',
   Track: 'trak',
   TrackHeader: 'tkhd',
   Edit: 'edts',

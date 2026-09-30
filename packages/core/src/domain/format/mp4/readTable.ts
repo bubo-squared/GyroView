@@ -23,7 +23,7 @@ const READERS: Readonly<Record<IntegerKind, IntegerReader>> = {
 /**
  * The integer a layout puts at `field`, counted from `base`.
  */
-export function readInteger(reader: ByteReader, field: IntegerField, base = 0): number {
+function readInteger(reader: ByteReader, field: IntegerField, base = 0): number {
   return READERS[field.kind](reader, base + field.offset);
 }
 

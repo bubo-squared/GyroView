@@ -36,11 +36,6 @@ export class ByteReader {
     return this.view.getUint16(offset, IS_LITTLE_ENDIAN);
   }
 
-  public uint16BeAt(offset: number): number {
-    this.ensureAvailable(offset, UINT16_SIZE);
-    return this.view.getUint16(offset, IS_BIG_ENDIAN);
-  }
-
   public uint32LeAt(offset: number): number {
     this.ensureAvailable(offset, UINT32_SIZE);
     return this.view.getUint32(offset, IS_LITTLE_ENDIAN);

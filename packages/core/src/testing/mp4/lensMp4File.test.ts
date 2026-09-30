@@ -31,6 +31,6 @@ describe('lensMp4File', () => {
 
   it('lists no key frame at all when asked, as a track decoding cannot start in', async () => {
     const { table } = await tableOf(lensMp4File({ lenses: 1, keyframes: 'none' }).bytes);
-    expect(table.videoTracks[0]?.firstSyncSample()).toBeUndefined();
+    expect(table.videoTracks[0]?.syncSampleAtOrAfter(0)).toBeUndefined();
   });
 });

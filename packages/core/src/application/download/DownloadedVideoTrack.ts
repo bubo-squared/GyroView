@@ -90,10 +90,11 @@ export class DownloadedVideoTrack implements VideoTrackReader {
 
   private firstKeyframeSample(): number | undefined {
     const { track } = this.parts;
-    for (let sample = 0; sample < track.sampleCount; sample += 1) {
-      if (track.isSync(sample) && !this.rejected.has(sample)) return sample;
+    let sample = track.syncSampleAtOrAfter(0);
+    while (sample !== undefined && this.rejected.has(sample)) {
+      sample = track.syncSampleAtOrAfter(sample + 1);
     }
-    return undefined;
+    return sample;
   }
 
   private timeOf(sample: number | undefined): KeyframeTime | undefined {

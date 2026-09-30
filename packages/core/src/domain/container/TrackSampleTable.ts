@@ -116,10 +116,19 @@ export class TrackSampleTable {
     return syncSamples[count - 1];
   }
 
-  public firstSyncSample(): number | undefined {
+  /**
+   * The first sync sample at or after `sample`; none where no sync sample follows.
+   */
+  public syncSampleAtOrAfter(sample: number): number | undefined {
     const { syncSamples } = this.parts;
-    if (syncSamples) return syncSamples[0];
-    return this.sampleCount > 0 ? 0 : undefined;
+    const first = Math.max(0, sample);
+    if (!syncSamples) return first < this.sampleCount ? first : undefined;
+    const before = countAtOrBelow(
+      syncSamples.length,
+      (index) => syncSamples[index] ?? 0,
+      first - 1,
+    );
+    return syncSamples[before];
   }
 
   public timestampsInPresentationOrder(): Seconds[] {

@@ -1,15 +1,17 @@
 import { BlobRandomAccessSource } from '@gyroview/adapter-blob';
 import {
+  HttpByteStream,
   HttpRangeSource,
+  HttpResource,
   HttpResourceLocator,
   type HttpRequestOptions,
 } from '@gyroview/adapter-fetch';
 import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
 import { WebCodecsVideoDecoderPort } from '@gyroview/adapter-webcodecs';
-import { Deferred } from '@gyroview/core';
+import { Deferred, SourceByteStream } from '@gyroview/core';
 
-import type { RecordingPorts, SourceOpener } from './ports';
-import { isUrlInput, type UrlInput } from '../PlayerSource';
+import type { OpenedSource, RecordingPorts, SourceOpener } from './ports';
+import { isUrlInput, type BlobInput, type UrlInput } from '../PlayerSource';
 
 export interface BrowserPortsOptions {
   /**
@@ -41,15 +43,23 @@ export function browserPorts(options: BrowserPortsOptions = {}): RecordingPorts<
 }
 
 /**
- * URLs are read with HTTP ranges, blobs by slicing.
+ * URLs are read with HTTP ranges, both ways over one resource; blobs by slicing, a range whole.
  */
 export function browserSources(http: HttpRequestOptions): SourceOpener {
   return {
     open: (input, signal) =>
-      isUrlInput(input)
-        ? new HttpRangeSource(input.url, requestOptionsFor(http, input), signal)
-        : new BlobRandomAccessSource(input.blob),
+      isUrlInput(input) ? urlSource(input, http, signal) : blobSource(input),
   };
+}
+
+function urlSource(input: UrlInput, http: HttpRequestOptions, signal: AbortSignal): OpenedSource {
+  const resource = new HttpResource(input.url, requestOptionsFor(http, input), signal);
+  return { source: new HttpRangeSource(resource), stream: new HttpByteStream(resource) };
+}
+
+function blobSource(input: BlobInput): OpenedSource {
+  const source = new BlobRandomAccessSource(input.blob);
+  return { source, stream: new SourceByteStream(source) };
 }
 
 /**

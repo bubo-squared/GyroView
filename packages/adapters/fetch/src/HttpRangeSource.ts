@@ -1,23 +1,15 @@
 import { isAbortError, type ByteRange, type RandomAccessSource } from '@gyroview/core';
 
-import { HttpResource, type HttpResourceOptions } from './HttpResource';
+import type { HttpResource } from './HttpResource';
 import { brokenOff, truncated } from './rangeFailures';
-
-export type HttpRangeSourceOptions = HttpResourceOptions;
 
 /**
  * RandomAccessSource over HTTP: each range read whole, in one request, asked for again when it
- * fails on the way.
+ * fails on the way. It shares its resource with the recording's byte stream, so both know one
+ * size, one proof of CORS and one version.
  */
 export class HttpRangeSource implements RandomAccessSource {
-  private readonly resource: HttpResource;
-
-  /**
-   * `signal` ends every request the source makes, with the host's own `requestInit` signal.
-   */
-  public constructor(url: string, options: HttpRangeSourceOptions = {}, signal?: AbortSignal) {
-    this.resource = new HttpResource(url, options, signal);
-  }
+  public constructor(private readonly resource: HttpResource) {}
 
   public size(): Promise<number> {
     return this.resource.size();

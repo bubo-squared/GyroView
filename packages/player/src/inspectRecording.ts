@@ -20,7 +20,7 @@ export function inspectRecording(
   options: InspectOptions = {},
 ): Promise<RecordingInspection> {
   const signal = options.signal ?? new AbortController().signal;
-  const source = browserSources(options.http ?? {}).open(inputOf(recording), signal);
+  const { source } = browserSources(options.http ?? {}).open(inputOf(recording), signal);
   return inspectSource(source);
 }
 

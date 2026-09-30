@@ -65,7 +65,10 @@ async function demuxInputs(
   disposables: Disposables,
 ): Promise<DemuxedRecording> {
   const { ports, signal } = attempt;
-  const given = inputs.map((input) => ({ input, source: ports.sources.open(input, signal) }));
+  const given = inputs.map((input) => ({
+    input,
+    source: ports.sources.open(input, signal).source,
+  }));
   const recording = await readRecordingOf(given, ports);
   signal.throwIfAborted();
   const openings = [...given, ...(await declaredSecond(given, recording, attempt))];
@@ -101,7 +104,7 @@ async function declaredSecond(
   attempt.signal.throwIfAborted();
   return input === undefined
     ? []
-    : [{ input, source: attempt.ports.sources.open(input, attempt.signal) }];
+    : [{ input, source: attempt.ports.sources.open(input, attempt.signal).source }];
 }
 
 /**

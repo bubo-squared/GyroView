@@ -87,6 +87,13 @@ describe('SampleCursor', () => {
     expect(() => cursor.nextSample()).toThrow('a cursor reads one sample at a time');
   });
 
+  it('hands out a sample whose bytes came before the range around it failed', async () => {
+    const { cursor, host } = cursorAt(0);
+    host.bring(0);
+    host.failAt(0, new Error('the connection dropped'));
+    await expect(cursor.nextSample()).resolves.toMatchObject({ sample: 0 });
+  });
+
   it('fails a read of a range that failed at once', async () => {
     const { cursor, host } = cursorAt(0);
     const error = new Error('the connection dropped');

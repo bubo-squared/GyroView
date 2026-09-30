@@ -78,10 +78,10 @@ export class SampleCursor {
     if (this.isClosed || this.next >= this.track.sampleCount) return Promise.resolve(undefined);
     ensureInvariant(this.waiter === undefined, 'a cursor reads one sample at a time');
     const range = this.track.rangeOf(this.next);
-    const failure = this.host.failureOf(range);
-    if (failure !== undefined) return Promise.reject(failure);
     const bytes = this.host.bytesOf(range);
-    return bytes ? Promise.resolve(this.take(bytes)) : this.waitForBytes();
+    if (bytes) return Promise.resolve(this.take(bytes));
+    const failure = this.host.failureOf(range);
+    return failure === undefined ? this.waitForBytes() : Promise.reject(failure);
   }
 
   /**

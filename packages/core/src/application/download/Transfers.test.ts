@@ -35,6 +35,21 @@ function listening(): { heard: Heard; listener: TransferListener } {
 }
 
 /**
+ * A stream that hands out the first `byteCount` bytes of each range, then fails.
+ */
+function breakingStream(byteCount: number, error: Error): ByteStream {
+  return {
+    stream: (range): AsyncIterable<Uint8Array> => ({
+      async *[Symbol.asyncIterator](): AsyncGenerator<Uint8Array> {
+        yield FILE.slice(range.offset, range.offset + byteCount);
+        await Promise.resolve();
+        throw error;
+      },
+    }),
+  };
+}
+
+/**
  * A stream whose every read fails, and whose reads cannot be given up.
  */
 function failingStream(error: Error): ByteStream {
@@ -107,6 +122,17 @@ describe('Transfers', () => {
     expect(heard.failures).toEqual([{ range: ByteRange.of(600, 100), error }]);
     expect(store.allocatedBytes).toBe(0);
     expect(transfers.states).toEqual([]);
+  });
+
+  it('tells, of a range that broke off, only what had not come', async () => {
+    const store = new BlockStore();
+    const { heard, listener } = listening();
+    const error = new Error('the connection dropped');
+    const transfers = new Transfers({ stream: breakingStream(40, error), store, listener });
+    transfers.start(ByteRange.of(100, 100));
+    await settle();
+    expect(heard.failures).toEqual([{ range: ByteRange.of(140, 60), error }]);
+    expect(store.bytesOf(ByteRange.of(100, 40))).toEqual(FILE.subarray(100, 140));
   });
 
   it('tells nothing of a range given up whose stream fails after, nor minds a stream it cannot stop', async () => {

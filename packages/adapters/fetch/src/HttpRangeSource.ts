@@ -1,12 +1,7 @@
-import {
-  GyroViewError,
-  isAbortError,
-  type ByteRange,
-  type RandomAccessSource,
-} from '@gyroview/core';
+import { isAbortError, type ByteRange, type RandomAccessSource } from '@gyroview/core';
 
 import { HttpResource, type HttpResourceOptions } from './HttpResource';
-import { passing } from './passingFailures';
+import { brokenOff, truncated } from './rangeFailures';
 
 export type HttpRangeSourceOptions = HttpResourceOptions;
 
@@ -39,31 +34,17 @@ export class HttpRangeSource implements RandomAccessSource {
     const response = await this.resource.rangeAnswer(range);
     const bytes = await this.bodyOf(response, range);
     if (bytes.byteLength !== range.length) {
-      throw new GyroViewError(
-        'source-truncated',
-        `${this.resource.url} returned ${bytes.byteLength} bytes for a ${range.length}-byte range at ${range.offset}`,
-      );
+      throw truncated(this.resource.url, bytes.byteLength, range);
     }
     return bytes;
   }
 
-  /**
-   * The bytes of a range, which a dropped connection can break off after the headers: the most
-   * common way a network fails during long playback, so it is `source-unreadable` as a refused
-   * request is, not a bug or a bad file, and worth another try.
-   */
   private async bodyOf(response: Response, range: ByteRange): Promise<Uint8Array> {
     try {
       return new Uint8Array(await response.arrayBuffer());
     } catch (error) {
       if (isAbortError(error)) throw error;
-      throw passing(
-        new GyroViewError(
-          'source-unreadable',
-          `${this.resource.url} broke off the ${range.length}-byte range at ${range.offset}`,
-          { cause: error },
-        ),
-      );
+      throw brokenOff(this.resource.url, range, error);
     }
   }
 }

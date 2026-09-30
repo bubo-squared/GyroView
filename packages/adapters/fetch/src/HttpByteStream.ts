@@ -1,10 +1,11 @@
 import { ByteRange, GyroViewError, isAbortError, type ByteStream } from '@gyroview/core';
 
+import { contentRangeOf } from './contentRange';
 import type { HttpResource } from './HttpResource';
 import { passing } from './passingFailures';
+import { brokenOff, truncated } from './rangeFailures';
 
 const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
-const CONTENT_RANGE = /^bytes (\d+)-(\d+)\//u;
 /**
  * Long enough for a slow mobile network to deliver its next packet, short enough that playback
  * waiting on a dead connection recovers well before the viewer gives up.
@@ -126,10 +127,10 @@ class RangeStreaming implements AsyncIterator<Uint8Array> {
    * says which in its Content-Range, where the page may read it.
    */
   private ensureAnswers(response: Response, rest: ByteRange): void {
-    const answered = CONTENT_RANGE.exec(response.headers.get('content-range') ?? '');
+    const answered = contentRangeOf(response);
     if (!answered) return;
     const asked = `${rest.offset}-${rest.end - 1}`;
-    const given = `${answered[1] ?? ''}-${answered[2] ?? ''}`;
+    const given = `${answered.first}-${answered.last}`;
     if (given === asked) return;
     throw new GyroViewError(
       'source-unreadable',
@@ -137,19 +138,13 @@ class RangeStreaming implements AsyncIterator<Uint8Array> {
     );
   }
 
-  /**
-   * A dropped connection breaks a body off after the headers: the most common way a network
-   * fails during long playback, so it is `source-unreadable`, and worth another try.
-   */
   private async readFrom(attempt: Attempt): Promise<ReadableStreamReadResult<Uint8Array>> {
     const body = await attempt.body;
     try {
       return await body.read();
     } catch (error) {
       if (isAbortError(error)) throw error;
-      const { resource, range } = this.parts;
-      const message = `${resource.url} broke off the ${range.length}-byte range at ${range.offset}`;
-      throw passing(new GyroViewError('source-unreadable', message, { cause: error }));
+      throw brokenOff(this.parts.resource.url, this.parts.range, error);
     }
   }
 
@@ -198,11 +193,7 @@ class RangeStreaming implements AsyncIterator<Uint8Array> {
 
   private ensureWhole(): void {
     const { resource, range } = this.parts;
-    if (this.received === range.length) return;
-    throw new GyroViewError(
-      'source-truncated',
-      `${resource.url} returned ${this.received} bytes for a ${range.length}-byte range at ${range.offset}`,
-    );
+    if (this.received !== range.length) throw truncated(resource.url, this.received, range);
   }
 
   private drop(attempt: Attempt): void {

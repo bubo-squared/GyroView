@@ -7,7 +7,7 @@ import type { DownloadPolicy } from '../../domain/download/DownloadPolicy';
 import {
   planDownloads,
   type DownloadDecisions,
-  type PictureAnchor,
+  type WindowAnchor,
 } from '../../domain/download/planDownloads';
 import type { ByteStream } from '../../ports/ByteStream';
 import type { ByteRange } from '../../shared/binary/ByteRange';
@@ -40,7 +40,7 @@ export class FileDownload {
   private readonly cursors = new Set<SampleCursor>();
   private readonly host: CursorHost;
   private failures: FailedRange[] = [];
-  private anchor: PictureAnchor | undefined;
+  private anchor: WindowAnchor | undefined;
   private isReadingAhead = false;
   private isPlanDue = false;
   private isDisposed = false;

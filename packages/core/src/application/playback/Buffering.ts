@@ -53,7 +53,7 @@ export class Buffering {
    */
   public isOverAt(run: RunUnderWay | undefined, now: Seconds): boolean {
     if (!run || !this.lifecycle.is('buffering')) return false;
-    return this.cause === 'starvation' ? run.isReadyToResumeAt(now) : run.isPrimedAt(now);
+    return this.cause === 'priming' ? run.isPrimedAt(now) : run.isReadyToResumeAt(now);
   }
 
   /**

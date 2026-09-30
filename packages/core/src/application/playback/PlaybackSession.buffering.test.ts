@@ -138,6 +138,20 @@ describe('PlaybackSession buffering', () => {
     session.dispose();
   });
 
+  it('takes a play made while buffering after a seek for the play already under way', async () => {
+    const clock = new FakePlaybackClock();
+    const { session } = sessionHarness({ clock });
+    await session.play();
+    session.seek(seconds(2));
+    expect(session.state).toBe('buffering');
+
+    await session.play();
+    await settle();
+
+    expect(session.state).toBe('playing');
+    session.dispose();
+  });
+
   it('lets pause settle a play that is still buffering', async () => {
     const clock = new FakePlaybackClock();
     const { session, states } = sessionHarness({ clock, decoder: { latencyTicks: 50 } });

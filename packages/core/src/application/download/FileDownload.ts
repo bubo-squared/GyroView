@@ -11,6 +11,7 @@ import {
 } from '../../domain/download/planDownloads';
 import type { ByteStream } from '../../ports/ByteStream';
 import type { ByteRange } from '../../shared/binary/ByteRange';
+import { ByteRangeSet } from '../../shared/binary/ByteRangeSet';
 import { asGyroViewError, ensureInvariant } from '../../shared/errors/GyroViewError';
 
 export type { CursorSample, SampleCursor } from './SampleCursor';
@@ -134,6 +135,7 @@ export class FileDownload {
       })),
       held: this.store.held,
       transfers: this.transfers.states,
+      unreadable: ByteRangeSet.of(this.failures.map((failure) => failure.range)),
       isReadingAhead: this.isReadingAhead,
       anchor: this.anchor,
       policy: this.parts.policy,
@@ -146,10 +148,7 @@ export class FileDownload {
   private carryOut(decisions: DownloadDecisions): void {
     for (const id of decisions.cancel) this.transfers.cancel(id);
     this.store.release(decisions.release);
-    for (const range of decisions.start) {
-      const hasFailed = this.failures.some((failure) => failure.range.overlaps(range));
-      if (!hasFailed) this.transfers.start(range);
-    }
+    for (const range of decisions.start) this.transfers.start(range);
   }
 
   private serveCursors(): void {

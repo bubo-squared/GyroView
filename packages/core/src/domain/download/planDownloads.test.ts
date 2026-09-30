@@ -82,6 +82,7 @@ function stateOf(parts: Partial<DownloadState>): DownloadState {
     cursors: [],
     held: ByteRangeSet.empty,
     transfers: [],
+    unreadable: ByteRangeSet.empty,
     isReadingAhead: true,
     policy: POLICY,
     ...parts,
@@ -214,6 +215,14 @@ describe('planDownloads', () => {
     );
     expect(plan.cancel).toEqual([]);
     expect(spansOf(plan.start)).toEqual(slotSpans([0, 10]));
+  });
+
+  it('asks for nothing that failed, and reads on past it', () => {
+    const file = cameraFile();
+    const plan = planDownloads(
+      stateOf({ cursors: everyTrackAt(file, 0), unreadable: heldSlots(0, 20) }),
+    );
+    expect(spansOf(plan.start)).toEqual(slotSpans([20, 40], [40, 60]));
   });
 
   it('waits to top up until a quarter of its bytes is missing', () => {

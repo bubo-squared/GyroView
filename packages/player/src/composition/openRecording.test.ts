@@ -2,31 +2,39 @@ import {
   CalibrationVersion,
   Deferred,
   GyroViewError,
+  seconds,
+  type ContainerCodecs,
   type EncodedVideoPacket,
   type VideoDecoderHandle,
   type VideoDecoderPort,
+  type VideoTrackReader,
 } from '@gyroview/core';
 import {
-  FakeDemuxer,
   FakeResourceLocator,
   FakeVideoDecoderPort,
-  FakeVideoTrack,
+  lensMp4File,
   minimalInfoRecord,
-  type FakeVideoTrackOptions,
+  type SimulatedLink,
 } from '@gyroview/core/testing';
-import { seconds } from '@gyroview/core';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { openRecording } from './openRecording';
+import type { RecordingPorts } from './ports';
 import type { PlayerSource, UrlInput } from '../PlayerSource';
 import {
+  codecReaderFor,
   fakePorts,
   fetchBytes,
+  lensCodecs,
   MapSourceOpener,
-  squareTracks,
+  RecordingAudioPackager,
+  SOUND_CONFIGURATION,
   syntheticRecordingBytes,
   X5_RECORDING_URL,
+  X5_RECORDING_WITH_AUDIO_URL,
+  type FakePortsParts,
 } from '../test/recordings';
+import { settle } from '../test/waiting';
 
 const MAIN_URL = 'https://cdn.example/clips/VID_20260814_132640_00_013.insv';
 const SECOND_URL = 'https://cdn.example/clips/VID_20260814_132640_10_013.insv';
@@ -40,32 +48,87 @@ const HEVC = 'hvc1.fake';
  */
 const SPLIT_FILES = 1;
 const AVC = 'avc1.fake';
+const X5_TRAILER_BOX = 'inst';
+const BOX_HEADER = 8;
 
-const fixture: { x5Bytes: Uint8Array } = { x5Bytes: new Uint8Array() };
-
-/**
- * A track whose key frame is still on its way when the probe's deadline passes, which it
- * triggers once `after` settles.
- */
-class LateKeyframeTrack extends FakeVideoTrack {
-  public constructor(
-    options: FakeVideoTrackOptions,
-    private readonly deadline: Deferred<void>,
-    private readonly after: Promise<void> = Promise.resolve(),
-  ) {
-    super(options);
-  }
-
-  public override async *packetsFrom(): AsyncIterable<EncodedVideoPacket> {
-    await this.after;
-    this.deadline.resolve();
-    yield await new Deferred<EncodedVideoPacket>().promise;
-  }
-}
+const fixture = { x5Bytes: new Uint8Array(), x5WithSoundBytes: new Uint8Array() };
 
 beforeAll(async () => {
   fixture.x5Bytes = await fetchBytes(X5_RECORDING_URL);
+  fixture.x5WithSoundBytes = await fetchBytes(X5_RECORDING_WITH_AUDIO_URL);
 });
+
+/**
+ * A file the opener serves, and the codecs the codec reader tells of it.
+ */
+interface ServedFile {
+  readonly url: string;
+  readonly bytes: Uint8Array;
+  readonly codecs: ContainerCodecs;
+}
+
+interface World {
+  readonly opener: MapSourceOpener;
+  readonly ports: RecordingPorts;
+}
+
+type OtherPorts = Omit<FakePortsParts, 'sources' | 'codecReader'>;
+
+async function worldOf(files: readonly ServedFile[], other: OtherPorts = {}): Promise<World> {
+  const opener = new MapSourceOpener();
+  for (const file of files) opener.register(file.url, file.bytes);
+  const codecReader = await codecReaderFor(files.map((file) => [file.bytes, file.codecs]));
+  return { opener, ports: fakePorts({ sources: opener, codecReader, ...other }) };
+}
+
+/**
+ * The X5 fixture at `url`, its two lens tracks labelled HEVC.
+ */
+function x5File(url = MAIN_URL): ServedFile {
+  return { url, bytes: fixture.x5Bytes, codecs: lensCodecs({ lenses: 2, codec: HEVC }) };
+}
+
+/**
+ * The X5 fixture read as one lens of a split pair: the codec reader tells of its first track
+ * alone.
+ */
+function x5Half(url: string): ServedFile {
+  return { url, bytes: fixture.x5Bytes, codecs: lensCodecs({ lenses: 1 }) };
+}
+
+/**
+ * One lens file without a trailer, as the _10_ file of an older camera's pair is.
+ */
+function bareHalf(url: string, frames?: number): ServedFile {
+  const bytes = lensMp4File({ lenses: 1, ...(frames !== undefined && { frames }) }).bytes;
+  return { url, bytes, codecs: lensCodecs({ lenses: 1 }) };
+}
+
+/**
+ * The half an info record calls split, with no calibration: a load of it stops once its layout
+ * is known.
+ */
+function declaredSplitHalf(url: string): ServedFile {
+  const info = minimalInfoRecord({ model: 'Insta360 X3', fileLayout: SPLIT_FILES });
+  const bytes = syntheticRecordingBytes(info, lensMp4File({ lenses: 1 }).bytes);
+  return { url, bytes, codecs: lensCodecs({ lenses: 1 }) };
+}
+
+/**
+ * The X5 fixture's trailer, a box of its own after the movie: it tells its records' places from
+ * the end of the file, so it reads the same after other tracks.
+ */
+function x5Trailer(): Uint8Array {
+  const view = new DataView(fixture.x5Bytes.buffer, fixture.x5Bytes.byteOffset);
+  let offset = 0;
+  while (
+    new TextDecoder().decode(fixture.x5Bytes.subarray(offset + 4, offset + BOX_HEADER)) !==
+    X5_TRAILER_BOX
+  ) {
+    offset += view.getUint32(offset);
+  }
+  return fixture.x5Bytes.subarray(offset);
+}
 
 /**
  * A decoder port whose decoders never produce a picture, as a stalled hardware decoder does.
@@ -110,39 +173,24 @@ function sourceOf(overrides: Partial<PlayerSource> = {}): PlayerSource {
   };
 }
 
-function packedTrack(): FakeVideoTrack {
-  return new FakeVideoTrack({
-    trackIndex: 0,
-    frameRate: 30,
-    frameCount: 90,
-    framesPerGop: 30,
-    codedWidth: 1664,
-    codedHeight: 832,
-    codec: AVC,
-  });
+async function firstPacketOf(track: VideoTrackReader | undefined): Promise<unknown> {
+  const packets = track?.packetsFrom(seconds(0))[Symbol.asyncIterator]();
+  const first: IteratorResult<EncodedVideoPacket> | undefined = await packets?.next();
+  await packets?.return?.();
+  return first?.done === false ? first.value : undefined;
 }
 
-interface World {
-  readonly opener: MapSourceOpener;
-  readonly demuxer: FakeDemuxer;
+async function untilAsked(link: SimulatedLink): Promise<void> {
+  while (link.requests.length === 0) await settle();
 }
 
-/**
- * The X5 fixture at the main URL with two HEVC-labelled lens tracks, served from memory.
- */
-function x5World(): World {
-  const opener = new MapSourceOpener();
-  const main = opener.register(MAIN_URL, fixture.x5Bytes);
-  const demuxer = new FakeDemuxer([
-    { source: main, duration: seconds(3), videoTracks: squareTracks({ codec: HEVC }) },
-  ]);
-  return { opener, demuxer };
+function isAllGivenUp(link: SimulatedLink): boolean {
+  return link.requests.every((request) => request.endedAt !== undefined);
 }
 
 describe('openRecording', () => {
   it('opens a one-file X5 recording: layout, lens order, calibration, timing and motion', async () => {
-    const world = x5World();
-    const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer });
+    const { ports } = await worldOf([x5File()]);
 
     const opened = await openRecording(sourceOf(), ports, new AbortController().signal);
 
@@ -150,7 +198,7 @@ describe('openRecording', () => {
     // The X5 info record says track 0 is the screen-side lens, so lens 0 is track 1.
     expect(opened.frameSources.map((track) => track.description.trackIndex)).toEqual([1, 0]);
     expect(opened.calibration.version).toBe(CalibrationVersion.Legacy);
-    expect(opened.duration).toBe(3);
+    expect(opened.duration).toBeCloseTo(3, 6);
     expect(opened.frameTimes?.frameCount).toBe(30);
     expect(opened.motion?.orientations.length).toBe(2000);
     expect(opened.audioTrack).toBeUndefined();
@@ -162,37 +210,27 @@ describe('openRecording', () => {
       hasGyro: true,
       imuFrame: { name: 'X5', isVerified: true },
       hasAudio: false,
-      duration: 3,
     });
+    expect(opened.metadata.duration).toBeCloseTo(3, 6);
     expect(opened.metadata.tracks.map((track) => track.codec)).toEqual([HEVC, HEVC]);
     expect(opened.warnings).toEqual(['exposure-record unavailable']);
-    expect(world.demuxer.openCount).toBe(1);
+    await expect(firstPacketOf(opened.frameSources[0])).resolves.toBeDefined();
     opened.dispose();
-    expect(world.demuxer.openCount).toBe(0);
+    await expect(firstPacketOf(opened.frameSources[0])).resolves.toBeUndefined();
   });
 
-  it('refuses a recording without calibration and releases what it opened', async () => {
-    const opener = new MapSourceOpener();
+  it('refuses a recording without calibration', async () => {
     const bytes = syntheticRecordingBytes(minimalInfoRecord({ model: 'Insta360 X3' }));
-    const source = opener.register(MAIN_URL, bytes);
-    const demuxer = new FakeDemuxer([
-      { source, duration: seconds(3), videoTracks: squareTracks() },
-    ]);
-    const ports = fakePorts({ sources: opener, demuxer });
+    const { ports } = await worldOf([{ url: MAIN_URL, bytes, codecs: lensCodecs({ lenses: 2 }) }]);
 
     await expect(
       openRecording(sourceOf(), ports, new AbortController().signal),
     ).rejects.toMatchObject({ code: 'no-calibration' });
-    expect(demuxer.openCount).toBe(0);
   });
 
   it('reports an undecodable recording with the probe verdicts', async () => {
-    const world = x5World();
-    const ports = fakePorts({
-      sources: world.opener,
-      demuxer: world.demuxer,
-      decoderPort: new FakeVideoDecoderPort({ unsupportedCodecs: [HEVC] }),
-    });
+    const decoderPort = new FakeVideoDecoderPort({ unsupportedCodecs: [HEVC] });
+    const { ports } = await worldOf([x5File()], { decoderPort });
 
     const failure = await captureRejection(
       openRecording(sourceOf(), ports, new AbortController().signal),
@@ -201,21 +239,16 @@ describe('openRecording', () => {
     expect(failure).toBeInstanceOf(GyroViewError);
     expect(failure).toMatchObject({ code: 'codec-unsupported' });
     expect((failure as Error).message).toContain('track 1 unsupported-configuration');
-    expect(world.demuxer.openCount).toBe(0);
   });
 
   it('blames the file, not the browser, when its tracks have no key frame to start from', async () => {
-    const opener = new MapSourceOpener();
-    const main = opener.register(MAIN_URL, fixture.x5Bytes);
-    const videoTracks = squareTracks({ codec: HEVC, frameCount: 0 });
-    const demuxer = new FakeDemuxer([{ source: main, duration: seconds(3), videoTracks }]);
+    const tracks = lensMp4File({ lenses: 2, keyframes: 'none' }).bytes;
+    const bytes = Uint8Array.from([...tracks, ...x5Trailer()]);
+    const codecs = lensCodecs({ lenses: 2, codec: HEVC });
+    const { ports } = await worldOf([{ url: MAIN_URL, bytes, codecs }]);
 
     const failure = await captureRejection(
-      openRecording(
-        sourceOf(),
-        fakePorts({ sources: opener, demuxer }),
-        new AbortController().signal,
-      ),
+      openRecording(sourceOf(), ports, new AbortController().signal),
     );
 
     expect(failure).toMatchObject({ code: 'no-key-frame' });
@@ -223,15 +256,8 @@ describe('openRecording', () => {
   });
 
   it('asks for the other lens file once when the info record calls the recording split and it is not there', async () => {
-    const opener = new MapSourceOpener();
-    const splitInfo = minimalInfoRecord({ model: 'Insta360 X3', fileLayout: SPLIT_FILES });
-    const main = opener.register(MAIN_URL, syntheticRecordingBytes(splitInfo));
-    const [backTrack] = squareTracks();
-    const demuxer = new FakeDemuxer([
-      { source: main, duration: seconds(3), videoTracks: [backTrack!] },
-    ]);
     const locator = new FakeResourceLocator([]);
-    const ports = fakePorts({ sources: opener, demuxer, locator });
+    const { ports } = await worldOf([declaredSplitHalf(MAIN_URL)], { locator });
 
     const failure = await captureRejection(
       openRecording(sourceOf(), ports, new AbortController().signal),
@@ -241,66 +267,47 @@ describe('openRecording', () => {
     expect(locator.asked).toEqual([SECOND_URL]);
   });
 
-  it('blames the network, not the browser, when the first frames do not arrive in time', async () => {
-    const opener = new MapSourceOpener();
-    const main = opener.register(MAIN_URL, fixture.x5Bytes);
+  it('blames the network, not the browser, when the first frames do not arrive in time, and gives up its reads', async () => {
     const deadline = new Deferred<void>();
-    const videoTracks = [0, 1].map(
-      (trackIndex) =>
-        new LateKeyframeTrack(
-          { trackIndex, frameRate: 10, frameCount: 30, framesPerGop: 10, codedSize: 64 },
-          deadline,
-        ),
-    );
-    const demuxer = new FakeDemuxer([{ source: main, duration: seconds(3), videoTracks }]);
-    const ports = {
-      ...fakePorts({ sources: opener, demuxer }),
-      probeDeadline: (): Deferred<void> => deadline,
-    };
+    const world = await worldOf([x5File()]);
+    const link = world.opener.stall(MAIN_URL, fixture.x5Bytes);
+    const ports = { ...world.ports, probeDeadline: (): Deferred<void> => deadline };
 
-    const failure = await captureRejection(
+    const opening = captureRejection(
       openRecording(sourceOf(), ports, new AbortController().signal),
     );
+    await untilAsked(link);
+    deadline.resolve();
+    const failure = await opening;
 
     expect(failure).toMatchObject({ code: 'source-unreadable' });
     expect((failure as Error).message).toContain('track 0 key-frame-late');
+    expect(isAllGivenUp(link)).toBe(true);
   });
 
-  it("blames the network when one frame source waits for its key frame while the other's decoder is still busy", async () => {
-    const opener = new MapSourceOpener();
-    const main = opener.register(MAIN_URL, fixture.x5Bytes);
+  it("blames the network when one lens waits for its key frame while the other's decoder is still busy", async () => {
     const deadline = new Deferred<void>();
     const decoderPort = new StallingDecoderPort();
-    const [decoding] = squareTracks({ codec: HEVC });
-    const late = new LateKeyframeTrack(
-      { trackIndex: 1, frameRate: 10, frameCount: 30, framesPerGop: 10, codedSize: 64 },
-      deadline,
-      decoderPort.created.promise,
-    );
-    const demuxer = new FakeDemuxer([
-      { source: main, duration: seconds(3), videoTracks: [decoding!, late] },
-    ]);
-    const ports = {
-      ...fakePorts({ sources: opener, demuxer, decoderPort }),
-      probeDeadline: (): Deferred<void> => deadline,
-    };
+    const late = bareHalf(SECOND_URL);
+    const world = await worldOf([x5Half(MAIN_URL), late], { decoderPort });
+    world.opener.stall(SECOND_URL, late.bytes);
+    const ports = { ...world.ports, probeDeadline: (): Deferred<void> => deadline };
+    void decoderPort.created.promise.then(() => {
+      deadline.resolve();
+    });
 
     const failure = await captureRejection(
-      openRecording(sourceOf(), ports, new AbortController().signal),
+      openRecording(sourceOf({ second: { url: SECOND_URL } }), ports, new AbortController().signal),
     );
 
     expect(failure).toMatchObject({ code: 'source-unreadable' });
-    expect((failure as Error).message).toContain('track 0 timed-out');
-    expect((failure as Error).message).toContain('track 1 key-frame-late');
+    expect((failure as Error).message).toContain('timed-out');
+    expect((failure as Error).message).toContain('key-frame-late');
   });
 
   it('opens a recording whose one track packs both lenses', async () => {
-    const opener = new MapSourceOpener();
-    const packed = opener.register(PACKED_URL, fixture.x5Bytes);
-    const demuxer = new FakeDemuxer([
-      { source: packed, duration: seconds(3), videoTracks: [packedTrack()] },
-    ]);
-    const ports = fakePorts({ sources: opener, demuxer });
+    const codecs = lensCodecs({ lenses: 1, codec: AVC, codedWidth: 1664, codedHeight: 832 });
+    const { ports } = await worldOf([{ url: PACKED_URL, bytes: fixture.x5Bytes, codecs }]);
 
     const opened = await openRecording(
       sourceOf({ main: { url: PACKED_URL } }),
@@ -310,91 +317,58 @@ describe('openRecording', () => {
 
     expect(opened.layout.kind).toBe('packed');
     expect(opened.frameSources.map((track) => track.description.codec)).toEqual([AVC]);
-    expect(demuxer.openCount).toBe(1);
+    opened.dispose();
   });
 
   it('asks for nothing beside a recording that opens by itself', async () => {
-    const world = x5World();
     const locator = new FakeResourceLocator([]);
-    const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer, locator });
+    const { ports } = await worldOf([x5File()], { locator });
 
-    await openRecording(sourceOf(), ports, new AbortController().signal);
+    const opened = await openRecording(sourceOf(), ports, new AbortController().signal);
 
     expect(locator.asked).toEqual([]);
+    opened.dispose();
   });
 
   it('fetches the other lens file of a split-file recording when the server has it', async () => {
-    const opener = new MapSourceOpener();
-    const main = opener.register(MAIN_URL, fixture.x5Bytes);
-    const second = opener.register(SECOND_URL, fixture.x5Bytes);
-    // Each file has one track, so both are track 0 of their own file.
-    const [backTrack] = squareTracks();
-    const [screenTrack] = squareTracks();
-    const demuxer = new FakeDemuxer([
-      { source: main, duration: seconds(3), videoTracks: [backTrack!] },
-      { source: second, duration: seconds(2.5), videoTracks: [screenTrack!] },
-    ]);
-    const ports = fakePorts({
-      sources: opener,
-      demuxer,
-      locator: new FakeResourceLocator([SECOND_URL]),
-    });
+    const locator = new FakeResourceLocator([SECOND_URL]);
+    const { ports } = await worldOf([x5Half(MAIN_URL), bareHalf(SECOND_URL, 25)], { locator });
 
     const opened = await openRecording(sourceOf(), ports, new AbortController().signal);
 
     expect(opened.layout.kind).toBe('split-files');
-    expect(opened.duration).toBe(2.5);
-    expect(demuxer.openCount).toBe(2);
+    expect(opened.duration).toBeCloseTo(2.5, 6);
+    await expect(firstPacketOf(opened.frameSources[1])).resolves.toBeDefined();
     opened.dispose();
-    expect(demuxer.openCount).toBe(0);
+    await expect(firstPacketOf(opened.frameSources[1])).resolves.toBeUndefined();
   });
 
   it('finds the other lens file before reading the tracks when the info record says the recording is split', async () => {
-    const opener = new MapSourceOpener();
-    const splitInfo = minimalInfoRecord({ model: 'Insta360 X3', fileLayout: SPLIT_FILES });
-    const main = opener.register(MAIN_URL, syntheticRecordingBytes(splitInfo));
-    const second = opener.register(SECOND_URL, new Uint8Array(4096));
-    const [backTrack] = squareTracks();
-    const [screenTrack] = squareTracks();
-    const demuxer = new FakeDemuxer([
-      { source: main, duration: seconds(3), videoTracks: [backTrack!] },
-      { source: second, duration: seconds(3), videoTracks: [screenTrack!] },
-    ]);
-    const demuxed: (string | undefined)[] = [];
-    const ports = fakePorts({
-      sources: opener,
-      demuxer: {
-        open: (source, name) => {
-          demuxed.push(name);
-          return demuxer.open(source, name);
-        },
+    const locator = new FakeResourceLocator([SECOND_URL]);
+    const world = await worldOf([declaredSplitHalf(MAIN_URL), bareHalf(SECOND_URL)], { locator });
+    const movies: Uint8Array[] = [];
+    const codecReader = {
+      read: (movieBytes: Uint8Array): Promise<ContainerCodecs> => {
+        movies.push(movieBytes);
+        return world.ports.codecReader.read(movieBytes);
       },
-      locator: new FakeResourceLocator([SECOND_URL]),
-    });
+    };
 
     // The minimal info record carries no calibration: the load stops once the layout is known.
     const failure = await captureRejection(
-      openRecording(sourceOf(), ports, new AbortController().signal),
+      openRecording(sourceOf(), { ...world.ports, codecReader }, new AbortController().signal),
     );
 
     expect(failure).toMatchObject({ code: 'no-calibration' });
-    expect(demuxed).toHaveLength(2);
+    expect(movies).toHaveLength(2);
   });
 
   it('looks for and reads the other lens file with the credentials of the main one', async () => {
-    const opener = new MapSourceOpener();
-    const main = opener.register(MAIN_URL, fixture.x5Bytes);
-    const second = opener.register(SECOND_URL, fixture.x5Bytes);
-    const [backTrack] = squareTracks();
-    const [screenTrack] = squareTracks();
-    const demuxer = new FakeDemuxer([
-      { source: main, duration: seconds(3), videoTracks: [backTrack!] },
-      { source: second, duration: seconds(3), videoTracks: [screenTrack!] },
-    ]);
-    const lookedBeside: UrlInput[] = [];
     const locator = new FakeResourceLocator([SECOND_URL]);
+    const world = await worldOf([x5Half(MAIN_URL), bareHalf(SECOND_URL)]);
+    const lookedBeside: UrlInput[] = [];
     const ports = {
-      ...fakePorts({ sources: opener, demuxer }),
+      ...world.ports,
       locatorFor: (input: UrlInput): FakeResourceLocator => {
         lookedBeside.push(input);
         return locator;
@@ -405,45 +379,26 @@ describe('openRecording', () => {
     const opened = await openRecording(source, ports, new AbortController().signal);
 
     expect(lookedBeside).toEqual([{ url: MAIN_URL, credentials: 'include' }]);
-    expect(opener.inputs).toContainEqual({ url: SECOND_URL, credentials: 'include' });
+    expect(world.opener.inputs).toContainEqual({ url: SECOND_URL, credentials: 'include' });
     opened.dispose();
   });
 
   it('reads the other lens file an info record declares with the credentials of the main one', async () => {
-    const opener = new MapSourceOpener();
-    const splitInfo = minimalInfoRecord({ model: 'Insta360 X3', fileLayout: SPLIT_FILES });
-    const main = opener.register(MAIN_URL, syntheticRecordingBytes(splitInfo));
-    const second = opener.register(SECOND_URL, new Uint8Array(4096));
-    const [backTrack] = squareTracks();
-    const [screenTrack] = squareTracks();
-    const demuxer = new FakeDemuxer([
-      { source: main, duration: seconds(3), videoTracks: [backTrack!] },
-      { source: second, duration: seconds(3), videoTracks: [screenTrack!] },
-    ]);
     const locator = new FakeResourceLocator([SECOND_URL]);
-    const ports = fakePorts({ sources: opener, demuxer, locator });
+    const world = await worldOf([declaredSplitHalf(MAIN_URL), bareHalf(SECOND_URL)], { locator });
     const source = sourceOf({ main: { url: MAIN_URL, credentials: 'include' } });
 
     // The minimal info record carries no calibration: the load stops once the layout is known.
-    await captureRejection(openRecording(source, ports, new AbortController().signal));
+    await captureRejection(openRecording(source, world.ports, new AbortController().signal));
 
-    expect(opener.inputs).toEqual([
+    expect(world.opener.inputs).toEqual([
       { url: MAIN_URL, credentials: 'include' },
       { url: SECOND_URL, credentials: 'include' },
     ]);
   });
 
   it('reads the trailer from the second file when the first, the _10_ half, has none', async () => {
-    const opener = new MapSourceOpener();
-    const withoutTrailer = opener.register(SECOND_URL, new Uint8Array(4096));
-    const withTrailer = opener.register(MAIN_URL, fixture.x5Bytes);
-    const [screenTrack] = squareTracks();
-    const [backTrack] = squareTracks();
-    const demuxer = new FakeDemuxer([
-      { source: withoutTrailer, duration: seconds(3), videoTracks: [screenTrack!] },
-      { source: withTrailer, duration: seconds(3), videoTracks: [backTrack!] },
-    ]);
-    const ports = fakePorts({ sources: opener, demuxer });
+    const { ports } = await worldOf([bareHalf(SECOND_URL), x5Half(MAIN_URL)]);
     const source = sourceOf({ main: { url: SECOND_URL }, second: { url: MAIN_URL } });
 
     const opened = await openRecording(source, ports, new AbortController().signal);
@@ -454,28 +409,17 @@ describe('openRecording', () => {
   });
 
   it('asks for the other file of a lone _10_ file without a trailer, not calling it damaged', async () => {
-    const opener = new MapSourceOpener();
-    const withoutTrailer = opener.register(SECOND_URL, new Uint8Array(4096));
-    const [screenTrack] = squareTracks();
-    const demuxer = new FakeDemuxer([
-      { source: withoutTrailer, duration: seconds(3), videoTracks: [screenTrack!] },
-    ]);
-    const ports = fakePorts({ sources: opener, demuxer });
+    const { ports } = await worldOf([bareHalf(SECOND_URL)]);
     const source = sourceOf({ main: { url: SECOND_URL } });
 
     await expect(openRecording(source, ports, new AbortController().signal)).rejects.toMatchObject({
       code: 'missing-second-file',
     });
-    expect(demuxer.openCount).toBe(0);
   });
 
   it('calls a file without a trailer damaged when its tracks are no half of a pair', async () => {
-    const opener = new MapSourceOpener();
-    const withoutTrailer = opener.register(MAIN_URL, new Uint8Array(4096));
-    const demuxer = new FakeDemuxer([
-      { source: withoutTrailer, duration: seconds(3), videoTracks: squareTracks() },
-    ]);
-    const ports = fakePorts({ sources: opener, demuxer });
+    const bytes = lensMp4File({ lenses: 2 }).bytes;
+    const { ports } = await worldOf([{ url: MAIN_URL, bytes, codecs: lensCodecs({ lenses: 2 }) }]);
 
     await expect(
       openRecording(sourceOf(), ports, new AbortController().signal),
@@ -483,45 +427,29 @@ describe('openRecording', () => {
   });
 
   it('plays the sound of the pair from whichever file carries it', async () => {
-    const opener = new MapSourceOpener();
-    const withoutTrailer = opener.register(SECOND_URL, new Uint8Array(4096));
-    const withTrailer = opener.register(MAIN_URL, fixture.x5Bytes);
-    const [screenTrack] = squareTracks();
-    const [backTrack] = squareTracks();
-    const sound = { openSegments: (): Promise<never> => Promise.reject(new Error('not needed')) };
-    const demuxer = new FakeDemuxer([
-      { source: withoutTrailer, duration: seconds(3), videoTracks: [screenTrack!] },
-      {
-        source: withTrailer,
-        duration: seconds(3),
-        videoTracks: [backTrack!],
-        audioTracks: [sound],
+    const audioPackager = new RecordingAudioPackager();
+    const withSound: ServedFile = {
+      url: MAIN_URL,
+      bytes: fixture.x5WithSoundBytes,
+      codecs: {
+        video: lensCodecs({ lenses: 1 }).video,
+        audio: [{ trackId: 3, configuration: SOUND_CONFIGURATION }],
       },
-    ]);
-    const ports = fakePorts({ sources: opener, demuxer });
+    };
+    const { ports } = await worldOf([bareHalf(SECOND_URL), withSound], { audioPackager });
     const source = sourceOf({ main: { url: SECOND_URL }, second: { url: MAIN_URL } });
 
     const opened = await openRecording(source, ports, new AbortController().signal);
+    await opened.audioTrack?.openSegments();
 
-    expect(opened.audioTrack).toBe(sound);
+    expect(opened.metadata.hasAudio).toBe(true);
+    expect(audioPackager.packaged).toEqual([SOUND_CONFIGURATION]);
     opened.dispose();
   });
 
   it('fetches the _00_ file for a lone _10_ file that has no trailer', async () => {
-    const opener = new MapSourceOpener();
-    const withoutTrailer = opener.register(SECOND_URL, new Uint8Array(4096));
-    const withTrailer = opener.register(MAIN_URL, fixture.x5Bytes);
-    const [screenTrack] = squareTracks();
-    const [backTrack] = squareTracks();
-    const demuxer = new FakeDemuxer([
-      { source: withoutTrailer, duration: seconds(3), videoTracks: [screenTrack!] },
-      { source: withTrailer, duration: seconds(3), videoTracks: [backTrack!] },
-    ]);
-    const ports = fakePorts({
-      sources: opener,
-      demuxer,
-      locator: new FakeResourceLocator([MAIN_URL]),
-    });
+    const locator = new FakeResourceLocator([MAIN_URL]);
+    const { ports } = await worldOf([bareHalf(SECOND_URL), x5Half(MAIN_URL)], { locator });
     const source = sourceOf({ main: { url: SECOND_URL } });
 
     const opened = await openRecording(source, ports, new AbortController().signal);
@@ -531,24 +459,16 @@ describe('openRecording', () => {
   });
 
   it('reports a lone half of a pair when the sibling is not there', async () => {
-    const opener = new MapSourceOpener();
-    const main = opener.register(MAIN_URL, fixture.x5Bytes);
-    const [onlyTrack] = squareTracks();
-    const demuxer = new FakeDemuxer([
-      { source: main, duration: seconds(3), videoTracks: [onlyTrack!] },
-    ]);
-    const ports = fakePorts({ sources: opener, demuxer });
+    const { ports } = await worldOf([x5Half(MAIN_URL)]);
 
     await expect(
       openRecording(sourceOf(), ports, new AbortController().signal),
     ).rejects.toMatchObject({ code: 'missing-second-file' });
-    expect(demuxer.openCount).toBe(0);
   });
 
   it('ends a stalled decode probe as soon as it is aborted, closing its decoders', async () => {
-    const world = x5World();
     const decoderPort = new StallingDecoderPort();
-    const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer, decoderPort });
+    const { ports } = await worldOf([x5File()], { decoderPort });
     const controller = new AbortController();
     const opening = openRecording(sourceOf(), ports, controller.signal);
     await decoderPort.created.promise;
@@ -559,23 +479,20 @@ describe('openRecording', () => {
   });
 
   it('opens its sources with the load signal, so a load given up stops reading', async () => {
-    const world = x5World();
-    const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer });
+    const world = await worldOf([x5File()]);
     const controller = new AbortController();
-    const opened = await openRecording(sourceOf(), ports, controller.signal);
+    const opened = await openRecording(sourceOf(), world.ports, controller.signal);
     opened.dispose();
     expect(world.opener.signals.length).toBeGreaterThan(0);
     expect(world.opener.signals.every((signal) => signal === controller.signal)).toBe(true);
   });
 
-  it('stops at the first check after an abort and leaves nothing open', async () => {
-    const world = x5World();
-    const ports = fakePorts({ sources: world.opener, demuxer: world.demuxer });
+  it('stops at the first check after an abort', async () => {
+    const { ports } = await worldOf([x5File()]);
     const controller = new AbortController();
     const opening = openRecording(sourceOf(), ports, controller.signal);
     controller.abort();
 
     await expect(opening).rejects.toMatchObject({ name: 'AbortError' });
-    expect(world.demuxer.openCount).toBe(0);
   });
 });

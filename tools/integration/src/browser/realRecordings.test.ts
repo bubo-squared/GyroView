@@ -140,6 +140,8 @@ describe('playing the real X5 recordings in the browser', () => {
     });
     startTicking(session, cleanups);
 
+    // As the pipeline does once playing starts: the downloads read ahead, the sound with them.
+    opened.readAhead();
     await session.play();
     await waitFor(
       () => sink.presentations.length >= PRESENTATIONS_BEFORE_SEEK,

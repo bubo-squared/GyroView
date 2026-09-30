@@ -1,16 +1,18 @@
 import {
   detectLensLayout,
+  downloadPolicyFor,
   ensureInvariant,
   GyroViewError,
-  hasErrorCode,
   lensFrameOrder,
-  readRecording,
   seconds,
+  startFileDownload,
   timeRecording,
-  type DemuxedInput,
+  type AudioPackager,
+  type AudioSegmentSource,
+  type AudioTrackReader,
+  type DownloadedAudioTrack,
+  type DownloadedFile,
   type FrameSourceKey,
-  type LayoutHints,
-  type RandomAccessSource,
   type Recording,
   type RecordingTiming,
   type Seconds,
@@ -21,23 +23,15 @@ import { Disposables } from './Disposables';
 import { ensureDecodable } from './ensureDecodable';
 import type { OpenAttempt } from './OpenAttempt';
 import type { OpenedRecording } from './OpenedRecording';
-import type { RecordingPorts } from './ports';
+import { describedInput, readInputs, type ReadInput, type ReadRecording } from './readInputs';
 import type { PlayerMetadata } from '../PlayerMetadata';
-import { inputName, type MediaInput } from '../PlayerSource';
-
-interface Opening {
-  readonly input: MediaInput;
-  readonly source: RandomAccessSource;
-}
-
-interface DemuxedRecording {
-  readonly recording: Recording;
-  readonly inputs: readonly DemuxedInput[];
-}
+import type { MediaInput } from '../PlayerSource';
 
 /**
- * Opens the given inputs as one recording, its metadata from the input that carries the
- * trailer. Everything opened is released again when any step fails or the attempt is aborted.
+ * Opens the given inputs as one recording (ADR 0029): their sample tables and codecs read, the
+ * lens layout and calibration decided, then one download a file, which the decode probe reads
+ * through first. Everything opened is released again when any step fails or the attempt is
+ * aborted.
  */
 export async function openInputs(
   inputs: readonly MediaInput[],
@@ -45,127 +39,39 @@ export async function openInputs(
 ): Promise<OpenedRecording> {
   const disposables = new Disposables();
   try {
-    const demuxed = await demuxInputs(inputs, attempt, disposables);
-    const layout = detectLensLayout(demuxed.inputs, demuxed.recording.info);
-    const frameSources = lensFrameOrder(layout).map((key) => trackAt(demuxed.inputs, key));
-    const calibration = calibrationOf(demuxed.recording);
+    const read = await readInputs(inputs, attempt);
+    const described = read.inputs.map((input) => describedInput(input));
+    const layout = detectLensLayout(described, read.recording.info);
+    const calibration = calibrationOf(read.recording);
+    const files = startDownloads(read.inputs, disposables);
+    const frameSources = lensFrameOrder(layout).map((key) => trackAt(files, key));
     await ensureDecodable(frameSources, attempt);
-    const timing = await timeRecording(demuxed.recording, frameSources[0]);
+    const timing = await timeRecording(read.recording, frameSources[0]);
     attempt.signal.throwIfAborted();
-    return assemble({ demuxed, layout, frameSources, calibration, timing }, disposables);
+    const parts = { read, files, layout, frameSources, calibration, timing };
+    return assemble(parts, attempt.ports.audioPackager, disposables);
   } catch (error) {
     disposables.disposeAll();
     throw error;
   }
 }
 
-async function demuxInputs(
-  inputs: readonly MediaInput[],
-  attempt: OpenAttempt,
-  disposables: Disposables,
-): Promise<DemuxedRecording> {
-  const { ports, signal } = attempt;
-  const given = inputs.map((input) => ({
-    input,
-    source: ports.sources.open(input, signal).source,
-  }));
-  const recording = await readRecordingOf(given, ports);
-  signal.throwIfAborted();
-  const openings = [...given, ...(await declaredSecond(given, recording, attempt))];
-  const settled = await Promise.allSettled(
-    openings.map(({ input, source }) => ports.demuxer.open(source, inputName(input))),
-  );
-  const opened = settled.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
-  for (const input of opened) {
+/**
+ * One download a file, each with its share of the budget.
+ */
+function startDownloads(inputs: readonly ReadInput[], disposables: Disposables): DownloadedFile[] {
+  return inputs.map(({ opened, table, codecs, size }) => {
+    const policy = downloadPolicyFor({ size, duration: table.duration }, inputs.length);
+    const file = startFileDownload({ table, stream: opened.stream, codecs, policy });
     disposables.add(() => {
-      input.dispose();
+      file.dispose();
     });
-  }
-  const failure = settled.find((result) => result.status === 'rejected');
-  if (failure) throw failure.reason;
-  signal.throwIfAborted();
-  return { recording, inputs: opened };
+    return file;
+  });
 }
 
-/**
- * The other lens file a lone file's info record says the recording is split into, when the
- * server has it: found before the lone file's tracks are read, which finding it only once they
- * fell short would read twice. A file that does not say so still gets its sibling looked for
- * once its tracks fall short (see openRecording).
- */
-async function declaredSecond(
-  given: readonly Opening[],
-  recording: Recording,
-  attempt: OpenAttempt,
-): Promise<Opening[]> {
-  const isDeclaredSplit = given.length === 1 && recording.info.fileLayout === 'split-files';
-  if (!isDeclaredSplit || !attempt.findSecondFile) return [];
-  const input = await attempt.findSecondFile();
-  attempt.signal.throwIfAborted();
-  return input === undefined
-    ? []
-    : [{ input, source: attempt.ports.sources.open(input, attempt.signal).source }];
-}
-
-/**
- * The layout hints of a file without an info record: the tracks alone decide.
- */
-const NO_HINTS: LayoutHints = { fileLayout: undefined, trackOrder: undefined };
-
-async function readRecordingOf(
-  openings: readonly Opening[],
-  ports: RecordingPorts,
-): Promise<Recording> {
-  try {
-    return await readTrailerCarrier(openings.map(({ source }) => source));
-  } catch (error) {
-    const [only] = openings;
-    const isLoneFileWithoutTrailer =
-      openings.length === 1 && hasErrorCode(error, 'invalid-trailer');
-    if (isLoneFileWithoutTrailer && only) await refuseAsLoneHalf(only, ports);
-    throw error;
-  }
-}
-
-/**
- * A file without a trailer may be the _10_ half of an older camera's pair, which writes the
- * trailer to _00_ alone: its one square track tells, and the refusal asks for the other file
- * instead of calling it damaged. Anything else leaves the trailer's own refusal standing.
- */
-async function refuseAsLoneHalf(opening: Opening, ports: RecordingPorts): Promise<void> {
-  let input: DemuxedInput;
-  try {
-    input = await ports.demuxer.open(opening.source, inputName(opening.input));
-  } catch {
-    return;
-  }
-  try {
-    detectLensLayout([input], NO_HINTS);
-  } catch (error) {
-    if (hasErrorCode(error, 'missing-second-file')) throw error;
-  } finally {
-    input.dispose();
-  }
-}
-
-/**
- * The recording read from the input that carries the trailer: the first, or the second when the
- * first has none, as the _10_ file of an older camera's pair, which writes it to _00_ alone,
- * when the pair is given the other way round.
- */
-async function readTrailerCarrier(sources: readonly RandomAccessSource[]): Promise<Recording> {
-  const [first, second] = sources;
-  ensureInvariant(first !== undefined, 'a recording needs at least one input');
-  try {
-    return await readRecording(first);
-  } catch (error) {
-    if (second === undefined || !hasErrorCode(error, 'invalid-trailer')) throw error;
-    return readRecording(second);
-  }
-}
-
-function trackAt(inputs: readonly DemuxedInput[], key: FrameSourceKey): VideoTrackReader {
-  const track = inputs[key.inputIndex]?.videoTracks[key.trackIndex];
+function trackAt(files: readonly DownloadedFile[], key: FrameSourceKey): VideoTrackReader {
+  const track = files[key.inputIndex]?.videoTracks[key.trackIndex];
   ensureInvariant(
     track !== undefined,
     `the layout points at track ${key.trackIndex} of input ${key.inputIndex}, which does not exist`,
@@ -184,35 +90,55 @@ function calibrationOf(recording: Recording): OpenedRecording['calibration'] {
 }
 
 interface AssemblyParts {
-  readonly demuxed: DemuxedRecording;
+  readonly read: ReadRecording;
+  readonly files: readonly DownloadedFile[];
   readonly layout: OpenedRecording['layout'];
   readonly frameSources: readonly VideoTrackReader[];
   readonly calibration: OpenedRecording['calibration'];
   readonly timing: RecordingTiming;
 }
 
-function assemble(parts: AssemblyParts, disposables: Disposables): OpenedRecording {
-  const { demuxed, layout, frameSources, calibration, timing } = parts;
-  const duration = seconds(Math.min(...demuxed.inputs.map((input) => input.duration)));
+function assemble(
+  parts: AssemblyParts,
+  packager: AudioPackager,
+  disposables: Disposables,
+): OpenedRecording {
+  const { read, files, layout, frameSources, calibration, timing } = parts;
+  const duration = seconds(Math.min(...files.map((file) => file.duration)));
   // Whichever file carries the sound: a split pair given either way round still plays it.
-  const [audioTrack] = demuxed.inputs.flatMap((input) => input.audioTracks);
+  const [sound] = files.flatMap((file) => file.audioTracks);
   return {
-    recording: demuxed.recording,
+    recording: read.recording,
     layout,
     frameSources,
     calibration,
     duration,
     frameTimes: timing.frameTimes,
     motion: timing.motion,
-    audioTrack,
-    metadata: metadataOf(parts, duration, audioTrack !== undefined),
+    audioTrack: sound && packagedTrack(sound, packager),
+    metadata: metadataOf(parts, duration, sound !== undefined),
     warnings: timing.warnings,
+    readAhead: (): void => {
+      for (const file of files) file.download.startReadingAhead();
+    },
     dispose: disposables.toDisposer(),
   };
 }
 
+/**
+ * The sound track as the platform's media pipeline takes it, packaged when it is opened.
+ */
+function packagedTrack(sound: DownloadedAudioTrack, packager: AudioPackager): AudioTrackReader {
+  return {
+    openSegments: async (): Promise<AudioSegmentSource> => {
+      await Promise.resolve();
+      return packager.segmentsOf(sound.samples, sound.configuration);
+    },
+  };
+}
+
 function metadataOf(parts: AssemblyParts, duration: Seconds, hasAudio: boolean): PlayerMetadata {
-  const { info } = parts.demuxed.recording;
+  const { info } = parts.read.recording;
   const { motion } = parts.timing;
   return {
     model: info.model,

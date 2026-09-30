@@ -96,6 +96,11 @@ function capturingSignals(): {
 }
 
 /**
+ * The lenses of the synthetic X5 recording, a decoder each.
+ */
+const LENSES = 2;
+
+/**
  * The browser's decoders, the latest of which a test can fail as a GPU reset fails it, once the
  * decode run under way has made it.
  */
@@ -115,9 +120,9 @@ function breakableDecoders(): {
   return {
     ports: { ...browser, decoderPort },
     breakDecoder: async (): Promise<void> => {
-      // The load's probe made its decoders; the preloading run makes its own after them.
-      const madeByTheLoad = failures.length;
-      await waitFor(() => failures.length > madeByTheLoad, 'the decode run');
+      // The load's probe makes a decoder a lens, and the preloading run one a lens after them,
+      // before or after the load resolves.
+      await waitFor(() => failures.length >= 2 * LENSES, 'the decode run');
       failures.at(-1)?.(new Error('the GPU reset'));
     },
   };

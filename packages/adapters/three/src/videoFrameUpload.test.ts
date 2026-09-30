@@ -24,6 +24,11 @@ const SIZE = 32;
  * browsers round the matrix product differently.
  */
 const TOLERANCE_LEVELS = 3;
+/**
+ * For a saturated colour: WebKit's software upload on Linux rounds the matrix product up to
+ * about four levels off, still well inside the eleven levels between the matrices' predictions.
+ */
+const MATRIX_TOLERANCE_LEVELS = 5;
 
 /**
  * A sample format of 4:2:0 frames, its limited range and how its planes are held.
@@ -195,9 +200,11 @@ describe.each([TEN_BIT, EIGHT_BIT])('uploading a $name HLG frame', (depth) => {
       const bt2020 = encodedRgbOf(codes, depth, BT2020_WEIGHTS);
       for (const other of [BT709_WEIGHTS, BT601_WEIGHTS]) {
         const otherRgb = encodedRgbOf(codes, depth, other);
-        expect(largestDifference(bt2020, otherRgb)).toBeGreaterThan(2 * TOLERANCE_LEVELS);
+        expect(largestDifference(bt2020, otherRgb)).toBeGreaterThan(2 * MATRIX_TOLERANCE_LEVELS);
       }
-      expect(largestDifference(drawnCentreOf(codes), bt2020)).toBeLessThanOrEqual(TOLERANCE_LEVELS);
+      expect(largestDifference(drawnCentreOf(codes), bt2020)).toBeLessThanOrEqual(
+        MATRIX_TOLERANCE_LEVELS,
+      );
     },
   );
 });
@@ -233,7 +240,7 @@ describe("bringing a frame's matrix back to the track's", () => {
         const pixels = readPixels(canvas);
         const centre = ((SIZE / 2) * canvas.width + SIZE / 2) * 4;
         const drawn = [pixels[centre] ?? -1, pixels[centre + 1] ?? -1, pixels[centre + 2] ?? -1];
-        expect(largestDifference(drawn, bt2020)).toBeLessThanOrEqual(TOLERANCE_LEVELS);
+        expect(largestDifference(drawn, bt2020)).toBeLessThanOrEqual(MATRIX_TOLERANCE_LEVELS);
       }
     } finally {
       renderer.dispose();

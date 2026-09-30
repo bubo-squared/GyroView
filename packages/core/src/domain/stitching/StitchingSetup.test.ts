@@ -67,6 +67,19 @@ describe('buildStitchingSetup', () => {
     expect(forwardInLens[2]).toBeCloseTo(1, 2);
   });
 
+  it('draws each lens at the radial scale of its calibration', () => {
+    const scaled = {
+      ...calibration,
+      lenses: calibration.lenses.map((lens) => ({ ...lens, radialScale: 1.5 })),
+    };
+    const setup = buildStitchingSetup({ calibration: scaled, layout: MULTI_TRACK });
+    const [lens] = setup.lenses;
+    const [model] = calibration.lenses.map((calibrated) => calibrated.model.projection);
+    if (lens?.projection.kind !== 'mei' || model?.kind !== 'mei') throw new Error('not Mei');
+    expect(lens.projection.focal).toEqual([model.focal[0] * 1.5, model.focal[1] * 1.5]);
+    expect(lens.projection.principalPoint).toEqual(model.principalPoint);
+  });
+
   it('gives each file of a split-file pair its own frame', () => {
     const setup = buildStitchingSetup({ calibration, layout: SPLIT_FILES });
     expect(setup.frameSlotCount).toBe(2);

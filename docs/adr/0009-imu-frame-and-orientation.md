@@ -65,3 +65,11 @@ by adding its recording to the ranking and running `pnpm measure`; every test ru
 cheaper guard, that lock keeps the sailing recording's world stiller than no stabilization. The residual motion in lock mode on the sailing
 recording comes from the boat and people moving and from the accelerometer sensing the boat's
 acceleration; the horizon itself stays level.
+
+## On the X6 (2026-09-30)
+
+One X6 recording, ranked at five moments of a 9-second clip (a private sample, ADR 0031): the
+X5's arrangement (`x,z,-y`, the IMU a quarter turn about the lateral axis) keeps the world
+stillest, 7.4 against 14.6 unstabilized and 13.5 for the runner-up, alike in Chromium and
+WebKit. `X6_IMU_FRAME` is that arrangement, measured; the X5 and the X6 share its axes
+(`QUARTER_TURN_ABOUT_LATERAL`). Provisional until a second unit or a longer clip confirms it.

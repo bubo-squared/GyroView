@@ -4,6 +4,10 @@ Browser player for raw Insta360 `.insv` recordings (X3, X4, X5). It plays the ca
 dual-fisheye files directly as a 360 video, stitched and gyro-stabilized on the GPU, and embeds
 on any website as a `<gyro-view>` web component or an iframe. No Insta360 Studio export step.
 
+**Only want to watch a recording?** [insv-player.com](https://insv-player.com/) is GyroView as
+a free website: drop an `.insv` file or paste a link to one, and it plays in the browser.
+Nothing is uploaded, and there is nothing to install or embed.
+
 ## Features
 
 - Plays the raw file at full resolution over HTTP byte ranges or from a local file; the second

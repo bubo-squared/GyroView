@@ -1,2 +1,2 @@
-node test/checkPrivateSamples.mjs --staged
+node tools/integration/src/checkPrivateSamples.ts --staged
 lint-staged

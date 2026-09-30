@@ -77,3 +77,21 @@ ffmpeg -f lavfi -i "testsrc=size=64x64:rate=10" -f lavfi -i "testsrc2=size=64x64
   -tag:v hvc1 -movflags +faststart-write_colr \
   test/fixtures/synthetic/hevc-main10-hlg-dual-track-64px-10fps-3s.mp4
 ```
+
+`hevc-main10-hlg-patches-64px-10fps.mp4`: one 64x64 HEVC Main 10 track, lossless, three
+frames of four uniform quadrants of known 10-bit Y′CbCr codes (from the top left, row by row:
+luma 300, 502 and 900 with neutral chroma, and 670, 580, 140), tagged BT.2020, HLG and limited
+range in the VUI alone, at level 3.1 (x265 writes no level for a lossless stream, which WebKit
+refuses). For the decoded frames' upload (ADR 0033). The codes are written by a short script as
+raw `yuv420p10le`, then:
+
+```sh
+ffmpeg -f rawvideo -pix_fmt yuv420p10le -s 64x64 -r 10 -color_primaries bt2020 \
+  -color_trc arib-std-b67 -colorspace bt2020nc -color_range tv -i patches.yuv \
+  -c:v libx265 -preset ultrafast \
+  -x265-params "lossless=1:colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc:range=limited:keyint=10:bframes=0" \
+  -bsf:v hevc_metadata=level=3.1 -pix_fmt yuv420p10le -tag:v hvc1 -movflags +faststart-write_colr \
+  test/fixtures/synthetic/hevc-main10-hlg-patches-64px-10fps.mp4
+```
+
+The input's colour tags keep ffmpeg from converting the codes between matrices on the way in.

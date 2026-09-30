@@ -26,7 +26,10 @@ export const REFERENCE_PANORAMA_SIZE = { width: 1536, height: 768 } as const;
  *     .artifacts/reference/studio-<slug>-<t>s.png
  *
  * and, from an HLG export, with its own matrix and range, keeping the code values the lab draws
- * a recording's texels as (`scale=1536:768:in_color_matrix=bt2020:in_range=tv:out_range=pc`).
+ * a recording's texels as (`scale=1536:768:in_color_matrix=bt2020:in_range=tv:out_range=pc`);
+ * the frames of its SDR twin as raw RGB, which no browser colour-manages
+ * (`scale=1536:768:in_color_matrix=bt709:in_range=tv:out_range=pc -pix_fmt rgb24 -f rawvideo
+ * studio-<slug>-sdr-<t>s.rgb`).
  */
 export interface ReferenceClip {
   readonly slug: string;
@@ -42,6 +45,15 @@ export interface ReferenceClip {
    * The frames the lens readings, the slowest measurement, are scored on.
    */
   readonly comparedTimes: readonly number[];
+  /**
+   * The recording's time the seam's steadiness is measured from.
+   */
+  readonly steadinessStart: number;
+  /**
+   * An HDR recording's frames of Studio's SDR export of the same stitch, the colour reference
+   * (ADR 0033); none for an SDR recording, whose export is its own.
+   */
+  readonly sdrFrames: readonly ReferenceFrame[];
 }
 
 /**
@@ -61,16 +73,16 @@ function framesOf(slug: string, count: number): ReferenceFrame[] {
   );
 }
 
-function framesAt(slug: string, times: readonly number[]): ReferenceFrame[] {
+function framesAt(slug: string, times: readonly number[], extension = 'png'): ReferenceFrame[] {
   return times.map((time) => ({
     time: seconds(time),
-    url: `${inject('referenceFolder')}studio-${slug}-${time}s.png`,
+    url: `${inject('referenceFolder')}studio-${slug}-${time}s.${extension}`,
   }));
 }
 
 /**
- * The frames of both X5 exports the lens readings are scored on: early, midway and late, seven
- * readings a frame taking half a minute each.
+ * The frames of both X5 exports the lens readings are scored on: early, midway and late, the
+ * readings taking minutes a frame.
  */
 const X5_EARLY_COMPARED_SECONDS = 55;
 const X5_MIDWAY_COMPARED_SECONDS = 100;
@@ -80,6 +92,11 @@ const X5_COMPARED_TIMES = [
   X5_MIDWAY_COMPARED_SECONDS,
   X5_LATE_COMPARED_SECONDS,
 ];
+
+/**
+ * Where both X5 recordings are steady enough to measure the seam's steadiness from.
+ */
+const X5_STEADINESS_START_SECONDS = 100;
 
 /**
  * `Jedrenje 360.mp4` beside the sailing recording: 8K at 30 fps, the whole clip, 194 s.
@@ -92,6 +109,8 @@ const STUDIO_SAILING: ReferenceClip = {
   start: seconds(0),
   frames: framesOf('sailing', SAILING_FRAME_COUNT),
   comparedTimes: X5_COMPARED_TIMES,
+  steadinessStart: X5_STEADINESS_START_SECONDS,
+  sdrFrames: [],
 };
 
 /**
@@ -106,25 +125,28 @@ const STUDIO_OFFICE: ReferenceClip = {
   start: seconds(OFFICE_START_SECONDS),
   frames: framesOf('office', OFFICE_FRAME_COUNT),
   comparedTimes: X5_COMPARED_TIMES,
+  steadinessStart: X5_STEADINESS_START_SECONDS,
+  sdrFrames: [],
 };
 
 /**
  * The Studio exports of the local samples (ADR 0031), their frames at the times the catalogue
  * names.
  */
-const LOCAL_STUDIO_CLIPS: readonly ReferenceClip[] = LOCAL_SAMPLES.flatMap(
-  ({ slug, sample, studio }) =>
-    studio === undefined
-      ? []
-      : [
-          {
-            slug,
-            sample,
-            start: seconds(studio.start),
-            frames: framesAt(slug, studio.frameTimes),
-            comparedTimes: studio.comparedTimes,
-          },
-        ],
+const LOCAL_STUDIO_CLIPS: readonly ReferenceClip[] = LOCAL_SAMPLES.flatMap((sample) =>
+  sample.studio === undefined
+    ? []
+    : [
+        {
+          slug: sample.slug,
+          sample,
+          start: seconds(sample.studio.start),
+          frames: framesAt(sample.slug, sample.studio.frameTimes),
+          comparedTimes: sample.studio.comparedTimes,
+          steadinessStart: sample.studio.steadinessStart,
+          sdrFrames: framesAt(`${sample.slug}-sdr`, sample.studio.sdrFrameTimes ?? [], 'rgb'),
+        },
+      ],
 );
 
 export const STUDIO_CLIPS: readonly ReferenceClip[] = [
@@ -156,6 +178,14 @@ export interface GreyImage {
 }
 
 export async function loadGreyImage(url: string): Promise<GreyImage> {
+  const image = await loadImage(url);
+  return { width: image.width, height: image.height, data: greyOf(image.data, image) };
+}
+
+/**
+ * An image's RGBA pixels, rows from the top down.
+ */
+async function loadImage(url: string): Promise<ImageData> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${url}: ${response.status}`);
   const bitmap = await createImageBitmap(await response.blob());
@@ -166,8 +196,7 @@ export async function loadGreyImage(url: string): Promise<GreyImage> {
   if (!context) throw new Error('no 2d context');
   context.drawImage(bitmap, 0, 0);
   bitmap.close();
-  const image = context.getImageData(0, 0, canvas.width, canvas.height);
-  return { width: canvas.width, height: canvas.height, data: greyOf(image.data, canvas) };
+  return context.getImageData(0, 0, canvas.width, canvas.height);
 }
 
 /**
@@ -225,4 +254,22 @@ function lumaOf(
     }
   }
   return grey;
+}
+
+const RGB = 3;
+
+/**
+ * A raw RGB frame's pixels as RGBA, rows from the top down: exactly the file's values, where a
+ * decoded image is colour-managed each browser its own way (Chromium and WebKit read one PNG
+ * ffmpeg wrote ten levels apart).
+ */
+export async function loadRawRgb(url: string): Promise<Uint8ClampedArray> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${url}: ${response.status}`);
+  const rgb = new Uint8Array(await response.arrayBuffer());
+  const rgba = new Uint8ClampedArray((rgb.length / RGB) * RGBA).fill(OPAQUE);
+  for (let pixel = 0; pixel < rgb.length / RGB; pixel += 1) {
+    rgba.set(rgb.subarray(pixel * RGB, pixel * RGB + RGB), pixel * RGBA);
+  }
+  return rgba;
 }

@@ -31,7 +31,7 @@ describe.skipIf(!hasSamples())('reading the real X5 recordings through the downl
       expect(segments?.duration).toBeCloseTo(262, 0);
 
       const configuration = await input.videoTracks[0]!.decoderConfiguration();
-      expect(configuration.isFullRange).toBe(true);
+      expect(configuration.colour.range).toBe('full');
       expect(configuration.description?.byteLength).toBeGreaterThan(100);
 
       const key = await input.videoTracks[0]!.keyframeAt(seconds(100));

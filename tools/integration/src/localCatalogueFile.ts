@@ -1,14 +1,14 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
 import {
   parseLocalCatalogue,
   type LocalSampleEntry,
   type ServedLocalSample,
 } from './localSampleCatalogue.ts';
+import { SAMPLES_ROOT } from './samples.ts';
 
-const SAMPLES_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../samples');
 const CATALOGUE = path.join(SAMPLES_ROOT, 'catalogue.json');
 
 /**

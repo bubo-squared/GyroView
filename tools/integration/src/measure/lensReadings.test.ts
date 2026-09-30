@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { saveMeasurement } from '../browser/artifacts';
 import {
+  EXTENDED_MEI,
   readingsOf,
   setupOf,
   termReadingsOf,
-  withRadialScale,
   type LensReading,
 } from './support/lensReadings';
 import {
@@ -19,32 +19,14 @@ import { REFERENCE_PANORAMA_SIZE, STUDIO_CLIPS } from './support/referenceFrames
 import { isServed } from '../browser/sampleUrls';
 import { labRenderingOfSetup } from './support/labRendering';
 import { matchedGains, measuredDisparity, type MeasuredDisparity } from './support/seamJoins';
-import { harmonicsOf, quartilesOf } from './support/statistics';
+import { harmonicsOf, quartilesOf, type Harmonics } from './support/statistics';
 import { openStudioMoment, type StudioMoment } from './support/studioFrame';
 
 /**
- * The radial scales tried on each reading, against the reading as the core reads it: the legacy
- * radius at 96 to 98 degrees for the equidistant model, both Mei readings up to the Mei model's
- * best on the two X5 units (ADR 0023); the polynomial reading, a fallback, as it is.
- */
-const RADIAL_SCALES: Readonly<Record<string, readonly number[]>> = {
-  equidistant: [1, 0.99, 0.98],
-  mei: [1, 1.02, 1.04],
-  'extended-mei': [0.98, 1, 1.02, 1.04, 1.06],
-  polynomial: [1],
-};
-/**
- * Seven candidates, each aligned and its seam measured, take about half a minute per frame; a
- * recording with a v6 string adds its term readings.
+ * Every reading at each of its radial scales, a dozen on an X5 and more with a v6 string's term
+ * readings, each aligned and its seam measured: several minutes a frame.
  */
 const FRAME_TIMEOUT_MS = 600_000;
-const EXTENDED_MEI_AT = 'extended-mei@';
-
-function candidatesOf(readings: readonly LensReading[]): LensReading[] {
-  return readings.flatMap((reading) =>
-    (RADIAL_SCALES[reading.name] ?? [1]).map((scale) => withRadialScale(reading, scale)),
-  );
-}
 
 function trustedDisparities(seam: MeasuredDisparity): number[] {
   return seam.bins.filter((bin) => bin.isTrusted).map((bin) => bin.disparity);
@@ -54,7 +36,7 @@ function trustedDisparities(seam: MeasuredDisparity): number[] {
  * The far bins' disparity as it varies around the seam: a term read wrong leaves a pattern once
  * or twice a turn, a wrong radial scale shifts every azimuth alike.
  */
-function disparityHarmonicsOf(seam: MeasuredDisparity): object {
+function disparityHarmonicsOf(seam: MeasuredDisparity): Harmonics {
   const trusted = seam.bins.filter((bin) => bin.isTrusted);
   return harmonicsOf(trusted.map((bin) => ({ azimuth: bin.azimuth, value: bin.disparity })));
 }
@@ -70,7 +52,7 @@ function bestScaleOf(
     readonly cost: number;
   }[],
 ): number | undefined {
-  const extended = scores.filter((score) => score.reading.startsWith(EXTENDED_MEI_AT));
+  const extended = scores.filter((score) => score.reading === EXTENDED_MEI);
   return extended.toSorted((left, right) => left.cost - right.cost)[0]?.radialScale;
 }
 
@@ -93,7 +75,7 @@ async function scoreOf(
   studio: StudioMoment,
   candidate: LensReading,
   align: Aligner,
-): Promise<Alignment & { readonly seamDisparity: object; readonly seamHarmonics: object }> {
+): Promise<Alignment & { readonly seamDisparity: object; readonly seamHarmonics: Harmonics }> {
   const { canvas, renderer, dispose } = labRenderingOfSetup(
     setupOf(candidate, studio.opened.layout),
     REFERENCE_PANORAMA_SIZE,
@@ -133,7 +115,7 @@ for (const clip of STUDIO_CLIPS) {
         async (context) => {
           if (!(await isServed(frame.url))) context.skip(`no Studio frame at ${frame.time} s`);
           const studio = await openStudioMoment(context, { clip, frame, cleanups });
-          const [first, ...others] = candidatesOf(readingsOf(studio.opened));
+          const [first, ...others] = readingsOf(studio.opened);
           if (!first) throw new Error('the recording carries no calibration reading');
           const firstScore = await scoreOf(studio, first, alignFully);
           const scores = [{ reading: first.name, radialScale: first.radialScale, ...firstScore }];

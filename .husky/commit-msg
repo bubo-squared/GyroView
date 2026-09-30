@@ -1,1 +1,1 @@
-node test/checkPrivateSamples.mjs --message "$1"
+node tools/integration/src/checkPrivateSamples.ts --message "$1"

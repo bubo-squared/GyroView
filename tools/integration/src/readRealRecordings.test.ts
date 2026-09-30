@@ -72,8 +72,10 @@ describe.skipIf(!hasSamples())('reading the real X5 recordings', () => {
  * The recordings only this machine has (ADR 0031): read end to end, whichever camera wrote them,
  * with what every playable recording needs and nothing a private file would reveal.
  */
-describe('reading the local recordings', () => {
-  for (const entry of localSampleEntries()) {
+const LOCAL_ENTRIES = localSampleEntries();
+
+describe.skipIf(LOCAL_ENTRIES.length === 0)('reading the local recordings', () => {
+  for (const entry of LOCAL_ENTRIES) {
     it(
       `reads ${entry.name} end to end, with a calibration, gyro samples and frame times`,
       async () => {

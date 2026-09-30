@@ -1,6 +1,10 @@
 # ADR 0011: Sound follows the picture through a buffering state
 
-Status: accepted (2026-09-20)
+Status: accepted (2026-09-20); amended (2026-09-30): after starvation, playback resumes only once
+the next 4 s of the picture are downloaded as well (at most the download's budget less a request,
+ADR 0029), so a link slower than the recording plays in stretches rather than a frame at a time;
+a start and a seek still resume as soon as two pairs are decoded, so a play the viewer asked for
+is never held for seconds
 
 ## Context
 

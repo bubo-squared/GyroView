@@ -4,6 +4,7 @@ import {
   ensureInvariant,
   GyroViewError,
   lensFrameOrder,
+  RecordingBuffer,
   seconds,
   startFileDownload,
   timeRecording,
@@ -121,6 +122,7 @@ function assemble(
     readAhead: (): void => {
       for (const file of files) file.download.startReadingAhead();
     },
+    buffer: new RecordingBuffer(files.map((file) => file.download)),
     dispose: disposables.toDisposer(),
   };
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Deferred } from '../../shared/async/Deferred';
 import { seconds } from '../../shared/units/time';
+import { FakeMediaBuffer } from '../../testing/FakeMediaBuffer';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import { FakePlaybackClock } from '../../testing/FakePlaybackClock';
 import { sessionHarness } from '../../../test/support/sessionHarness';
@@ -56,6 +57,36 @@ describe('PlaybackSession buffering', () => {
     expect(session.state).toBe('playing');
     expect(clock.isRunning).toBe(true);
     expect(states).toEqual(['buffering', 'playing', 'buffering', 'playing']);
+    session.dispose();
+  });
+
+  it('after starving, resumes only once its buffer has the next seconds downloaded', async () => {
+    const clock = new FakePlaybackClock();
+    const buffer = new FakeMediaBuffer(false);
+    const { session, states, advance } = sessionHarness({ clock, parts: { buffer } });
+    await session.play();
+    await advance(0);
+    clock.advance(seconds(0.8));
+    session.tick();
+    await settle();
+    expect(session.state).toBe('buffering');
+
+    buffer.progress(true);
+    await settle();
+    expect(session.state).toBe('playing');
+    expect(states).toEqual(['buffering', 'playing', 'buffering', 'playing']);
+    session.dispose();
+  });
+
+  it('starts, and resumes after a seek, as soon as the frames are decoded, whatever its buffer holds', async () => {
+    const buffer = new FakeMediaBuffer(false);
+    const { session, advance } = sessionHarness({ parts: { buffer } });
+    await session.play();
+    expect(session.state).toBe('playing');
+    await advance(100);
+    session.seek(seconds(2));
+    await settle();
+    expect(session.state).toBe('playing');
     session.dispose();
   });
 

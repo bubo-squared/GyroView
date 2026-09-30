@@ -1,6 +1,7 @@
 import {
   MATRIX_COEFFICIENTS,
   matrixCorrectionOf,
+  namedOrUnspecified,
   type LensStitch,
   type MatrixCoefficients,
 } from '@gyroview/core';
@@ -30,7 +31,7 @@ export class MatrixCorrections {
     for (const [index, lens] of this.lenses.entries()) {
       const frame = frames[lens.frameSlot];
       if (!frame) continue;
-      const named = matrixNamed(frame.colorSpace.matrix);
+      const named = namedOrUnspecified(MATRIX_COEFFICIENTS, frame.colorSpace.matrix);
       if (named === this.named[index]) continue;
       this.named[index] = named;
       this.uniform.value[index] = toThreeMatrix(
@@ -38,8 +39,4 @@ export class MatrixCorrections {
       );
     }
   }
-}
-
-function matrixNamed(matrix: string | null): MatrixCoefficients {
-  return MATRIX_COEFFICIENTS.find((name) => name === matrix) ?? 'unspecified';
 }

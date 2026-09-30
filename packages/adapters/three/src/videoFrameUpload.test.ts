@@ -1,5 +1,5 @@
 import { buildStitchingSetup, seconds, type DecodedFrame } from '@gyroview/core';
-import { shownAsRecorded } from '@gyroview/core/testing';
+import { AS_RECORDED, shownAsRecorded } from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 import { server } from 'vitest/browser';
 
@@ -101,9 +101,24 @@ function codesOf(signal: Signal, depth: SampleDepth): YcbcrCodes {
 }
 
 /**
- * A uniform 4:2:0 frame of the codes, tagged BT.2020 HLG as the X6's decoder hands it over.
+ * The same, naming BT.709's matrix, as WebKit's decoders name theirs whatever the stream says.
  */
-function frameOf(codes: YcbcrCodes, depth: SampleDepth): DecodedFrame<VideoFrame> {
+const HLG_NAMING_BT709: VideoColorSpaceInit = specColorSpace({
+  primaries: 'bt2020',
+  transfer: 'hlg',
+  matrix: 'bt709',
+  fullRange: false,
+});
+
+/**
+ * A uniform 4:2:0 frame of the codes, tagged BT.2020 HLG as the X6's decoder hands it over, or
+ * with the colour space given.
+ */
+function frameOf(
+  codes: YcbcrCodes,
+  depth: SampleDepth,
+  colorSpace: VideoColorSpaceInit = HLG_BT2020_LIMITED,
+): DecodedFrame<VideoFrame> {
   const lumaSamples = SIZE * SIZE;
   const chromaSamples = lumaSamples / 4;
   const planes = depth.planesOf(lumaSamples + 2 * chromaSamples);
@@ -115,7 +130,7 @@ function frameOf(codes: YcbcrCodes, depth: SampleDepth): DecodedFrame<VideoFrame
     codedWidth: SIZE,
     codedHeight: SIZE,
     timestamp: 0,
-    colorSpace: HLG_BT2020_LIMITED,
+    colorSpace,
   });
   return {
     timestamp: seconds(0),
@@ -185,4 +200,43 @@ describe.each([TEN_BIT, EIGHT_BIT])('uploading a $name HLG frame', (depth) => {
       expect(largestDifference(drawnCentreOf(codes), bt2020)).toBeLessThanOrEqual(TOLERANCE_LEVELS);
     },
   );
+});
+
+/**
+ * The matrix correction through the shader (ADR 0033): frames of a track recorded in BT.2020,
+ * one naming BT.709 as WebKit's decoders name theirs, one naming BT.2020, both show BT.2020's
+ * R′G′B′ once brought back to the track's matrix, one after the other on the same renderer.
+ */
+describe("bringing a frame's matrix back to the track's", () => {
+  it("shows R′G′B′ through the track's matrix, whichever matrix the frame names", () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 2 * SIZE;
+    canvas.height = SIZE;
+    const recordedAsBt2020 = { ...AS_RECORDED, matrix: 'bt2020-ncl' } as const;
+    const setup = buildStitchingSetup({
+      calibration: syntheticCalibration(),
+      layout: MULTI_TRACK,
+      displayConversions: [recordedAsBt2020, recordedAsBt2020],
+    });
+    const renderer = ThreeFrameRenderer.create(canvas, setup, { preserveDrawingBuffer: true });
+    renderer.setViewMode('raw-lenses');
+    const codes = codesOf(TELLING_COLOUR, EIGHT_BIT);
+    const bt2020 = encodedRgbOf(codes, EIGHT_BIT, BT2020_WEIGHTS);
+    try {
+      for (const colorSpace of [HLG_NAMING_BT709, HLG_BT2020_LIMITED]) {
+        const frames = [
+          frameOf(codes, EIGHT_BIT, colorSpace),
+          frameOf(codes, EIGHT_BIT, colorSpace),
+        ];
+        renderer.present({ pair: { timestamp: seconds(0), frames }, mediaTime: seconds(0) });
+        for (const frame of frames) frame.close();
+        const pixels = readPixels(canvas);
+        const centre = ((SIZE / 2) * canvas.width + SIZE / 2) * 4;
+        const drawn = [pixels[centre] ?? -1, pixels[centre + 1] ?? -1, pixels[centre + 2] ?? -1];
+        expect(largestDifference(drawn, bt2020)).toBeLessThanOrEqual(TOLERANCE_LEVELS);
+      }
+    } finally {
+      renderer.dispose();
+    }
+  });
 });

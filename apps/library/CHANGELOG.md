@@ -12,16 +12,20 @@ New:
   measured (ADR 0009, ADR 0023); and its 10-bit HLG video is shown as SDR, as Insta360 Studio
   shows it (ADR 0033).
 - Each of the `ready` event's `tracks` has a `colour`: its primaries, transfer, matrix and range
-  as the track's bitstream says (`TrackColour`).
+  as the track's bitstream says (`TrackColour`, with the types `ColourPrimaries`,
+  `TransferCharacteristics`, `MatrixCoefficients` and `ColourRange`).
 - `inspectRecording`'s calibration strings include `offsetV6`, and `calibrationVersion` may be
-  6 (`CalibrationVersion.ExtendedMei`).
+  6, the v6 string's.
 
 What a page may notice:
 
 - A recording whose only calibration is a v6 string plays where it failed with
   `no-calibration`.
-- A track whose transfer the player cannot show yet (PQ) is drawn as recorded, with a
-  `recording-degraded` warning.
+- A track whose colour the player cannot show as it should is drawn with a
+  `recording-degraded` warning: a PQ or linear-light transfer is drawn as recorded, SDR of wider
+  primaries than BT.709's is shown as BT.709, HLG of primaries other than BT.709's or BT.2020's
+  keeps its gamut.
+- The decoder is told the track's whole colour, not only its range.
 
 ## 0.3.1 (2026-09-30)
 

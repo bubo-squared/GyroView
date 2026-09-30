@@ -2,6 +2,7 @@ import { FileRandomAccessSource } from '@gyroview/adapter-node';
 import { CalibrationVersion, inspectLayout, readRecording } from '@gyroview/core';
 import { describe, expect, it } from 'vitest';
 
+import { localSampleEntries, recordingPathOf } from './localCatalogueFile';
 import { hasSamples, OFFICE_RECORDING as OFFICE, SAILING_RECORDING as SAILING } from './samples';
 
 /**
@@ -65,4 +66,32 @@ describe.skipIf(!hasSamples())('reading the real X5 recordings', () => {
     },
     TIMEOUT_MS,
   );
+});
+
+/**
+ * The recordings only this machine has (ADR 0031): read end to end, whichever camera wrote them,
+ * with what every playable recording needs and nothing a private file would reveal.
+ */
+describe('reading the local recordings', () => {
+  for (const entry of localSampleEntries()) {
+    it(
+      `reads ${entry.name} end to end, with a calibration, gyro samples and frame times`,
+      async () => {
+        const source = await FileRandomAccessSource.open(recordingPathOf(entry));
+        try {
+          const recording = await readRecording(source);
+          expect(recording.calibration.calibration?.lenses).toHaveLength(2);
+          expect(recording.calibration.warnings).toEqual([]);
+          const gyro = await recording.readGyroRecord();
+          expect(gyro).toMatchObject({ strayBytes: 0, damagedSamples: 0 });
+          const exposure = await recording.readExposureRecord();
+          expect(exposure?.length).toBeGreaterThan(0);
+          expect(await recording.captureClock()).toBeDefined();
+        } finally {
+          await source.close();
+        }
+      },
+      TIMEOUT_MS,
+    );
+  }
 });

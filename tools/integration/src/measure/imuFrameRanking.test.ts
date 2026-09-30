@@ -16,6 +16,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { saveMeasurement } from '../browser/artifacts';
 import { openSample } from '../browser/realRecordingSupport';
 import { equirectangularRendering } from '../browser/rendering';
+import { LOCAL_SAMPLES } from '../browser/localSamples';
 import { KRNJACA_8K_30, OFFICE_5K7_60, SAILING_8K_30 } from '../browser/sampleUrls';
 import { closeMoment, decodeMoment } from '../browser/SharedSample';
 import { worldMovement } from '../browser/worldMovement';
@@ -92,9 +93,30 @@ function nameOf(frame: ImuFrame): string | undefined {
 }
 
 /**
+ * The committed samples, and the local ones (ADR 0031), with the moments ranked on.
+ */
+const RANKED_SAMPLES = [
+  ['sailing', SAILING_8K_30, [20, 55, 85, 135, 170]],
+  ['office', OFFICE_5K7_60, [3, 45, 120, 210, 240]],
+  ['krnjaca', KRNJACA_8K_30, [20, 60, 100, 140, 180]],
+  ...LOCAL_SAMPLES.map(
+    ({ slug, sample, imuRankingTimes }) => [slug, sample, imuRankingTimes] as const,
+  ),
+] as const;
+
+/**
+ * The frame the ranking must put first: the camera's, once measured; a frame still assumed has
+ * nothing to hold the ranking to, which then says what to measure it as.
+ */
+function expectedWinnerOf(frame: ImuFrame, ranking: readonly Ranked[]): string | undefined {
+  return frame.isVerified ? nameOf(frame) : ranking[0]?.name;
+}
+
+/**
  * In lock mode the world must stand still, so the IMU frame whose orientation keeps consecutive
  * renders most alike is the frame the camera really has. This is the measurement ADR 0009 rests
- * on, and how a new camera's frame is found: add its recording here and run `pnpm measure`.
+ * on, and how a new camera's frame is found: add its recording here (or to the local catalogue)
+ * and run `pnpm measure`.
  */
 describe('IMU frame ranking by world stillness under lock stabilization', () => {
   const cleanups: (() => void)[] = [];
@@ -103,12 +125,8 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
     for (const cleanup of cleanups.splice(0).toReversed()) cleanup();
   });
 
-  for (const [slug, sample, times] of [
-    ['sailing', SAILING_8K_30, [20, 55, 85, 135, 170]],
-    ['office', OFFICE_5K7_60, [3, 45, 120, 210, 240]],
-    ['krnjaca', KRNJACA_8K_30, [20, 60, 100, 140, 180]],
-  ] as const) {
-    it(`ranks the configured X5 frame first on the ${sample.name}`, async (context) => {
+  for (const [slug, sample, times] of RANKED_SAMPLES) {
+    it(`ranks the camera's measured frame first on the ${sample.name}`, async (context) => {
       const opened = await openSample(context, sample);
       cleanups.push(() => {
         opened.dispose();
@@ -128,7 +146,8 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
       }));
       const measured = await measureStillness({ opened, canvas, renderer, candidates, times });
       await saveMeasurement(`${slug}-imu-frame-ranking`, measured);
-      expect(measured.ranking[0]?.name).toBe(nameOf(imuFrameFor(recording.info)));
+      const configured = imuFrameFor(recording.info);
+      expect(measured.ranking[0]?.name).toBe(expectedWinnerOf(configured, measured.ranking));
       expect(measured.ranking[0]?.stillness).toBeLessThan(measured.unstabilized);
     });
   }

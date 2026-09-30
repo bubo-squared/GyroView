@@ -1,0 +1,1 @@
+node test/checkPrivateSamples.mjs --message "$1"

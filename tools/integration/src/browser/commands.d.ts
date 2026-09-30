@@ -1,3 +1,5 @@
+import type { ServedLocalSample } from '../localSampleCatalogue';
+
 declare module 'vitest' {
   interface ProvidedContext {
     /**
@@ -8,6 +10,10 @@ declare module 'vitest' {
      * The URL the frames of the Studio exports are served under, `.artifacts/reference/`.
      */
     referenceFolder: string;
+    /**
+     * The recordings only this machine has, from `samples/catalogue.json` (ADR 0031).
+     */
+    localSamples: ServedLocalSample[];
   }
 }
 

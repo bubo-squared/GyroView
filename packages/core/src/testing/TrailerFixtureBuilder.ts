@@ -51,7 +51,11 @@ export interface IndexedLayoutOptions {
   readonly wrapInInstBox?: boolean;
 }
 
-const INDEX_SLOT_COUNT = 31;
+/**
+ * The X5's index holds 31 slots (310 bytes); a camera that writes a record of a higher id holds
+ * as many slots as its highest id needs, slot `k` for record `k` (59 on newer cameras).
+ */
+const SMALLEST_INDEX_SLOT_COUNT = 31;
 const TRAILER_VERSION = 3;
 const DEFAULT_FORMAT = 0;
 const IS_LITTLE_ENDIAN = true;
@@ -152,7 +156,7 @@ function encodeFooter(trailerSize: number): Uint8Array {
 }
 
 function encodeIndex(records: readonly ExpectedRecord[], payloadStart: number): Uint8Array {
-  const index = new Uint8Array(INDEX_SLOT_COUNT * INDEX_SLOT_SIZE);
+  const index = new Uint8Array(indexSlotCountOf(records) * INDEX_SLOT_SIZE);
   const view = new DataView(index.buffer);
   for (const record of records) {
     const slot = record.id * INDEX_SLOT_SIZE;
@@ -162,6 +166,10 @@ function encodeIndex(records: readonly ExpectedRecord[], payloadStart: number): 
     view.setUint32(slot + INDEX_SLOT_OFFSET_OFFSET, record.offset - payloadStart, IS_LITTLE_ENDIAN);
   }
   return index;
+}
+
+function indexSlotCountOf(records: readonly ExpectedRecord[]): number {
+  return Math.max(SMALLEST_INDEX_SLOT_COUNT, ...records.map((record) => record.id + 1));
 }
 
 function alignUp(value: number, alignment: number): number {

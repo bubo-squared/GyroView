@@ -1,16 +1,17 @@
 import { ByteReader } from '../binary/ByteReader';
 import { GyroViewError } from '../errors/GyroViewError';
 import { decodeUtf8 } from '../text/utf8';
-
-/**
- * Protocol Buffers wire types this decoder understands. Groups (3, 4) are obsolete and rejected.
- */
-const WireType = {
-  Varint: 0,
-  Fixed64: 1,
-  LengthDelimited: 2,
-  Fixed32: 5,
-} as const;
+import {
+  FIELD_NUMBER_SHIFT,
+  FIXED32_SIZE,
+  FIXED64_SIZE,
+  MAX_VARINT_BYTES,
+  VARINT_CONTINUATION_BIT,
+  VARINT_PAYLOAD_BITS,
+  VARINT_PAYLOAD_MASK,
+  WIRE_TYPE_MASK,
+  WireType,
+} from './wireFormat';
 
 type ProtobufValue =
   | { readonly kind: 'varint'; readonly value: bigint }
@@ -23,14 +24,8 @@ interface ProtobufField {
   readonly value: ProtobufValue;
 }
 
-const FIELD_NUMBER_SHIFT = 3;
-const WIRE_TYPE_MASK = 0b111;
-const VARINT_PAYLOAD_BITS = 7n;
-const VARINT_PAYLOAD_MASK = 0x7fn;
-const VARINT_CONTINUATION_BIT = 0x80;
-const FIXED64_SIZE = 8;
-const FIXED32_SIZE = 4;
-const MAX_VARINT_BYTES = 10;
+const VARINT_SHIFT = BigInt(VARINT_PAYLOAD_BITS);
+const VARINT_MASK = BigInt(VARINT_PAYLOAD_MASK);
 const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
 
 /**
@@ -155,9 +150,9 @@ class Cursor {
     let shift = 0n;
     for (let consumed = 0; consumed < MAX_VARINT_BYTES; consumed += 1) {
       const byte = this.readByte();
-      result |= (BigInt(byte) & VARINT_PAYLOAD_MASK) << shift;
+      result |= (BigInt(byte) & VARINT_MASK) << shift;
       if ((byte & VARINT_CONTINUATION_BIT) === 0) return result;
-      shift += VARINT_PAYLOAD_BITS;
+      shift += VARINT_SHIFT;
     }
     throw new GyroViewError(
       'invalid-protobuf',

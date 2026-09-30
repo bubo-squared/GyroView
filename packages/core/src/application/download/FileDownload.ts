@@ -13,12 +13,14 @@ import {
 } from '../../domain/download/planDownloads';
 import type { MediaBuffer } from '../../ports/MediaBuffer';
 import type { ByteStream } from '../../ports/ByteStream';
-import type { ByteRange } from '../../shared/binary/ByteRange';
+import { ByteRange } from '../../shared/binary/ByteRange';
 import { ByteRangeSet } from '../../shared/binary/ByteRangeSet';
 import { asGyroViewError, ensureInvariant } from '../../shared/errors/GyroViewError';
 import type { Seconds } from '../../shared/units/time';
 
 export type { CursorSample, SampleCursor } from './SampleCursor';
+
+const EVERY_BYTE = ByteRange.of(0, Number.MAX_SAFE_INTEGER);
 
 export interface FileDownloadParts {
   readonly table: SampleTable;
@@ -150,7 +152,21 @@ export class FileDownload implements MediaBuffer {
   private async planAfterThisTurn(): Promise<void> {
     await Promise.resolve();
     this.isPlanDue = false;
-    this.plan();
+    if (this.isDisposed) return;
+    try {
+      this.plan();
+    } catch (error) {
+      this.failEveryRead(error);
+    }
+  }
+
+  /**
+   * A plan that could not be made fails every read, rather than leave them waiting for ever.
+   */
+  private failEveryRead(cause: unknown): void {
+    const error = asGyroViewError(cause, 'invariant-violation', 'the download could not plan');
+    this.failures.push({ range: EVERY_BYTE, error });
+    for (const cursor of this.cursors) cursor.fail(EVERY_BYTE, error);
   }
 
   private plan(): void {

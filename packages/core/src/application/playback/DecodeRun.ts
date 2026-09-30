@@ -114,8 +114,8 @@ export class DecodeRun<Handle> {
    * run is over and nothing more will come.
    */
   public isReadyToResumeAt(now: Seconds): boolean {
-    const isDownloaded = this.parts.buffer?.isReadyToResumeAt(now) ?? true;
-    return this.isPrimedAt(now) && (this.hasReachedEnd || isDownloaded);
+    const isDownloaded = (): boolean => this.parts.buffer?.isReadyToResumeAt(now) ?? true;
+    return this.isPrimedAt(now) && (this.hasReachedEnd || isDownloaded());
   }
 
   /**

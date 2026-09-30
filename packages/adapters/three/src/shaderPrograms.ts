@@ -1,6 +1,7 @@
 import type { PictureKind } from '@gyroview/core';
 
 import analysisFragment from './shaders/analysis.frag.glsl?raw';
+import displayConversion from './shaders/displayConversion.glsl?raw';
 import equirectangularRays from './shaders/equirectangularRays.glsl?raw';
 import fixedJoin from './shaders/fixedJoin.glsl?raw';
 import header from './shaders/header.glsl?raw';
@@ -16,7 +17,8 @@ import stitchFragment from './shaders/stitch.frag.glsl?raw';
  * The fragment programs, each the GLSL chunks it is made of in the order they must appear: a
  * chunk comes after every chunk whose declarations it uses. The only place that order is known.
  */
-const LENS_PROJECTION = [lensTextures, lensModels, lensSampling];
+const LENS_TEXELS = [lensTextures, displayConversion];
+const LENS_PROJECTION = [...LENS_TEXELS, lensModels, lensSampling];
 
 /**
  * A program that reads the lenses through their calibration, ending in `fragment`.
@@ -46,7 +48,7 @@ export function pictureProgramsWith(seamJoin: string): PicturePrograms {
   return {
     rectilinear: stitchThrough(rectilinearRays),
     equirectangular: stitchThrough(equirectangularRays),
-    'lens-tiles': [header, screenAreas, lensTextures, rawLensesFragment],
+    'lens-tiles': [header, screenAreas, ...LENS_TEXELS, rawLensesFragment],
   };
 }
 

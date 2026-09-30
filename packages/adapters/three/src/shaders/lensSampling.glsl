@@ -1,5 +1,6 @@
 // How a body direction becomes a texel of one lens, for the stitch and the seam meters: the
-// calibration as uniforms, and the sampling through each lens model. Needs lensTextures.glsl.
+// calibration as uniforms, and the sampling through each lens model, the texel brought to the
+// display. Needs lensTextures.glsl and displayConversion.glsl.
 uniform vec2 uFeather;
 uniform mat3 uLensRotation[MAX_LENSES];
 uniform int uLensKind[MAX_LENSES];
@@ -69,7 +70,9 @@ LensSample sampleLensWith(int i, vec3 dirBody, int sampling) {
   LensSample result;
   result.theta = theta;
   result.isImaged = isKnown && theta < uLensHalfFov[i] && isInWindow;
-  result.color = result.isImaged ? sampleLens(uLensTexture[i], footprint, sampling).rgb : vec3(0.0);
+  result.color = result.isImaged
+    ? toDisplay(i, sampleLens(uLensTexture[i], footprint, sampling).rgb)
+    : vec3(0.0);
   return result;
 }
 

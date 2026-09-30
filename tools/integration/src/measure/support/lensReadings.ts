@@ -9,8 +9,10 @@ import {
   type StitchingSetup,
   type VersionedCalibration,
 } from '@gyroview/core';
-import { parseOffsetString } from '@gyroview/core/testing';
+import { extendedMeiLayout, parseOffsetString, type V6TermReading } from '@gyroview/core/testing';
 import type { OpenedRecording } from '@gyroview/player/composition';
+
+import { V6_TERM_CANDIDATES } from './v6TermReadings';
 
 /**
  * One way of reading the recording's calibration strings into lens models, and a factor on
@@ -59,6 +61,27 @@ function readableCalibrationOf(text: string): VersionedCalibration[] {
     if (error instanceof GyroViewError && error.code === 'invalid-calibration') return [];
     throw error;
   }
+}
+
+/**
+ * The v6 string read by each candidate reading of its higher-order terms, at `radialScale`:
+ * none when the recording has no v6 string (ADR 0032).
+ */
+export function termReadingsOf(opened: OpenedRecording, radialScale: number): LensReading[] {
+  const text = opened.recording.info.calibration.offsetV6;
+  return text === undefined
+    ? []
+    : V6_TERM_CANDIDATES.map((candidate) =>
+        withRadialScale(termReadingOf(text, candidate), radialScale),
+      );
+}
+
+function termReadingOf(text: string, candidate: V6TermReading): LensReading {
+  return {
+    name: `extended-mei/${candidate.name}`,
+    calibration: parseOffsetString(text, [extendedMeiLayout(candidate)]),
+    radialScale: 1,
+  };
 }
 
 export function withRadialScale(reading: LensReading, radialScale: number): LensReading {

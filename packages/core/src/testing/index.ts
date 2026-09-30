@@ -69,6 +69,12 @@ export {
 } from './protobufWriter';
 export { InfoRecordFormat, RecordType } from '../domain/format/constants';
 export { parseOffsetString } from '../domain/format/calibration/parseOffsetString';
+export { extendedMeiLayout } from '../domain/format/calibration/layouts/MeiCalibrationLayout';
+export {
+  RADIAL_AND_FIRST_PAIR,
+  type V6DistortionTokens,
+  type V6TermReading,
+} from '../domain/format/calibration/v6TermReading';
 export { MeiModel, type MeiParameters } from '../domain/optics/MeiModel';
 export {
   equirectangularDirectionOf,

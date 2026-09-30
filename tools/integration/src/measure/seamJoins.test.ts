@@ -31,6 +31,7 @@ import {
   REFERENCE_PANORAMA_SIZE,
   STUDIO_CLIPS,
   type GreyImage,
+  type ReferenceClip,
 } from './support/referenceFrames';
 import { gainsShowingOnly, lockOf } from '../browser/rendering';
 import { isServed } from '../browser/sampleUrls';
@@ -67,10 +68,16 @@ const BEND_CLASSES: readonly { readonly name: string; readonly isIn: (bend: numb
  */
 const SAVED_FRAMES = new Set([55, 100, 145]);
 /**
- * The moment whose consecutive frames show how steady each join is, and how many of them.
+ * How many consecutive frames show how steady each join is, from the midway frame the lens
+ * readings are compared on (100 s on both X5 exports).
  */
-const STEADINESS_START_SECONDS = 100;
 const STEADINESS_PAIRS = 16;
+
+function steadinessStartOf(clip: ReferenceClip): number {
+  const midway = clip.comparedTimes[Math.floor(clip.comparedTimes.length / 2)];
+  if (midway === undefined) throw new Error(`the ${clip.slug} clip compares no frame`);
+  return clip.start + midway;
+}
 
 type PerBin = readonly number[];
 type PerJoin<Value> = Readonly<Record<SeamJoin, Value>>;
@@ -365,11 +372,7 @@ for (const clip of STUDIO_CLIPS) {
           port,
           DECODE_PIPELINE_OPTIONS,
         );
-        const pairs = await takePairs(
-          pipeline,
-          clip.start + STEADINESS_START_SECONDS,
-          STEADINESS_PAIRS,
-        );
+        const pairs = await takePairs(pipeline, steadinessStartOf(clip), STEADINESS_PAIRS);
         cleanups.push(() => {
           closeAll(pairs);
         });

@@ -287,6 +287,13 @@ describe('planDownloads', () => {
     expect(spansOf(plan.start)).toEqual(slotSpans([600, 620], [620, 640]));
   });
 
+  it('leaves a transfer whose bytes have all come to end by itself', () => {
+    const file = cameraFile();
+    const ending = { id: 5, remaining: ByteRange.of(40 * SLOT, 0) };
+    const plan = planDownloads(stateOf({ cursors: everyTrackAt(file, 600), transfers: [ending] }));
+    expect(plan.cancel).toEqual([]);
+  });
+
   it('keeps a transfer the window still needs and fills the holes around it', () => {
     const file = cameraFile();
     const plan = planDownloads(

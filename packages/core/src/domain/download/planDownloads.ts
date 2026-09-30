@@ -82,7 +82,10 @@ export function planDownloads(state: DownloadState): DownloadDecisions {
   const wanted = wantedBytes({ state, windowStart, windowEnd }).bridgingGapsBelow(
     state.policy.bridgedGap,
   );
-  const kept = state.transfers.filter((transfer) => wanted.overlaps(transfer.remaining));
+  // A transfer whose bytes have all come only waits for its end: giving it up gains nothing.
+  const kept = state.transfers.filter(
+    (transfer) => transfer.remaining.length === 0 || wanted.overlaps(transfer.remaining),
+  );
   const coming = ByteRangeSet.of(kept.map((transfer) => transfer.remaining));
   const missing = wanted.subtract(state.held).subtract(coming).subtract(state.unreadable);
   const room = state.policy.requestsInFlight - kept.length;

@@ -1,6 +1,6 @@
 # @bubo-squared/gyroview
 
-Play raw Insta360 `.insv` recordings (X3, X4, X5) in the browser. `<gyro-view>` reads the
+Play raw Insta360 `.insv` recordings (X3, X4, X5, X6) in the browser. `<gyro-view>` reads the
 camera's dual-fisheye file directly, over HTTP byte ranges or from a local file, decodes both
 lenses in hardware with WebCodecs, and stitches and gyro-stabilizes them on the GPU. No Insta360
 Studio export step.

@@ -126,7 +126,6 @@ export class FileDownload {
   }
 
   private plan(): void {
-    if (this.isDisposed) return;
     const decisions = planDownloads({
       cursors: [...this.cursors].map((cursor) => ({
         track: cursor.track,
@@ -142,7 +141,6 @@ export class FileDownload {
     });
     this.anchor = decisions.anchor;
     this.carryOut(decisions);
-    this.serveCursors();
   }
 
   private carryOut(decisions: DownloadDecisions): void {

@@ -130,6 +130,18 @@ describe('DownloadedVideoTrack', () => {
     await expect(lens.keyframeAt(seconds(1.5))).resolves.toMatchObject({ timestamp: 0 });
   });
 
+  it('passes over a first keyframe found not to be one, to the next', async () => {
+    const recording = cameraRecording({ ...LAYOUT, keyframeRule: MARKED_KEYFRAMES_ARE_NOT });
+    const bytes = bytesOf(recording);
+    const listed = recording.lens0.rangeOf(0);
+    bytes.fill(NOT_A_KEYFRAME, listed.offset, listed.end);
+    const lens = lensOf(recording, bytes);
+    const [first] = await Array.fromAsync(lens.packetsFrom(seconds(0.5)));
+    expect(first?.timestamp).toBe(1);
+    await expect(lens.keyframeAt(seconds(0.5))).resolves.toBeUndefined();
+    await expect(lens.firstKeyframe()).resolves.toMatchObject({ timestamp: 1 });
+  });
+
   it('fails its first packet with no-key-frame when the track has none to start from', async () => {
     const recording = cameraRecording({ ...LAYOUT, keyframeRule: { isKeyframe: () => false } });
     const packets = lensOf(recording).packetsFrom(seconds(1))[Symbol.asyncIterator]();

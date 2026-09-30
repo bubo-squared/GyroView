@@ -45,6 +45,8 @@ describe('TrackSampleTable', () => {
     const table = new TrackSampleTable(partsOf({ syncSamples: undefined }));
     expect([0, 1, 2].map((sample) => table.isSync(sample))).toEqual([true, true, true]);
     expect(table.keyframeAt(seconds(0.25))).toBe(2);
+    expect(table.syncSampleAtOrBefore(0)).toBe(0);
+    expect(table.syncSampleAtOrBefore(-1)).toBeUndefined();
   });
 
   it('finds the sample showing at a time, and none before the first', () => {

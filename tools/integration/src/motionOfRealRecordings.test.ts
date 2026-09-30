@@ -1,4 +1,4 @@
-import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
+import { MediabunnyCodecReader } from '@gyroview/adapter-mediabunny';
 import { FileRandomAccessSource } from '@gyroview/adapter-node';
 import {
   conjugateQuaternion,
@@ -14,6 +14,7 @@ import {
   type GyroTrack,
   type Vector3,
 } from '@gyroview/core';
+import { openDownloadedSource } from '@gyroview/core/testing';
 import { describe, expect, it } from 'vitest';
 
 import { hasSamples, OFFICE_RECORDING, SAILING_RECORDING } from './samples';
@@ -97,7 +98,7 @@ describe.skipIf(!hasSamples())('the frame times of the real X5 recordings', () =
     'place every presented frame of the office recording, though its capture clock drifts a frame from the track',
     async () => {
       const source = await FileRandomAccessSource.open(OFFICE_RECORDING);
-      const input = await new MediabunnyDemuxer().open(source, 'office');
+      const input = await openDownloadedSource(source, new MediabunnyCodecReader());
       try {
         const [track] = input.videoTracks;
         if (!track) throw new Error('the office recording has no video track');

@@ -36,3 +36,4 @@ new record takes the next number and a line here.
 - [ADR 0030](0030-errors-say-whose-side-they-are-on.md): Errors say whose side they are on; a browser without WebCodecs has its own code
 - [ADR 0031](0031-private-samples-stay-local.md): A recording shared privately stays local; the tests learn it from a git-ignored catalogue
 - [ADR 0032](0032-the-v6-string-is-a-mei-model-with-more-terms.md): The v6 calibration string is a Mei model with more terms, read as radial terms and one tangential pair (provisional)
+- [ADR 0033](0033-hdr-is-shown-as-sdr-converted-after-sampling.md): HDR is shown as SDR BT.709, converted in the shader right after a lens is sampled

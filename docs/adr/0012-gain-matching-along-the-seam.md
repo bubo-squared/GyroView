@@ -40,3 +40,8 @@ ignored until the next measurement, half a second of media later. Blown-out or b
 renderer's `setLensGains` also silences a lens for inspection: a gain of zero leaves the blend
 altogether, so the other lens fills the feather band alone and a lens-only render shows that lens
 as it is; the matcher overwrites the gains while it runs.
+
+## Since ADR 0033 (2026-09-30)
+
+The seam meter reads lenses through the display conversion, so the gains match SDR values: as
+recorded on an SDR camera, as before, and converted from HLG on the X6, not HLG-encoded ones.

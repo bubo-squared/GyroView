@@ -23,3 +23,9 @@ Variants without a real sample are covered by synthetic fixtures and marked "ver
 
 More parsing code paths and fixtures up front; no silent breakage when an unseen camera writes
 a known variant. A camera writing an unknown variant fails with a typed error naming it.
+
+## Colour (2026-09-30)
+
+How a lens is brought to the display follows the colour its track's bitstream declares (the VUI
+or a `colr` box, `TrackColour`), not the camera model and not the info record's capture mode
+("Dolby_Vision" on the X6), ADR 0033.

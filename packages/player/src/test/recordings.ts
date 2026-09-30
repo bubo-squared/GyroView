@@ -11,6 +11,7 @@ import {
   type CodecReader,
   type ContainerCodecs,
   type ResourceLocator,
+  type TrackColour,
   type VideoDecoderPort,
 } from '@gyroview/core';
 import {
@@ -61,6 +62,10 @@ export interface LensCodecsSpec {
   readonly codedWidth?: number;
   readonly codedHeight?: number;
   /**
+   * How the lens tracks encode colour; default unspecified.
+   */
+  readonly colour?: TrackColour;
+  /**
    * A sound track after the lenses.
    */
   readonly hasSound?: boolean;
@@ -85,7 +90,7 @@ export function lensCodecs(spec: LensCodecsSpec): ContainerCodecs {
   };
   const video = Array.from({ length: spec.lenses }, (_, trackIndex) => ({
     trackId: trackIndex + 1,
-    description: { trackIndex, codec, ...size, colour: UNSPECIFIED_COLOUR },
+    description: { trackIndex, codec, ...size, colour: spec.colour ?? UNSPECIFIED_COLOUR },
     configuration: { codec, ...size, description: undefined, isFullRange: false },
   }));
   const soundId = spec.lenses + 1;

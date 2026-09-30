@@ -98,7 +98,11 @@ itself (ADR 0004), so a new camera usually plays as it is. The one thing a model
 IMU's orientation in the body: `IMU_FRAMES_BY_MODEL` in
 `packages/core/src/domain/motion/imu/ImuFrame.ts`. Measure it on a real recording with
 `pnpm measure`, which ranks the 24 candidate frames by how still the world stays (ADR 0009),
-and add the winner there with the measurement in the ADR.
+and add the winner there with the measurement in the ADR. A recording that cannot be committed
+goes in the local catalogue instead (ADR 0031). With its Studio export, the same run measures
+its lens scale and pose against Insta360's stitch and at its own seam (ADR 0023, ADR 0025,
+`measure/lensReadings.test.ts`); a calibration string of a new version is a row of its layout
+family (`meiLayout`), and a new colour encoding a display conversion (ADR 0033).
 
 **A stabilization mode.** Add it to `StabilizationMode` and `STABILIZATION_MODES`
 (`domain/motion/stabilization/Stabilizer.ts`), give it a strategy in `STABILIZERS`

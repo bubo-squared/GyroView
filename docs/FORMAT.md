@@ -11,10 +11,11 @@ An ISO base media file: `ftyp`, `mdat`, `moov` (at the end, 4-5 MB) and then the
 trailer. Newer firmware (X5 from at least v1.7) wraps the trailer in a top-level `inst` box;
 older firmware appends it bare, so a top-level box walk ends in non-box bytes. `mdat` uses the
 64-bit large-size header form. Lens images are separate square video tracks in one file on
-X4/X5 (`hvc1`, 2880 or 3840 square, 8-bit full-range BT.709); X3 and older write one file per
-lens (`_00_` back lens, `_10_` screen-side lens) at 5.7K and a single 2:1 packed frame below
-that (unverified: no sample). The LRV proxy is a 1664x832 packed dual fisheye with the same
-trailer.
+X4/X5 (`hvc1`, 2880 or 3840 square, 8-bit full-range BT.709) and on the X6 (`hvc1`, 3840 square,
+HEVC Main 10, limited-range BT.2020 with HLG, the colour in the SPS alone without a `colr` box;
+50 fps at 8K); X3 and older write one file per lens (`_00_` back lens, `_10_` screen-side lens)
+at 5.7K and a single 2:1 packed frame below that (unverified: no sample). The LRV proxy is a
+1664x832 packed dual fisheye with the same trailer (2048x1024 8-bit HLG on the X6).
 
 ## Movie box
 
@@ -68,16 +69,19 @@ Read from the end of the file. All integers little-endian unless stated.
 `payload start = file size - trailer size`. Each record's payload is followed by a 6-byte header
 `u8 format, u8 id, u32 size`. The header of the record nearest the footer sits at EOF-78.
 
-- Indexed layout (X5): that record is the **index** (id 0, 310 bytes = 31 slots of 10 bytes:
-  `u8 id, u8 format, u32 size, u32 offset from payload start`; slot k describes record type k;
-  zero slots are empty). Most records sit at file offsets aligned to 128 KiB with zero padding
+- Indexed layout (X5, X6): that record is the **index** (id 0, 310 bytes = 31 slots of 10
+  bytes on the X5, 59 slots on the X6: `u8 id, u8 format, u32 size, u32 offset from payload
+start`; slot k describes record type k, so the index holds as many slots as its highest id
+  needs; zero slots are empty). Most records sit at file offsets aligned to 128 KiB with zero padding
   between them (the info record and the small record 0x0a do not), so they cannot be walked
   contiguously.
 - Contiguous layout (older firmware, unverified): no index; walk headers backwards from EOF-78
   until the payload start.
 
 Record ids seen or documented: 1 info, 2 thumbnail, 3 gyro, 4 exposure, 5 thumbnail extended,
-6 per-frame timestamps, 7 GPS, 0x09 0x0a 0x0b 0x0c 0x16 0x1b 0x1c 0x1d (X5, purpose unknown).
+6 per-frame timestamps, 7 GPS, 0x09 0x0a 0x0b 0x0c 0x16 0x1b 0x1c 0x1d (X5, purpose unknown),
+0x34 and 0x36 (X6: 16-byte entries `u64 capture timestamp µs, f64 exposure s` at 25 Hz, likely
+the LRV proxy's per lens; not read).
 
 ## Info record (id 1, format 1 = protobuf)
 
@@ -91,7 +95,7 @@ record), 65 gyro config {1 accelerometer range g, 2 gyroscope range dps}, 79 fil
 (1 split files, 2 multi-track; provisional), 80 track order (provisional), 111 `offset_v6`
 (v6 calibration, 27 tokens a lens). The window crop
 (27: 1 sensor width, 2 sensor height, 3 crop width, 4 crop height, 5 offset x, 6 offset y;
-5376, 5376, 5312, 5312, 0, 0 on the X5) is parsed and reported but not applied to the
+5376, 5376, 5312, 5312, 0, 0 on the X5; 7744, 7744, 7680, 7680, 0, 0 on the X6) is parsed and reported but not applied to the
 canvas-to-frame mapping: the frames show the whole calibration square (ADR 0014).
 
 Each calibration string has an "original" copy beside it, the factory calibration where the

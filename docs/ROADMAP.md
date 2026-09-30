@@ -50,6 +50,12 @@ continuity, audio-locked playback and seeking; the lens pose against Insta360 St
 of both units' recordings (ADR 0025). Other cameras and layouts are covered by synthetic
 fixtures built from the documented format variants.
 
+One Insta360 X6 recording (8K50, 10-bit HLG, 9 s, shared privately, ADR 0031): the v6
+calibration string (ADR 0032), the X6's IMU frame (ADR 0009), the radial scale its v6 lenses
+want, by Studio's far field and the seam agreeing (ADR 0023), the lens pose (ADR 0025), the
+canvas window and the field edge (ADR 0014), and HLG shown as Studio's SDR shows it (ADR 0033),
+in Chromium and WebKit.
+
 ## Waiting on something only a user can supply
 
 - **An X3 or X4 recording** (a 5.7K `_00_`/`_10_` pair and a packed sub-5.7K file would cover
@@ -77,6 +83,14 @@ fixtures built from the documented format variants.
   degrees leaves the sailing unit's seam at zero and the office unit's about 2 degrees short,
   which doubles far content there slightly; the office unit wants 97 degrees, or the Mei
   string's model scaled by 1.02, whose shape also fits its far field better (ADR 0023).
+- The X6's decisions rest on one unit's 9-second clip: its IMU frame, radial scale (1.008,
+  where the X5's units would want 1.02 to 1.04 from the same kind of string) and tone curve
+  are provisional. The v6 string's higher-order terms (`p3`, `p4`, `s1` to `s4`) stay unread:
+  one clip cannot tell their reading (ADR 0032).
+- HDR is shown as SDR: HLG through Insta360 Studio's curve, fitted to its luma; PQ is drawn as
+  recorded, with a warning. The 10 bits reach the shader as 8.
+- The X6's 8K at 50 fps in 10 bits decodes at twice its frame rate on an M4 Pro (123 pairs a
+  second in Chromium, 98 in WebKit); a machine with half that decoder falls behind and waits.
 - Recordings split into several `_NNN` segment files play one segment at a time.
 - Playback speed is 1x: another speed needs the decoders to keep up with it, which an 8K
   recording's barely do at 1x, and the sound to follow at that rate.

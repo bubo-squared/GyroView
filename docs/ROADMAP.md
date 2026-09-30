@@ -87,6 +87,10 @@ fixtures built from the documented format variants.
 - The iframe embed speaks English: the element's `messages` do not cross the embed protocol.
 - Firefox and Android are best effort: Firefox has WebCodecs only on desktop, Android
   decoders vary.
+- HEVC on Linux decodes only where the browser reaches the GPU through VA-API (Intel or AMD);
+  with NVIDIA's own driver or in a virtual machine it is `codec-unsupported`. Chrome and
+  Firefox have no software HEVC decoder, and one in WebAssembly would not keep up with two
+  full-size lens tracks.
 
 ## Possible next steps
 

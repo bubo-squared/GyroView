@@ -141,8 +141,8 @@ the embed handle's promises.
 |                         | `Last-Modified` and size, changed. Load it again.                            |
 | `source-truncated`      | Fewer bytes came back than asked: the server misbehaves, or the file changed |
 |                         | where the server does not tell its version.                                  |
-| `codec-unsupported`     | This browser cannot decode the tracks (no HEVC hardware, or not a secure     |
-|                         | context).                                                                    |
+| `codec-unsupported`     | This browser cannot decode the tracks (no HEVC hardware, on Linux no VA-API  |
+|                         | driver that offers HEVC, or not a secure context).                           |
 | `missing-second-file`   | One lens of a split-file pair without the other lens's file: set `src2`.     |
 | `no-calibration`        | The file carries no lens calibration; it cannot be stitched.                 |
 | `invalid-trailer`       | Not an Insta360 recording (a plain MP4, a Studio export), or one cut short.  |

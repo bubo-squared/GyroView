@@ -237,9 +237,10 @@ because WebCodecs exists only in secure contexts. `docs/DEPLOYMENT.md` has the e
 the hosting layout and the error codes.
 
 Browsers decode HEVC only in hardware: 5.7K plays on recent laptops and phones, 8K needs a
-Level 6 decoder (Apple Silicon, recent NVIDIA and Intel). A recording this browser cannot decode
-is reported as `codec-unsupported`; the camera's low-resolution `LRV` proxy is never played in
-its place (ADR 0017).
+Level 6 decoder (Apple Silicon, recent NVIDIA and Intel). On Linux, Chrome reaches the decoder
+only through VA-API, so not with NVIDIA's own driver or in a virtual machine. A recording this
+browser cannot decode is reported as `codec-unsupported`; the camera's low-resolution `LRV`
+proxy is never played in its place (ADR 0017).
 
 ## Development
 

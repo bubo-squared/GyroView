@@ -205,17 +205,20 @@ loads a recording only for the player in view, removing `src` from the others.
   `Access-Control-Allow-Credentials: true`.
 
 - **A hardware HEVC decoder.** 5.7K plays on recent laptops and phones; 8K needs a Level 6
-  decoder (Apple Silicon, recent NVIDIA and Intel). A recording the browser cannot decode fails
-  with the `codec-unsupported` error.
+  decoder (Apple Silicon, recent NVIDIA and Intel). On Linux, Chrome reaches the decoder only
+  through VA-API: an Intel or AMD GPU whose driver offers HEVC, not NVIDIA's own driver or a
+  virtual machine (`chrome://gpu` lists `Decode hevc main` under Video Acceleration
+  Information when it can). H.264 recordings do not need it. A recording the browser cannot
+  decode fails with the `codec-unsupported` error.
 
 The supported browsers, with the oldest versions that have what the player uses (WebCodecs,
 WebGL 2, container queries, and on iPhone `ManagedMediaSource` for the sound):
 
-| Browser               | From | Notes                                                    |
-| --------------------- | ---- | -------------------------------------------------------- |
-| Chrome, Edge desktop  | 107  | HEVC is decoded in hardware from this version on.        |
-| Safari on macOS       | 16.4 |                                                          |
-| Safari on iPhone/iPad | 17.1 | 16.4 to 17.0 play without sound, with a `warning` event. |
+| Browser               | From | Notes                                                             |
+| --------------------- | ---- | ----------------------------------------------------------------- |
+| Chrome, Edge desktop  | 107  | HEVC is decoded in hardware from this version on (Linux: VA-API). |
+| Safari on macOS       | 16.4 |                                                                   |
+| Safari on iPhone/iPad | 17.1 | 16.4 to 17.0 play without sound, with a `warning` event.          |
 
 Firefox and Chrome on Android are untested: they play what their decoders accept.
 

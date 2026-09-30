@@ -74,6 +74,7 @@ export { RADIUS_AS_READ } from '../domain/optics/LensCalibration';
 export { UNSPECIFIED_COLOUR } from '../domain/colour/TrackColour';
 export {
   AS_RECORDED,
+  asRecordedOf,
   exposureSignalOf,
   HLG_TO_SDR_BT709,
   shownOf,

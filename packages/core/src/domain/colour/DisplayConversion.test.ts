@@ -140,7 +140,8 @@ describe('toDisplay', () => {
 
   it("draws greys where Insta360 Studio's SDR export does, within two hundredths", () => {
     // HLG signal, and the median luma of Studio's SDR export over the near-grey pixels of that
-    // signal in its HLG export, three frames of one recording (ADR 0033).
+    // signal in its HLG export, three frames of one recording (ADR 0033). The top highlight, a
+    // few dozen pixels, is drawn about two levels dark: a refit will move it first.
     const studio: readonly (readonly [number, number])[] = [
       [0.2, 0.168],
       [0.35, 0.27],

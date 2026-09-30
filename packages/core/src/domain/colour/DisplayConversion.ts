@@ -82,7 +82,8 @@ export const BT709_LUMINANCE: Vector3 = [0.2126, 0.7152, 0.0722];
 const STUDIO_TONE: ToneCurve = { exposure: 1.4, kneeStart: 0.2, ceiling: 1.5, exponent: 2.2 };
 
 /**
- * HLG of BT.2020 primaries, as BT.2100 defines it and the X6 records it, shown as Studio shows it.
+ * HLG of BT.2020 primaries and matrix, as BT.2100 defines it and the X6 records it, shown as
+ * Studio shows it: the conversion `displayConversionsOf` picks for such a track, for tests.
  */
 export const HLG_TO_SDR_BT709 = {
   kind: 'hlg-to-sdr-bt709',
@@ -124,35 +125,47 @@ const HLG_GAMUT_BY_PRIMARIES: Readonly<Record<ColourPrimaries, Matrix3 | undefin
   smpte432: undefined,
 };
 
-function asRecordedFrom(primaries: ColourPrimaries): ConversionChoice {
-  return BT709_LIKE_PRIMARIES.has(primaries)
-    ? { conversion: AS_RECORDED }
-    : { conversion: AS_RECORDED, problem: `${primaries} primaries are shown as BT.709` };
+/**
+ * A track's texels shown as recorded, its own matrix still corrected back to: what the player
+ * draws of SDR, and the measurements of a recording drawn in its own signal.
+ */
+export function asRecordedOf({ matrix }: Pick<DisplayConversion, 'matrix'>): DisplayConversion {
+  return { kind: 'as-recorded', matrix };
 }
 
-function hlgFrom(primaries: ColourPrimaries): ConversionChoice {
-  const gamut = HLG_GAMUT_BY_PRIMARIES[primaries];
+function asRecordedFrom(colour: TrackColour): ConversionChoice {
+  const conversion = asRecordedOf(colour);
+  return BT709_LIKE_PRIMARIES.has(colour.primaries)
+    ? { conversion }
+    : { conversion, problem: `${colour.primaries} primaries are shown as BT.709` };
+}
+
+function hlgFrom(colour: TrackColour): ConversionChoice {
+  const gamut = HLG_GAMUT_BY_PRIMARIES[colour.primaries];
+  const conversion = {
+    kind: 'hlg-to-sdr-bt709',
+    matrix: colour.matrix,
+    gamut: gamut ?? IDENTITY_MATRIX3,
+    tone: STUDIO_TONE,
+  } as const;
   return gamut === undefined
-    ? {
-        conversion: { ...HLG_TO_SDR_BT709, gamut: IDENTITY_MATRIX3 },
-        problem: `HLG of ${primaries} primaries is shown without their gamut`,
-      }
-    : { conversion: { ...HLG_TO_SDR_BT709, gamut } };
+    ? { conversion, problem: `HLG of ${colour.primaries} primaries is shown without their gamut` }
+    : { conversion };
 }
 
-function notShown(transfer: TransferCharacteristics): () => ConversionChoice {
-  return () => ({
-    conversion: AS_RECORDED,
+function notShown(transfer: TransferCharacteristics): (colour: TrackColour) => ConversionChoice {
+  return (colour) => ({
+    conversion: asRecordedOf(colour),
     problem: `the ${transfer} transfer cannot be shown yet: drawn as recorded`,
   });
 }
 
 /**
- * The conversion of every transfer, from the track's primaries: a transfer the player learns to
+ * The conversion of every transfer, from the track's colour: a transfer the player learns to
  * name does not compile until it is given one.
  */
 const CONVERSION_BY_TRANSFER: Readonly<
-  Record<TransferCharacteristics, (primaries: ColourPrimaries) => ConversionChoice>
+  Record<TransferCharacteristics, (colour: TrackColour) => ConversionChoice>
 > = {
   bt709: asRecordedFrom,
   smpte170m: asRecordedFrom,
@@ -178,17 +191,12 @@ export interface DisplayConversionChoice {
  * a problem share its warning.
  */
 export function displayConversionsOf(colours: readonly TrackColour[]): DisplayConversionChoice {
-  const choices = colours.map((colour) =>
-    CONVERSION_BY_TRANSFER[colour.transfer](colour.primaries),
-  );
+  const choices = colours.map((colour) => CONVERSION_BY_TRANSFER[colour.transfer](colour));
   const problems = choices.flatMap((choice) =>
     choice.problem === undefined ? [] : [choice.problem],
   );
   return {
-    conversions: choices.map(({ conversion }, slot) => ({
-      ...conversion,
-      matrix: colours[slot]?.matrix ?? conversion.matrix,
-    })),
+    conversions: choices.map((choice) => choice.conversion),
     warnings: [...new Set(problems)],
   };
 }
@@ -215,7 +223,8 @@ export function exposureSignalOf(conversion: DisplayConversion, texel: Vector3):
       return texel;
     }
     case 'hlg-to-sdr-bt709': {
-      const light = transformVector(conversion.gamut, mapRgb(texel, hlgInverseOetf));
+      const scene = mapRgb(texel, (channel) => hlgInverseOetf(Math.max(channel, 0)));
+      const light = transformVector(conversion.gamut, scene);
       return mapRgb(light, (channel) => Math.max(channel, 0) ** (1 / conversion.tone.exponent));
     }
   }

@@ -3,6 +3,12 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+New:
+
+- The `source-changed` error: the recording at the URL was replaced while it played.
+
 ## 0.2.0 (2026-09-29)
 
 What a page may notice:

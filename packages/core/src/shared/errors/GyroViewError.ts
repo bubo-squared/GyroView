@@ -22,6 +22,7 @@ export const GYRO_VIEW_ERROR_CODES = [
   'playback-blocked',
   'range-unsupported',
   'render-unavailable',
+  'source-changed',
   'source-truncated',
   'source-unreadable',
   'unsupported-calibration',

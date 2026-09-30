@@ -106,3 +106,10 @@ of the signs explains.
   leaves the roll as written on the front lens and predicts no roll error on the office unit.
 - Refining the back lens's pose per recording from the seam, as omnikit does: on these recordings
   the seam cost is owned by near objects (ADR 0014, the withdrawn refiner of 2026-09-25).
+
+## On the X6 (2026-09-30)
+
+Against the Studio export of one X6 recording (ADR 0031), under the X6's measured IMU frame
+(ADR 0009), eight frames each in Chromium and WebKit: the residual lens turns have medians of
+-0.07, +0.01 and -0.04 degrees about x, y and z. The roll read mirrored and the half turn per
+lens index hold on the X6, whose v6 strings carry rolls near 90 degrees as the X5's do.

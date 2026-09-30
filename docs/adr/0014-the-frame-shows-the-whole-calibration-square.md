@@ -68,3 +68,17 @@ The semantics of the window record for other cameras and modes remain unknown.
   explicit zero offsets as much as ignoring them does.
 - Keeping the window and correcting the offsets only when they are zero: a rule fitted to one
   camera's record.
+
+## On the X6 (2026-09-30)
+
+The X6's window record reads 7744 x 7744 cropped to 7680 x 7680 at offset 0, the X5's pattern
+at a larger sensor, and its 3840-pixel lens frames show 7744-pixel calibration squares. On one
+recording (ADR 0031) the fitted image circle's centre lies nearer the whole square's prediction
+than the sensor window's in all four measurements (two lenses, Chromium and WebKit): 11 to 51
+frame pixels against 30 to 68. The whole square stays. The offsets reach 1.3 % of the frame's
+width in Chromium, above the X5's 0.75 %, and Chromium and WebKit disagree more than on the X5:
+the frames were measured as recorded, 10-bit HLG, whose rim the detector's thresholds were not
+set for.
+
+The same circles put the lens's rim at least 101.6 degrees from its axis through the v6 profile
+at the measured radial scale (ADR 0023): the 100-degree field edge holds on the X6.

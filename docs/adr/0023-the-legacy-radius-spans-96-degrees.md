@@ -99,3 +99,26 @@ without a reference: the far bins' disparity at zero.
 - omnikit's 95 degrees as is: inside the flat part of the curve, but past the measured minimum.
 - Settling the scale on the seams (the withdrawn refinement, ADR 0014's window reading): the
   parallax of near objects confounds the seams; the far field of an external stitch does not.
+
+## On the X6 (2026-09-30)
+
+The X6 carries no legacy string: it stitches through its v6 string, the Mei model with more
+terms (ADR 0032), whose radial profile equals v3's. On one recording (ADR 0031), three frames
+each in Chromium and WebKit, with the X6's measured IMU frame:
+
+| v6 reading, radial scale | Studio far-field cost | Seam far bins, lower quartile (°) |
+| ------------------------ | --------------------- | --------------------------------- |
+| 0.98                     | 21.5                  | +5.9                              |
+| 1.00                     | 19.4                  | +1.3                              |
+| 1.02                     | 19.6                  | -2.8                              |
+| 1.04                     | 21.0                  | -4.7                              |
+| 1.06                     | 21.6                  | -4.6                              |
+
+(Chromium; WebKit within a level of cost and 0.2 degrees.) The cost's minimum lies at 1.008 by
+a parabola through the three lowest; the seam's far bins cross zero between 1.006 (lower
+quartile) and 1.009 (median). The two measures agree to 0.3 percent, so the v6 reading is drawn
+at 1.008 (`V6_RADIAL_SCALE`), provisionally: one unit, one 9-second clip. The X5's own v6
+strings want about 1.02 (office) and 1.035 (sailing), as its v3 strings do; no scale per string
+version fits both cameras, and none per camera fits both X5 units. A scale measured per
+recording at the seam (ROADMAP) is the fix; until then the X5 keeps its legacy string, and the
+v6 string's scale is the X6's.

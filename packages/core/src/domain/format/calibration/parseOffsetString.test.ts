@@ -61,6 +61,13 @@ describe('parseOffsetString with the X5 office strings', () => {
     expect(projection.distortion.thinPrism).toEqual([]);
   });
 
+  it('draws v6 lenses at the radial scale measured for the v6 reading, v3 lenses as read', () => {
+    const v6 = parseOffsetString(OFFICE_CALIBRATION.offsetV6).lenses;
+    const v3 = parseOffsetString(OFFICE_CALIBRATION.offsetV3).lenses;
+    expect(v6.map((lens) => lens.radialScale)).toEqual([1.008, 1.008]);
+    expect(v3.map((lens) => lens.radialScale)).toEqual([1, 1]);
+  });
+
   it('agrees with offset_v3 on the tokens the two strings share', () => {
     const [v3Front, v3Back] = parseOffsetString(OFFICE_CALIBRATION.offsetV3).lenses;
     const [v6Front, v6Back] = parseOffsetString(OFFICE_CALIBRATION.offsetV6).lenses;

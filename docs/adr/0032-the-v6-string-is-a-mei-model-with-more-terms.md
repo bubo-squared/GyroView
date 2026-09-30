@@ -61,9 +61,8 @@ against without footage. On both X5 units in `test/fixtures/x5/`:
   degree and a half on the X6, whose terms are larger than the X5's.
 - The error code `unsupported-calibration` stays in the public list, though no layout throws it
   now: pages that match on it keep working.
-- Open, and measured on a Studio export and on the seam (ADR 0023, ADR 0026) before this ADR is
-  accepted: which reading of `p3`, `p4`, `s1` to `s4` Insta360's stitch uses, and the radial
-  scale the Mei family needs on the X6 (the X5's needed 1.02 to 1.04).
+- Open until a second X6 recording: which reading of `p3`, `p4`, `s1` to `s4` Insta360's
+  stitch uses (below). The radial scale the X6 needs is measured (ADR 0023).
 
 ## Alternatives considered
 
@@ -73,3 +72,19 @@ against without footage. On both X5 units in `test/fixtures/x5/`:
   terms in one model keeps one shader function (see the Mei distortion refactor).
 - Reading the terms as OpenCV's thin prism because OpenCV names such terms: the X5's own v3
   string says that reading is worse.
+
+## Measured on the X6 (2026-09-30)
+
+On one X6 recording (ADR 0031), against its Studio export and at its seam, three frames each in
+Chromium and WebKit at the reading's best radial scale (ADR 0023), the candidates of
+`tools/integration/src/measure/support/v6TermReadings.ts` against the player's reading:
+
+- radial terms alone, or `p3, p4` as a second tangential order: the far-field cost within 0.05
+  of the player's, the seam's variation about the ring (its first and second harmonics) larger;
+- OpenCV's thin prism as written: 1.4 higher in cost on every frame;
+- the thin prism negated, or with its axes swapped: 0.3 higher in cost, the seam's far bins
+  nearer zero, their first harmonic 1.8 to 3 times larger.
+
+None lowers both the far-field cost and the seam's variation, the rule set before measuring, so
+the player keeps its reading and the terms stay unread. The X6's terms move the picture by
+little at the seam; one clip of one unit cannot tell their reading.

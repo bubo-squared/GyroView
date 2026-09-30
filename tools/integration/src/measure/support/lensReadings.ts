@@ -1,6 +1,7 @@
 import {
   buildStitchingSetup,
   CALIBRATION_SOURCES,
+  CalibrationVersion,
   GyroViewError,
   mapRecord,
   type CalibrationSet,
@@ -22,33 +23,42 @@ export interface LensReading {
 }
 
 /**
- * The readings the recording's calibration strings allow, each named by its lens model: the
- * unified (Mei) model of the v3 string, the polynomial of the v2 string, the equidistant model of
- * the legacy string with its radius at the angle the core reads it at (96 degrees, ADR 0023).
- * The newest string comes first, as the alignment starts from the first reading; a string the
- * core cannot read is left out. A radial scale multiplies what the reading draws.
+ * Each string version's reading as the measurements and renders name it, in the order they are
+ * scored: the unified (Mei) model of the v3 and v6 strings, the polynomial of the v2 string, the
+ * equidistant model of the legacy string with its radius at the angle the core reads it at (96
+ * degrees, ADR 0023). The alignment starts from the first reading a recording has: the v3 one
+ * ADR 0023's measurements aligned from, else the v6 one.
+ */
+const READINGS: readonly { readonly version: CalibrationVersion; readonly name: string }[] = [
+  { version: CalibrationVersion.Mei, name: 'mei' },
+  { version: CalibrationVersion.ExtendedMei, name: 'extended-mei' },
+  { version: CalibrationVersion.Polynomial, name: 'polynomial' },
+  { version: CalibrationVersion.Legacy, name: 'equidistant' },
+];
+
+/**
+ * The readings the recording's calibration strings allow, in the order of {@link READINGS}; a
+ * string the core cannot read is left out. A radial scale multiplies what the reading draws.
  */
 export function readingsOf(opened: OpenedRecording): LensReading[] {
   const { calibration } = opened.recording.info;
-  return Object.values(mapRecord(CALIBRATION_SOURCES, (_source, key) => calibration[key]))
-    .flatMap((text) => (text === undefined ? [] : readableCalibrationOf(text)))
-    .toSorted((first, second) => second.version - first.version)
-    .map((calibration) => ({ name: modelKindOf(calibration), calibration, radialScale: 1 }));
+  const calibrations = Object.values(
+    mapRecord(CALIBRATION_SOURCES, (_source, key) => calibration[key]),
+  ).flatMap((text) => (text === undefined ? [] : readableCalibrationOf(text)));
+  return READINGS.flatMap(({ version, name }) =>
+    calibrations
+      .filter((candidate) => candidate.version === version)
+      .map((readable) => ({ name, calibration: readable, radialScale: 1 })),
+  );
 }
 
 function readableCalibrationOf(text: string): VersionedCalibration[] {
   try {
     return [parseOffsetString(text)];
   } catch (error) {
-    if (error instanceof GyroViewError && error.code === 'unsupported-calibration') return [];
+    if (error instanceof GyroViewError && error.code === 'invalid-calibration') return [];
     throw error;
   }
-}
-
-function modelKindOf(calibration: CalibrationSet): string {
-  const [first] = calibration.lenses;
-  if (!first) throw new Error('a calibration without lenses');
-  return first.model.kind;
 }
 
 export function withRadialScale(reading: LensReading, radialScale: number): LensReading {

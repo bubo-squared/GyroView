@@ -9,7 +9,15 @@ import { AS_READ, type LensCalibration } from '../../../optics/LensCalibration';
 import type { MeiDistortion } from '../../../optics/MeiDistortion';
 import { CalibrationVersion } from '../CalibrationVersion';
 import { MeiModel } from '../../../optics/MeiModel';
-import { MeiToken, V3_LENS_TOKENS, V3Token, VERSIONED_TRAILING_TOKENS } from '../offsetTokens';
+import {
+  MeiToken,
+  V3_LENS_TOKENS,
+  V3Token,
+  V6_LENS_TOKENS,
+  V6Token,
+  VERSIONED_TRAILING_TOKENS,
+} from '../offsetTokens';
+import { V6_TERM_READING, type V6DistortionTokens, type V6TermReading } from '../v6TermReading';
 
 /**
  * What tells one Mei string version from another: the version its word declares, the length of
@@ -75,3 +83,35 @@ export const MEI_CALIBRATION_LAYOUT = meiLayout({
   }),
   radialScale: AS_READ,
 });
+
+/**
+ * `offset_v6`: the Mei tokens, then `k1..k5 p1..p4 s1..s4 width height type` per lens, and a
+ * version word with 6 in its high 16 bits; its distortion tokens read by `reading` (ADR 0032).
+ * Drawn as read until the radial scale the Mei family needs is measured on a recording that
+ * carries no legacy string (ADR 0023).
+ */
+export function extendedMeiLayout(reading: V6TermReading): CalibrationStringLayout {
+  return meiLayout({
+    version: CalibrationVersion.ExtendedMei,
+    lensTokens: V6_LENS_TOKENS,
+    canvasTokens: { width: V6Token.CanvasWidth, height: V6Token.CanvasHeight },
+    distortionOf: (block) => reading.distortionOf(v6DistortionTokensOf(block)),
+    radialScale: AS_READ,
+  });
+}
+
+export const EXTENDED_MEI_CALIBRATION_LAYOUT = extendedMeiLayout(V6_TERM_READING);
+
+function v6DistortionTokensOf(block: LensBlock): V6DistortionTokens {
+  return {
+    radial: [
+      block(V6Token.K1),
+      block(V6Token.K2),
+      block(V6Token.K3),
+      block(V6Token.K4),
+      block(V6Token.K5),
+    ],
+    tangential: [block(V6Token.P1), block(V6Token.P2), block(V6Token.P3), block(V6Token.P4)],
+    thinPrism: [block(V6Token.S1), block(V6Token.S2), block(V6Token.S3), block(V6Token.S4)],
+  };
+}

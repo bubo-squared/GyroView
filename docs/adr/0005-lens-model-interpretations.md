@@ -2,7 +2,7 @@
 
 Status: accepted with open items (2026-09-18). The v1 radius angle and the preference for the Mei
 model are superseded by ADR 0023: the legacy radius spans 96 degrees and the legacy string is read
-first.
+first. The v6 rejection is superseded by ADR 0032: the v6 string is read.
 
 ## Context
 
@@ -25,4 +25,5 @@ Insta360 does not document its calibration strings. The X5 info record carries a
 ## Open items
 
 - Confirm the v2 interpretation on a recording that carries only `offset_v2` (X3).
-- Decode the v6 coefficient order when a file using it appears.
+- Decode the v6 coefficient order when a file using it appears: done in ADR 0032, from the X5's
+  own v6 strings (field 111), which this ADR had not looked for.

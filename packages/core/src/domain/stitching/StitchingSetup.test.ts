@@ -4,6 +4,7 @@ import { buildStitchingSetup, lensFrameOrder } from './StitchingSetup';
 import { FULL_FRAME, LEFT_HALF, RIGHT_HALF, type LensLayout } from './LensLayout';
 import { parseOffsetString } from '../format/calibration/parseOffsetString';
 import { transformVector } from '../../shared/math/Matrix3';
+import { v6CalibrationString } from '../../../test/support/calibrationStrings';
 import { captureError } from '../../../test/support/errors';
 import { OFFICE_CALIBRATION } from '../../../test/support/officeCalibration';
 
@@ -65,6 +66,15 @@ describe('buildStitchingSetup', () => {
     if (!backLens) throw new Error('no second lens');
     const forwardInLens = transformVector(backLens.rotation, [0, 0, -1]);
     expect(forwardInLens[2]).toBeCloseTo(1, 2);
+  });
+
+  it('finds each lens of the X6 shape in its 7744-pixel square', () => {
+    const x6Shaped = parseOffsetString(v6CalibrationString());
+    const setup = buildStitchingSetup({ calibration: x6Shaped, layout: MULTI_TRACK });
+    expect(setup.lenses.map((lens) => lens.window)).toEqual([
+      { x: 0, y: 0, width: 7744, height: 7744 },
+      { x: 7744, y: 0, width: 7744, height: 7744 },
+    ]);
   });
 
   it('draws each lens at the radial scale of its calibration', () => {

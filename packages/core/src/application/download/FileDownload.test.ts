@@ -259,6 +259,18 @@ describe('FileDownload', () => {
     await expect(again).resolves.toMatchObject({ sample: 60 });
   });
 
+  it('asks for what another reader waits on once a failed range makes room', async () => {
+    const context = setup({ ...POLICY, requestsInFlight: 1 });
+    const error = new GyroViewError('source-unreadable', 'the connection dropped');
+    context.link.failWhere((range) => range.offset < 100 * SLOT, error);
+    const failing = context.download.openCursor(RECORDING.lens0, 60);
+    const failed = expect(failing.nextSample()).rejects.toBe(error);
+    const waiting = context.download.openCursor(RECORDING.lens0, 600).nextSample();
+    await idle(context.link, 10);
+    await failed;
+    await expect(waiting).resolves.toMatchObject({ sample: 600 });
+  });
+
   it('fails a reader with source-unreadable when the stream fails otherwise', async () => {
     const context = setup();
     const cause = new Error('socket hang up');

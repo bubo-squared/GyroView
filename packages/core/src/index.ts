@@ -183,12 +183,14 @@ export {
   asGyroViewError,
   ensureIndexInRange,
   ensureInvariant,
+  GYRO_VIEW_ERROR_CATEGORIES,
   GYRO_VIEW_ERROR_CODES,
   GyroViewError,
   hasErrorCode,
   isAbortError,
   isGyroViewErrorCode,
   messageOf,
+  type GyroViewErrorCategory,
   type GyroViewErrorCode,
 } from './shared/errors/GyroViewError';
 export { keysOf } from './shared/keysOf';

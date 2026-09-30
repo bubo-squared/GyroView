@@ -5,6 +5,7 @@ import {
   attachKeyboard,
   attachViewGestures,
   createBrowserPlayer,
+  GYRO_VIEW_ERROR_CATEGORIES,
   GYRO_VIEW_ERROR_CODES,
   GyroViewError,
   hasErrorCode,
@@ -12,6 +13,7 @@ import {
   isGyroViewErrorCode,
   PICTURE_QUALITIES,
   VIEW_MODES,
+  type GyroViewErrorCategory,
   type GyroViewErrorCode,
   type PictureQuality,
   type PlayerMetadata,
@@ -48,8 +50,10 @@ element.addEventListener('ready', (event) => {
 });
 element.addEventListener('error', (event) => {
   const code: GyroViewErrorCode = event.detail.code;
-  return code;
+  const category: GyroViewErrorCategory = event.detail.category;
+  return category === 'browser' ? code : undefined;
 });
+const knownCategories: readonly GyroViewErrorCategory[] = GYRO_VIEW_ERROR_CATEGORIES;
 element.addEventListener('timeupdate', (event) => event.detail.toFixed(1));
 element.addEventListener('click', (event) => event.clientX);
 element.messages = { labels: { play: 'Lecture' }, errors: { cors: 'Introuvable.' } };
@@ -102,6 +106,7 @@ export {
   playLabel,
   fromMessage,
   fromUrl,
+  knownCategories,
   knownCodes,
   matching,
   metadata,

@@ -93,6 +93,7 @@ describe('the embed bridge over a message channel', () => {
 
     await expect(handle.load({ src: `${recordingUrl}.missing` })).rejects.toMatchObject({
       code: 'source-unreadable',
+      category: 'source',
     });
     expect(handle.state).toMatchObject({ status: 'error', metadata: undefined, duration: 0 });
   });
@@ -201,6 +202,7 @@ describe('the embed bridge over a message channel', () => {
     });
     await expect(handle.load({ src: `${recordingUrl}.missing` })).rejects.toMatchObject({
       code: 'source-unreadable',
+      category: 'source',
     });
     expect(await failure).toEqual({
       code: 'source-unreadable',

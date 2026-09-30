@@ -281,6 +281,19 @@ describe('planDownloads', () => {
     expect(spansOf(plan.start)).toEqual(slotSpans([20, 40], [40, 60]));
   });
 
+  it("tops up while the picture's next seconds are not all held, however little is missing", () => {
+    const file = cameraFile();
+    const policy = { ...POLICY, resumeSeconds: seconds(1), refillBytes: 1000 * SLOT };
+    const short = planDownloads(
+      stateOf({ cursors: everyTrackAt(file, 0), held: heldSlots(0, 58), policy }),
+    );
+    expect(spansOf(short.start)[0]).toEqual([58 * SLOT, 78 * SLOT]);
+    const held = planDownloads(
+      stateOf({ cursors: everyTrackAt(file, 0), held: heldSlots(0, 62), policy }),
+    );
+    expect(held.start).toEqual([]);
+  });
+
   it('waits to top up until a quarter of its bytes is missing', () => {
     const file = cameraFile();
     const plan = planDownloads(stateOf({ cursors: everyTrackAt(file, 0), held: heldSlots(0, 90) }));

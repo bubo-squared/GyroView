@@ -1,4 +1,5 @@
 import type { DownloadPolicy } from './DownloadPolicy';
+import { resumeThresholdOf } from './isReadyToResume';
 import { needsOf, withinBytes, type CursorPosition } from './trackNeeds';
 import { ByteRange } from '../../shared/binary/ByteRange';
 import { ByteRangeSet } from '../../shared/binary/ByteRangeSet';
@@ -80,7 +81,8 @@ export function planDownloads(state: DownloadState): DownloadDecisions {
   const coming = ByteRangeSet.of(kept.map((transfer) => transfer.remaining));
   const missing = wanted.subtract(state.held).subtract(coming).subtract(state.unreadable);
   const room = state.policy.requestsInFlight - kept.length;
-  const isDue = isTopUpDue({ state, windowEnd, missing });
+  const threshold = thresholdOf(state, windowStart);
+  const isDue = isTopUpDue({ state, windowEnd, missing, threshold });
   return {
     start: isDue ? requestsFor(missing, state.policy, room) : [],
     cancel: state.transfers
@@ -134,18 +136,30 @@ function wantedBytes(window: Window): ByteRangeSet {
   return withinBytes(ByteRangeSet.of(needs), state.policy.aheadBytes).union(nextFrames);
 }
 
+/**
+ * Once playing, what playback that starved would wait for, which the download keeps held; none
+ * before.
+ */
+function thresholdOf(state: DownloadState, windowStart: WindowAnchor): ByteRangeSet {
+  const need = { cursors: state.cursors, time: windowStart.time, policy: state.policy };
+  return state.isReadingAhead ? resumeThresholdOf(need) : ByteRangeSet.empty;
+}
+
 interface TopUp {
   readonly state: DownloadState;
   readonly windowEnd: Seconds;
   readonly missing: ByteRangeSet;
+  readonly threshold: ByteRangeSet;
 }
 
 /**
- * Whether to ask for what is missing now: a cursor waits on it, a refill's worth is missing, or
- * the window reaches the last sample of every track read, so no more will ever be missing.
+ * Whether to ask for what is missing now: a cursor waits on it, the resume threshold is not all
+ * held, a refill's worth is missing, or the window reaches the last sample of every track read,
+ * so no more will ever be missing.
  */
 function isTopUpDue(topUp: TopUp): boolean {
-  const { state, windowEnd, missing } = topUp;
+  const { state, windowEnd, missing, threshold } = topUp;
+  if (missing.ranges.some((range) => threshold.overlaps(range))) return true;
   const isStarving = state.cursors.some(
     (cursor) =>
       cursor.isWaiting &&

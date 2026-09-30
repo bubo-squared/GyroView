@@ -201,7 +201,7 @@ describe('openRecording', () => {
     expect(opened.duration).toBeCloseTo(3, 6);
     expect(opened.frameTimes?.frameCount).toBe(30);
     expect(opened.motion?.orientations.length).toBe(2000);
-    expect(opened.audioTrack).toBeUndefined();
+    expect(opened.soundSegments).toBeUndefined();
     expect(opened.metadata).toMatchObject({
       model: 'Insta360 X5',
       layout: 'multi-track',
@@ -455,7 +455,7 @@ describe('openRecording', () => {
     const source = sourceOf({ main: { url: SECOND_URL }, second: { url: MAIN_URL } });
 
     const opened = await openRecording(source, ports, new AbortController().signal);
-    await opened.audioTrack?.openSegments();
+    opened.soundSegments?.();
 
     expect(opened.metadata.hasAudio).toBe(true);
     expect(audioPackager.packaged).toEqual([SOUND_CONFIGURATION]);

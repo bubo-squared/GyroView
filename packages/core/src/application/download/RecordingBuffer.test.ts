@@ -3,6 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { RecordingBuffer } from './RecordingBuffer';
 import { seconds } from '../../shared/units/time';
 import { FakeMediaBuffer } from '../../testing/FakeMediaBuffer';
+import { describeMediaBufferContract } from '../../testing/MediaBuffer.contract';
+
+describeMediaBufferContract('recording of two files', () => {
+  const files = [new FakeMediaBuffer(false), new FakeMediaBuffer(false)];
+  return Promise.resolve({
+    buffer: new RecordingBuffer(files),
+    bringMore: (): Promise<void> => {
+      files[1]?.progress(false);
+      return Promise.resolve();
+    },
+  });
+});
 
 describe('RecordingBuffer', () => {
   it('is ready to resume once every file of the recording is', () => {

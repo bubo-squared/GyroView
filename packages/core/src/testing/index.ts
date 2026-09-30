@@ -47,6 +47,7 @@ export {
 } from './TrailerFixtureBuilder';
 export { FakeCodecReader } from './FakeCodecReader';
 export { FakeMediaBuffer } from './FakeMediaBuffer';
+export { describeMediaBufferContract, type MediaBufferUnderTest } from './MediaBuffer.contract';
 export { describeCodecReaderContract, type CodecReaderUnderTest } from './CodecReader.contract';
 export { FakeAudioSampleSource } from './FakeAudioSampleSource';
 export { describeByteStreamContract } from './ByteStream.contract';

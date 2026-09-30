@@ -135,10 +135,10 @@ interface ChosenClock {
  * otherwise a wall clock, with a warning saying why there is no sound.
  */
 async function clockFor(parts: PipelineParts): Promise<ChosenClock> {
-  const { audioTrack } = parts.opened;
-  if (!audioTrack) return wallClock(NO_AUDIO_WARNING);
+  const { soundSegments } = parts.opened;
+  if (!soundSegments) return wallClock(NO_AUDIO_WARNING);
   try {
-    const segments = await audioTrack.openSegments();
+    const segments = soundSegments();
     if (!MediaSourceAudioClock.isSupported(segments)) return wallClock(AUDIO_UNSUPPORTED_WARNING);
     // The audio element is the host's, shared with any newer load: a superseded load must not
     // take it over. The pipeline stops right after this, whatever clock it got.

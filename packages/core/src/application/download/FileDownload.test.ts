@@ -10,6 +10,7 @@ import {
   type CameraLayout,
   type CameraRecording,
 } from '../../testing/cameraRecording';
+import { describeMediaBufferContract } from '../../testing/MediaBuffer.contract';
 import { SimulatedLink } from '../../testing/SimulatedLink';
 import { settle } from '../../../test/support/settle';
 
@@ -131,6 +132,18 @@ async function idle(link: SimulatedLink, ticks: number): Promise<void> {
     await settle();
   }
 }
+
+describeMediaBufferContract('file download', () => {
+  const context = setup();
+  context.download.openCursor(RECORDING.lens0, 0);
+  context.download.startReadingAhead();
+  return Promise.resolve({
+    buffer: context.download,
+    bringMore: async (): Promise<void> => {
+      await idle(context.link, 3);
+    },
+  });
+});
 
 describe('FileDownload', () => {
   it("hands each reader its track's samples in order as their bytes come", async () => {

@@ -50,6 +50,8 @@ export { FakeCodecReader } from './FakeCodecReader';
 export { describeCodecReaderContract, type CodecReaderUnderTest } from './CodecReader.contract';
 export { FakeAudioSampleSource } from './FakeAudioSampleSource';
 export { describeByteStreamContract } from './ByteStream.contract';
+export { openDownloadedFile } from './openDownloadedFile';
+export { cameraRecording, type CameraLayout, type CameraRecording } from './cameraRecording';
 export { SimulatedLink, type SimulatedNetwork, type SimulatedRequest } from './SimulatedLink';
 export {
   describeAudioSampleSourceContract,

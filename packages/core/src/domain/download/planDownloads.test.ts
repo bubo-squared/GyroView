@@ -130,6 +130,18 @@ describe('planDownloads', () => {
     expect(spansOf(plan.start)).toEqual([[0, SLOT]]);
   });
 
+  it('reads the next frame of every picture reader, however far apart and whatever the budget', () => {
+    const file = cameraFile();
+    const cursors = [at(file.lens0, 0, true), at(file.lens0, 600, true)];
+    const beforePlaying = planDownloads(stateOf({ cursors, isReadingAhead: false }));
+    expect(spansOf(beforePlaying.start)).toEqual([
+      [0, FRAME],
+      [600 * SLOT, 600 * SLOT + FRAME],
+    ]);
+    const playing = planDownloads(stateOf({ cursors, held: heldSlots(0, 121) }));
+    expect(spansOf(playing.start)).toEqual([[600 * SLOT, 600 * SLOT + FRAME]]);
+  });
+
   it('reads ahead of the picture in ranges of at most the request size, lowest first, so many at a time', () => {
     const file = cameraFile();
     const plan = planDownloads(stateOf({ cursors: everyTrackAt(file, 0) }));

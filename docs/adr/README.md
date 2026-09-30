@@ -33,3 +33,4 @@ new record takes the next number and a line here.
 - [ADR 0027](0027-credentials-follow-crossorigin.md): Credentials follow `crossorigin`, and go with the recording
 - [ADR 0028](0028-the-controls-fit-the-player-and-the-pointer.md): The controls fit the player's width and the pointer
 - [ADR 0029](0029-the-player-reads-the-sample-tables-and-downloads-the-bytes.md): The player reads the sample tables and downloads the bytes itself
+- [ADR 0030](0030-errors-say-whose-side-they-are-on.md): Errors say whose side they are on; a browser without WebCodecs has its own code

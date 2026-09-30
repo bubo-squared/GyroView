@@ -214,8 +214,9 @@ and `equirectangularPixelOf`, the oracle the renderer tests read panoramas with.
 
 Branded units (`Microseconds`, `Milliseconds`, `Seconds`, `Degrees`, `Radians`) so the
 format's mixed units cannot be confused; `Vector3`, `Matrix3`, `Quaternion` with the rotation
-conventions in one place; `GyroViewError` with stable codes; a `TypedEmitter`, and the
-`Outbox` that holds a change's events until the change is whole (ADR 0021); a protobuf reader;
+conventions in one place; `GyroViewError` with stable codes and their categories (ADR 0030); a
+`TypedEmitter`, and the `Outbox` that holds a change's events until the change is whole (ADR
+0021); a protobuf reader;
 `Deferred` for waiting without timers (the core has none); `lazy` for a value made
 on first request.
 

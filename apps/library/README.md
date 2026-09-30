@@ -191,7 +191,8 @@ loads a recording only for the player in view, removing `src` from the others.
 
 ## Requirements
 
-- **A secure page.** WebCodecs exists only on `https://` pages, or `http://localhost`.
+- **A secure page.** WebCodecs exists only on `https://` pages, or `http://localhost`; elsewhere
+  the player fails with `webcodecs-unavailable`.
 - **Recordings served in byte ranges.** The server answers `Range` requests with `206`, and
   sends CORS headers when the recordings live on another origin than the page:
 
@@ -230,8 +231,10 @@ Until 1.0, a minor version may change the API; [CHANGELOG.md](./CHANGELOG.md) sa
 ## Reference
 
 Every attribute, method, event and keyboard shortcut is in the
-[project README](https://github.com/bubo-squared/GyroView#using-the-player); hosting and the
-error codes are in [docs/DEPLOYMENT.md](https://github.com/bubo-squared/GyroView/blob/main/docs/DEPLOYMENT.md).
+[project README](https://github.com/bubo-squared/GyroView#using-the-player), and what a failure
+tells a page, with what a `<video>` fallback can do, under
+[When a recording cannot play](https://github.com/bubo-squared/GyroView#when-a-recording-cannot-play);
+hosting and the error codes are in [docs/DEPLOYMENT.md](https://github.com/bubo-squared/GyroView/blob/main/docs/DEPLOYMENT.md).
 
 ## License
 

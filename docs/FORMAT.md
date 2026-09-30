@@ -131,14 +131,16 @@ additionally shifted by the info record's gyro offset (1.6 ms on X5). Stabilizat
 
 Underscore-separated numbers; token 0 is the lens count; the last token is a version word
 (v1: lens type in the low 10 bits, upper bits that differ between cameras and carry no version;
-v2/v3: version 2 or 3 in the high 16 bits). The lens type is not used.
+v2/v3/v6: version 2, 3 or 6 in the high 16 bits, `0x0400` in the low bits on every word seen).
+The lens type is not used.
 
-| Version        | Tokens per lens | Per-lens fields                                                              | Model                                                                        |
-| -------------- | --------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| v1 `offset`    | 6               | r cx cy yaw pitch roll (+ canvas width, height after the lenses)             | equidistant, r = radius 96 degrees from the axis (ADR 0023); read first      |
-| v2 `offset_v2` | 16              | r cx cy yaw pitch roll tx ty tz c1 c2 c3 c4 width height type                | polynomial in radians scaled so 100 degrees maps to r (hypothesis, ADR 0005) |
-| v3 `offset_v3` | 19              | xi fx fy cx cy yaw pitch roll tx ty tz k1 k2 k3 p1 p2 width height type      | unified (Mei) with radial-tangential distortion                              |
-| v6             | 27              | xi fx fy cx cy yaw pitch roll tx ty tz + 13 coefficients + width height type | not supported yet                                                            |
+| Version        | Tokens per lens | Per-lens fields                                                                                 | Model                                                                                               |
+| -------------- | --------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| v1 `offset`    | 6               | r cx cy yaw pitch roll (+ canvas width, height after the lenses)                                | equidistant, r = radius 96 degrees from the axis (ADR 0023); read first                             |
+| v2 `offset_v2` | 16              | r cx cy yaw pitch roll tx ty tz c1 c2 c3 c4 width height type                                   | polynomial in radians scaled so 100 degrees maps to r (hypothesis, ADR 0005)                        |
+| v3 `offset_v3` | 19              | xi fx fy cx cy yaw pitch roll tx ty tz k1 k2 k3 p1 p2 width height type                         | unified (Mei) with radial-tangential distortion                                                     |
+| v6 `offset_v6` | 27              | xi fx fy cx cy yaw pitch roll tx ty tz k1 k2 k3 k4 k5 p1 p2 p3 p4 s1 s2 s3 s4 width height type | unified (Mei), drawn with k1..k5 and p1 p2; p3 p4 s1..s4 carried, not drawn (ADR 0032, provisional) |
 
 Angles in degrees, translations in metres relative to lens 0, pixel values on a canvas of
-lens-count squares side by side (10752 x 5376 on X5; lens 1 `cx` is offset by 5376).
+lens-count squares side by side (10752 x 5376 on X5, 15488 x 7744 on the X6; lens 1 `cx` is
+offset by one square).

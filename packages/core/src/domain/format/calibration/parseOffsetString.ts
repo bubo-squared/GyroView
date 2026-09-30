@@ -1,33 +1,38 @@
 import type { VersionedCalibration } from './CalibrationVersion';
 import { type CalibrationStringLayout, type LensBlock } from './layouts/CalibrationStringLayout';
 import { LEGACY_CALIBRATION_LAYOUT } from './layouts/LegacyCalibrationLayout';
-import { MEI_CALIBRATION_LAYOUT } from './layouts/MeiCalibrationLayout';
-import { POLYNOMIAL_CALIBRATION_LAYOUT } from './layouts/PolynomialCalibrationLayout';
 import {
-  FIRST_LENS_TOKEN,
-  LENS_COUNT_TOKEN,
-  V6_LENS_TOKENS,
-  VERSIONED_TRAILING_TOKENS,
-} from './offsetTokens';
+  EXTENDED_MEI_CALIBRATION_LAYOUT,
+  MEI_CALIBRATION_LAYOUT,
+} from './layouts/MeiCalibrationLayout';
+import { POLYNOMIAL_CALIBRATION_LAYOUT } from './layouts/PolynomialCalibrationLayout';
+import { FIRST_LENS_TOKEN, LENS_COUNT_TOKEN } from './offsetTokens';
 import { GyroViewError } from '../../../shared/errors/GyroViewError';
 
 const TOKEN_SEPARATOR = '_';
 
-const LAYOUTS: readonly CalibrationStringLayout[] = [
+/**
+ * Every calibration string version the player reads; their token counts never coincide for a
+ * lens count.
+ */
+export const CALIBRATION_LAYOUTS: readonly CalibrationStringLayout[] = [
   LEGACY_CALIBRATION_LAYOUT,
   POLYNOMIAL_CALIBRATION_LAYOUT,
   MEI_CALIBRATION_LAYOUT,
+  EXTENDED_MEI_CALIBRATION_LAYOUT,
 ];
 
 /**
- * Parses `offset`, `offset_v2` and `offset_v3` strings into a calibration set with its version. The
- * layout is detected from the token count; the v6 layout (13 distortion coefficients per lens) is
- * recognised and rejected explicitly.
+ * Parses a calibration string of any version into a calibration set with its version, the layout
+ * detected from the token count among `layouts`: the player's, or a measurement's own readings.
  */
-export function parseOffsetString(text: string): VersionedCalibration {
+export function parseOffsetString(
+  text: string,
+  layouts: readonly CalibrationStringLayout[] = CALIBRATION_LAYOUTS,
+): VersionedCalibration {
   const numbers = text.split(TOKEN_SEPARATOR).map((token) => parseNumber(token, text));
   const lensCount = numbers[LENS_COUNT_TOKEN] ?? 0;
-  const layout = detectLayout(numbers.length, lensCount, text);
+  const layout = detectLayout(layouts, numbers, text);
   const versionWord = numbers.at(-1) ?? 0;
   ensureVersionWordFits(layout, versionWord);
   const blocks = Array.from({ length: lensCount }, (_unused, lensIndex) =>
@@ -45,24 +50,19 @@ function tokenCountFor(lensCount: number, lensTokens: number, trailingTokens: nu
 }
 
 function detectLayout(
-  tokenCount: number,
-  lensCount: number,
+  layouts: readonly CalibrationStringLayout[],
+  numbers: readonly number[],
   text: string,
 ): CalibrationStringLayout {
-  const layout = LAYOUTS.find(
+  const lensCount = numbers[LENS_COUNT_TOKEN] ?? 0;
+  const layout = layouts.find(
     (candidate) =>
-      tokenCount === tokenCountFor(lensCount, candidate.lensTokens, candidate.trailingTokens),
+      numbers.length === tokenCountFor(lensCount, candidate.lensTokens, candidate.trailingTokens),
   );
   if (layout) return layout;
-  if (tokenCount === tokenCountFor(lensCount, V6_LENS_TOKENS, VERSIONED_TRAILING_TOKENS)) {
-    throw new GyroViewError(
-      'unsupported-calibration',
-      'calibration string uses the v6 layout (13 distortion coefficients), which is not supported yet',
-    );
-  }
   throw new GyroViewError(
     'invalid-calibration',
-    `calibration string has ${tokenCount} tokens for ${lensCount} lenses, matching no known layout: ${text}`,
+    `calibration string has ${numbers.length} tokens for ${lensCount} lenses, matching no known layout: ${text}`,
   );
 }
 

@@ -19,12 +19,13 @@ import { openStudioMoment, type StudioMoment } from './support/studioFrame';
 const COMPARED_TIMES = new Set([55, 100, 175]);
 /**
  * The radial scales tried on each reading, against the reading as the core reads it: the legacy
- * radius at 96 to 98 degrees for the equidistant model, the Mei model up to its best on the two
- * X5 units (ADR 0023); the polynomial reading, a fallback, as it is.
+ * radius at 96 to 98 degrees for the equidistant model, both Mei readings up to the Mei model's
+ * best on the two X5 units (ADR 0023); the polynomial reading, a fallback, as it is.
  */
 const RADIAL_SCALES: Readonly<Record<string, readonly number[]>> = {
   equidistant: [1, 0.99, 0.98],
   mei: [1, 1.02, 1.04],
+  'extended-mei': [1, 1.02, 1.04],
   polynomial: [1],
 };
 /**

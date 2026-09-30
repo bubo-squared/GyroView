@@ -61,6 +61,31 @@ export const V3Token = {
 } as const;
 
 /**
+ * `offset_v6` after the Mei tokens: five radial terms, four tangential and four thin-prism
+ * tokens, then the canvas and the lens type. The order is insta360-rs's (`docs/INSV_FORMAT.md`),
+ * confirmed on the X5, whose v6 and v3 strings agree on the Mei tokens, the canvas and the lens
+ * type (ADR 0032).
+ */
+export const V6Token = {
+  K1: 11,
+  K2: 12,
+  K3: 13,
+  K4: 14,
+  K5: 15,
+  P1: 16,
+  P2: 17,
+  P3: 18,
+  P4: 19,
+  S1: 20,
+  S2: 21,
+  S3: 22,
+  S4: 23,
+  CanvasWidth: 24,
+  CanvasHeight: 25,
+  LensType: 26,
+} as const;
+
+/**
  * Tokens after the lens blocks. v1 ends with canvas width, canvas height and a version word;
  * v2 and v3 end with the version word only.
  */
@@ -76,7 +101,7 @@ export const V6_LENS_TOKENS = 27;
 export const VERSIONED_TRAILING_TOKENS = 1;
 
 /**
- * The version word: v2/v3 keep the version in the high 16 bits. v1 keeps the lens type in the
+ * The version word: v2, v3 and v6 keep the version in the high 16 bits. v1 keeps the lens type in the
  * low 10 bits (1137 on the X5 = lens type 113, 3105 on the ONE R = lens type 33); its upper bits
  * vary between cameras and carry no version.
  */

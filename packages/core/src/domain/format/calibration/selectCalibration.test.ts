@@ -47,20 +47,27 @@ describe('selectCalibration', () => {
     const choice = selectCalibration({
       ...NONE,
       offsetV2: OFFICE_CALIBRATION.offsetV2,
-      offsetV3: v6CalibrationString(),
+      offsetV3: '2_1_2_3',
     });
     expect(choice.calibration?.version).toBe(CalibrationVersion.Polynomial);
     expect(choice.warnings).toEqual([
-      expect.stringMatching(/^offset_v3 skipped: .*v6 layout/) as string,
+      expect.stringMatching(/^offset_v3 skipped: .*matching no known layout/) as string,
     ]);
   });
 
-  it('names the v6 string it cannot read yet, when it is the only one', () => {
-    const choice = selectCalibration({ ...NONE, offsetV6: OFFICE_CALIBRATION.offsetV6 });
-    expect(choice.calibration).toBeUndefined();
-    expect(choice.warnings).toEqual([
-      expect.stringMatching(/^offset_v6 skipped: .*not supported yet/) as string,
-    ]);
+  it('prefers the v6 string, the newer Mei fit, to v3 without the legacy string', () => {
+    const choice = selectCalibration({
+      ...NONE,
+      offsetV3: OFFICE_CALIBRATION.offsetV3,
+      offsetV6: OFFICE_CALIBRATION.offsetV6,
+    });
+    expect(choice.calibration?.version).toBe(CalibrationVersion.ExtendedMei);
+    expect(choice.warnings).toEqual([]);
+  });
+
+  it('reads a recording that carries only the v6 string, as the X6 does', () => {
+    const choice = selectCalibration({ ...NONE, offsetV6: v6CalibrationString() });
+    expect(choice.calibration?.version).toBe(CalibrationVersion.ExtendedMei);
   });
 
   it('skips a malformed string but propagates programming errors', () => {

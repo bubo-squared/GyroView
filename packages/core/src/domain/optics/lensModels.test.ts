@@ -6,6 +6,7 @@ import type { Vector3 } from '../../shared/math/Vector3';
 import { OFFICE_CALIBRATION } from '../../../test/support/officeCalibration';
 
 const mei = parseOffsetString(OFFICE_CALIBRATION.offsetV3).lenses;
+const extendedMei = parseOffsetString(OFFICE_CALIBRATION.offsetV6).lenses;
 const polynomial = parseOffsetString(OFFICE_CALIBRATION.offsetV2).lenses;
 const equidistant = parseOffsetString(OFFICE_CALIBRATION.offset).lenses;
 
@@ -69,6 +70,11 @@ describe('lens models on the X5 office lenses', () => {
       expect(lens.model.project(directionAt(101))).toBeUndefined();
       expect(lens.model.project([0, 0, -1])).toBeUndefined();
     }
+  });
+
+  it('the v6 reading images every angle within 2 px of the radius v3 does (ADR 0032)', () => {
+    expect(worstRadialDifference(extendedMei[0]!.model, mei[0]!.model)).toBeLessThan(2);
+    expect(worstRadialDifference(extendedMei[1]!.model, mei[1]!.model)).toBeLessThan(2);
   });
 
   it('polynomial model reproduces the MEI model within 10 px across the field', () => {

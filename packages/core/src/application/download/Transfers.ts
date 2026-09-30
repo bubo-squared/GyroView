@@ -96,6 +96,7 @@ export class Transfers {
   private finish(transfer: Transfer): void {
     if (!this.isRunning(transfer)) return;
     this.running.delete(transfer.id);
+    this.parts.store.complete(transfer.block);
     this.parts.listener.onEnd();
   }
 

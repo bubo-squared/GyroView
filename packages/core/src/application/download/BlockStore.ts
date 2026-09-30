@@ -12,6 +12,10 @@ export interface Block {
 
 class FillingBlock implements Block {
   public filled = 0;
+  /**
+   * No more of its bytes will come: all have, or its range was given up.
+   */
+  public isComplete = false;
 
   public constructor(
     public readonly range: ByteRange,
@@ -52,11 +56,19 @@ export class BlockStore {
   }
 
   /**
+   * Every byte of the block has come.
+   */
+  public complete(block: Block): void {
+    this.fillingOf(block).isComplete = true;
+  }
+
+  /**
    * Keeps of a block only what has come, as when its range is given up; a block that got
    * nothing goes.
    */
   public trim(block: Block): void {
     const filling = this.fillingOf(block);
+    filling.isComplete = true;
     filling.bytes = filling.bytes.slice(0, filling.filled);
     this.blocks = this.blocks.filter((held) => held.bytes.byteLength > 0);
   }
@@ -71,10 +83,13 @@ export class BlockStore {
   }
 
   /**
-   * Lets go of the blocks whose every byte `released` holds.
+   * Lets go of the complete blocks whose every byte `released` holds; a block still filling is
+   * its transfer's until it ends.
    */
   public release(released: ByteRangeSet): void {
-    this.blocks = this.blocks.filter((block) => !released.covers(block.filledRange));
+    this.blocks = this.blocks.filter(
+      (block) => !block.isComplete || !released.covers(block.filledRange),
+    );
   }
 
   private fillingOf(block: Block): FillingBlock {

@@ -39,6 +39,7 @@ export type {
   WarningCode,
 } from '@gyroview/player';
 export {
+  GYRO_VIEW_ERROR_CATEGORIES,
   GYRO_VIEW_ERROR_CODES,
   GyroViewError,
   hasErrorCode,
@@ -52,6 +53,7 @@ export {
   type ExposureReport,
   type ExposureSummary,
   type GyroSummary,
+  type GyroViewErrorCategory,
   type GyroViewErrorCode,
   type LensSummary,
   type PictureQuality,

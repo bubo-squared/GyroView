@@ -35,11 +35,66 @@ export const GYRO_VIEW_ERROR_CODES = [
 
 export type GyroViewErrorCode = (typeof GYRO_VIEW_ERROR_CODES)[number];
 
+/**
+ * Whose side a failure is on, for embedders that handle failures by kind: the browser cannot
+ * decode or draw the recording, the file is not one the player can play, its bytes could not be
+ * read, the page misused the API, or the player failed in a way it did not expect.
+ */
+export const GYRO_VIEW_ERROR_CATEGORIES = [
+  'browser',
+  'recording',
+  'source',
+  'usage',
+  'internal',
+] as const;
+
+export type GyroViewErrorCategory = (typeof GYRO_VIEW_ERROR_CATEGORIES)[number];
+
+/**
+ * A record, so a new code cannot be added without its category.
+ */
+const CATEGORY_OF_CODE: Readonly<Record<GyroViewErrorCode, GyroViewErrorCategory>> = {
+  'binary-out-of-bounds': 'recording',
+  'binary-unsafe-integer': 'recording',
+  'codec-unsupported': 'browser',
+  cors: 'source',
+  decode: 'browser',
+  'embed-destroyed': 'usage',
+  'index-out-of-range': 'internal',
+  'invalid-argument': 'usage',
+  'invalid-byte-range': 'recording',
+  'invalid-calibration': 'recording',
+  'invalid-protobuf': 'recording',
+  'invalid-trailer': 'recording',
+  'invariant-violation': 'internal',
+  'missing-second-file': 'recording',
+  'no-calibration': 'recording',
+  'no-info-record': 'recording',
+  'no-key-frame': 'recording',
+  'playback-blocked': 'browser',
+  'range-unsupported': 'source',
+  'render-unavailable': 'browser',
+  'source-changed': 'source',
+  'source-truncated': 'source',
+  'source-unreadable': 'source',
+  'unsupported-calibration': 'recording',
+  'unsupported-container': 'recording',
+  'unsupported-gyro-record': 'recording',
+  'unsupported-info-format': 'recording',
+  'unsupported-layout': 'recording',
+  'webcodecs-unavailable': 'browser',
+};
+
 export function isGyroViewErrorCode(value: unknown): value is GyroViewErrorCode {
   return typeof value === 'string' && (GYRO_VIEW_ERROR_CODES as readonly string[]).includes(value);
 }
 
 export class GyroViewError extends Error {
+  /**
+   * Its own property rather than a getter, so a serialized or logged copy of the error keeps it.
+   */
+  public readonly category: GyroViewErrorCategory;
+
   public constructor(
     public readonly code: GyroViewErrorCode,
     message: string,
@@ -47,6 +102,7 @@ export class GyroViewError extends Error {
   ) {
     super(message, options);
     this.name = 'GyroViewError';
+    this.category = CATEGORY_OF_CODE[code];
   }
 }
 

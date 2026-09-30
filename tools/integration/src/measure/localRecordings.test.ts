@@ -1,10 +1,23 @@
 import { readPixels } from '@gyroview/adapter-three/testing';
-import { buildStitchingSetup, type Vector3 } from '@gyroview/core';
+import {
+  buildStitchingSetup,
+  DecodePipeline,
+  FramePairQueue,
+  seconds,
+  type Vector3,
+} from '@gyroview/core';
+import { waitFor } from '@gyroview/player/testing';
+import {
+  DECODE_PIPELINE_OPTIONS,
+  PAIR_QUEUE_CAPACITY,
+  type OpenedRecording,
+} from '@gyroview/player/composition';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { drawAndSaveRender, saveMeasurement, saveRender } from '../browser/artifacts';
 import { LOCAL_SAMPLES } from '../browser/localSamples';
 import { coverageOf, measureCentre } from '../browser/pictureChecks';
+import { port } from '../browser/realRecordingSupport';
 import { calibrationOf, equirectangularRendering } from '../browser/rendering';
 import { SharedSample } from '../browser/SharedSample';
 
@@ -12,6 +25,48 @@ const PANORAMA_SIZE = { width: 1536, height: 768 };
 const MIN_COVERAGE = 0.97;
 const UNITY_GAIN: Vector3 = [1, 1, 1];
 const SILENCED: Vector3 = [0, 0, 0];
+
+/**
+ * Pairs decoded after the first, to time the decoders at their steady pace.
+ */
+const TIMED_PAIRS = 100;
+const THROUGHPUT_TIMEOUT_MS = 60_000;
+const MILLISECONDS_PER_SECOND = 1000;
+
+/**
+ * How many pairs a second the decoders deliver from `from`, each closed as it arrives: what
+ * playback needs to keep up with the recording's frame rate (ADR 0033's 8K50 question).
+ */
+async function pairsPerSecondOf(opened: OpenedRecording, from: number): Promise<number> {
+  const pipeline = new DecodePipeline<VideoFrame>(
+    opened.frameSources,
+    port,
+    DECODE_PIPELINE_OPTIONS,
+  );
+  const queue = new FramePairQueue<VideoFrame>(PAIR_QUEUE_CAPACITY);
+  const run = pipeline.run(seconds(from), queue);
+  let taken = 0;
+  let started: number | undefined;
+  await waitFor(
+    () => {
+      for (let head = queue.peekTimestamp(); head !== undefined; head = queue.peekTimestamp()) {
+        const pair = queue.takePairAt(head);
+        if (!pair) break;
+        for (const frame of pair.frames) frame.close();
+        started ??= performance.now();
+        taken += 1;
+      }
+      return taken > TIMED_PAIRS;
+    },
+    `${TIMED_PAIRS} decoded pairs`,
+    THROUGHPUT_TIMEOUT_MS,
+  );
+  const elapsed = (performance.now() - (started ?? 0)) / MILLISECONDS_PER_SECOND;
+  pipeline.abort();
+  await run;
+  queue.close();
+  return (taken - 1) / elapsed;
+}
 
 /**
  * The recordings only this machine has (ADR 0031), drawn and measured as the committed samples
@@ -57,6 +112,16 @@ for (const local of LOCAL_SAMPLES) {
       const measurements = setup.lenses.map((lens) => measureCentre(opened, lens, first));
       await saveMeasurement(`${local.slug}-${local.renderMoment}s-image-circle`, measurements);
       expect(measurements).toHaveLength(setup.lenses.length);
+    });
+
+    it(`decodes pairs from ${local.renderMoment} s at a pace it reports against its frame rate`, async (context) => {
+      const opened = await shared.open(context);
+      const pairsPerSecond = await pairsPerSecondOf(opened, local.renderMoment);
+      await saveMeasurement(`${local.slug}-decode-rate`, {
+        pairsPerSecond,
+        frameRate: local.frameRate,
+      });
+      expect(pairsPerSecond).toBeGreaterThan(0);
     });
   });
 }

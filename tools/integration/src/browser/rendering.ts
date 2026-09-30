@@ -73,7 +73,22 @@ export function equirectangularRendering(
   return renderingWith(make, { setup: setupOf(opened), size });
 }
 
+/**
+ * The player's picture of the sample: its calibration, layout and display conversions.
+ */
 export function setupOf(opened: OpenedRecording): StitchingSetup {
+  return buildStitchingSetup({
+    calibration: calibrationOf(opened),
+    layout: opened.layout,
+    displayConversions: opened.displayConversions,
+  });
+}
+
+/**
+ * The sample drawn as recorded, in its own signal: what a Studio export of that signal (HLG on
+ * the X6) is compared with, so that colour stays out of the geometry.
+ */
+export function recordedSetupOf(opened: OpenedRecording): StitchingSetup {
   return buildStitchingSetup({ calibration: calibrationOf(opened), layout: opened.layout });
 }
 

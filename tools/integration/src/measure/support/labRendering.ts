@@ -3,8 +3,8 @@ import type { StitchingSetup } from '@gyroview/core';
 import type { OpenedRecording } from '@gyroview/player/composition';
 
 import {
+  recordedSetupOf,
   renderingWith,
-  setupOf,
   type CanvasSize,
   type EquirectangularRendering,
   type RendererMaker,
@@ -15,13 +15,13 @@ const makeLabRenderer: RendererMaker<LabRenderer> = (canvas, setup, options) =>
 
 /**
  * The sample stitched by the lab's renderer, which the measurements turn and read: the player's
- * picture, with a lens pose to set, the seam join and the mismatch meter.
+ * geometry drawn as recorded, with a lens pose to set, the seam join and the mismatch meter.
  */
 export function labRendering(
   opened: OpenedRecording,
   size: CanvasSize,
 ): EquirectangularRendering<LabRenderer> {
-  return labRenderingOfSetup(setupOf(opened), size);
+  return labRenderingOfSetup(recordedSetupOf(opened), size);
 }
 
 /**

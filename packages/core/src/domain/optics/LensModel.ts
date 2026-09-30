@@ -1,3 +1,4 @@
+import type { MeiDistortion } from './MeiDistortion';
 import type { PixelPoint } from './PixelPoint';
 import type { Vector3 } from '../../shared/math/Vector3';
 import type { Radians } from '../../shared/units/angle';
@@ -15,8 +16,7 @@ export type LensProjectionParameters =
       readonly xi: number;
       readonly focal: readonly [fx: number, fy: number];
       readonly principalPoint: PixelPoint;
-      readonly radial: readonly [k1: number, k2: number, k3: number];
-      readonly tangential: readonly [p1: number, p2: number];
+      readonly distortion: MeiDistortion;
     }
   | {
       readonly kind: 'radial-polynomial';

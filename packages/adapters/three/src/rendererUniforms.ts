@@ -3,9 +3,11 @@ import {
   ensureIndexInRange,
   ensureInvariant,
   IDENTITY_MATRIX3,
+  MEI_TERM_CAPACITY,
   planeHalfExtentOf,
   type LensProjectionParameters,
   type LensStitch,
+  type MeiDistortion,
   type Matrix3 as CoreMatrix3,
   type Picture,
   type ScreenRectangle,
@@ -41,6 +43,9 @@ export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntri
   ['MAX_LENSES', MAX_LENSES],
   ['LENS_MEI', LENS_MEI],
   ['LENS_RADIAL_POLYNOMIAL', LENS_RADIAL_POLYNOMIAL],
+  ['MEI_RADIAL_TERMS', MEI_TERM_CAPACITY.radial],
+  ['MEI_TANGENTIAL_ORDERS', MEI_TERM_CAPACITY.tangential],
+  ['MEI_THIN_PRISM_ORDERS', MEI_TERM_CAPACITY.thinPrism],
   ['SAMPLING_BILINEAR', SAMPLING_BILINEAR],
   ['SAMPLING_TRILINEAR', SAMPLING_TRILINEAR],
   ['SAMPLING_SUPERSAMPLED', SAMPLING_SUPERSAMPLED],
@@ -64,8 +69,9 @@ export interface RendererUniforms {
   readonly uLensPrincipalPoint: IUniform<Vector2[]>;
   readonly uLensFocal: IUniform<Vector2[]>;
   readonly uLensXi: IUniform<number[]>;
-  readonly uLensRadial: IUniform<Vector3[]>;
+  readonly uLensRadial: IUniform<number[]>;
   readonly uLensTangential: IUniform<Vector2[]>;
+  readonly uLensThinPrism: IUniform<Vector2[]>;
   readonly uLensPolynomial: IUniform<Vector4[]>;
   readonly uLensHalfFov: IUniform<number[]>;
   readonly uLensWindow: IUniform<Vector4[]>;
@@ -125,6 +131,7 @@ function projectionUniforms(
   | 'uLensXi'
   | 'uLensRadial'
   | 'uLensTangential'
+  | 'uLensThinPrism'
   | 'uLensPolynomial'
   | 'uLensHalfFov'
 > {
@@ -135,8 +142,9 @@ function projectionUniforms(
     uLensPrincipalPoint: { value: lenses.map((lens) => toVector2(lens.projection.principalPoint)) },
     uLensFocal: { value: slots.map((slot) => slot.focal) },
     uLensXi: { value: slots.map((slot) => slot.xi) },
-    uLensRadial: { value: slots.map((slot) => slot.radial) },
-    uLensTangential: { value: slots.map((slot) => slot.tangential) },
+    uLensRadial: { value: slots.flatMap((slot) => slot.radial) },
+    uLensTangential: { value: slots.flatMap((slot) => slot.tangential) },
+    uLensThinPrism: { value: slots.flatMap((slot) => slot.thinPrism) },
     uLensPolynomial: { value: slots.map((slot) => slot.polynomial) },
     uLensHalfFov: { value: lenses.map((lens) => lens.halfFieldOfView) },
   };
@@ -144,16 +152,19 @@ function projectionUniforms(
 
 /**
  * One lens model's parameters as the shader's per-lens slots; the slots a model does not use
- * stay zero.
+ * stay zero. The Mei terms fill each family's room in order, the rest of it zero.
  */
 interface ProjectionSlot {
   readonly kind: number;
   readonly focal: Vector2;
   readonly xi: number;
-  readonly radial: Vector3;
-  readonly tangential: Vector2;
+  readonly radial: readonly number[];
+  readonly tangential: readonly Vector2[];
+  readonly thinPrism: readonly Vector2[];
   readonly polynomial: Vector4;
 }
+
+const NO_MEI_DISTORTION: MeiDistortion = { radial: [], tangential: [], thinPrism: [] };
 
 /**
  * Exhaustive over the projection kinds: a new kind does not compile until it is packed.
@@ -165,8 +176,7 @@ function slotOf(projection: LensProjectionParameters): ProjectionSlot {
         kind: LENS_MEI,
         focal: new Vector2(...projection.focal),
         xi: projection.xi,
-        radial: new Vector3(...projection.radial),
-        tangential: new Vector2(...projection.tangential),
+        ...meiTermSlots(projection.distortion),
         polynomial: new Vector4(),
       };
     }
@@ -175,12 +185,45 @@ function slotOf(projection: LensProjectionParameters): ProjectionSlot {
         kind: LENS_RADIAL_POLYNOMIAL,
         focal: new Vector2(),
         xi: 0,
-        radial: new Vector3(),
-        tangential: new Vector2(),
+        ...meiTermSlots(NO_MEI_DISTORTION),
         polynomial: new Vector4(...projection.coefficients),
       };
     }
   }
+}
+
+function meiTermSlots(
+  distortion: MeiDistortion,
+): Pick<ProjectionSlot, 'radial' | 'tangential' | 'thinPrism'> {
+  return {
+    radial: fittedToCapacity(distortion.radial, MEI_TERM_CAPACITY.radial, () => 0),
+    tangential: fittedToCapacity(
+      distortion.tangential.map((pair) => new Vector2(pair.p1, pair.p2)),
+      MEI_TERM_CAPACITY.tangential,
+      () => new Vector2(),
+    ),
+    thinPrism: fittedToCapacity(
+      distortion.thinPrism.map((term) => new Vector2(term.x, term.y)),
+      MEI_TERM_CAPACITY.thinPrism,
+      () => new Vector2(),
+    ),
+  };
+}
+
+/**
+ * The terms in the room the shader holds for their family, the rest of it zero; more terms than
+ * it holds are a defect of the model that made them.
+ */
+function fittedToCapacity<Term>(
+  terms: readonly Term[],
+  capacity: number,
+  zero: () => Term,
+): Term[] {
+  ensureInvariant(
+    terms.length <= capacity,
+    `a Mei lens has ${terms.length} terms of a family the shader holds ${capacity} of`,
+  );
+  return Array.from({ length: capacity }, (_unused, index) => terms[index] ?? zero());
 }
 
 function samplingUniforms(

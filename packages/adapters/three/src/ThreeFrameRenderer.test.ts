@@ -11,9 +11,11 @@ import {
   seconds,
   stabilizerFor,
   transformVector,
+  type CalibrationSet,
   type DecodedFrame,
   type Framing,
   type FrameSink,
+  type MeiDistortion,
   type Presentation,
   type StitchingSetup,
   type Vector3,
@@ -30,7 +32,12 @@ import {
   solidFrame,
   stripesFrame,
 } from './test/syntheticFrames';
-import { MULTI_TRACK, PACKED, syntheticCalibration } from './test/syntheticStitching';
+import {
+  MULTI_TRACK,
+  PACKED,
+  syntheticCalibration,
+  syntheticMeiCalibration,
+} from './test/syntheticStitching';
 import { ThreeFrameRenderer } from './ThreeFrameRenderer';
 
 /**
@@ -67,6 +74,25 @@ const GRADIENT_TOLERANCE = 2 / 255;
  */
 const OFFICE_MEI =
   '2_2.000000_4296.660_4295.450_2689.890_2681.940_-0.002_0.377_90.524_0.000000_0.000000_0.000000_0.18113680_2.16784811_-3.49636626_-0.00016818_-0.00010206_10752_5376_113_2.000000_4281.830_4282.190_8082.100_2679.470_0.289_0.043_89.987_-0.000907_-0.000055_-0.032061_0.18382449_2.06260586_-3.21479726_0.00075291_0.00063732_10752_5376_113_197632';
+
+const NO_DISTORTION: MeiDistortion = { radial: [], tangential: [], thinPrism: [] };
+
+/**
+ * Yaw and pitch, in degrees, of directions lens 0 images, spread over its field.
+ */
+const PROBES_ON_LENS_ZERO = [
+  [0, 0],
+  [40, 10],
+  [-55, -25],
+  [20, 60],
+  [-70, 5],
+] as const;
+
+function bodyDirectionAt(yawDegrees: number, pitchDegrees: number): Vector3 {
+  const yaw = (yawDegrees * Math.PI) / 180;
+  const pitch = (pitchDegrees * Math.PI) / 180;
+  return [Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)];
+}
 
 interface Rgb {
   readonly r: number;
@@ -181,6 +207,31 @@ describe('ThreeFrameRenderer', () => {
 
   function presentRedAndBlue(renderer: ThreeFrameRenderer): void {
     present(renderer, [solidFrame('#ff0000'), solidFrame('#0000ff')]);
+  }
+
+  /**
+   * Draws lens 0 of the calibration over a gradient, and holds each probe's sampled texel to the
+   * frame position the core model projects the probe's direction to.
+   */
+  function expectLensZeroSampledWhereTheModelProjects(calibration: CalibrationSet): void {
+    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
+    const size = { width: 512, height: 256 };
+    const renderer = open(setup, size);
+    renderer.setViewMode('equirectangular');
+    present(renderer, [gradientFrame(), solidFrame('#000000')]);
+    const [lens] = setup.lenses;
+    const [calibrated] = calibration.lenses;
+    if (!lens || !calibrated) throw new Error('no lens');
+    for (const [yaw, pitch] of PROBES_ON_LENS_ZERO) {
+      const body = bodyDirectionAt(yaw, pitch);
+      const sampled = pixelAt(renderer, equirectangularPixelOf(body, size), size);
+      const expected = calibrated.model.project(transformVector(lensRotation(calibrated), body));
+      if (!expected) throw new Error('direction outside lens 0');
+      const u = (expected.x - lens.window.x) / lens.window.width;
+      const v = (expected.y - lens.window.y) / lens.window.height;
+      expect(Math.abs(sampled.r / 255 - u)).toBeLessThan(GRADIENT_TOLERANCE + 1 / GRADIENT_SIZE);
+      expect(Math.abs(sampled.g / 255 - v)).toBeLessThan(GRADIENT_TOLERANCE + 1 / GRADIENT_SIZE);
+    }
   }
 
   afterEach(() => {
@@ -444,39 +495,38 @@ describe('ThreeFrameRenderer', () => {
   });
 
   it('samples a Mei lens within its canvas square exactly where the core model projects', () => {
-    const calibration = parseOffsetString(OFFICE_MEI);
-    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
-    const size = { width: 512, height: 256 };
-    const renderer = open(setup, size);
-    renderer.setViewMode('equirectangular');
-    present(renderer, [gradientFrame(), solidFrame('#000000')]);
-    const [lens] = setup.lenses;
-    const [calibrated] = calibration.lenses;
-    if (!lens || !calibrated) throw new Error('no lens');
-    for (const [yaw, pitch] of [
-      [0, 0],
-      [40, 10],
-      [-55, -25],
-      [20, 60],
-      [-70, 5],
-    ] as const) {
-      const yawRad = (yaw * Math.PI) / 180;
-      const pitchRad = (pitch * Math.PI) / 180;
-      const body: Vector3 = [
-        Math.sin(yawRad) * Math.cos(pitchRad),
-        -Math.sin(pitchRad),
-        Math.cos(yawRad) * Math.cos(pitchRad),
-      ];
-      const probe = equirectangularPixelOf(body, size);
-      const sampled = pixelAt(renderer, probe, size);
-      const expected = calibrated.model.project(transformVector(lensRotation(calibrated), body));
-      if (!expected) throw new Error('direction outside lens 0');
-      const u = (expected.x - lens.window.x) / lens.window.width;
-      const v = (expected.y - lens.window.y) / lens.window.height;
-      expect(Math.abs(sampled.r / 255 - u)).toBeLessThan(GRADIENT_TOLERANCE + 1 / GRADIENT_SIZE);
-      expect(Math.abs(sampled.g / 255 - v)).toBeLessThan(GRADIENT_TOLERANCE + 1 / GRADIENT_SIZE);
-    }
+    expectLensZeroSampledWhereTheModelProjects(parseOffsetString(OFFICE_MEI));
   });
+
+  // Exaggerated terms, one family at a time: a gradient step is a few canvas pixels, and a term
+  // read with the wrong sign or order moves the sample by tens of them.
+  for (const [family, distortion] of [
+    ['five radial terms', { ...NO_DISTORTION, radial: [0.8, -0.4, 0.3, -0.2, 0.1] }],
+    [
+      'two tangential orders',
+      {
+        ...NO_DISTORTION,
+        tangential: [
+          { p1: 0.08, p2: -0.06 },
+          { p1: 0.3, p2: 0.25 },
+        ],
+      },
+    ],
+    [
+      'two thin-prism orders',
+      {
+        ...NO_DISTORTION,
+        thinPrism: [
+          { x: 0.25, y: -0.2 },
+          { x: 0.5, y: 0.6 },
+        ],
+      },
+    ],
+  ] as const) {
+    it(`samples a Mei lens with ${family} where the core model projects`, () => {
+      expectLensZeroSampledWhereTheModelProjects(syntheticMeiCalibration(distortion));
+    });
+  }
 
   it('averages the finest stripes toward grey where the panorama minifies them, in balanced and high quality', () => {
     const renderer = open();

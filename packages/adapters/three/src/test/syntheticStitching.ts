@@ -7,7 +7,10 @@ import {
   RIGHT_HALF,
   type CalibrationSet,
   type LensLayout,
+  type LensModel,
+  type MeiDistortion,
 } from '@gyroview/core';
+import { MeiModel } from '@gyroview/core/testing';
 
 const SQUARE = 1000;
 const HALF_SQUARE = 500;
@@ -20,13 +23,38 @@ const EDGE_DEGREES = 100;
  * Two ideal 200-degree lenses back to back on a canvas of two squares, no pose corrections.
  */
 export function syntheticCalibration(): CalibrationSet {
+  return backToBack(
+    (principalPoint) =>
+      new EquidistantModel({
+        edgeRadius: HALF_SQUARE,
+        radiusAngle: degreesToRadians(degrees(EDGE_DEGREES)),
+        principalPoint,
+      }),
+  );
+}
+
+/**
+ * The X5's `xi`, and a focal length that keeps the field edge inside the square.
+ */
+const MEI_XI = 2;
+const MEI_FOCAL = 800;
+
+/**
+ * Two Mei lenses of the distortion given, back to back like {@link syntheticCalibration}.
+ */
+export function syntheticMeiCalibration(distortion: MeiDistortion): CalibrationSet {
+  return backToBack(
+    (principalPoint) =>
+      new MeiModel({ xi: MEI_XI, focal: [MEI_FOCAL, MEI_FOCAL], principalPoint, distortion }),
+  );
+}
+
+function backToBack(
+  modelAt: (principalPoint: { readonly x: number; readonly y: number }) => LensModel,
+): CalibrationSet {
   const lens = (lensIndex: number): CalibrationSet['lenses'][number] => ({
     lensIndex,
-    model: new EquidistantModel({
-      edgeRadius: HALF_SQUARE,
-      radiusAngle: degreesToRadians(degrees(EDGE_DEGREES)),
-      principalPoint: { x: lensIndex * SQUARE + HALF_SQUARE, y: HALF_SQUARE },
-    }),
+    model: modelAt({ x: lensIndex * SQUARE + HALF_SQUARE, y: HALF_SQUARE }),
     orientation: { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) },
     translation: [0, 0, 0],
   });

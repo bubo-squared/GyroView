@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { LensModel, LensProjectionParameters } from './LensModel';
+import { distortMei } from './MeiDistortion';
 import { parseOffsetString } from '../format/calibration/parseOffsetString';
 import type { PixelPoint } from './PixelPoint';
 import type { Vector3 } from '../../shared/math/Vector3';
@@ -16,7 +17,8 @@ function directionAt(angleDegrees: number, azimuthDegrees: number): Vector3 {
 }
 
 /**
- * Evaluates the shader-side parameters in TypeScript, the way the GLSL does.
+ * Evaluates the shader-side parameters in TypeScript, the way the GLSL does; the Mei distortion
+ * through the domain's own `distortMei`, which the browser parity tests hold the GLSL to.
  */
 function projectWithParameters(
   parameters: LensProjectionParameters,
@@ -34,16 +36,10 @@ function projectWithParameters(
     };
   }
   const depth = z + parameters.xi;
-  const [mx, my] = [x / depth, y / depth];
-  const r2 = mx * mx + my * my;
-  const [k1, k2, k3] = parameters.radial;
-  const [p1, p2] = parameters.tangential;
-  const radialFactor = 1 + k1 * r2 + k2 * r2 * r2 + k3 * r2 * r2 * r2;
-  const tangentialX = 2 * p1 * mx * my + p2 * (r2 + 2 * mx * mx);
-  const tangentialY = p1 * (r2 + 2 * my * my) + 2 * p2 * mx * my;
+  const [distortedX, distortedY] = distortMei(parameters.distortion, [x / depth, y / depth]);
   return {
-    x: parameters.focal[0] * (radialFactor * mx + tangentialX) + parameters.principalPoint.x,
-    y: parameters.focal[1] * (radialFactor * my + tangentialY) + parameters.principalPoint.y,
+    x: parameters.focal[0] * distortedX + parameters.principalPoint.x,
+    y: parameters.focal[1] * distortedY + parameters.principalPoint.y,
   };
 }
 

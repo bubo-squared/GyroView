@@ -144,6 +144,7 @@ export {
 } from './application/stabilization/StabilizingFrameSink';
 export type { PixelPoint } from './domain/optics/PixelPoint';
 export { EquidistantModel, type EquidistantParameters } from './domain/optics/EquidistantModel';
+export { MEI_TERM_CAPACITY, type MeiDistortion } from './domain/optics/MeiDistortion';
 export {
   GainMatchingFrameSink,
   type GainRenderer,

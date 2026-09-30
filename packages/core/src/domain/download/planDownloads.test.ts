@@ -316,14 +316,13 @@ describe('planDownloads', () => {
   it("tops up while the picture's next seconds are not all held, however little is missing", () => {
     const file = cameraFile();
     const policy = { ...POLICY, resumeSeconds: seconds(1), refillBytes: 1000 * SLOT };
-    const short = planDownloads(
-      stateOf({ cursors: everyTrackAt(file, 0), held: heldSlots(0, 58), policy }),
-    );
-    expect(spansOf(short.start)[0]).toEqual([58 * SLOT, 78 * SLOT]);
-    const held = planDownloads(
+    const held = ByteRangeSet.of([slots(0, 58), slots(62, 80)]);
+    const short = planDownloads(stateOf({ cursors: everyTrackAt(file, 0), held, policy }));
+    expect(spansOf(short.start)[0]).toEqual([58 * SLOT, 62 * SLOT]);
+    const whole = planDownloads(
       stateOf({ cursors: everyTrackAt(file, 0), held: heldSlots(0, 62), policy }),
     );
-    expect(held.start).toEqual([]);
+    expect(whole.start).toEqual([]);
   });
 
   it('waits to top up until a quarter of its bytes is missing', () => {
@@ -413,6 +412,36 @@ describe('planDownloads', () => {
     const cursors = [at(file.lens0, 0), at(file.lens1, 0), at(soundAfter, 0, true)];
     const plan = planDownloads(stateOf({ cursors, held: heldSlots(0, 100) }));
     expect(spansOf(plan.start)).toContainEqual([1200 * SLOT, 1200 * SLOT + SOUND]);
+  });
+
+  it('reads the next sample of a sound reader beyond the byte budget only while it waits', () => {
+    const file = cameraFile();
+    const soundAfter = trackOf('audio', 1200, { at: 1200 * SLOT, size: SOUND });
+    const cursors = [at(file.lens0, 0), at(file.lens1, 0), at(soundAfter, 0)];
+    const policy = { ...POLICY, refillBytes: 1 };
+    const plan = planDownloads(stateOf({ cursors, held: heldSlots(0, 101), policy }));
+    expect(plan.start).toEqual([]);
+  });
+
+  it('reads the next sample of no sound reader waiting beyond the window', () => {
+    const file = cameraFile();
+    const cursors = [at(file.lens0, 0), at(file.lens1, 0), at(file.sound, 1000, true)];
+    const policy = { ...POLICY, refillBytes: 1 };
+    const plan = planDownloads(stateOf({ cursors, held: heldSlots(0, 101), policy }));
+    expect(plan.start).toEqual([]);
+  });
+
+  it('once playing, reads to the end of the window a reader whose target it has passed', () => {
+    const file = cameraFile();
+    const cursors = everyTrackAt(file, 0).map((cursor) => ({ ...cursor, target: frameTime(30) }));
+    const plan = planDownloads(stateOf({ cursors }));
+    expect(spansOf(plan.start)).toEqual(slotSpans([0, 20], [20, 40]));
+  });
+
+  it('reads nothing more for sound that has read all of its samples, where no picture was read', () => {
+    const file = cameraFile();
+    const plan = planDownloads(stateOf({ cursors: [at(file.sound, 1200)] }));
+    expect(plan.start).toEqual([]);
   });
 
   it('reads no sound beyond the window of the picture', () => {

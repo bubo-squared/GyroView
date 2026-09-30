@@ -177,18 +177,17 @@ interface TopUp extends Window {
 
 /**
  * Whether to ask for what is missing now: a reader needs it at once, the resume threshold is
- * not all held, a refill's worth is missing, or the window reaches the last sample of every
- * track read, so no more will ever be missing.
+ * not all held, or a refill's worth is missing. The last seconds of the tracks come as the
+ * threshold reaches them, however few their bytes.
  */
 function isTopUpDue(topUp: TopUp): boolean {
-  const { state, windowEnd, missing, threshold } = topUp;
+  const { state, missing, threshold } = topUp;
   if (missing.ranges.some((range) => threshold.overlaps(range))) return true;
   const isStarving = state.cursors.some(
     (cursor) =>
       isNeededAtOnce(cursor, topUp) && missing.overlaps(cursor.track.rangeOf(cursor.sample)),
   );
-  const isAtTheEnd = state.cursors.every((cursor) => isLastSampleWithin(cursor, windowEnd));
-  return isStarving || isAtTheEnd || missing.totalLength >= state.policy.refillBytes;
+  return isStarving || missing.totalLength >= state.policy.refillBytes;
 }
 
 /**
@@ -201,11 +200,6 @@ function isNeededAtOnce(cursor: CursorPosition, topUp: TopUp): boolean {
   const { windowStart, state } = topUp;
   const horizon = windowStart.time + (state.isReadingAhead ? state.policy.resumeSeconds : 0);
   return isPicture(cursor) || timeOf(cursor) <= horizon;
-}
-
-function isLastSampleWithin(cursor: CursorPosition, windowEnd: Seconds): boolean {
-  const { track } = cursor;
-  return isAtItsEnd(cursor) || track.timestampOf(track.sampleCount - 1) <= windowEnd;
 }
 
 /**

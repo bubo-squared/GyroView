@@ -136,12 +136,13 @@ class PacketReading implements AsyncIterator<EncodedVideoPacket> {
 
   public async next(): Promise<IteratorResult<EncodedVideoPacket>> {
     if (this.wasReturned()) return DONE;
-    if (!this.cursor)
+    const { cursor } = this;
+    if (!cursor)
       throw new GyroViewError('no-key-frame', `track ${this.parts.track.trackId} has no key frame`);
-    const read = await this.cursor.nextSample();
+    const read = await cursor.nextSample();
     if (!read || this.wasReturned()) return DONE;
     if (!this.isVerified && !this.parts.track.keyframeRule.isKeyframe(read.bytes))
-      return this.startEarlier(read);
+      return this.startEarlier(cursor, read);
     this.isVerified = true;
     return { done: false, value: this.parts.packetOf(read) };
   }
@@ -155,9 +156,12 @@ class PacketReading implements AsyncIterator<EncodedVideoPacket> {
   /**
    * The sample decoding was to start at is no keyframe: starts again at the one before it.
    */
-  private startEarlier(read: CursorSample): Promise<IteratorResult<EncodedVideoPacket>> {
+  private startEarlier(
+    cursor: SampleCursor,
+    read: CursorSample,
+  ): Promise<IteratorResult<EncodedVideoPacket>> {
     this.parts.reject(read.sample);
-    this.cursor?.close();
+    cursor.close();
     this.cursor = this.parts.open();
     return this.next();
   }

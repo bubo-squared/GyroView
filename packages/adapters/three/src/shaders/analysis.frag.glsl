@@ -3,8 +3,8 @@ out vec4 outColor;
 
 // One row per lens: what that lens sees along the seam ring, the circle of directions halfway
 // through the blend band around lens 0's optical axis, sampled around the ring along x. Rows
-// share their directions, so their means differ by exposure (and parallax), not by content.
-// Alpha marks the texels a lens actually images.
+// share their directions, so their means differ by exposure (and parallax), not by content:
+// exposure signals, in which it is a factor (ADR 0033). Alpha marks the texels a lens images.
 void main() {
   int lens = int(floor((vNdc.y + 1.0) * 0.5 * float(MAX_LENSES)));
   float phi = (vNdc.x + 1.0) * PI;
@@ -17,5 +17,5 @@ void main() {
     return;
   }
   LensSample seen = sampleLensWith(lens, dirBody, SAMPLING_BILINEAR);
-  outColor = seen.isImaged ? vec4(seen.color, 1.0) : vec4(0.0);
+  outColor = seen.isImaged ? vec4(seen.signal, 1.0) : vec4(0.0);
 }

@@ -1,6 +1,6 @@
 import { BufferGeometry, Float32BufferAttribute, GLSL3, RawShaderMaterial } from 'three';
 
-import { SHADER_DEFINES, type RendererUniforms } from './rendererUniforms';
+import { SHADER_DEFINES, type RendererUniforms, type ShaderDefines } from './rendererUniforms';
 import fullscreenVertex from './shaders/fullscreen.vert.glsl?raw';
 
 /**
@@ -26,7 +26,7 @@ export function createFullscreenTriangle(): BufferGeometry {
  */
 export interface PassProgram {
   readonly chunks: readonly string[];
-  readonly defines: Readonly<Record<string, number>>;
+  readonly defines: ShaderDefines;
 }
 
 /**

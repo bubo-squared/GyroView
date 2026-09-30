@@ -1,5 +1,4 @@
 import {
-  buildStitchingSetup,
   degrees,
   seconds,
   type DecodedFrame,
@@ -12,7 +11,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { MAX_SLIDES } from './SeamMismatchPass';
 import { nearScenePair, type NearScene } from '../test/nearScene';
-import { MULTI_TRACK, syntheticCalibration } from '../../test/syntheticStitching';
+import { MULTI_TRACK, setupAsRecorded, syntheticCalibration } from '../../test/syntheticStitching';
 import { LabRenderer } from '../LabRenderer';
 
 const CANVAS = { width: 64, height: 32 };
@@ -56,7 +55,7 @@ describe('SeamMismatchPass', () => {
    */
   function meterOver(painting: Pick<NearScene, 'disparity' | 'backBrightness'>): SeamMismatchMeter {
     const calibration = syntheticCalibration();
-    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
+    const setup = setupAsRecorded(MULTI_TRACK, calibration);
     const canvas = document.createElement('canvas');
     canvas.width = CANVAS.width;
     canvas.height = CANVAS.height;

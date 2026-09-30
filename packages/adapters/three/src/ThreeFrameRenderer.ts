@@ -28,6 +28,7 @@ import {
   type RawShaderMaterial,
 } from 'three';
 
+import { MatrixCorrections } from './matrixCorrections';
 import { createFullscreenTriangle } from './fullscreenPass';
 import { createRenderer, type ThreeFrameRendererOptions } from './webglRenderer';
 
@@ -92,6 +93,7 @@ export interface RendererParts {
   readonly materials: PictureMaterials;
   readonly textures: readonly VideoFrameTexture[];
   readonly uniforms: RendererUniforms;
+  readonly matrixCorrections: MatrixCorrections;
   readonly lensCount: number;
   /**
    * The seam meter made at creation to prove its program, kept so the program stays compiled
@@ -230,6 +232,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
       const frame = frames[index];
       if (frame) texture.setFrame(frame.handle);
     }
+    this.parts.matrixCorrections.follow(frames.map((frame) => frame.handle));
     this.hasFrames = true;
     this.render();
   }
@@ -361,6 +364,7 @@ function assembleParts(
     materials,
     textures,
     uniforms,
+    matrixCorrections: new MatrixCorrections(setup.lenses, uniforms.uLensMatrixCorrection),
     lensCount: setup.lenses.length,
     seamProof,
   };

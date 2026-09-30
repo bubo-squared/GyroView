@@ -12,7 +12,7 @@ import { SEAM_JOIN_DEFINES } from './seamJoin';
 import bentJoin from './shaders/bentJoin.glsl?raw';
 import seamMismatchFragment from './shaders/seamMismatch.frag.glsl?raw';
 import type { PictureShaders } from '../pictureMaterials';
-import { SHADER_DEFINES } from '../rendererUniforms';
+import { SHADER_DEFINES, type ShaderDefines } from '../rendererUniforms';
 import { chunksOf, lensProjectionProgram, pictureProgramsWith } from '../shaderPrograms';
 
 /**
@@ -29,7 +29,7 @@ const SEAM_STRIP_DEFINES: readonly (readonly [string, number])[] = [
 /**
  * Every constant the lab's programs refer to: the player's, and the seam join's and seam strip's.
  */
-export const LAB_DEFINES: Readonly<Record<string, number>> = {
+export const LAB_DEFINES: ShaderDefines = {
   ...SHADER_DEFINES,
   ...Object.fromEntries([
     ...SEAM_JOIN_DEFINES,

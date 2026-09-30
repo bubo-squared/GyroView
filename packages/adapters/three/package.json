@@ -10,8 +10,8 @@
       "default": "./src/index.ts"
     },
     "./testing": {
-      "types": "./src/test/readPixels.ts",
-      "default": "./src/test/readPixels.ts"
+      "types": "./src/test/index.ts",
+      "default": "./src/test/index.ts"
     },
     "./lab": {
       "types": "./src/lab/index.ts",

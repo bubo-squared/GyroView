@@ -43,5 +43,7 @@ as it is; the matcher overwrites the gains while it runs.
 
 ## Since ADR 0033 (2026-09-30)
 
-The seam meter reads lenses through the display conversion, so the gains match SDR values: as
-recorded on an SDR camera, as before, and converted from HLG on the X6, not HLG-encoded ones.
+The seam meter reads each lens's exposure signal, where its exposure is a factor, and the stitch
+scales that signal before bringing it to the display: on an SDR camera the texel as recorded,
+as before; on the X6, HLG's scene light raised to the display's power, before the highlight
+roll-off, so one gain matches two lenses a stop apart in the shadows and in the sky alike.

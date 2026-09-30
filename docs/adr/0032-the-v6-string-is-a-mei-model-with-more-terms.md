@@ -46,7 +46,7 @@ against without footage. On both X5 units in `test/fixtures/x5/`:
 
 - `offset_v6` is read, as the Mei model with more terms: the Mei distortion's five radial terms
   and first tangential order; `p3`, `p4` and `s1` to `s4` are parsed and carried in the
-  reading's input but not drawn (`V6_TERM_READING`, `calibration/v6TermReading.ts`).
+  reading's input but not drawn (`RADIAL_AND_FIRST_PAIR`, `calibration/v6TermReading.ts`, read by `EXTENDED_MEI_CALIBRATION_LAYOUT`).
 - Its version is `CalibrationVersion.ExtendedMei` (6, the number its word declares); the
   calibration preference tries it after the legacy string and before v3, the newer fit of the
   same model first.

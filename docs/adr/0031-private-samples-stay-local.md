@@ -15,20 +15,25 @@ this one. Its info record alone holds the serial number and the unit's own calib
 
 - **A private recording is described in `samples/catalogue.json`**, which is git-ignored with
   the symlinks beside it: its folder and file, frame rate and coded size, the moments the
-  tests render and rank at, the frames of its Studio export, and its `privateTokens`, the
+  tests render and rank at, the frames of its Studio export (and of its SDR twin, for an HDR
+  recording's colour), and its `privateTokens`, the
   words of it that must never enter the repository (its file name, its serial).
 - **The tests pick it up from there.** `tools/integration/src/localCatalogueFile.ts` reads the
   catalogue on the Node side; the browser project serves its folders and hands the entries to
   the browser tests (`LOCAL_SAMPLES`). Local samples are rendered and measured
   (`measure/localRecordings.test.ts`, the IMU frame ranking, the Studio clips) and read end to
   end, and every test checks only what any playable recording must have.
-- **Nothing of it is committed.** Unit tests of its camera use synthetic fixtures with invented
-  values; the format documentation describes structure only; ADRs report measurements on it as
-  aggregates (a chosen scale, a seam median), never its calibration values.
-- **`pnpm privacy:check` enforces it** (`test/checkPrivateSamples.mjs`): the private words may
-  not appear in tracked or new files (part of `pnpm verify`), in what a commit stages (the
-  pre-commit hook), or in a commit message (the commit-msg hook). Without a catalogue, as in CI,
-  there is nothing to check.
+- **Nothing of the unit is committed.** Unit tests of its camera use synthetic fixtures with
+  invented values; ADRs report measurements on it as aggregates (a chosen scale, a seam median,
+  a colour statistic), never its calibration values, serial, file names or info-record values.
+  What every recording of the camera model shares may be documented: the canvas and window
+  sizes, the index's slots, the records it writes and their rates, the codec and its colour.
+- **`pnpm privacy:check` enforces it** (`tools/integration/src/checkPrivateSamples.ts`): the
+  private words, and each recording's file name with and without its extension, in any case,
+  may not appear in tracked or new files or their paths (part of `pnpm verify`), in
+  what a commit stages (the pre-commit hook), or in a commit message (the commit-msg hook).
+  Without a catalogue, as in CI, there is nothing to check. Numbers it cannot recognise: keeping
+  them out is the rule above.
 
 ## Alternatives considered
 

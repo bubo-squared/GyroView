@@ -385,4 +385,15 @@ describe('FileDownload', () => {
     const averageBytes = context.link.deliveredBytes / requests.length;
     expect(averageBytes).toBeGreaterThanOrEqual(POLICY.requestSize / 2);
   });
+
+  it("before playing, reads the frames up to a seek's target in few ranges, not one a frame", async () => {
+    const context = setup();
+    const target = seconds(30 / FRAME_RATE);
+    const cursors = [RECORDING.lens0, RECORDING.lens1].map((track) =>
+      context.download.openCursor(track, 0, target),
+    );
+    await play({ ...context, readers: new Readers(cursors) }, 0, 30);
+    expect(cursors.map((cursor) => cursor.position)).toEqual([31, 31]);
+    expect(context.link.requests.length).toBeLessThanOrEqual(4);
+  });
 });

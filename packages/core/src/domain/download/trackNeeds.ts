@@ -10,6 +10,11 @@ export interface CursorPosition {
   readonly track: TrackSampleTable;
   readonly sample: number;
   readonly isWaiting: boolean;
+  /**
+   * The time the reader reads toward at once, as decoding for a seek reads from the key frame
+   * before it; every sample up to it is wanted, even before playing.
+   */
+  readonly target?: Seconds | undefined;
 }
 
 /**

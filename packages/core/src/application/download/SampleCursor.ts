@@ -1,5 +1,6 @@
 import type { TrackSampleTable } from '../../domain/container/TrackSampleTable';
 import type { ByteRange } from '../../shared/binary/ByteRange';
+import type { Seconds } from '../../shared/units/time';
 import { ensureInvariant } from '../../shared/errors/GyroViewError';
 
 /**
@@ -26,6 +27,14 @@ export interface CursorHost {
   closed(cursor: SampleCursor): void;
 }
 
+/**
+ * Where a cursor starts: its first sample, and the time its reader reads toward at once.
+ */
+export interface CursorStart {
+  readonly sample: number;
+  readonly target?: Seconds | undefined;
+}
+
 interface Waiter {
   readonly resolve: (sample: CursorSample | undefined) => void;
   readonly reject: (error: Error) => void;
@@ -37,16 +46,18 @@ interface Waiter {
  * then coming as the end, so the download stops reading for it at once.
  */
 export class SampleCursor {
+  public readonly target: Seconds | undefined;
   private next: number;
   private waiter: Waiter | undefined;
   private isClosed = false;
 
   public constructor(
     public readonly track: TrackSampleTable,
-    start: number,
+    start: CursorStart,
     private readonly host: CursorHost,
   ) {
-    this.next = start;
+    this.next = start.sample;
+    this.target = start.target;
   }
 
   /**

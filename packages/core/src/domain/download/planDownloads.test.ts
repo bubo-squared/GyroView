@@ -181,6 +181,16 @@ describe('planDownloads', () => {
     expect(spansOf(plan.start)).toEqual([[0, SLOT]]);
   });
 
+  it('before playing, reads at once every frame up to the time a reader decodes toward', () => {
+    const file = cameraFile();
+    const cursors = [file.lens0, file.lens1].map((track) => ({
+      ...at(track, 0, true),
+      target: seconds(30 * FRAME_DURATION),
+    }));
+    const plan = planDownloads(stateOf({ cursors, isReadingAhead: false }));
+    expect(spansOf(plan.start)).toEqual(slotSpans([0, 20], [20, 31]));
+  });
+
   it('reads the next frame of every picture reader, however far apart and whatever the budget', () => {
     const file = cameraFile();
     const cursors = [at(file.lens0, 0, true), at(file.lens0, 600, true)];

@@ -231,6 +231,14 @@ describe('planDownloads', () => {
     expect(plan.start).toEqual([]);
   });
 
+  it('with only sound to follow, waits to top up until a quarter of its bytes is missing', () => {
+    const file = cameraFile();
+    const plan = planDownloads(
+      stateOf({ cursors: [at(file.sound, 60)], held: heldSlots(60, 175) }),
+    );
+    expect(plan.start).toEqual([]);
+  });
+
   it('reads at once what a waiting cursor misses, however little is missing', () => {
     const file = cameraFile();
     const plan = planDownloads(

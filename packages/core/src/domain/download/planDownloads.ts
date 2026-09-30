@@ -84,7 +84,7 @@ export function planDownloads(state: DownloadState): DownloadDecisions {
   const coming = ByteRangeSet.of(kept.map((transfer) => transfer.remaining));
   const missing = wanted.subtract(state.held).subtract(coming).subtract(state.unreadable);
   const room = state.policy.requestsInFlight - kept.length;
-  const isDue = isTopUpDue({ state, pictures, windowEnd, missing });
+  const isDue = isTopUpDue({ state, windowEnd, missing });
   return {
     start: isDue ? requestsFor(missing, state.policy, room) : [],
     cancel: state.transfers
@@ -161,27 +161,31 @@ function withinBytes(wanted: ByteRangeSet, budget: number): ByteRangeSet {
   return ByteRangeSet.of(kept);
 }
 
-interface TopUp extends Window {
+interface TopUp {
+  readonly state: DownloadState;
+  readonly windowEnd: Seconds;
   readonly missing: ByteRangeSet;
 }
 
+/**
+ * Whether to ask for what is missing now: a cursor waits on it, a refill's worth is missing, or
+ * the window reaches the last sample of every track read, so no more will ever be missing.
+ */
 function isTopUpDue(topUp: TopUp): boolean {
-  const { state, pictures, windowEnd, missing } = topUp;
-  if (missing.isEmpty) return false;
+  const { state, windowEnd, missing } = topUp;
   const isStarving = state.cursors.some(
     (cursor) =>
       cursor.isWaiting &&
       !isAtItsEnd(cursor) &&
       missing.overlaps(cursor.track.rangeOf(cursor.sample)),
   );
-  const isAtTheEnd = pictures.every(
-    (cursor) => cursor.track.end <= windowEnd + lastDurationOf(cursor.track),
-  );
+  const isAtTheEnd = state.cursors.every((cursor) => isLastSampleWithin(cursor, windowEnd));
   return isStarving || isAtTheEnd || missing.totalLength >= state.policy.refillBytes;
 }
 
-function lastDurationOf(track: TrackSampleTable): number {
-  return track.sampleCount > 0 ? track.durationOf(track.sampleCount - 1) : 0;
+function isLastSampleWithin(cursor: CursorPosition, windowEnd: Seconds): boolean {
+  const { track } = cursor;
+  return isAtItsEnd(cursor) || track.timestampOf(track.sampleCount - 1) <= windowEnd;
 }
 
 /**

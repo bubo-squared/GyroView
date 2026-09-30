@@ -2,13 +2,12 @@ import {
   buildStitchingSetup,
   CalibrationVersion,
   type CalibrationSet,
-  type LensLayout,
   type StitchingSetup,
 } from '@gyroview/core';
 import {
+  asRecordedOf,
   extendedMeiLayout,
   parseOffsetString,
-  shownAsRecorded,
   usableCalibrationsOf,
 } from '@gyroview/core/testing';
 import type { OpenedRecording } from '@gyroview/player/composition';
@@ -94,14 +93,21 @@ function termReadingOf(
 }
 
 /**
- * The stitching setup of a reading, drawn as recorded: the lenses at the reading's radial scale
- * on top of the one the core reads their string at.
+ * The radial scale a reading draws its lenses at: its own on top of the one the core reads its
+ * string at, what the measurements report.
  */
-export function setupOf(reading: LensReading, layout: LensLayout): StitchingSetup {
-  const { calibration } = reading;
+export function drawnRadialScaleOf(reading: LensReading): number {
+  return reading.calibration.radialScale * reading.radialScale;
+}
+
+/**
+ * The stitching setup of a reading of the recording, drawn as recorded, at its drawn radial
+ * scale.
+ */
+export function setupOf(reading: LensReading, opened: OpenedRecording): StitchingSetup {
   return buildStitchingSetup({
-    calibration: { ...calibration, radialScale: calibration.radialScale * reading.radialScale },
-    layout,
-    displayConversions: shownAsRecorded(layout),
+    calibration: { ...reading.calibration, radialScale: drawnRadialScaleOf(reading) },
+    layout: opened.layout,
+    displayConversions: opened.displayConversions.map((conversion) => asRecordedOf(conversion)),
   });
 }

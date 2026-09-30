@@ -30,7 +30,8 @@ const MILLISECONDS_PER_SECOND = 1000;
 /**
  * How many pairs a second the decoders deliver from `from`, each closed as it arrives: the
  * decoding alone, before any upload or drawing (ADR 0033's 8K50 question). Unlike `takePairs`,
- * it keeps no frame, so the decoders are never held back by a full queue.
+ * it keeps no frame; the queue of four pairs, emptied every 20 ms, holds the reading under some
+ * 200 pairs a second, so it is a lower bound of what the decoders can do.
  */
 async function pairsPerSecondOf(opened: OpenedRecording, from: number): Promise<number> {
   const pipeline = new DecodePipeline<VideoFrame>(

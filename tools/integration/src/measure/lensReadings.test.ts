@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { saveMeasurement } from '../browser/artifacts';
 import {
+  drawnRadialScaleOf,
   EXTENDED_MEI,
   readingsOf,
   setupOf,
@@ -56,6 +57,22 @@ function bestScaleOf(
   return extended.toSorted((left, right) => left.cost - right.cost)[0]?.radialScale;
 }
 
+/**
+ * How a score names its reading: the reading, its scale on top of the core's (what the v6 term
+ * readings are tried at), and the scale it draws at, which ADR 0023 reports.
+ */
+function labelOf(reading: LensReading): {
+  readonly reading: string;
+  readonly radialScale: number;
+  readonly drawnRadialScale: number;
+} {
+  return {
+    reading: reading.name,
+    radialScale: reading.radialScale,
+    drawnRadialScale: drawnRadialScaleOf(reading),
+  };
+}
+
 type Aligner = (studio: StudioMoment, rendering: LockedRendering) => Alignment;
 
 const alignFully: Aligner = (studio, rendering) => alignToReference(studio.reference, rendering);
@@ -77,7 +94,7 @@ async function scoreOf(
   align: Aligner,
 ): Promise<Alignment & { readonly seamDisparity: object; readonly seamHarmonics: Harmonics }> {
   const { canvas, renderer, dispose } = labRenderingOfSetup(
-    setupOf(candidate, studio.opened.layout),
+    setupOf(candidate, studio.opened),
     REFERENCE_PANORAMA_SIZE,
   );
   try {
@@ -118,10 +135,10 @@ for (const clip of STUDIO_CLIPS) {
           const [first, ...others] = readingsOf(studio.opened);
           if (!first) throw new Error('the recording carries no calibration reading');
           const firstScore = await scoreOf(studio, first, alignFully);
-          const scores = [{ reading: first.name, radialScale: first.radialScale, ...firstScore }];
+          const scores = [{ ...labelOf(first), ...firstScore }];
           const scoreNear = async (candidate: LensReading): Promise<void> => {
             const score = await scoreOf(studio, candidate, alignNear(firstScore.turn));
-            scores.push({ reading: candidate.name, radialScale: candidate.radialScale, ...score });
+            scores.push({ ...labelOf(candidate), ...score });
           };
           for (const candidate of others) await scoreNear(candidate);
           const best = bestScaleOf(scores);

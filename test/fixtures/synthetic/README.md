@@ -82,10 +82,19 @@ ffmpeg -f lavfi -i "testsrc=size=64x64:rate=10" -f lavfi -i "testsrc2=size=64x64
 frames of four uniform quadrants of known 10-bit Y′CbCr codes (from the top left, row by row:
 luma 300, 502 and 900 with neutral chroma, and 670, 580, 140), tagged BT.2020, HLG and limited
 range in the VUI alone, at level 3.1 (x265 writes no level for a lossless stream, which WebKit
-refuses). For the decoded frames' upload (ADR 0033). The codes are written by a short script as
-raw `yuv420p10le`, then:
+refuses). For the decoded frames' upload (ADR 0033). Regenerate with:
 
 ```sh
+python3 - <<'PY'
+import struct
+size, half = 64, 32
+codes = [(300, 512, 512), (502, 512, 512), (900, 512, 512), (670, 580, 140)]
+def at(x, y): return codes[(x >= half) + 2 * (y >= half)]
+plane = lambda channel, step, side: b''.join(
+    struct.pack('<H', at(step * x, step * y)[channel]) for y in range(side) for x in range(side))
+frame = plane(0, 1, size) + plane(1, 2, half) + plane(2, 2, half)
+open('patches.yuv', 'wb').write(frame * 3)
+PY
 ffmpeg -f rawvideo -pix_fmt yuv420p10le -s 64x64 -r 10 -color_primaries bt2020 \
   -color_trc arib-std-b67 -colorspace bt2020nc -color_range tv -i patches.yuv \
   -c:v libx265 -preset ultrafast \

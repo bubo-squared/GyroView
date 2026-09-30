@@ -66,7 +66,8 @@ const PATCHES: readonly (readonly [name: string, codes: YcbcrCodes])[] = [
  * tracks, decoded by WebCodecs. Its texels hold R′G′B′ at full range, with no tone mapping of the
  * browser's, through the matrix the frame names: BT.2020 in Chromium, BT.709 in WebKit, whose
  * decoders ignore the stream's. Brought back to the track's matrix, they are BT.2020's
- * everywhere. Skipped where the browser decodes no HEVC.
+ * everywhere. Skipped where the browser takes no HEVC Main 10 configuration (a decoder that
+ * takes it and fails fails the test).
  */
 describe('uploading a decoded 10-bit HLG frame', () => {
   let input: DownloadedFile;
@@ -118,12 +119,13 @@ async function firstFrameOf(input: DownloadedFile): Promise<DecodedFrame<VideoFr
   const configuration = await track.decoderConfiguration();
   if (!(await port.isSupported(configuration))) return undefined;
   const frames: DecodedFrame<VideoFrame>[] = [];
+  const failures: Error[] = [];
   const decoder = await port.create(configuration, {
     onFrame: (decoded) => {
       frames.push(decoded);
     },
     onError: (error) => {
-      throw error;
+      failures.push(error);
     },
   });
   const packets = track.packetsFrom(seconds(0));
@@ -135,6 +137,9 @@ async function firstFrameOf(input: DownloadedFile): Promise<DecodedFrame<VideoFr
   decoder.close();
   const [first, ...others] = frames;
   for (const other of others) other.close();
+  const [failure] = failures;
+  if (failure) throw failure;
+  if (!first) throw new Error('the decoder took the configuration but made no frame');
   return first;
 }
 

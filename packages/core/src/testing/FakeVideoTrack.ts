@@ -42,7 +42,7 @@ export class FakeVideoTrack implements VideoTrackReader {
   /**
    * Packet iterations under way: started and neither finished nor returned.
    */
-  public openCursors = 0;
+  public openReadings = 0;
   private readonly packets: readonly EncodedVideoPacket[];
 
   public constructor(private readonly options: FakeVideoTrackOptions) {
@@ -70,7 +70,7 @@ export class FakeVideoTrack implements VideoTrackReader {
 
   public packetsFrom(time: Seconds): AsyncIterable<EncodedVideoPacket> {
     return {
-      [Symbol.asyncIterator]: (): AsyncIterator<EncodedVideoPacket> => this.cursorAt(time),
+      [Symbol.asyncIterator]: (): AsyncIterator<EncodedVideoPacket> => this.readingAt(time),
     };
   }
 
@@ -90,13 +90,13 @@ export class FakeVideoTrack implements VideoTrackReader {
     return this.packets.find((packet) => packet.isKeyFrame);
   }
 
-  private cursorAt(time: Seconds): FakePacketCursor {
+  private readingAt(time: Seconds): FakePacketReading {
     const start = this.keyPacketAtOrBefore(time) ?? this.firstKeyPacket();
-    this.openCursors += 1;
+    this.openReadings += 1;
     const onClose = (): void => {
-      this.openCursors -= 1;
+      this.openReadings -= 1;
     };
-    return new FakePacketCursor(
+    return new FakePacketReading(
       start ? this.packets.slice(this.packets.indexOf(start)) : undefined,
       onClose,
     );
@@ -128,7 +128,7 @@ function codedShapeOf(
  * One iteration over the fake's packets, each a turn after it is asked for, as a read would come.
  * Without packets to start from, as on a track without a key frame, it fails as a reader must.
  */
-class FakePacketCursor implements AsyncIterator<EncodedVideoPacket> {
+class FakePacketReading implements AsyncIterator<EncodedVideoPacket> {
   private position = 0;
   private isOpen = true;
 

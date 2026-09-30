@@ -28,8 +28,8 @@ describe('FakeAudioSampleSource', () => {
     const sound = fakeSound();
     const samples = sound.samplesFrom(seconds(0))[Symbol.asyncIterator]();
     await samples.next();
-    expect(sound.openCursors).toBe(1);
+    expect(sound.openReadings).toBe(1);
     await samples.return?.();
-    expect(sound.openCursors).toBe(0);
+    expect(sound.openReadings).toBe(0);
   });
 });

@@ -105,8 +105,8 @@ class GatedSampleSource implements AudioSampleSource {
     return this.source.duration;
   }
 
-  public get openCursors(): number {
-    return this.source.openCursors;
+  public get openReadings(): number {
+    return this.source.openReadings;
   }
 
   public samplesFrom(time: Seconds): AsyncIterable<EncodedAudioSample> {
@@ -157,9 +157,9 @@ describe('MediabunnyAudioPackager', () => {
       .segmentsFrom(seconds(0))
       [Symbol.asyncIterator]();
     const awaited = segments.next();
-    await expect.poll(() => gated.openCursors).toBe(1);
+    await expect.poll(() => gated.openReadings).toBe(1);
     await segments.return?.();
-    expect(gated.openCursors).toBe(0);
+    expect(gated.openReadings).toBe(0);
     gated.gate.resolve();
     await awaited;
   });

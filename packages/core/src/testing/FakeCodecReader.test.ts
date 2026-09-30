@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import { describeCodecReaderContract } from './CodecReader.contract';
 import { FakeCodecReader } from './FakeCodecReader';
 import type { ContainerCodecs } from '../ports/CodecReader';
@@ -37,3 +39,10 @@ describeCodecReaderContract(() =>
     notMovie: Uint8Array.of(9),
   }),
 );
+
+describe('FakeCodecReader', () => {
+  it('knows movie bytes by their content, as a file read afresh gives new ones', async () => {
+    const reader = new FakeCodecReader([[MOVIE, CODECS]]);
+    await expect(reader.read(Uint8Array.of(1, 2, 3))).resolves.toBe(CODECS);
+  });
+});

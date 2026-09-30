@@ -32,6 +32,7 @@ export {
   type FixtureTrack,
   type Mp4FileLayout,
 } from './mp4/buildMp4File';
+export { lensMp4File, type LensFileSpec } from './mp4/lensMp4File';
 export {
   audioSampleEntry,
   videoSampleEntry,

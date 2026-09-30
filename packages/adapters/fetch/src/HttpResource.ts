@@ -97,10 +97,11 @@ export class HttpResource {
 
   /**
    * The server's answer to a byte range, its body still to be read: a 206, or the refusal it
-   * amounts to.
+   * amounts to. `signal` ends this request alone.
    */
-  public async rangeAnswer(range: ByteRange): Promise<Response> {
-    const response = await this.requestRange(range);
+  public async rangeAnswer(range: ByteRange, signal?: AbortSignal): Promise<Response> {
+    const options = signal ? withAbortSignal(this.options, signal) : this.options;
+    const response = await this.requestRange(range, options);
     if (response.status !== HTTP_PARTIAL_CONTENT) {
       discardBody(response);
       throw this.refusalOf(response.status);
@@ -113,13 +114,13 @@ export class HttpResource {
    * A request that did not get through for want of a network is worth another try; one CORS
    * refused before any range came through is not.
    */
-  private async requestRange(range: ByteRange): Promise<Response> {
+  private async requestRange(range: ByteRange, options: HttpRequestOptions): Promise<Response> {
     const headers = { Range: `bytes=${range.offset}-${range.end - 1}` };
     try {
       // Once CORS is proven, a failure needs no diagnosing request to the failing server.
       return this.hasReadRange
-        ? await plainHttpRequest(this.url, { method: 'GET', headers }, this.options)
-        : await this.request('GET', headers);
+        ? await plainHttpRequest(this.url, { method: 'GET', headers }, options)
+        : await httpRequest(this.url, { method: 'GET', headers }, options);
     } catch (error) {
       throw this.hasReadRange ? this.passingOnceAnswered(error) : passingIfUnreachable(error);
     }

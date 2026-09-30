@@ -219,6 +219,21 @@ describe('openRecording', () => {
     await expect(firstPacketOf(opened.frameSources[0])).resolves.toBeUndefined();
   });
 
+  it('tells from its downloads whether playing that starved can go on', async () => {
+    const { ports } = await worldOf([x5File()]);
+    const opened = await openRecording(sourceOf(), ports, new AbortController().signal);
+    const packets = opened.frameSources[0]?.packetsFrom(seconds(0))[Symbol.asyncIterator]();
+    await packets?.next();
+    expect(opened.buffer.isReadyToResumeAt(seconds(0))).toBe(false);
+
+    opened.readAhead();
+    await settle();
+
+    expect(opened.buffer.isReadyToResumeAt(seconds(0))).toBe(true);
+    await packets?.return?.();
+    opened.dispose();
+  });
+
   it('refuses a recording without calibration', async () => {
     const bytes = syntheticRecordingBytes(minimalInfoRecord({ model: 'Insta360 X3' }));
     const { ports } = await worldOf([{ url: MAIN_URL, bytes, codecs: lensCodecs({ lenses: 2 }) }]);

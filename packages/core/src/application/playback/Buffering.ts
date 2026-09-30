@@ -4,15 +4,24 @@ import { Deferred } from '../../shared/async/Deferred';
 import type { Seconds } from '../../shared/units/time';
 
 /**
- * What of the decode run under way tells whether its frames are ready.
+ * What of the decode run under way tells whether buffering may end.
  */
-type RunUnderWay = Pick<DecodeRun<unknown>, 'isPrimedAt'>;
+type RunUnderWay = Pick<DecodeRun<unknown>, 'isPrimedAt' | 'isReadyToResumeAt'>;
 
 /**
- * A session's `buffering` (ADR 0011): entering it, the `play` waiting for the clock to start
+ * Why a session buffers (ADR 0011): `priming` after a start or a seek, until the frames there
+ * are decoded; `starvation` when the decoders fell behind while playing, until they have caught
+ * up and the next seconds are downloaded, so a link slower than the recording plays in
+ * stretches rather than frame by frame.
+ */
+export type BufferingCause = 'priming' | 'starvation';
+
+/**
+ * A session's `buffering`: entering it and why, the `play` waiting for the clock to start
  * meanwhile, and what ends it, told in one place.
  */
 export class Buffering {
+  private cause: BufferingCause = 'priming';
   private startAttempt: Deferred<void> | undefined;
 
   public constructor(private readonly lifecycle: SessionLifecycle) {}
@@ -24,7 +33,8 @@ export class Buffering {
     return this.startAttempt?.promise;
   }
 
-  public enter(): void {
+  public enter(cause: BufferingCause): void {
+    this.cause = cause;
     this.lifecycle.moveTo('buffering');
   }
 
@@ -34,15 +44,16 @@ export class Buffering {
   public enterForStart(): Promise<void> {
     const attempt = new Deferred<void>();
     this.startAttempt = attempt;
-    this.enter();
+    this.enter('priming');
     return attempt.promise;
   }
 
   /**
-   * Buffering is over at `now`: the frames there are decoded.
+   * Buffering is over at `now`: what its cause waits for is there.
    */
   public isOverAt(run: RunUnderWay | undefined, now: Seconds): boolean {
-    return this.lifecycle.is('buffering') && run?.isPrimedAt(now) === true;
+    if (!run || !this.lifecycle.is('buffering')) return false;
+    return this.cause === 'starvation' ? run.isReadyToResumeAt(now) : run.isPrimedAt(now);
   }
 
   /**

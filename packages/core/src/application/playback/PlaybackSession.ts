@@ -118,7 +118,7 @@ export class PlaybackSession<Handle = unknown> {
       this.moveClockTo(target);
       this.startRun(target);
       this.lifecycle.moveTo('seeking');
-      if (this.seeks.resumesPlaying) this.buffering.enter();
+      if (this.seeks.resumesPlaying) this.buffering.enter('priming');
       else this.lifecycle.moveTo('paused');
       this.timeUpdates.announce(target);
     });
@@ -263,7 +263,7 @@ export class PlaybackSession<Handle = unknown> {
     }
     if (this.run?.isStarvedAt(now, this.presented?.pair.timestamp) === true) {
       this.parts.clock.pause();
-      this.buffering.enter();
+      this.buffering.enter('starvation');
       return;
     }
     this.timeUpdates.followPlayback(now);
@@ -330,7 +330,7 @@ export class PlaybackSession<Handle = unknown> {
     clock.pause();
     this.startRun(now);
     if (wasRunning) {
-      this.buffering.enter();
+      this.buffering.enter('priming');
       return;
     }
     this.lifecycle.moveTo('paused');

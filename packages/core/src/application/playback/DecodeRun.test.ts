@@ -6,6 +6,7 @@ import { Deferred } from '../../shared/async/Deferred';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { seconds, type Seconds } from '../../shared/units/time';
 import { FakeVideoDecoderPort, type FakeFrameHandle } from '../../testing/FakeVideoDecoderPort';
+import { FakeMediaBuffer } from '../../testing/FakeMediaBuffer';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import { settle } from '../../../test/support/settle';
 
@@ -163,5 +164,41 @@ describe('DecodeRun', () => {
     run.takePairAt(seconds(1));
     expect(run.isStarvedAt(seconds(9), seconds(0.2))).toBe(false);
     run.abort();
+  });
+
+  it('is ready to resume once primed and its buffer is, or once it reached the end', async () => {
+    const buffer = new FakeMediaBuffer(false);
+    const run = DecodeRun.start({ ...parts(30), buffer }, seconds(0), QUIET);
+    await settle();
+    expect(run.isPrimedAt(seconds(0))).toBe(true);
+    expect(run.isReadyToResumeAt(seconds(0))).toBe(false);
+    buffer.progress(true);
+    expect(run.isReadyToResumeAt(seconds(0))).toBe(true);
+    run.abort();
+    const ended = DecodeRun.start(
+      { ...parts(2), buffer: new FakeMediaBuffer(false) },
+      seconds(0),
+      QUIET,
+    );
+    await settle();
+    expect(ended.isReadyToResumeAt(seconds(0))).toBe(true);
+    ended.abort();
+  });
+
+  it("tells of its buffer's progress until aborted", async () => {
+    const buffer = new FakeMediaBuffer(false);
+    let progress = 0;
+    const run = DecodeRun.start({ ...parts(30), buffer }, seconds(0), {
+      onProgress: () => {
+        progress += 1;
+      },
+      onFailure: failOnError,
+    });
+    await settle();
+    const fromDecoding = progress;
+    buffer.progress(false);
+    expect(progress).toBe(fromDecoding + 1);
+    run.abort();
+    expect(buffer.listenerCount).toBe(0);
   });
 });

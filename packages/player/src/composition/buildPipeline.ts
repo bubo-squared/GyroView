@@ -198,6 +198,7 @@ function sessionFor(
     clock,
     sink,
     duration: parts.opened.duration,
+    buffer: parts.opened.buffer,
     pipeline: DECODE_PIPELINE_OPTIONS,
     queueCapacity: PAIR_QUEUE_CAPACITY,
   });

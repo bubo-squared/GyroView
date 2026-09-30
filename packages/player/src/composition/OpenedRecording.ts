@@ -2,6 +2,7 @@ import type {
   AudioTrackReader,
   FrameTimes,
   LensLayout,
+  MediaBuffer,
   MotionSetup,
   Recording,
   Seconds,
@@ -37,6 +38,10 @@ export interface OpenedRecording {
    * then they read only what the picture waits for.
    */
   readAhead(): void;
+  /**
+   * What its downloads hold ahead, which playback that starved waits on (ADR 0011).
+   */
+  readonly buffer: MediaBuffer;
   /**
    * Gives up every download, what it has coming and every read of its tracks.
    */

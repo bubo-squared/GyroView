@@ -6,6 +6,7 @@ import {
 import { FramePairQueue } from './FramePairQueue';
 import type { VideoTrackReader } from '../../ports/VideoTrackReader';
 import type { FramePair } from '../../ports/FramePair';
+import type { MediaBuffer } from '../../ports/MediaBuffer';
 import type { VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { seconds, type Seconds } from '../../shared/units/time';
 
@@ -30,6 +31,10 @@ export interface DecodeRunParts<Handle> {
    * Decoded pairs kept ahead of the playhead.
    */
   readonly queueCapacity: number;
+  /**
+   * What lies downloaded ahead; none where there is nothing to wait for.
+   */
+  readonly buffer?: MediaBuffer | undefined;
 }
 
 /**
@@ -37,7 +42,8 @@ export interface DecodeRunParts<Handle> {
  */
 export interface DecodeRunListener {
   /**
-   * A pair arrived or the run reached its end: what a waiting start may be waiting for.
+   * A pair arrived, more was downloaded, or the run reached its end: what a waiting start may
+   * be waiting for.
    */
   onProgress(): void;
   onFailure(error: unknown): void;
@@ -52,18 +58,23 @@ export class DecodeRun<Handle> {
   private readonly queue: FramePairQueue<Handle>;
   private readonly pipeline: DecodePipeline<Handle>;
   private readonly primingPairs: number;
+  private readonly stopFollowingBuffer: () => void;
   private isAborted = false;
   private hasReachedEnd = false;
   private hasHandedOutPair = false;
 
   private constructor(
-    parts: DecodeRunParts<Handle>,
+    private readonly parts: DecodeRunParts<Handle>,
     private readonly listener: DecodeRunListener,
   ) {
     this.primingPairs = Math.min(PRIMING_PAIRS, parts.queueCapacity);
     this.queue = new FramePairQueue<Handle>(parts.queueCapacity, () => {
       if (!this.isAborted) listener.onProgress();
     });
+    this.stopFollowingBuffer =
+      parts.buffer?.onProgress(() => {
+        listener.onProgress();
+      }) ?? ((): void => undefined);
     this.pipeline = new DecodePipeline<Handle>(
       parts.frameSources,
       parts.decoderPort,
@@ -99,6 +110,15 @@ export class DecodeRun<Handle> {
   }
 
   /**
+   * Primed, and after a starvation enough downloaded ahead to go on with (ADR 0011), unless the
+   * run is over and nothing more will come.
+   */
+  public isReadyToResumeAt(now: Seconds): boolean {
+    const isDownloaded = this.parts.buffer?.isReadyToResumeAt(now) ?? true;
+    return this.isPrimedAt(now) && (this.hasReachedEnd || isDownloaded);
+  }
+
+  /**
    * Nothing is queued, the run is not over, and the frame on screen (shown for `shownAt`, if any)
    * is well behind the clock: the decoders cannot keep up, even when each tick still finds a
    * pair to show.
@@ -123,6 +143,7 @@ export class DecodeRun<Handle> {
 
   public abort(): void {
     this.isAborted = true;
+    this.stopFollowingBuffer();
     this.pipeline.abort();
     this.queue.close();
   }

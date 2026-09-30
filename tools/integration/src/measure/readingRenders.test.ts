@@ -43,7 +43,7 @@ for (const [slug, sample] of [
       const readings = readingsOf(opened).filter((reading) => reading.radialScale === 1);
       for (const reading of readings) {
         const { canvas, renderer, dispose } = labRenderingOfSetup(
-          setupOf(reading, opened.layout),
+          setupOf(reading, opened),
           PANORAMA_SIZE,
         );
         cleanups.push(dispose);

@@ -15,13 +15,25 @@ import {
 } from './support/referenceFrames';
 
 /**
- * How far the player's mean red, green and blue, and its median luma, may lie from Studio's, in
- * levels of 255: a little above what ADR 0033 measured, so a change to the conversion that moves
- * the picture off Studio's fails here.
+ * How far the player's mean red, green and blue, its saturation and its luma percentiles may lie
+ * from Studio's, in levels of 255: a little above what ADR 0033 measured, so a change to the
+ * conversion that moves the picture off Studio's fails here. A wrong matrix barely moves these
+ * statistics of a whole scene; `decodedFrameUpload.test.ts` and the three adapter's upload tests
+ * guard the matrix.
  */
 const MEAN_TOLERANCE_LEVELS = 5;
-const MEDIAN_LUMA_TOLERANCE_LEVELS = 4;
-const MEDIAN = 1;
+const SATURATION_TOLERANCE_LEVELS = 2.5;
+const LUMA_TOLERANCE_LEVELS = 4;
+
+function expectWithin(
+  player: readonly number[],
+  studio: readonly number[],
+  tolerance: number,
+): void {
+  for (const [index, value] of player.entries()) {
+    expect(Math.abs(value - (studio[index] ?? NaN))).toBeLessThan(tolerance);
+  }
+}
 
 const CLIPS = STUDIO_CLIPS.filter((clip) => clip.sdrFrames.length > 0);
 
@@ -58,15 +70,9 @@ describe.skipIf(CLIPS.length === 0)("the player's colour against Studio's SDR ex
         const player = colourStatisticsOf(readPixels(canvas), REFERENCE_PANORAMA_SIZE);
         const studio = colourStatisticsOf(await loadRawRgb(frame.url), REFERENCE_PANORAMA_SIZE);
         await saveMeasurement(`${clip.slug}-${frame.time}s-colour`, { player, studio });
-        for (const [channel, mean] of player.meanRgb.entries()) {
-          expect(Math.abs(mean - (studio.meanRgb[channel] ?? NaN))).toBeLessThan(
-            MEAN_TOLERANCE_LEVELS,
-          );
-        }
-        const medians = [player, studio].map((side) => side.lumaPercentiles[MEDIAN] ?? NaN);
-        expect(Math.abs((medians[0] ?? NaN) - (medians[1] ?? NaN))).toBeLessThan(
-          MEDIAN_LUMA_TOLERANCE_LEVELS,
-        );
+        expectWithin(player.meanRgb, studio.meanRgb, MEAN_TOLERANCE_LEVELS);
+        expectWithin([player.saturation], [studio.saturation], SATURATION_TOLERANCE_LEVELS);
+        expectWithin(player.lumaPercentiles, studio.lumaPercentiles, LUMA_TOLERANCE_LEVELS);
       });
     }
   }

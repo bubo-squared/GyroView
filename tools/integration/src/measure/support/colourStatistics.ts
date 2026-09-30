@@ -46,26 +46,42 @@ export function colourStatisticsOf(
   pixels: Uint8ClampedArray,
   size: { readonly width: number; readonly height: number },
 ): ColourStatistics {
-  const sums = { red: 0, green: 0, blue: 0, saturation: 0, weight: 0 };
-  const lumas: WeightedLuma[] = [];
+  const samples = weightedSamplesOf(pixels, size);
+  const total = samples.reduce((sum, sample) => sum + sample.weight, 0);
+  const meanOf = (value: (rgb: Vector3) => number): number =>
+    samples.reduce((sum, sample) => sum + sample.weight * value(sample.rgb), 0) / total;
+  return {
+    meanRgb: [meanOf((rgb) => rgb[0]), meanOf((rgb) => rgb[1]), meanOf((rgb) => rgb[2])],
+    saturation: meanOf((rgb) => Math.max(...rgb) - Math.min(...rgb)),
+    lumaPercentiles: weightedPercentilesOf(
+      samples.map((sample) => ({ luma: lumaOf(sample.rgb), weight: sample.weight })),
+      total,
+    ),
+  };
+}
+
+interface WeightedSample {
+  readonly rgb: Vector3;
+  readonly weight: number;
+}
+
+/**
+ * Every sampled pixel, weighted by the area its row covers on the sphere.
+ */
+function weightedSamplesOf(
+  pixels: Uint8ClampedArray,
+  size: { readonly width: number; readonly height: number },
+): WeightedSample[] {
+  const samples: WeightedSample[] = [];
   for (let row = 0; row < size.height; row += STRIDE) {
     const weight = Math.cos(((row + PIXEL_CENTRE) / size.height - EQUATOR) * Math.PI);
     for (let column = 0; column < size.width; column += STRIDE) {
       const offset = (row * size.width + column) * RGBA;
       const rgb: Vector3 = [pixels[offset] ?? 0, pixels[offset + 1] ?? 0, pixels[offset + 2] ?? 0];
-      sums.red += weight * rgb[0];
-      sums.green += weight * rgb[1];
-      sums.blue += weight * rgb[2];
-      sums.saturation += weight * (Math.max(...rgb) - Math.min(...rgb));
-      sums.weight += weight;
-      lumas.push({ luma: lumaOf(rgb), weight });
+      samples.push({ rgb, weight });
     }
   }
-  return {
-    meanRgb: [sums.red / sums.weight, sums.green / sums.weight, sums.blue / sums.weight],
-    saturation: sums.saturation / sums.weight,
-    lumaPercentiles: weightedPercentilesOf(lumas, sums.weight),
-  };
+  return samples;
 }
 
 function lumaOf([red, green, blue]: Vector3): number {

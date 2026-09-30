@@ -12,7 +12,7 @@ import {
   type StitchingSetup,
   type Vector3,
 } from '@gyroview/core';
-import { shownAsRecorded } from '@gyroview/core/testing';
+import { asRecordedOf } from '@gyroview/core/testing';
 import type { OpenedRecording } from '@gyroview/player/composition';
 
 export interface CanvasSize {
@@ -86,14 +86,15 @@ export function setupOf(opened: OpenedRecording): StitchingSetup {
 }
 
 /**
- * The sample drawn as recorded, in its own signal: what a Studio export of that signal (HLG on
- * the X6) is compared with, so that colour stays out of the geometry.
+ * The sample drawn as recorded, in its own signal, each track's matrix still corrected back to:
+ * what a Studio export of that signal (HLG on the X6) is compared with, so that colour stays out
+ * of the geometry, alike in every browser.
  */
 export function recordedSetupOf(opened: OpenedRecording): StitchingSetup {
   return buildStitchingSetup({
     calibration: calibrationOf(opened),
     layout: opened.layout,
-    displayConversions: shownAsRecorded(opened.layout),
+    displayConversions: opened.displayConversions.map((conversion) => asRecordedOf(conversion)),
   });
 }
 

@@ -3,7 +3,7 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
-## Unreleased
+## 0.4.0 (2026-10-01)
 
 New:
 
@@ -25,7 +25,10 @@ What a page may notice:
   `recording-degraded` warning: a PQ or linear-light transfer is drawn as recorded, SDR of wider
   primaries than BT.709's is shown as BT.709, HLG of primaries other than BT.709's or BT.2020's
   keeps its gamut.
-- The decoder is told the track's whole colour, not only its range.
+- The decoder is told the track's whole colour, not only its range (the range alone where the
+  browser's WebCodecs does not know one of its values).
+- Where a browser's decoder converts a track's colour through another matrix than the track's
+  own, as Safari's does with the X6's BT.2020, the picture is brought back to the track's.
 
 ## 0.3.1 (2026-09-30)
 

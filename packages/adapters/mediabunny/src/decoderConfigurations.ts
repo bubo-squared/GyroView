@@ -8,18 +8,18 @@ import { copyOfBytes } from './bufferSources';
 
 /**
  * A WebCodecs video decoder configuration in the core's terms; the coded size comes from the
- * track where the configuration leaves it out.
+ * track where the configuration leaves it out, the colour from the track's description.
  */
 export function videoConfigurationOf(
   config: VideoDecoderConfig,
-  description: Pick<VideoTrackDescription, 'codedWidth' | 'codedHeight'>,
+  description: Pick<VideoTrackDescription, 'codedWidth' | 'codedHeight' | 'colour'>,
 ): VideoDecoderConfiguration {
   return {
     codec: config.codec,
     codedWidth: config.codedWidth ?? description.codedWidth,
     codedHeight: config.codedHeight ?? description.codedHeight,
     description: config.description === undefined ? undefined : copyOfBytes(config.description),
-    isFullRange: config.colorSpace?.fullRange ?? undefined,
+    colour: description.colour,
   };
 }
 

@@ -2,17 +2,13 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  readSampleTable,
-  UNSPECIFIED_COLOUR,
-  type TrackColour,
-  type VideoTrackCodec,
-} from '@gyroview/core';
+import { readSampleTable, type TrackColour, type VideoTrackCodec } from '@gyroview/core';
 import {
   buildMp4File,
   describeCodecReaderContract,
   encodeBox,
   InMemoryRandomAccessSource,
+  UNSPECIFIED_COLOUR,
   videoSampleEntry,
 } from '@gyroview/core/testing';
 import { ALL_FORMATS, BufferSource, Input, type InputVideoTrack } from 'mediabunny';

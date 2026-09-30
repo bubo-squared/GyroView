@@ -12,7 +12,7 @@ import {
   type VideoDecoderPort,
 } from '@gyroview/core';
 import { openDownloadedFile } from '@gyroview/core/testing';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { WebCodecsVideoDecoderPort } from './WebCodecsVideoDecoderPort';
 import fixtureUrl from '../../../../test/fixtures/synthetic/dual-track-64px-10fps-3s.mp4?url';
@@ -86,6 +86,21 @@ describe('WebCodecsVideoDecoderPort', () => {
     await expect(
       port.isSupported({ ...configuration, codec: 'nonsense.1', description: undefined }),
     ).resolves.toBe(false);
+  });
+
+  it('refuses to answer or to decode in a browser without WebCodecs, whatever the codec', async () => {
+    vi.stubGlobal('VideoDecoder', undefined);
+    try {
+      const callbacks = { onFrame: (): void => undefined, onError: (): void => undefined };
+      await expect(port.isSupported(configuration)).rejects.toMatchObject({
+        code: 'webcodecs-unavailable',
+      });
+      await expect(port.create(configuration, callbacks)).rejects.toMatchObject({
+        code: 'webcodecs-unavailable',
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('decodes both lens tracks through the pipeline into paired VideoFrames', async () => {

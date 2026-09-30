@@ -48,10 +48,14 @@ export interface VideoDecoderHandle {
 }
 
 /**
- * Port: creates hardware or software video decoders.
+ * Port: creates hardware or software video decoders. A platform without video decoders at all
+ * rejects both calls with `webcodecs-unavailable`, since no configuration would change that.
  */
 export interface VideoDecoderPort<Handle = unknown> {
   isSupported(configuration: VideoDecoderConfiguration): Promise<boolean>;
+  /**
+   * Rejects with `codec-unsupported` for a configuration the platform refuses.
+   */
   create(
     configuration: VideoDecoderConfiguration,
     callbacks: VideoDecoderCallbacks<Handle>,

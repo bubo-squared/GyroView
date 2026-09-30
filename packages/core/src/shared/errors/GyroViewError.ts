@@ -1,5 +1,5 @@
 /**
- * Stable machine-readable failure categories. Embedders switch on these; messages are for humans.
+ * Stable machine-readable failure codes. Embedders switch on these; messages are for humans.
  */
 export const GYRO_VIEW_ERROR_CODES = [
   'binary-out-of-bounds',
@@ -30,6 +30,7 @@ export const GYRO_VIEW_ERROR_CODES = [
   'unsupported-gyro-record',
   'unsupported-info-format',
   'unsupported-layout',
+  'webcodecs-unavailable',
 ] as const;
 
 export type GyroViewErrorCode = (typeof GYRO_VIEW_ERROR_CODES)[number];

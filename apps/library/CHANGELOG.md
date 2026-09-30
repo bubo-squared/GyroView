@@ -3,6 +3,26 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+New:
+
+- Insta360 X6 recordings play. Their only calibration is a v6 string, now read as the Mei model
+  with more terms (ADR 0032); the X6's IMU frame and the radial scale its lenses want are
+  measured (ADR 0009, ADR 0023); and its 10-bit HLG video is shown as SDR, as Insta360 Studio
+  shows it (ADR 0033).
+- Each of the `ready` event's `tracks` has a `colour`: its primaries, transfer, matrix and range
+  as the track's bitstream says (`TrackColour`).
+- `inspectRecording`'s calibration strings include `offsetV6`, and `calibrationVersion` may be
+  6 (`CalibrationVersion.ExtendedMei`).
+
+What a page may notice:
+
+- A recording whose only calibration is a v6 string plays where it failed with
+  `no-calibration`.
+- A track whose transfer the player cannot show yet (PQ) is drawn as recorded, with a
+  `recording-degraded` warning.
+
 ## 0.3.1 (2026-09-30)
 
 New:

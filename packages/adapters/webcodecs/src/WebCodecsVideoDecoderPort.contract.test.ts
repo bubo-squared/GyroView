@@ -1,25 +1,22 @@
-import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
-import { secondsToMilliseconds, type DemuxedInput, type Seconds } from '@gyroview/core';
-import {
-  describeVideoDecoderPortContract,
-  InMemoryRandomAccessSource,
-} from '@gyroview/core/testing';
+import { MediabunnyCodecReader } from '@gyroview/adapter-mediabunny';
+import { secondsToMilliseconds, type DownloadedFile, type Seconds } from '@gyroview/core';
+import { describeVideoDecoderPortContract, openDownloadedFile } from '@gyroview/core/testing';
 import { afterAll, beforeAll, describe } from 'vitest';
 
 import { WebCodecsVideoDecoderPort } from './WebCodecsVideoDecoderPort';
 import fixtureUrl from '../../../../test/fixtures/synthetic/dual-track-64px-10fps-3s.mp4?url';
 
 /**
- * The fixture is demuxed once for every test: the tests read its track, and only the decoders
+ * The fixture is opened once for every test: the tests read its track, and only the decoders
  * are theirs.
  */
 describe('WebCodecsVideoDecoderPort over the synthetic fixture', () => {
-  let input: DemuxedInput;
+  let input: DownloadedFile;
 
   beforeAll(async () => {
     const response = await fetch(fixtureUrl);
     const bytes = new Uint8Array(await response.arrayBuffer());
-    input = await new MediabunnyDemuxer().open(new InMemoryRandomAccessSource(bytes), 'synthetic');
+    input = await openDownloadedFile(bytes, new MediabunnyCodecReader());
   });
 
   afterAll(() => {

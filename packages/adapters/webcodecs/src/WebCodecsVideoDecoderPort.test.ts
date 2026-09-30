@@ -1,9 +1,9 @@
-import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
+import { MediabunnyCodecReader } from '@gyroview/adapter-mediabunny';
 import {
   FramePairQueue,
   DecodePipeline,
   seconds,
-  type DemuxedInput,
+  type DownloadedFile,
   type EncodedVideoPacket,
   type FramePair,
   type VideoDecoderCallbacks,
@@ -11,7 +11,7 @@ import {
   type VideoDecoderHandle,
   type VideoDecoderPort,
 } from '@gyroview/core';
-import { InMemoryRandomAccessSource } from '@gyroview/core/testing';
+import { openDownloadedFile } from '@gyroview/core/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { WebCodecsVideoDecoderPort } from './WebCodecsVideoDecoderPort';
@@ -67,13 +67,13 @@ class PendingObservingPort implements VideoDecoderPort<VideoFrame> {
 }
 
 describe('WebCodecsVideoDecoderPort', () => {
-  let input: DemuxedInput;
+  let input: DownloadedFile;
   let configuration: VideoDecoderConfiguration;
 
   beforeAll(async () => {
     const response = await fetch(fixtureUrl);
     const bytes = new Uint8Array(await response.arrayBuffer());
-    input = await new MediabunnyDemuxer().open(new InMemoryRandomAccessSource(bytes), 'synthetic');
+    input = await openDownloadedFile(bytes, new MediabunnyCodecReader());
     configuration = await input.videoTracks[0]!.decoderConfiguration();
   });
 

@@ -22,7 +22,8 @@ A site built with a bundler can install the npm package `@bubo-squared/gyroview`
 ## The player page must be a secure context
 
 WebCodecs, which decodes the video, exists only in secure contexts: `https://`, or
-`http://localhost` during development. A page on plain `http://` shows `codec-unsupported`.
+`http://localhost` during development. A page on plain `http://` fails with
+`webcodecs-unavailable`.
 
 ## The media host
 
@@ -122,7 +123,8 @@ through: `trusted-types gyroview`, with `'allow-duplicates'` if two copies of th
 
 ## Error codes
 
-Every failure is a `GyroViewError` with a stable `code`. A failed load or playback arrives as
+Every failure is a `GyroViewError` with a stable `code` and a `category`; the README's "When a
+recording cannot play" lists the codes of each category. A failed load or playback arrives as
 the `error` event (and as the rejection of `load()`); the rest arrive where they happen:
 `playback-blocked` rejects `play()`, and becomes a `warning` event when autoplay, a tap or the
 loop meets it; `invalid-argument` is thrown by the call that got the value, or rejects its
@@ -141,8 +143,10 @@ the embed handle's promises.
 |                         | `Last-Modified` and size, changed. Load it again.                            |
 | `source-truncated`      | Fewer bytes came back than asked: the server misbehaves, or the file changed |
 |                         | where the server does not tell its version.                                  |
-| `codec-unsupported`     | This browser cannot decode the tracks (no HEVC hardware, on Linux no VA-API  |
-|                         | driver that offers HEVC, or not a secure context).                           |
+| `codec-unsupported`     | This browser cannot decode the tracks: no HEVC hardware, or on Linux no      |
+|                         | VA-API driver that offers HEVC.                                              |
+| `webcodecs-unavailable` | This browser has no WebCodecs: the page is not served over HTTPS, or the     |
+|                         | browser is too old.                                                          |
 | `missing-second-file`   | One lens of a split-file pair without the other lens's file: set `src2`.     |
 | `no-calibration`        | The file carries no lens calibration; it cannot be stitched.                 |
 | `invalid-trailer`       | Not an Insta360 recording (a plain MP4, a Studio export), or one cut short.  |

@@ -129,7 +129,7 @@ Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewEle
 | `qualitychange`                                       | the quality               | Whatever changed it.                                                                                                 |
 | `volumechange`                                        | `{ volume, isMuted }`     | Whatever changed it.                                                                                                 |
 | `warning`                                             | `{ code, message }`       | Something the player worked around (below).                                                                          |
-| `error`                                               | `GyroViewError`           | The load or playback failed: `code` and `message`; `docs/DEPLOYMENT.md` lists the codes.                             |
+| `error`                                               | `GyroViewError`           | The load or playback failed: `code`, `category` and `message` (see "When a recording cannot play").                  |
 
 A `warning`'s code says what the player worked around: `recording-degraded` for missing or
 damaged data such as no gyro or an unverified IMU frame, `no-sound` for a silent clock,
@@ -246,6 +246,42 @@ only through VA-API, so not with NVIDIA's own driver or in a virtual machine. A 
 browser cannot decode is reported as `codec-unsupported`; the camera's low-resolution `LRV`
 proxy is never played in its place. The oldest browser versions that work are in the
 [npm package's requirements](apps/library/README.md#requirements).
+
+## When a recording cannot play
+
+Every failure is a `GyroViewError` with a stable `code`, its `category` and a `message` for the
+developer. A failed load or playback arrives once: `status` turns `error`, `load()` rejects and
+the `error` event carries the error (on `handle.events` for the iframe). The player never plays
+anything in the recording's place; what the page does next is its own choice. The category says
+whose side the failure is on:
+
+- `browser`: this browser cannot decode or draw the recording. `codec-unsupported` (no decoder
+  for the recording's video), `webcodecs-unavailable` (no WebCodecs: a page not served over
+  HTTPS, or an old browser), `render-unavailable`, `decode`, `playback-blocked`.
+- `recording`: the file is not one the player can play: not from an Insta360 camera, damaged,
+  cut short, or without its calibration or its second file. `invalid-trailer`,
+  `unsupported-container`, `unsupported-layout`, `missing-second-file`, `no-calibration`,
+  `no-info-record`, `no-key-frame`, and the codes of the parsers beneath them:
+  `binary-out-of-bounds`, `binary-unsafe-integer`, `invalid-byte-range`, `invalid-calibration`,
+  `invalid-protobuf`, `unsupported-calibration`, `unsupported-gyro-record`,
+  `unsupported-info-format`.
+- `source`: the recording's bytes could not be read as the player reads them. `cors`,
+  `range-unsupported`, `source-unreadable`, `source-changed`, `source-truncated`.
+- `usage`: the page called the API with something it does not accept. `invalid-argument`,
+  `embed-destroyed`.
+- `internal`: a failure the player did not expect, worth an issue. `invariant-violation`,
+  `index-out-of-range`.
+
+A page that falls back to the browser's own `<video>` gets the file's first video track as
+recorded: one lens, or both packed into one picture, unstitched and unsteadied. That helps where
+the browser still decodes the video: without WebGL 2 (`render-unavailable`), without WebCodecs
+(`webcodecs-unavailable`), when the host lacks CORS or byte ranges (`cors`, `range-unsupported`:
+a `<video>` without `crossorigin` needs neither), and for a file the player cannot read as a
+camera recording. It does not help with `codec-unsupported`, since the `<video>` has the same
+decoders, and it does not fail there either: it plays the sound under a black picture,
+streaming the interleaved recording, video bytes and all, with `videoWidth` 0 from
+`loadedmetadata` on. Nor does it help with `source-unreadable`, `source-changed` or
+`source-truncated`, where it reads the same bytes.
 
 ## Documentation
 

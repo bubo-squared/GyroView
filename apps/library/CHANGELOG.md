@@ -3,6 +3,22 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+New:
+
+- Every error has a `category`, derived from its code, that says whose side the failure is on:
+  `browser`, `recording`, `source`, `usage` or `internal`; `GYRO_VIEW_ERROR_CATEGORIES` and the
+  type `GyroViewErrorCategory` list them. The README's "When a recording cannot play" gives the
+  codes of each, and what a `<video>` fallback can and cannot do (ADR 0030).
+- The `webcodecs-unavailable` error: the browser has no WebCodecs, on a page not served over
+  HTTPS or in an old browser.
+
+What a page may notice:
+
+- A page on plain HTTP, or a browser without WebCodecs, hears `webcodecs-unavailable` where it
+  heard `codec-unsupported`, whose message blamed the codec.
+
 ## 0.3.0 (2026-09-30)
 
 What a page may notice:

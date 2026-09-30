@@ -85,10 +85,16 @@ export const MEI_CALIBRATION_LAYOUT = meiLayout({
 });
 
 /**
+ * The radial scale a v6 reading is drawn at, measured on the X6, the one camera seen to stitch
+ * through it: Insta360 Studio's far field and the seam's far bins agree on it to 0.3 percent
+ * (ADR 0023). Provisional, from one unit; the X5's own v6 strings would want 1.02 to 1.04, but
+ * the X5 stitches through its legacy string.
+ */
+const V6_RADIAL_SCALE = 1.008;
+
+/**
  * `offset_v6`: the Mei tokens, then `k1..k5 p1..p4 s1..s4 width height type` per lens, and a
  * version word with 6 in its high 16 bits; its distortion tokens read by `reading` (ADR 0032).
- * Drawn as read until the radial scale the Mei family needs is measured on a recording that
- * carries no legacy string (ADR 0023).
  */
 export function extendedMeiLayout(reading: V6TermReading): CalibrationStringLayout {
   return meiLayout({
@@ -96,7 +102,7 @@ export function extendedMeiLayout(reading: V6TermReading): CalibrationStringLayo
     lensTokens: V6_LENS_TOKENS,
     canvasTokens: { width: V6Token.CanvasWidth, height: V6Token.CanvasHeight },
     distortionOf: (block) => reading.distortionOf(v6DistortionTokensOf(block)),
-    radialScale: AS_READ,
+    radialScale: V6_RADIAL_SCALE,
   });
 }
 

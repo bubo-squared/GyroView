@@ -59,8 +59,9 @@ export interface DownloadDecisions {
  * or where it last stood once its readers closed, so the sound after the last frame still comes.
  * Once playing the window reaches as far ahead as the policy's seconds and bytes allow, before
  * that only to the frames the picture waits for; every picture reader's next frame is read,
- * however far from the others. Sound is read within the window, never beyond it, and not at all
- * before a picture was ever read but once playing. What the window wants and is neither held,
+ * however far from the others. What readers want is read to the window's end; a reader standing
+ * before the stretch kept behind the picture, as the sound is until it follows a seek, wants
+ * nothing; sound is read not at all before a picture was ever read but once playing. What the window wants and is neither held,
  * coming nor failed is asked for, lowest first, when a cursor waits on it, a refill's worth is
  * missing, or the window reaches the tracks' end; what it no longer wants is given up or let go
  * of, but for a stretch kept behind the picture.
@@ -72,7 +73,7 @@ export function planDownloads(state: DownloadState): DownloadDecisions {
   if (!windowStart) return nothingToRead(state);
   const ahead = state.isReadingAhead ? state.policy.aheadSeconds : 0;
   const windowEnd = seconds(windowStart.time + ahead);
-  const wanted = wantedBytes({ state, windowEnd, pictures }).bridgingGapsBelow(
+  const wanted = wantedBytes({ state, windowStart, windowEnd, pictures }).bridgingGapsBelow(
     state.policy.bridgedGap,
   );
   const kept = state.transfers.filter((transfer) => wanted.overlaps(transfer.remaining));
@@ -112,6 +113,7 @@ function anchorOf(cursors: readonly CursorPosition[]): WindowAnchor {
 
 interface Window {
   readonly state: DownloadState;
+  readonly windowStart: WindowAnchor;
   readonly windowEnd: Seconds;
   readonly pictures: readonly CursorPosition[];
 }
@@ -122,8 +124,11 @@ interface Window {
  * budget, so no picture waits for ever, however far from the others it reads.
  */
 function wantedBytes(window: Window): ByteRangeSet {
-  const { state, windowEnd, pictures } = window;
-  const needs = state.cursors.flatMap((cursor) => needsOf(cursor, windowEnd));
+  const { state, windowStart, windowEnd, pictures } = window;
+  const floor = keptBehindStart(windowStart, state.policy);
+  const needs = state.cursors
+    .filter((cursor) => offsetOf(cursor) >= floor)
+    .flatMap((cursor) => needsOf(cursor, windowEnd));
   const reading = pictures.filter((cursor) => !isAtItsEnd(cursor));
   const nextFrames = ByteRangeSet.of(reading.map((cursor) => cursor.track.rangeOf(cursor.sample)));
   return withinBytes(ByteRangeSet.of(needs), state.policy.aheadBytes).union(nextFrames);
@@ -177,8 +182,12 @@ function requestsFor(missing: ByteRangeSet, policy: DownloadPolicy, room: number
  * The stretch behind the picture that is kept for short seeks back.
  */
 function keptBehind(anchor: WindowAnchor, policy: DownloadPolicy): ByteRangeSet {
-  const start = Math.max(0, anchor.offset - policy.keepBehindBytes);
+  const start = keptBehindStart(anchor, policy);
   return ByteRangeSet.of([ByteRange.of(start, anchor.offset - start)]);
+}
+
+function keptBehindStart(anchor: WindowAnchor, policy: DownloadPolicy): number {
+  return Math.max(0, anchor.offset - policy.keepBehindBytes);
 }
 
 function isAtItsEnd(cursor: CursorPosition): boolean {

@@ -344,6 +344,16 @@ describe('planDownloads', () => {
     expect(spansOf(plan.start)).toEqual([[48 * SLOT + FRAME, 49 * SLOT + FRAME + SOUND]]);
   });
 
+  it('reads nothing for a sound reader a seek left behind the picture, but within the stretch kept', () => {
+    const file = cameraFile();
+    const leftBehind = [at(file.lens0, 600), at(file.lens1, 600), at(file.sound, 60)];
+    const plan = planDownloads(stateOf({ cursors: leftBehind }));
+    expect(plan.start.every((range) => range.offset >= 590 * SLOT)).toBe(true);
+    const justBehind = [at(file.lens0, 600), at(file.lens1, 600), at(file.sound, 595, true)];
+    const waiting = planDownloads(stateOf({ cursors: justBehind }));
+    expect(waiting.start[0]?.offset).toBe(595 * SLOT + FRAME);
+  });
+
   it('reads no sound beyond the window of the picture', () => {
     const file = cameraFile();
     const cursors = [at(file.lens0, 0), at(file.lens1, 0), at(file.sound, 1000, true)];

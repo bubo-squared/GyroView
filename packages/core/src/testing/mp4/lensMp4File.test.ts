@@ -19,6 +19,11 @@ describe('lensMp4File', () => {
     expect(table.duration).toBeCloseTo(3, 9);
   });
 
+  it('lasts as many frames as asked', async () => {
+    const { table } = await tableOf(lensMp4File({ lenses: 1, frames: 25 }).bytes);
+    expect(table.duration).toBeCloseTo(2.5, 9);
+  });
+
   it('holds a sound track after the lenses when asked', async () => {
     const { table } = await tableOf(lensMp4File({ lenses: 1, hasSound: true }).bytes);
     expect(table.audioTracks.map((track) => track.trackId)).toEqual([2]);

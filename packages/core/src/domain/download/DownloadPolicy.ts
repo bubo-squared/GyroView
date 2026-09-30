@@ -17,6 +17,11 @@ export interface DownloadPolicy {
    */
   readonly keepBehindBytes: number;
   /**
+   * How far behind the picture a reader still follows it (sound lags the picture by the
+   * decoders' lead); one further behind, as the sound is until it follows a seek, wants nothing.
+   */
+  readonly keepBehindSeconds: Seconds;
+  /**
    * The longest range it asks for at once, and how many ranges at a time.
    */
   readonly requestSize: number;
@@ -77,6 +82,7 @@ export function downloadPolicyFor(
       Math.round(KEEP_BEHIND_SECONDS * bytesPerSecond),
       (MOST_KEPT_BEHIND_MEBIBYTES * MEBIBYTE) / fileCount,
     ),
+    keepBehindSeconds: seconds(KEEP_BEHIND_SECONDS),
     requestSize: REQUEST_MEBIBYTES * MEBIBYTE,
     requestsInFlight: REQUESTS_IN_FLIGHT,
     bridgedGap: BRIDGED_GAP_MEBIBYTES * MEBIBYTE,

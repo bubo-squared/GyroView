@@ -27,6 +27,7 @@ const POLICY: DownloadPolicy = {
   aheadSeconds: seconds(2),
   aheadBytes: 100 * SLOT,
   keepBehindBytes: 10 * SLOT,
+  keepBehindSeconds: seconds(2),
   requestSize: 10 * SLOT,
   requestsInFlight: 2,
   bridgedGap: 2 ** 20,
@@ -37,6 +38,10 @@ const POLICY: DownloadPolicy = {
  * A tick is a frame's time: the link carries half again what playing takes, after two frames.
  */
 const NETWORK = { bytesPerTick: Math.round(1.5 * SLOT), latencyTicks: 2 };
+/**
+ * A link far faster than playing takes, which fills the window at once and then waits on it.
+ */
+const FAST_NETWORK = { bytesPerTick: 10 * SLOT, latencyTicks: 2 };
 const STALLED = Symbol('stalled');
 
 async function stalled(): Promise<typeof STALLED> {
@@ -49,8 +54,8 @@ interface Setup {
   readonly download: FileDownload;
 }
 
-function setup(policy = POLICY): Setup {
-  const link = new SimulatedLink(new Uint8Array(RECORDING.fileSize), NETWORK);
+function setup(policy = POLICY, network = NETWORK): Setup {
+  const link = new SimulatedLink(new Uint8Array(RECORDING.fileSize), network);
   return { link, download: new FileDownload({ table: RECORDING.table, stream: link, policy }) };
 }
 
@@ -68,8 +73,15 @@ class Readers {
 
   public constructor(public readonly cursors: readonly SampleCursor[]) {}
 
-  public async takeDueBy(time: number): Promise<void> {
-    for (const cursor of this.cursors) await this.takeFrom(cursor, time);
+  /**
+   * Takes every sample due by `time`, the sound's `soundLead` further ahead, as an audio feeder
+   * that buffers ahead reads it.
+   */
+  public async takeDueBy(time: number, soundLead = 0): Promise<void> {
+    for (const cursor of this.cursors) {
+      const lead = cursor.track.kind === 'audio' ? soundLead : 0;
+      await this.takeFrom(cursor, time + lead);
+    }
   }
 
   private async takeFrom(cursor: SampleCursor, time: number): Promise<void> {
@@ -97,15 +109,19 @@ function openReaders(download: FileDownload, frame: number): Readers {
 /**
  * Plays from `startFrame` for `frames` ticks, the link carrying its bytes tick by tick.
  */
-async function play(
-  context: Setup & { readonly readers: Readers },
-  startFrame: number,
-  frames: number,
-): Promise<void> {
+interface Playing extends Setup {
+  readonly readers: Readers;
+  /**
+   * How far ahead of the picture the sound is read.
+   */
+  readonly soundLead?: number;
+}
+
+async function play(context: Playing, startFrame: number, frames: number): Promise<void> {
   for (let tick = 0; tick <= frames; tick += 1) {
     context.link.advance();
     await settle();
-    await context.readers.takeDueBy((startFrame + tick) / FRAME_RATE);
+    await context.readers.takeDueBy((startFrame + tick) / FRAME_RATE, context.soundLead);
   }
 }
 
@@ -358,5 +374,15 @@ describe('FileDownload', () => {
     context.download.startReadingAhead();
     await idle(context.link, 400);
     expect(context.download.isReadyToResumeAt(seconds(0))).toBe(true);
+  });
+
+  it('asks for ranges of about the request size while the sound reads far ahead', async () => {
+    const context = setup(POLICY, FAST_NETWORK);
+    const readers = openReaders(context.download, 0);
+    context.download.startReadingAhead();
+    await play({ ...context, readers, soundLead: 30 }, 0, 600);
+    const { requests } = context.link;
+    const averageBytes = context.link.deliveredBytes / requests.length;
+    expect(averageBytes).toBeGreaterThanOrEqual(POLICY.requestSize / 2);
   });
 });

@@ -59,6 +59,7 @@ const POLICY: DownloadPolicy = {
   aheadSeconds: seconds(2),
   aheadBytes: 100 * SLOT,
   keepBehindBytes: 10 * SLOT,
+  keepBehindSeconds: seconds(2),
   requestSize: 20 * SLOT,
   requestsInFlight: 2,
   bridgedGap: 2 ** 20,
@@ -365,6 +366,22 @@ describe('planDownloads', () => {
     const justBehind = [at(file.lens0, 600), at(file.lens1, 600), at(file.sound, 595, true)];
     const waiting = planDownloads(stateOf({ cursors: justBehind }));
     expect(waiting.start[0]?.offset).toBe(595 * SLOT + FRAME);
+  });
+
+  it('lets a sound reader waiting where the downloaded bytes end wait for the refill', () => {
+    const file = cameraFile();
+    const cursors = [at(file.lens0, 0), at(file.lens1, 0), at(file.sound, 110, true)];
+    const policy = { ...POLICY, aheadBytes: 200 * SLOT };
+    const plan = planDownloads(stateOf({ cursors, held: heldSlots(0, 110), policy }));
+    expect(plan.start).toEqual([]);
+  });
+
+  it('reads the next sample of a waiting sound reader beyond the byte budget, the sound written after the picture', () => {
+    const file = cameraFile();
+    const soundAfter = trackOf('audio', 1200, { at: 1200 * SLOT, size: SOUND });
+    const cursors = [at(file.lens0, 0), at(file.lens1, 0), at(soundAfter, 0, true)];
+    const plan = planDownloads(stateOf({ cursors, held: heldSlots(0, 100) }));
+    expect(spansOf(plan.start)).toContainEqual([1200 * SLOT, 1200 * SLOT + SOUND]);
   });
 
   it('reads no sound beyond the window of the picture', () => {

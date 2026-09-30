@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { describeCodecReaderContract } from './CodecReader.contract';
 import { FakeCodecReader } from './FakeCodecReader';
 import type { ContainerCodecs } from '../ports/CodecReader';
+import { UNSPECIFIED_COLOUR } from '../domain/colour/TrackColour';
 
 const MOVIE = Uint8Array.of(1, 2, 3);
 
@@ -10,7 +11,7 @@ function lensCodec(trackId: number, trackIndex: number): ContainerCodecs['video'
   const size = { codedWidth: 64, codedHeight: 64 };
   return {
     trackId,
-    description: { trackIndex, codec: 'avc1.64000a', ...size },
+    description: { trackIndex, codec: 'avc1.64000a', ...size, colour: UNSPECIFIED_COLOUR },
     configuration: { codec: 'avc1.64000a', ...size, description: undefined, isFullRange: false },
   };
 }
@@ -35,6 +36,7 @@ describeCodecReaderContract(() =>
     reader: new FakeCodecReader([[MOVIE, CODECS]]),
     movieBytes: MOVIE,
     videoTrackIds: [1, 3],
+    videoColours: [UNSPECIFIED_COLOUR, UNSPECIFIED_COLOUR],
     audioTrackIds: [2],
     notMovie: Uint8Array.of(9),
   }),

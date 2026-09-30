@@ -18,6 +18,7 @@ import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSo
 import { SimulatedLink } from '../../testing/SimulatedLink';
 import { describeVideoTrackReaderContract } from '../../testing/VideoTrackReader.contract';
 import { settle } from '../../../test/support/settle';
+import { UNSPECIFIED_COLOUR } from '../../domain/colour/TrackColour';
 
 const LAYOUT: CameraLayout = {
   frames: 30,
@@ -47,7 +48,13 @@ const MARKED_KEYFRAMES_ARE_NOT: KeyframeRule = {
 
 const CODEC: VideoTrackCodec = {
   trackId: 1,
-  description: { trackIndex: 0, codec: 'avc1.64000a', codedWidth: 64, codedHeight: 64 },
+  description: {
+    trackIndex: 0,
+    codec: 'avc1.64000a',
+    codedWidth: 64,
+    codedHeight: 64,
+    colour: UNSPECIFIED_COLOUR,
+  },
   configuration: {
     codec: 'avc1.64000a',
     codedWidth: 64,

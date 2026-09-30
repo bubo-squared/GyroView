@@ -3,6 +3,7 @@ import {
   ITERATION_END,
   readSampleTable,
   SourceByteStream,
+  UNSPECIFIED_COLOUR,
   type AudioDecoderConfiguration,
   type AudioPackager,
   type AudioSampleSource,
@@ -84,7 +85,7 @@ export function lensCodecs(spec: LensCodecsSpec): ContainerCodecs {
   };
   const video = Array.from({ length: spec.lenses }, (_, trackIndex) => ({
     trackId: trackIndex + 1,
-    description: { trackIndex, codec, ...size },
+    description: { trackIndex, codec, ...size, colour: UNSPECIFIED_COLOUR },
     configuration: { codec, ...size, description: undefined, isFullRange: false },
   }));
   const soundId = spec.lenses + 1;

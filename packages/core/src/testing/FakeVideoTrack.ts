@@ -8,6 +8,7 @@ import type {
 } from '../ports/VideoTrack';
 import { GyroViewError } from '../shared/errors/GyroViewError';
 import { seconds, type Seconds } from '../shared/units/time';
+import { UNSPECIFIED_COLOUR, type TrackColour } from '../domain/colour/TrackColour';
 
 export interface FakeVideoTrackOptions {
   readonly trackIndex: number;
@@ -22,6 +23,10 @@ export interface FakeVideoTrackOptions {
   readonly codedWidth?: number;
   readonly codedHeight?: number;
   readonly codec?: string;
+  /**
+   * How the track's samples encode colour; default unspecified, as a track that says nothing.
+   */
+  readonly colour?: TrackColour;
   /**
    * Shifts every timestamp, to simulate tracks that do not start at zero.
    */
@@ -46,7 +51,11 @@ export class FakeVideoTrack implements VideoTrackReader {
   private readonly packets: readonly EncodedVideoPacket[];
 
   public constructor(private readonly options: FakeVideoTrackOptions) {
-    this.description = { trackIndex: options.trackIndex, ...codedShapeOf(options) };
+    this.description = {
+      trackIndex: options.trackIndex,
+      ...codedShapeOf(options),
+      colour: options.colour ?? UNSPECIFIED_COLOUR,
+    };
     this.packets = Array.from({ length: options.frameCount }, (_unused, frame) =>
       this.packetFor(frame),
     );

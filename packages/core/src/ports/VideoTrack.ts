@@ -1,3 +1,4 @@
+import type { TrackColour } from '../domain/colour/TrackColour';
 import type { Seconds } from '../shared/units/time';
 
 /**
@@ -12,6 +13,7 @@ export interface VideoTrackDescription {
    * WebCodecs codec string, for example `hvc1.1.6.L153.B0` or `avc1.640033`.
    */
   readonly codec: string;
+  readonly colour: TrackColour;
 }
 
 /**

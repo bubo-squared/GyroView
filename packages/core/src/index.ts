@@ -179,6 +179,8 @@ export {
   type SeamJoin,
 } from './domain/stitching/seamJoin';
 export type { CalibrationChoice } from './domain/format/calibration/selectCalibration';
+export type * from './domain/colour/TrackColour';
+export { UNSPECIFIED_COLOUR } from './domain/colour/TrackColour';
 export { CALIBRATION_SOURCES } from './domain/format/info/calibrationSources';
 
 // Shared vocabulary

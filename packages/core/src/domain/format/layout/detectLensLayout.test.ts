@@ -4,12 +4,19 @@ import { detectLensLayout, type InputDescription, type LayoutHints } from './det
 import { FULL_FRAME, LEFT_HALF, RIGHT_HALF } from '../../stitching/LensLayout';
 import type { VideoTrackDescription } from '../../../ports/VideoTrack';
 import { captureError } from '../../../../test/support/errors';
+import { UNSPECIFIED_COLOUR } from '../../colour/TrackColour';
 
 const HEVC = 'hvc1.1.6.L153.B0';
 const NO_HINTS = { fileLayout: undefined, trackOrder: undefined };
 
 function track(trackIndex: number, width: number, height = width): VideoTrackDescription {
-  return { trackIndex, codedWidth: width, codedHeight: height, codec: HEVC };
+  return {
+    trackIndex,
+    codedWidth: width,
+    codedHeight: height,
+    codec: HEVC,
+    colour: UNSPECIFIED_COLOUR,
+  };
 }
 
 function input(

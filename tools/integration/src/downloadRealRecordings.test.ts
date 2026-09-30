@@ -17,6 +17,12 @@ describe.skipIf(!hasSamples())('reading the real X5 recordings through the downl
         { trackIndex: 1, codedWidth: 2880, codedHeight: 2880 },
       ]);
       expect(input.videoTracks[0]!.description.codec).toMatch(/^hev1|^hvc1/);
+      expect(input.videoTracks[0]!.description.colour).toEqual({
+        primaries: 'bt709',
+        transfer: 'bt709',
+        matrix: 'bt709',
+        range: 'full',
+      });
       expect(input.audioTracks).toHaveLength(1);
       const [sound] = input.audioTracks;
       const segments =

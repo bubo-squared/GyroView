@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { TrackColour } from '../domain/colour/TrackColour';
 import type { CodecReader } from '../ports/CodecReader';
 
 /**
@@ -10,6 +11,10 @@ export interface CodecReaderUnderTest {
   readonly reader: CodecReader;
   readonly movieBytes: Uint8Array;
   readonly videoTrackIds: readonly number[];
+  /**
+   * How each video track's bitstream says its samples encode colour, in track order.
+   */
+  readonly videoColours: readonly TrackColour[];
   readonly audioTrackIds: readonly number[];
   readonly notMovie: Uint8Array;
 }
@@ -40,6 +45,12 @@ export function describeCodecReaderContract(setup: () => Promise<CodecReaderUnde
         expect(configuration.codedWidth).toBe(description.codedWidth);
         expect(configuration.codedHeight).toBe(description.codedHeight);
       }
+    });
+
+    it("describes each video track's colour as its bitstream says", async () => {
+      const subject = await setup();
+      const { video } = await subject.reader.read(subject.movieBytes);
+      expect(video.map((codec) => codec.description.colour)).toEqual(subject.videoColours);
     });
 
     it('configures each audio track with its rate and channels', async () => {

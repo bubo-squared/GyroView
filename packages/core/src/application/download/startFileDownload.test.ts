@@ -7,6 +7,7 @@ import type { AudioTrackCodec, ContainerCodecs, VideoTrackCodec } from '../../po
 import { seconds } from '../../shared/units/time';
 import { cameraRecording } from '../../testing/cameraRecording';
 import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSource';
+import { UNSPECIFIED_COLOUR } from '../../domain/colour/TrackColour';
 
 const RECORDING = cameraRecording({
   frames: 30,
@@ -31,7 +32,7 @@ function lensCodec(trackId: number, trackIndex: number): VideoTrackCodec {
   const size = { codedWidth: 64, codedHeight: 64 };
   return {
     trackId,
-    description: { trackIndex, codec: 'avc1.64000a', ...size },
+    description: { trackIndex, codec: 'avc1.64000a', ...size, colour: UNSPECIFIED_COLOUR },
     configuration: { codec: 'avc1.64000a', ...size, description: undefined, isFullRange: false },
   };
 }

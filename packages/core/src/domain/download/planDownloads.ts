@@ -60,17 +60,14 @@ export interface DownloadDecisions {
 }
 
 /**
- * The download's plan, from where its cursors stand (ADR 0029). The window the picture reads in
- * starts where the picture stands: its slowest reader (at its track's end once it read it all),
- * or where it last stood once its readers closed, so the sound after the last frame still comes.
- * Once playing the window reaches as far ahead as the policy's seconds and bytes allow, before
- * that only to the frames the picture waits for; every picture reader's next frame is read,
- * however far from the others. What readers want is read to the window's end; a reader standing
- * before the stretch kept behind the picture, as the sound is until it follows a seek, wants
- * nothing; sound is read not at all before a picture was ever read but once playing. What the window wants and is neither held,
- * coming nor failed is asked for, lowest first, when a cursor waits on it, a refill's worth is
- * missing, or the window reaches the tracks' end; what it no longer wants is given up or let go
- * of, but for a stretch kept behind the picture.
+ * The download's plan, from where its readers stand (ADR 0029). The window starts at the
+ * slowest picture reader, where the picture last stood once its readers closed (so the sound
+ * after the last frame still comes), or at the sound where no picture was ever read; once
+ * playing it reaches as far ahead as the policy's seconds and bytes allow, before that only to
+ * what the readers wait for. Every picture reader's next frame is read, however far from the
+ * others, so none waits for ever; a reader a seek left behind wants nothing until it follows.
+ * What is wanted is asked for lowest first and in large ranges: at once when playback needs it
+ * now, otherwise once a refill's worth is missing.
  */
 export function planDownloads(state: DownloadState): DownloadDecisions {
   const pictures = state.cursors.filter((cursor) => isPicture(cursor));

@@ -409,4 +409,15 @@ describe('FileDownload', () => {
     expect(cursors.map((cursor) => cursor.position)).toEqual([31, 31]);
     expect(context.link.requests.length).toBeLessThanOrEqual(4);
   });
+
+  it('fails every read when it cannot plan, rather than leave them waiting', async () => {
+    const context = setup({ ...POLICY, keepBehindBytes: NaN });
+    const failed = expect(
+      context.download.openCursor(RECORDING.lens0, 0).nextSample(),
+    ).rejects.toMatchObject({
+      code: 'invalid-byte-range',
+    });
+    await idle(context.link, 3);
+    await failed;
+  });
 });

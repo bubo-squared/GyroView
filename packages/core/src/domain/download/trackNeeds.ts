@@ -18,7 +18,9 @@ export interface CursorPosition {
 }
 
 /**
- * The ranges of every sample a cursor will hand out up to `until`, in decode order.
+ * The ranges of the samples a cursor will hand out, in decode order, up to the first that shows
+ * after `until`: with B-frames the window ends up to a reordering group early, which the plans
+ * after read.
  */
 export function needsOf(cursor: CursorPosition, until: Seconds): ByteRange[] {
   const { track } = cursor;

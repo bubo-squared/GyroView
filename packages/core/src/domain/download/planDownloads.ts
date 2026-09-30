@@ -62,7 +62,7 @@ export function planDownloads(state: DownloadState): DownloadDecisions {
     };
   }
   const windowEnd = windowEndOf(pictures, state);
-  const wanted = wantedBytes(state, windowEnd).bridgingGapsBelow(state.policy.bridgedGap);
+  const wanted = wantedBytes(state, windowEnd, pictures).bridgingGapsBelow(state.policy.bridgedGap);
   const kept = state.transfers.filter((transfer) => wanted.overlaps(transfer.remaining));
   const coming = ByteRangeSet.of(kept.map((transfer) => transfer.remaining));
   const missing = wanted.subtract(state.held).subtract(coming);
@@ -78,29 +78,35 @@ export function planDownloads(state: DownloadState): DownloadDecisions {
   };
 }
 
+/**
+ * Where the window ends: as far ahead of the slowest picture as the policy reads once playing,
+ * at that picture before.
+ */
 function windowEndOf(pictures: readonly CursorPosition[], state: DownloadState): Seconds {
-  const times = pictures.map((cursor) => cursor.track.timestampOf(cursor.sample));
-  return seconds(
-    state.isReadingAhead ? Math.min(...times) + state.policy.aheadSeconds : Math.max(...times),
-  );
+  const slowest = Math.min(...pictures.map((cursor) => cursor.track.timestampOf(cursor.sample)));
+  return seconds(state.isReadingAhead ? slowest + state.policy.aheadSeconds : slowest);
 }
 
 /**
- * Every sample a cursor will hand out within the window, a picture's next one always, clipped to
- * the bytes the policy allows ahead, nearest first.
+ * Every sample a cursor will hand out within the window, clipped to the bytes the policy allows
+ * ahead, nearest first; and every picture's next frame, whatever the window and the budget, so
+ * no picture waits for ever, however far from the others it reads.
  */
-function wantedBytes(state: DownloadState, windowEnd: Seconds): ByteRangeSet {
+function wantedBytes(
+  state: DownloadState,
+  windowEnd: Seconds,
+  pictures: readonly CursorPosition[],
+): ByteRangeSet {
   const needs = state.cursors.flatMap((cursor) => needsOf(cursor, windowEnd));
-  return withinBytes(ByteRangeSet.of(needs), state.policy.aheadBytes);
+  const nextFrames = ByteRangeSet.of(pictures.map((cursor) => cursor.track.rangeOf(cursor.sample)));
+  return withinBytes(ByteRangeSet.of(needs), state.policy.aheadBytes).union(nextFrames);
 }
 
 function needsOf(cursor: CursorPosition, windowEnd: Seconds): ByteRange[] {
   const { track } = cursor;
   const needs: ByteRange[] = [];
-  const isPicture = track.kind === 'video';
   for (let sample = cursor.sample; sample < track.sampleCount; sample += 1) {
-    const isNext = sample === cursor.sample;
-    if (track.timestampOf(sample) > windowEnd && !(isPicture && isNext)) break;
+    if (track.timestampOf(sample) > windowEnd) break;
     needs.push(track.rangeOf(sample));
   }
   return needs;

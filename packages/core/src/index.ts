@@ -181,6 +181,22 @@ export {
 export type { CalibrationChoice } from './domain/format/calibration/selectCalibration';
 export type * from './domain/colour/TrackColour';
 export { UNSPECIFIED_COLOUR } from './domain/colour/TrackColour';
+export {
+  AS_RECORDED,
+  DISPLAY_CONVERSIONS,
+  displayConversionFor,
+  displayConversionsOf,
+  HLG_OETF,
+  HLG_TO_SDR_BT709,
+  hlgInverseOetf,
+  toDisplay,
+  type DisplayConversion,
+  type DisplayConversionChoice,
+  type DisplayConversionParameters,
+  type Rgb,
+  type TexelSignal,
+  type ToneCurve,
+} from './domain/colour/DisplayConversion';
 export { CALIBRATION_SOURCES } from './domain/format/info/calibrationSources';
 
 // Shared vocabulary

@@ -2,7 +2,7 @@ import { ByteRange } from '@gyroview/core';
 import { describeByteStreamContract } from '@gyroview/core/testing';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { HttpByteStream } from './HttpByteStream';
+import { HttpByteStream, type HttpByteStreamOptions } from './HttpByteStream';
 import { HttpResource, type HttpResourceOptions } from './HttpResource';
 import { TestServer, type TestServerBehaviour } from './test/testServer';
 
@@ -22,8 +22,18 @@ afterAll(async () => {
   await Promise.all(servers.map((server) => server.stop()));
 });
 
-function streamOf(url: string, options: HttpResourceOptions = {}): HttpByteStream {
-  return new HttpByteStream(new HttpResource(url, options));
+function streamOf(
+  url: string,
+  options: HttpResourceOptions = {},
+  streamOptions: HttpByteStreamOptions = {},
+): HttpByteStream {
+  return new HttpByteStream(new HttpResource(url, options), streamOptions);
+}
+
+function rangesAskedOf(server: TestServer): (string | undefined)[] {
+  return server.requests
+    .filter((request) => request.method === 'GET')
+    .map((request) => request.range);
 }
 
 async function bytesOf(stream: HttpByteStream, range: ByteRange): Promise<number[]> {
@@ -36,6 +46,18 @@ async function bytesOf(stream: HttpByteStream, range: ByteRange): Promise<number
  */
 function answeringRanges(answer: () => Response): typeof fetch {
   return (input, init) => (init?.method === 'GET' ? Promise.resolve(answer()) : fetch(input, init));
+}
+
+/**
+ * A fetch that passes the first byte range on and answers every later one with a server error.
+ */
+function laterRangesFailing(): typeof fetch {
+  let ranges = 0;
+  return (input, init) => {
+    if (init?.method === 'GET') ranges += 1;
+    const isLaterRange = init?.method === 'GET' && ranges > 1;
+    return isLaterRange ? Promise.resolve(new Response(null, { status: 503 })) : fetch(input, init);
+  };
 }
 
 /**
@@ -124,5 +146,40 @@ describe('HttpByteStream', () => {
       code: 'source-unreadable',
       message: `${server.url} sent more than the 20-byte range at 10`,
     });
+  });
+
+  it('asks for the rest of a range that broke off, from its next byte', async () => {
+    const server = await serve(BODY, { breaksOffRanges: 1 });
+    const stream = streamOf(server.url, { retryDelaysMs: NO_WAIT });
+    await expect(bytesOf(stream, ByteRange.of(0, 100))).resolves.toEqual([...BODY]);
+    expect(rangesAskedOf(server)).toEqual(['bytes=0-99', 'bytes=50-99']);
+  });
+
+  it('asks for the rest of a range that stalled, once no byte came for the stall timeout', async () => {
+    const server = await serve(BODY, { stallsRanges: 1 });
+    const stream = streamOf(server.url, { retryDelaysMs: NO_WAIT }, { stallTimeoutMs: 100 });
+    await expect(bytesOf(stream, ByteRange.of(0, 100))).resolves.toEqual([...BODY]);
+    expect(rangesAskedOf(server)).toEqual(['bytes=0-99', 'bytes=50-99']);
+    expect(server.requests.find((request) => request.method === 'GET')?.wasCutShort).toBe(true);
+  });
+
+  it('fails a range whose rest cannot be had once the retries are spent', async () => {
+    const server = await serve(BODY, { breaksOffRanges: 1 });
+    const stream = streamOf(server.url, { fetch: laterRangesFailing(), retryDelaysMs: NO_WAIT });
+    await expect(bytesOf(stream, ByteRange.of(0, 100))).rejects.toMatchObject({
+      code: 'source-unreadable',
+      message: `${server.url} answered 503 to a byte range`,
+    });
+  });
+
+  it('given up while stalled, ends the request and asks for nothing more', async () => {
+    const server = await serve(BODY, { stallsRanges: 1 });
+    const chunks = streamOf(server.url).stream(ByteRange.of(0, 100))[Symbol.asyncIterator]();
+    await chunks.next();
+    const awaited = chunks.next();
+    await chunks.return?.();
+    await expect(awaited).resolves.toMatchObject({ done: true });
+    await expect.poll(() => server.requests.at(-1)?.wasCutShort).toBe(true);
+    expect(rangesAskedOf(server)).toEqual(['bytes=0-99']);
   });
 });

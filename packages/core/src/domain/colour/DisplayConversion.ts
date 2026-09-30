@@ -1,59 +1,45 @@
-import { transformVector, type Matrix3 } from '../../shared/math/Matrix3';
+import { IDENTITY_MATRIX3, transformVector, type Matrix3 } from '../../shared/math/Matrix3';
 import type { Vector3 } from '../../shared/math/Vector3';
-import type { ColourPrimaries, TrackColour, TransferCharacteristics } from './TrackColour';
+import type {
+  ColourPrimaries,
+  MatrixCoefficients,
+  TrackColour,
+  TransferCharacteristics,
+} from './TrackColour';
 
 /**
- * A colour as a texel holds it, red, green and blue from 0 to 1, still encoded by the track's
- * transfer function.
- */
-export type Rgb = Vector3;
-
-/**
- * What a lens texture's texels hold once the browser has uploaded a decoded frame: it applies
- * the track's matrix and range, and leaves primaries and transfer as recorded (ADR 0033).
- */
-export interface TexelSignal {
-  readonly primaries: ColourPrimaries;
-  readonly transfer: TransferCharacteristics;
-}
-
-/**
- * How linear light is brought to the display: an exposure gain, a roll-off above `kneeStart`
- * whose curve approaches `ceiling`, and the display's encoding power (BT.1886's 2.4, or less).
+ * How scene light is brought to the display: an exposure, a roll-off of the luminance above
+ * `kneeStart` whose curve approaches `ceiling`, and the display's encoding power (BT.1886's 2.4,
+ * or less).
  */
 export interface ToneCurve {
-  readonly gain: number;
+  readonly exposure: number;
   readonly kneeStart: number;
   readonly ceiling: number;
   readonly exponent: number;
 }
 
 /**
- * A conversion as parameters a shader evaluates, one kind per strategy.
+ * How a lens's texels are brought to the SDR BT.709 display the player draws on, as parameters a
+ * shader evaluates (ADR 0033). The texels hold what the browser's upload makes of a decoded
+ * frame: its range applied, its primaries and transfer as recorded, and R′G′B′ through the
+ * matrix the frame names, which the renderer brings back to `matrix`, the track's, where the two
+ * differ (`matrixCorrectionOf`).
  */
-export type DisplayConversionParameters =
-  | { readonly kind: 'as-recorded' }
-  | { readonly kind: 'hlg-to-sdr-bt709'; readonly gamut: Matrix3; readonly tone: ToneCurve };
-
-/**
- * One way of showing a lens's texels on the SDR BT.709 display the player draws on, and the
- * texel signals it is for.
- */
-export interface DisplayConversion {
-  readonly parameters: DisplayConversionParameters;
-  appliesTo(signal: TexelSignal): boolean;
-}
-
-const HDR_TRANSFERS: ReadonlySet<TransferCharacteristics> = new Set(['hlg', 'pq']);
+export type DisplayConversion =
+  | { readonly kind: 'as-recorded'; readonly matrix: MatrixCoefficients }
+  | {
+      readonly kind: 'hlg-to-sdr-bt709';
+      readonly matrix: MatrixCoefficients;
+      readonly gamut: Matrix3;
+      readonly tone: ToneCurve;
+    };
 
 /**
  * SDR as the browser uploads it: BT.709 and sRGB are close enough to show as recorded, as the
- * player always has; a track that names no transfer is taken for SDR.
+ * player always has; its matrix unsaid, so no texel is corrected.
  */
-export const AS_RECORDED: DisplayConversion = {
-  parameters: { kind: 'as-recorded' },
-  appliesTo: (signal) => !HDR_TRANSFERS.has(signal.transfer),
-};
+export const AS_RECORDED: DisplayConversion = { kind: 'as-recorded', matrix: 'unspecified' };
 
 /**
  * BT.2100 HLG's inverse OETF (ITU-R BT.2100-2, table 5): `E'² / 3` up to half signal, then
@@ -81,24 +67,130 @@ const BT2020_TO_BT709: Matrix3 = [
 /* eslint-enable @typescript-eslint/no-magic-numbers */
 
 /**
- * Insta360 Studio's own HLG-to-SDR curve, fitted to the luma of the X6's HLG and Rec.709
- * exports of the same stitch: scene light, no OOTF, brought up by a quarter, rolled off above
- * 0.3 and encoded with a power of 1/2.2 (ADR 0033). Provisional until fitted per channel.
+ * BT.709's luminance of linear red, green and blue (ITU-R BT.709-6, item 3.2): what the highlight
+ * roll-off acts on, so a colour keeps its hue as it rolls off.
  */
-const STUDIO_TONE: ToneCurve = { gain: 1.25, kneeStart: 0.3, ceiling: 1.35, exponent: 2.2 };
-
-export const HLG_TO_SDR_BT709: DisplayConversion = {
-  parameters: { kind: 'hlg-to-sdr-bt709', gamut: BT2020_TO_BT709, tone: STUDIO_TONE },
-  appliesTo: (signal) => signal.transfer === 'hlg',
-};
-
-export const DISPLAY_CONVERSIONS: readonly DisplayConversion[] = [AS_RECORDED, HLG_TO_SDR_BT709];
+/* eslint-disable @typescript-eslint/no-magic-numbers -- published coefficients, cited above */
+export const BT709_LUMINANCE: Vector3 = [0.2126, 0.7152, 0.0722];
+/* eslint-enable @typescript-eslint/no-magic-numbers */
 
 /**
- * The conversion that shows texels of `signal`, none for one the player cannot show (PQ).
+ * Insta360 Studio's own HLG-to-SDR curve, fitted pixel by pixel to the X6's HLG and Rec.709
+ * exports of the same stitch: scene light, no OOTF, brought up by two fifths, its luminance
+ * rolled off above 0.2 and encoded with a power of 1/2.2 (ADR 0033).
  */
-export function displayConversionFor(signal: TexelSignal): DisplayConversion | undefined {
-  return DISPLAY_CONVERSIONS.find((conversion) => conversion.appliesTo(signal));
+const STUDIO_TONE: ToneCurve = { exposure: 1.4, kneeStart: 0.2, ceiling: 1.5, exponent: 2.2 };
+
+/**
+ * HLG of BT.2020 primaries, as BT.2100 defines it and the X6 records it, shown as Studio shows it.
+ */
+export const HLG_TO_SDR_BT709 = {
+  kind: 'hlg-to-sdr-bt709',
+  matrix: 'bt2020-ncl',
+  gamut: BT2020_TO_BT709,
+  tone: STUDIO_TONE,
+} satisfies DisplayConversion;
+
+/**
+ * What a conversion chosen for a track's colour leaves wrong, if anything.
+ */
+interface ConversionChoice {
+  readonly conversion: DisplayConversion;
+  readonly problem?: string;
+}
+
+/**
+ * The primaries SDR is shown as recorded with: BT.709's, and the SD primaries close to them; a
+ * track that names none is taken for BT.709.
+ */
+const BT709_LIKE_PRIMARIES: ReadonlySet<ColourPrimaries> = new Set([
+  'bt709',
+  'bt470bg',
+  'smpte170m',
+  'unspecified',
+]);
+
+/**
+ * The matrix that brings HLG's linear light into BT.709, by the track's primaries: none for
+ * BT.709, BT.2087's for BT.2020, which BT.2100 means when a track names none. Undefined for
+ * primaries HLG is not recorded with, whose gamut is left as it is.
+ */
+const HLG_GAMUT_BY_PRIMARIES: Readonly<Record<ColourPrimaries, Matrix3 | undefined>> = {
+  bt709: IDENTITY_MATRIX3,
+  bt2020: BT2020_TO_BT709,
+  unspecified: BT2020_TO_BT709,
+  bt470bg: undefined,
+  smpte170m: undefined,
+  smpte432: undefined,
+};
+
+function asRecordedFrom(primaries: ColourPrimaries): ConversionChoice {
+  return BT709_LIKE_PRIMARIES.has(primaries)
+    ? { conversion: AS_RECORDED }
+    : { conversion: AS_RECORDED, problem: `${primaries} primaries are shown as BT.709` };
+}
+
+function hlgFrom(primaries: ColourPrimaries): ConversionChoice {
+  const gamut = HLG_GAMUT_BY_PRIMARIES[primaries];
+  return gamut === undefined
+    ? {
+        conversion: { ...HLG_TO_SDR_BT709, gamut: IDENTITY_MATRIX3 },
+        problem: `HLG of ${primaries} primaries is shown without their gamut`,
+      }
+    : { conversion: { ...HLG_TO_SDR_BT709, gamut } };
+}
+
+function notShown(transfer: TransferCharacteristics): () => ConversionChoice {
+  return () => ({
+    conversion: AS_RECORDED,
+    problem: `the ${transfer} transfer cannot be shown yet: drawn as recorded`,
+  });
+}
+
+/**
+ * The conversion of every transfer, from the track's primaries: a transfer the player learns to
+ * name does not compile until it is given one.
+ */
+const CONVERSION_BY_TRANSFER: Readonly<
+  Record<TransferCharacteristics, (primaries: ColourPrimaries) => ConversionChoice>
+> = {
+  bt709: asRecordedFrom,
+  smpte170m: asRecordedFrom,
+  'iec61966-2-1': asRecordedFrom,
+  unspecified: asRecordedFrom,
+  hlg: hlgFrom,
+  pq: notShown('pq'),
+  linear: notShown('linear'),
+};
+
+/**
+ * The conversion each decoded frame source is shown with, in frame-slot order, and what could not
+ * be shown as it should.
+ */
+export interface DisplayConversionChoice {
+  readonly conversions: readonly DisplayConversion[];
+  readonly warnings: readonly string[];
+}
+
+/**
+ * Picks a conversion for each track's colour; a colour no conversion shows is drawn as recorded,
+ * with a warning, rather than refused: the picture is there, its colours wrong. Tracks that share
+ * a problem share its warning.
+ */
+export function displayConversionsOf(colours: readonly TrackColour[]): DisplayConversionChoice {
+  const choices = colours.map((colour) =>
+    CONVERSION_BY_TRANSFER[colour.transfer](colour.primaries),
+  );
+  const problems = choices.flatMap((choice) =>
+    choice.problem === undefined ? [] : [choice.problem],
+  );
+  return {
+    conversions: choices.map(({ conversion }, slot) => ({
+      ...conversion,
+      matrix: colours[slot]?.matrix ?? conversion.matrix,
+    })),
+    warnings: [...new Set(problems)],
+  };
 }
 
 /**
@@ -112,57 +204,66 @@ export function hlgInverseOetf(signal: number): number {
 }
 
 /**
- * A texel as the display shows it: the reference the shader's conversion is held to.
+ * A texel, red, green and blue from 0 to 1, where the lens's exposure is a factor: what gain
+ * matching measures and scales (ADR 0012). As recorded for SDR, whose encoding is close to a
+ * power of light; for HLG, scene light in BT.709 raised to the display's power, before the
+ * conversion's exposure and highlight roll-off, so a white still fits the seam meter's 8 bits.
  */
-export function toDisplay(parameters: DisplayConversionParameters, texel: Rgb): Rgb {
-  switch (parameters.kind) {
+export function exposureSignalOf(conversion: DisplayConversion, texel: Vector3): Vector3 {
+  switch (conversion.kind) {
     case 'as-recorded': {
       return texel;
     }
     case 'hlg-to-sdr-bt709': {
-      const scene = mapRgb(texel, hlgInverseOetf);
-      const inBt709 = transformVector(parameters.gamut, scene);
-      return mapRgb(inBt709, (light) => encodedForDisplay(light, parameters.tone));
+      const light = transformVector(conversion.gamut, mapRgb(texel, hlgInverseOetf));
+      return mapRgb(light, (channel) => Math.max(channel, 0) ** (1 / conversion.tone.exponent));
     }
   }
 }
 
-function encodedForDisplay(light: number, tone: ToneCurve): number {
-  const exposed = Math.max(light, 0) * tone.gain;
-  const over = exposed - tone.kneeStart;
-  const rolledOff =
-    over <= 0 ? exposed : tone.kneeStart + over / (1 + over / (tone.ceiling - tone.kneeStart));
-  return Math.min(rolledOff ** (1 / tone.exponent), 1);
+/**
+ * An exposure signal as the display shows it: for HLG, exposed and its highlights rolled off.
+ */
+export function shownOf(conversion: DisplayConversion, signal: Vector3): Vector3 {
+  switch (conversion.kind) {
+    case 'as-recorded': {
+      return signal;
+    }
+    case 'hlg-to-sdr-bt709': {
+      return tonedFrom(signal, conversion.tone);
+    }
+  }
 }
 
-function mapRgb([red, green, blue]: Rgb, map: (channel: number) => number): Rgb {
+/**
+ * A texel as the display shows it: the reference the shader's conversion is held to.
+ */
+export function toDisplay(conversion: DisplayConversion, texel: Vector3): Vector3 {
+  return shownOf(conversion, exposureSignalOf(conversion, texel));
+}
+
+/**
+ * The signal exposed back to light, its luminance rolled off with every channel scaled alike,
+ * and encoded for the display.
+ */
+function tonedFrom(signal: Vector3, tone: ToneCurve): Vector3 {
+  const light = mapRgb(signal, (channel) => tone.exposure * channel ** tone.exponent);
+  const luminance = dotProduct(light, BT709_LUMINANCE);
+  const scale = luminance > 0 ? rolledOff(luminance, tone) / luminance : 1;
+  return mapRgb(light, (channel) => Math.min((channel * scale) ** (1 / tone.exponent), 1));
+}
+
+function rolledOff(luminance: number, tone: ToneCurve): number {
+  const over = luminance - tone.kneeStart;
+  return over <= 0
+    ? luminance
+    : tone.kneeStart + over / (1 + over / (tone.ceiling - tone.kneeStart));
+}
+
+function dotProduct(left: Vector3, right: Vector3): number {
+  return left[0] * right[0] + left[1] * right[1] + left[2] * right[2];
+}
+
+function mapRgb([red, green, blue]: Vector3, map: (channel: number) => number): Vector3 {
   return [map(red), map(green), map(blue)];
-}
-
-/**
- * The conversion each decoded frame source is shown with, in frame-slot order, and what could not
- * be shown as it should.
- */
-export interface DisplayConversionChoice {
-  readonly conversions: readonly DisplayConversionParameters[];
-  readonly warnings: readonly string[];
-}
-
-/**
- * Picks a conversion for each track's colour; a colour no conversion shows is drawn as recorded,
- * with a warning, rather than refused: the picture is there, its colours wrong.
- */
-export function displayConversionsOf(colours: readonly TrackColour[]): DisplayConversionChoice {
-  const found = colours.map((colour) => displayConversionFor(colour));
-  const warnings = colours.flatMap((colour, slot) =>
-    found[slot] === undefined
-      ? [
-          `frame source ${slot} is ${colour.transfer}, which the player cannot show yet: drawn as recorded`,
-        ]
-      : [],
-  );
-  return {
-    conversions: found.map((conversion) => (conversion ?? AS_RECORDED).parameters),
-    warnings,
-  };
 }

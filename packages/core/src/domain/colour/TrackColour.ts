@@ -1,19 +1,31 @@
 /**
- * How a video track's samples encode colour, as its bitstream says: the HEVC or AVC VUI, or the
+ * The values a video track's colour can name, as its bitstream says: the HEVC or AVC VUI, or the
  * sample entry's `colr` box. Spelled as WebCodecs spells `VideoColorSpaceInit`, so an adapter
  * passes values through; `unspecified` where the track says nothing, or something the player
  * does not know.
  */
-export type ColourPrimaries =
-  'bt709' | 'bt470bg' | 'smpte170m' | 'bt2020' | 'smpte432' | 'unspecified';
+export const COLOUR_PRIMARIES = ['bt709', 'bt470bg', 'smpte170m', 'bt2020', 'smpte432'] as const;
 
-export type TransferCharacteristics =
-  'bt709' | 'smpte170m' | 'iec61966-2-1' | 'linear' | 'pq' | 'hlg' | 'unspecified';
+export const TRANSFER_CHARACTERISTICS = [
+  'bt709',
+  'smpte170m',
+  'iec61966-2-1',
+  'linear',
+  'pq',
+  'hlg',
+] as const;
 
-export type MatrixCoefficients =
-  'rgb' | 'bt709' | 'bt470bg' | 'smpte170m' | 'bt2020-ncl' | 'unspecified';
+export const MATRIX_COEFFICIENTS = ['rgb', 'bt709', 'bt470bg', 'smpte170m', 'bt2020-ncl'] as const;
 
-export type ColourRange = 'full' | 'limited' | 'unspecified';
+type Unspecified = 'unspecified';
+
+export type ColourPrimaries = (typeof COLOUR_PRIMARIES)[number] | Unspecified;
+
+export type TransferCharacteristics = (typeof TRANSFER_CHARACTERISTICS)[number] | Unspecified;
+
+export type MatrixCoefficients = (typeof MATRIX_COEFFICIENTS)[number] | Unspecified;
+
+export type ColourRange = 'full' | 'limited' | Unspecified;
 
 export interface TrackColour {
   readonly primaries: ColourPrimaries;

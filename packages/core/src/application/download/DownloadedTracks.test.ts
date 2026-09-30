@@ -60,7 +60,7 @@ const CODEC: VideoTrackCodec = {
     codedWidth: 64,
     codedHeight: 64,
     description: undefined,
-    isFullRange: false,
+    colour: UNSPECIFIED_COLOUR,
   },
 };
 

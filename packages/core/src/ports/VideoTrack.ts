@@ -45,5 +45,9 @@ export interface VideoDecoderConfiguration {
   readonly codedWidth: number;
   readonly codedHeight: number;
   readonly description: Uint8Array | undefined;
-  readonly isFullRange: boolean | undefined;
+  /**
+   * The track's colour, the description's: the decoder is told it, so its frames carry the colour
+   * the display conversion was chosen for (ADR 0033).
+   */
+  readonly colour: TrackColour;
 }

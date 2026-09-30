@@ -58,17 +58,10 @@ export {
   describeAudioSampleSourceContract,
   type AudioSampleSourceExpectations,
 } from './AudioSampleSource.contract';
-export { minimalInfoFields, minimalInfoRecord, type MinimalInfo } from './minimalInfoRecord';
-export {
-  doubleField,
-  encodeProtobuf,
-  messageField,
-  stringField,
-  varintField,
-  type ProtobufField,
-} from './protobufWriter';
+export { minimalInfoRecord, type MinimalInfo } from './minimalInfoRecord';
 export { InfoRecordFormat, RecordType } from '../domain/format/constants';
 export { parseOffsetString } from '../domain/format/calibration/parseOffsetString';
+export { usableCalibrationsOf } from '../domain/format/calibration/selectCalibration';
 export { extendedMeiLayout } from '../domain/format/calibration/layouts/MeiCalibrationLayout';
 export {
   RADIAL_AND_FIRST_PAIR,
@@ -76,6 +69,17 @@ export {
   type V6TermReading,
 } from '../domain/format/calibration/v6TermReading';
 export { MeiModel, type MeiParameters } from '../domain/optics/MeiModel';
+export { EquidistantModel, type EquidistantParameters } from '../domain/optics/EquidistantModel';
+export { RADIUS_AS_READ } from '../domain/optics/LensCalibration';
+export { UNSPECIFIED_COLOUR } from '../domain/colour/TrackColour';
+export {
+  AS_RECORDED,
+  exposureSignalOf,
+  HLG_TO_SDR_BT709,
+  shownOf,
+  toDisplay,
+} from '../domain/colour/DisplayConversion';
+export { shownAsRecorded } from './shownAsRecorded';
 export {
   equirectangularDirectionOf,
   equirectangularPixelOf,

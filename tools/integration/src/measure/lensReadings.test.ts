@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { saveMeasurement } from '../browser/artifacts';
-import { readingsOf, setupOf, withRadialScale, type LensReading } from './support/lensReadings';
+import {
+  readingsOf,
+  setupOf,
+  termReadingsOf,
+  withRadialScale,
+  type LensReading,
+} from './support/lensReadings';
 import {
   alignToReference,
   refineAlignment,
@@ -13,7 +19,7 @@ import { REFERENCE_PANORAMA_SIZE, STUDIO_CLIPS } from './support/referenceFrames
 import { isServed } from '../browser/sampleUrls';
 import { labRenderingOfSetup } from './support/labRendering';
 import { matchedGains, measuredDisparity, type MeasuredDisparity } from './support/seamJoins';
-import { quartilesOf } from './support/statistics';
+import { harmonicsOf, quartilesOf } from './support/statistics';
 import { openStudioMoment, type StudioMoment } from './support/studioFrame';
 
 /**
@@ -24,13 +30,15 @@ import { openStudioMoment, type StudioMoment } from './support/studioFrame';
 const RADIAL_SCALES: Readonly<Record<string, readonly number[]>> = {
   equidistant: [1, 0.99, 0.98],
   mei: [1, 1.02, 1.04],
-  'extended-mei': [1, 1.02, 1.04],
+  'extended-mei': [0.98, 1, 1.02, 1.04, 1.06],
   polynomial: [1],
 };
 /**
- * Seven candidates, each aligned and its seam measured, take about half a minute per frame.
+ * Seven candidates, each aligned and its seam measured, take about half a minute per frame; a
+ * recording with a v6 string adds its term readings.
  */
-const FRAME_TIMEOUT_MS = 300_000;
+const FRAME_TIMEOUT_MS = 600_000;
+const EXTENDED_MEI_AT = 'extended-mei@';
 
 function candidatesOf(readings: readonly LensReading[]): LensReading[] {
   return readings.flatMap((reading) =>
@@ -40,6 +48,30 @@ function candidatesOf(readings: readonly LensReading[]): LensReading[] {
 
 function trustedDisparities(seam: MeasuredDisparity): number[] {
   return seam.bins.filter((bin) => bin.isTrusted).map((bin) => bin.disparity);
+}
+
+/**
+ * The far bins' disparity as it varies around the seam: a term read wrong leaves a pattern once
+ * or twice a turn, a wrong radial scale shifts every azimuth alike.
+ */
+function disparityHarmonicsOf(seam: MeasuredDisparity): object {
+  const trusted = seam.bins.filter((bin) => bin.isTrusted);
+  return harmonicsOf(trusted.map((bin) => ({ azimuth: bin.azimuth, value: bin.disparity })));
+}
+
+/**
+ * The radial scale at which the v6 reading fits the reference best: where its term readings
+ * are compared, since a term read wrong is judged at the scale that is right.
+ */
+function bestScaleOf(
+  scores: readonly {
+    readonly reading: string;
+    readonly radialScale: number;
+    readonly cost: number;
+  }[],
+): number | undefined {
+  const extended = scores.filter((score) => score.reading.startsWith(EXTENDED_MEI_AT));
+  return extended.toSorted((left, right) => left.cost - right.cost)[0]?.radialScale;
 }
 
 type Aligner = (studio: StudioMoment, rendering: LockedRendering) => Alignment;
@@ -61,7 +93,7 @@ async function scoreOf(
   studio: StudioMoment,
   candidate: LensReading,
   align: Aligner,
-): Promise<Alignment & { readonly seamDisparity: object }> {
+): Promise<Alignment & { readonly seamDisparity: object; readonly seamHarmonics: object }> {
   const { canvas, renderer, dispose } = labRenderingOfSetup(
     setupOf(candidate, studio.opened.layout),
     REFERENCE_PANORAMA_SIZE,
@@ -70,7 +102,11 @@ async function scoreOf(
     const rendering = { renderer, canvas, pair: studio.moment.first, lock: studio.lock };
     const alignment = align(studio, rendering);
     const seam = await measuredDisparity(renderer, await matchedGains(renderer));
-    return { ...alignment, seamDisparity: quartilesOf(trustedDisparities(seam)) };
+    return {
+      ...alignment,
+      seamDisparity: quartilesOf(trustedDisparities(seam)),
+      seamHarmonics: disparityHarmonicsOf(seam),
+    };
   } finally {
     dispose();
   }
@@ -101,9 +137,14 @@ for (const clip of STUDIO_CLIPS) {
           if (!first) throw new Error('the recording carries no calibration reading');
           const firstScore = await scoreOf(studio, first, alignFully);
           const scores = [{ reading: first.name, radialScale: first.radialScale, ...firstScore }];
-          for (const candidate of others) {
+          const scoreNear = async (candidate: LensReading): Promise<void> => {
             const score = await scoreOf(studio, candidate, alignNear(firstScore.turn));
             scores.push({ reading: candidate.name, radialScale: candidate.radialScale, ...score });
+          };
+          for (const candidate of others) await scoreNear(candidate);
+          const best = bestScaleOf(scores);
+          if (best !== undefined) {
+            for (const candidate of termReadingsOf(studio.opened, best)) await scoreNear(candidate);
           }
           await saveMeasurement(`${clip.slug}-${frame.time}s-lens-readings`, { scores });
           expect(scores.every((score) => Number.isFinite(score.cost))).toBe(true);

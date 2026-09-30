@@ -3,6 +3,7 @@ import { SEAM_RING_ANGLE } from './seamRing';
 import type { CalibrationSet, LensCalibration } from '../optics/LensCalibration';
 import type { LensProjectionParameters } from '../optics/LensModel';
 import { lensRotation } from '../optics/lensPose';
+import { scaledProjection } from '../optics/scaledProjection';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import type { Matrix3 } from '../../shared/math/Matrix3';
 import type { Rectangle } from '../../shared/math/Rectangle';
@@ -106,7 +107,7 @@ export function buildStitchingSetup(inputs: StitchingInputs): StitchingSetup {
       region: source.region,
       window: canvasWindowOf(calibration, lens),
       rotation: lensRotation(lens),
-      projection: lens.model.projection,
+      projection: scaledProjection(lens.model.projection, lens.radialScale),
       halfFieldOfView: lens.model.halfFieldOfView,
     };
   });

@@ -60,28 +60,16 @@ export function withRadialScale(reading: LensReading, radialScale: number): Lens
 }
 
 /**
- * The stitching setup of a reading: the model's radius scaled by shrinking each lens's canvas
- * window about its principal point by the inverse, which maps a canvas radius `r` to the
- * frame position of `r / scale`.
+ * The stitching setup of a reading: each lens drawn at the reading's radial scale on top of the
+ * one the core reads it at.
  */
 export function setupOf(reading: LensReading, layout: LensLayout): StitchingSetup {
-  const setup = buildStitchingSetup({ calibration: reading.calibration, layout });
-  const windowScale = 1 / reading.radialScale;
-  return {
-    ...setup,
-    lenses: setup.lenses.map((lens) => {
-      const { principalPoint } = lens.projection;
-      return {
-        ...lens,
-        window: {
-          x: principalPoint.x + (lens.window.x - principalPoint.x) * windowScale,
-          y: principalPoint.y + (lens.window.y - principalPoint.y) * windowScale,
-          width: lens.window.width * windowScale,
-          height: lens.window.height * windowScale,
-        },
-      };
-    }),
-  };
+  const { calibration } = reading;
+  const lenses = calibration.lenses.map((lens) => ({
+    ...lens,
+    radialScale: lens.radialScale * reading.radialScale,
+  }));
+  return buildStitchingSetup({ calibration: { ...calibration, lenses }, layout });
 }
 
 const SCALE_DECIMALS = 3;

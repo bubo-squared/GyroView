@@ -5,46 +5,73 @@ import {
   type CalibrationStringLayout,
   type LensBlock,
 } from './CalibrationStringLayout';
-import type { CanvasSize, LensCalibration } from '../../../optics/LensCalibration';
+import { AS_READ, type LensCalibration } from '../../../optics/LensCalibration';
+import type { MeiDistortion } from '../../../optics/MeiDistortion';
 import { CalibrationVersion } from '../CalibrationVersion';
 import { MeiModel } from '../../../optics/MeiModel';
-import { V3_LENS_TOKENS, V3Token, VERSIONED_TRAILING_TOKENS } from '../offsetTokens';
+import { MeiToken, V3_LENS_TOKENS, V3Token, VERSIONED_TRAILING_TOKENS } from '../offsetTokens';
 
 /**
- * `offset_v3`: `xi fx fy cx cy yaw pitch roll tx ty tz k1 k2 k3 p1 p2 width height type` per
- * lens, then a version word with 3 in its high 16 bits.
+ * What tells one Mei string version from another: the version its word declares, the length of
+ * its lens block, where in the block the canvas size sits, how its distortion terms read, and
+ * the radial scale its lenses are drawn at. The tokens up to the translation are every
+ * version's ({@link MeiToken}).
  */
-export const MEI_CALIBRATION_LAYOUT: CalibrationStringLayout = {
+export interface MeiStringFormat {
+  readonly version: CalibrationVersion;
+  readonly lensTokens: number;
+  readonly canvasTokens: { readonly width: number; readonly height: number };
+  readonly distortionOf: (block: LensBlock) => MeiDistortion;
+  readonly radialScale: number;
+}
+
+/**
+ * The layout of a Mei string version, a version word after its lens blocks.
+ */
+export function meiLayout(format: MeiStringFormat): CalibrationStringLayout {
+  return {
+    version: format.version,
+    lensTokens: format.lensTokens,
+    trailingTokens: VERSIONED_TRAILING_TOKENS,
+    versionWordProblem: (versionWord) => versionWordMismatch(versionWord, format.version),
+    parseLens: (block, lensIndex) => meiLensOf(block, lensIndex, format),
+    canvasOf: (_numbers, blocks) =>
+      canvasOfFirstBlock(blocks, format.canvasTokens.width, format.canvasTokens.height),
+  };
+}
+
+function meiLensOf(block: LensBlock, lensIndex: number, format: MeiStringFormat): LensCalibration {
+  return {
+    lensIndex,
+    model: new MeiModel({
+      xi: block(MeiToken.Xi),
+      focal: [block(MeiToken.FocalX), block(MeiToken.FocalY)],
+      principalPoint: { x: block(MeiToken.CenterX), y: block(MeiToken.CenterY) },
+      distortion: format.distortionOf(block),
+    }),
+    orientation: eulerDegrees(block(MeiToken.Yaw), block(MeiToken.Pitch), block(MeiToken.Roll)),
+    translation: [
+      block(MeiToken.TranslationX),
+      block(MeiToken.TranslationY),
+      block(MeiToken.TranslationZ),
+    ],
+    radialScale: format.radialScale,
+  };
+}
+
+/**
+ * `offset_v3`: the Mei tokens, then `k1 k2 k3 p1 p2 width height type` per lens, and a version
+ * word with 3 in its high 16 bits. Drawn as read: the X5, the only camera seen to write it,
+ * stitches through its legacy string (ADR 0023).
+ */
+export const MEI_CALIBRATION_LAYOUT = meiLayout({
   version: CalibrationVersion.Mei,
   lensTokens: V3_LENS_TOKENS,
-  trailingTokens: VERSIONED_TRAILING_TOKENS,
-
-  versionWordProblem: (versionWord: number): string | undefined =>
-    versionWordMismatch(versionWord, CalibrationVersion.Mei),
-
-  parseLens(block: LensBlock, lensIndex: number): LensCalibration {
-    return {
-      lensIndex,
-      model: new MeiModel({
-        xi: block(V3Token.Xi),
-        focal: [block(V3Token.FocalX), block(V3Token.FocalY)],
-        principalPoint: { x: block(V3Token.CenterX), y: block(V3Token.CenterY) },
-        distortion: {
-          radial: [block(V3Token.K1), block(V3Token.K2), block(V3Token.K3)],
-          tangential: [{ p1: block(V3Token.P1), p2: block(V3Token.P2) }],
-          thinPrism: [],
-        },
-      }),
-      orientation: eulerDegrees(block(V3Token.Yaw), block(V3Token.Pitch), block(V3Token.Roll)),
-      translation: [
-        block(V3Token.TranslationX),
-        block(V3Token.TranslationY),
-        block(V3Token.TranslationZ),
-      ],
-    };
-  },
-
-  canvasOf(_numbers: readonly number[], blocks: readonly LensBlock[]): CanvasSize {
-    return canvasOfFirstBlock(blocks, V3Token.CanvasWidth, V3Token.CanvasHeight);
-  },
-};
+  canvasTokens: { width: V3Token.CanvasWidth, height: V3Token.CanvasHeight },
+  distortionOf: (block) => ({
+    radial: [block(V3Token.K1), block(V3Token.K2), block(V3Token.K3)],
+    tangential: [{ p1: block(V3Token.P1), p2: block(V3Token.P2) }],
+    thinPrism: [],
+  }),
+  radialScale: AS_READ,
+});

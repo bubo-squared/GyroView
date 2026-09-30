@@ -32,7 +32,10 @@ export const V2Token = {
   LensType: 15,
 } as const;
 
-export const V3Token = {
+/**
+ * The tokens every Mei string (v3, v6) starts its lens block with; each version's own follow.
+ */
+export const MeiToken = {
   Xi: 0,
   FocalX: 1,
   FocalY: 2,
@@ -44,6 +47,9 @@ export const V3Token = {
   TranslationX: 8,
   TranslationY: 9,
   TranslationZ: 10,
+} as const;
+
+export const V3Token = {
   K1: 11,
   K2: 12,
   K3: 13,

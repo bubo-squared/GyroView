@@ -5,7 +5,7 @@ import {
   type CalibrationStringLayout,
   type LensBlock,
 } from './CalibrationStringLayout';
-import type { CanvasSize, LensCalibration } from '../../../optics/LensCalibration';
+import { AS_READ, type CanvasSize, type LensCalibration } from '../../../optics/LensCalibration';
 import { CalibrationVersion } from '../CalibrationVersion';
 import { V2_LENS_TOKENS, V2Token, VERSIONED_TRAILING_TOKENS } from '../offsetTokens';
 import { PolynomialModel } from '../../../optics/PolynomialModel';
@@ -36,6 +36,7 @@ export const POLYNOMIAL_CALIBRATION_LAYOUT: CalibrationStringLayout = {
         block(V2Token.TranslationY),
         block(V2Token.TranslationZ),
       ],
+      radialScale: AS_READ,
     };
   },
 

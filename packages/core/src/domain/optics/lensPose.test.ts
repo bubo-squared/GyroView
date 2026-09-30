@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { EquidistantModel } from './EquidistantModel';
 import { HALF_FIELD_OF_VIEW } from './opticsConstants';
-import type { LensCalibration } from './LensCalibration';
+import { AS_READ, type LensCalibration } from './LensCalibration';
 import { lensRotation } from './lensPose';
 import {
   multiplyMatrices,
@@ -35,6 +35,7 @@ function rotationOf(pose: Pose): Matrix3 {
       roll: degrees(pose.roll ?? 0),
     },
     translation: [0, 0, 0],
+    radialScale: AS_READ,
   };
   return lensRotation(lens);
 }

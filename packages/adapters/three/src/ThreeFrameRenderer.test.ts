@@ -1,8 +1,8 @@
 import {
-  buildStitchingSetup,
   DEFAULT_FRAMING,
   DEFAULT_VIEW,
   degrees,
+  degreesToRadians,
   GainMatchingFrameSink,
   lensRotation,
   MAX_MAGNIFICATION,
@@ -21,7 +21,7 @@ import {
   type Vector3,
   type ViewState,
 } from '@gyroview/core';
-import { equirectangularPixelOf, parseOffsetString } from '@gyroview/core/testing';
+import { equirectangularPixelOf, MeiModel, parseOffsetString } from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { readPixels } from './test/readPixels';
@@ -33,9 +33,9 @@ import {
   stripesFrame,
 } from './test/syntheticFrames';
 import {
-  MULTI_TRACK,
   PACKED,
-  syntheticCalibration,
+  MULTI_TRACK,
+  setupAsRecorded,
   syntheticMeiCalibration,
 } from './test/syntheticStitching';
 import { ThreeFrameRenderer } from './ThreeFrameRenderer';
@@ -78,7 +78,8 @@ const OFFICE_MEI =
 const NO_DISTORTION: MeiDistortion = { radial: [], tangential: [], thinPrism: [] };
 
 /**
- * Yaw and pitch, in degrees, of directions lens 0 images, spread over its field.
+ * Yaw and pitch, in degrees, of directions lens 0 images, spread over its field out to 91 degrees
+ * from its axis, where the distortion's higher orders tell.
  */
 const PROBES_ON_LENS_ZERO = [
   [0, 0],
@@ -86,13 +87,71 @@ const PROBES_ON_LENS_ZERO = [
   [-55, -25],
   [20, 60],
   [-70, 5],
+  [-60, -60],
+  [88, 25],
+  [91, 0],
 ] as const;
 
 function bodyDirectionAt(yawDegrees: number, pitchDegrees: number): Vector3 {
-  const yaw = (yawDegrees * Math.PI) / 180;
-  const pitch = (pitchDegrees * Math.PI) / 180;
+  const yaw = degreesToRadians(degrees(yawDegrees));
+  const pitch = degreesToRadians(degrees(pitchDegrees));
   return [Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)];
 }
+
+const UNITY_GAIN: Vector3 = [1, 1, 1];
+const SILENCED: Vector3 = [0, 0, 0];
+
+/**
+ * One exaggerated Mei term at a time, each sized to move the farthest probe some sixty-five
+ * canvas pixels, five times the parity tolerance: a term the shader reads with the wrong sign,
+ * order or partner draws the sample more than the tolerance away.
+ */
+const RADIAL_TERMS = [0.66, 2.5, 10, 38, 150];
+const TANGENTIAL_PAIRS = [
+  { p1: 0.34, p2: 0.12 },
+  { p1: 1.3, p2: 0.45 },
+];
+const THIN_PRISM_TERMS = [0.34, 1.3];
+const NO_PAIRS = TANGENTIAL_PAIRS.map(() => ({ p1: 0, p2: 0 }));
+const NO_PRISM = THIN_PRISM_TERMS.map(() => ({ x: 0, y: 0 }));
+
+function onlyAt<Term>(order: number, term: Term, zeros: readonly Term[]): Term[] {
+  return zeros.map((zero, index) => (index === order ? term : zero));
+}
+
+const ONE_TERM_DISTORTIONS: readonly (readonly [string, MeiDistortion])[] = [
+  ...RADIAL_TERMS.map((term, order): [string, MeiDistortion] => [
+    `radial term k${order + 1}`,
+    {
+      ...NO_DISTORTION,
+      radial: onlyAt(
+        order,
+        term,
+        RADIAL_TERMS.map(() => 0),
+      ),
+    },
+  ]),
+  ...TANGENTIAL_PAIRS.flatMap(({ p1, p2 }, order): [string, MeiDistortion][] => [
+    [
+      `tangential p1 of order ${order}`,
+      { ...NO_DISTORTION, tangential: onlyAt(order, { p1, p2: 0 }, NO_PAIRS) },
+    ],
+    [
+      `tangential p2 of order ${order}`,
+      { ...NO_DISTORTION, tangential: onlyAt(order, { p1: 0, p2 }, NO_PAIRS) },
+    ],
+  ]),
+  ...THIN_PRISM_TERMS.flatMap((term, order): [string, MeiDistortion][] => [
+    [
+      `thin-prism x of order ${order}`,
+      { ...NO_DISTORTION, thinPrism: onlyAt(order, { x: term, y: 0 }, NO_PRISM) },
+    ],
+    [
+      `thin-prism y of order ${order}`,
+      { ...NO_DISTORTION, thinPrism: onlyAt(order, { x: 0, y: term }, NO_PRISM) },
+    ],
+  ]),
+];
 
 interface Rgb {
   readonly r: number;
@@ -179,8 +238,7 @@ describe('ThreeFrameRenderer', () => {
     canvas.height = size.height;
     document.body.append(canvas);
     canvases.push(canvas);
-    const stitching =
-      setup ?? buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
+    const stitching = setup ?? setupAsRecorded(MULTI_TRACK);
     const renderer = ThreeFrameRenderer.create(canvas, stitching, { preserveDrawingBuffer: true });
     renderers.push(renderer);
     canvasOf.set(renderer, canvas);
@@ -210,22 +268,25 @@ describe('ThreeFrameRenderer', () => {
   }
 
   /**
-   * Draws lens 0 of the calibration over a gradient, and holds each probe's sampled texel to the
-   * frame position the core model projects the probe's direction to.
+   * Draws lens 0 of a Mei calibration over a gradient, lens 1 silenced so lens 0 alone fills the
+   * feather band, and holds each probe's sampled texel to the frame position the core model
+   * projects the probe's direction to, at the setup's radial scale.
    */
-  function expectLensZeroSampledWhereTheModelProjects(calibration: CalibrationSet): void {
-    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
+  function expectLensZeroSampledWhereTheSetupDrawsIt(calibration: CalibrationSet): void {
+    const setup = setupAsRecorded(MULTI_TRACK, calibration);
     const size = { width: 512, height: 256 };
     const renderer = open(setup, size);
     renderer.setViewMode('equirectangular');
+    renderer.setLensGains([UNITY_GAIN, SILENCED]);
     present(renderer, [gradientFrame(), solidFrame('#000000')]);
     const [lens] = setup.lenses;
     const [calibrated] = calibration.lenses;
-    if (!lens || !calibrated) throw new Error('no lens');
+    if (!calibrated || lens?.projection.kind !== 'mei') throw new Error('no Mei lens');
+    const drawnModel = new MeiModel(lens.projection);
     for (const [yaw, pitch] of PROBES_ON_LENS_ZERO) {
       const body = bodyDirectionAt(yaw, pitch);
       const sampled = pixelAt(renderer, equirectangularPixelOf(body, size), size);
-      const expected = calibrated.model.project(transformVector(lensRotation(calibrated), body));
+      const expected = drawnModel.project(transformVector(lensRotation(calibrated), body));
       if (!expected) throw new Error('direction outside lens 0');
       const u = (expected.x - lens.window.x) / lens.window.width;
       const v = (expected.y - lens.window.y) / lens.window.height;
@@ -375,9 +436,7 @@ describe('ThreeFrameRenderer', () => {
   });
 
   it('shows the halves of a packed frame as the two raw lens tiles', () => {
-    const renderer = open(
-      buildStitchingSetup({ calibration: syntheticCalibration(), layout: PACKED }),
-    );
+    const renderer = open(setupAsRecorded(PACKED));
     renderer.setViewMode('raw-lenses');
     present(renderer, [halvesFrame('#ff0000', '#0000ff')]);
     expect(pixelAt(renderer, { column: 16, row: 16 }).r).toBeGreaterThan(BRIGHT);
@@ -451,9 +510,7 @@ describe('ThreeFrameRenderer', () => {
   });
 
   it('matches both lenses of a packed frame, which share one texture', async () => {
-    const renderer = open(
-      buildStitchingSetup({ calibration: syntheticCalibration(), layout: PACKED }),
-    );
+    const renderer = open(setupAsRecorded(PACKED));
     renderer.setViewMode('equirectangular');
     const matching = gainMatchingOver(renderer);
     matching.enable();
@@ -485,9 +542,7 @@ describe('ThreeFrameRenderer', () => {
   });
 
   it('draws both halves of a packed frame as the two lenses', () => {
-    const renderer = open(
-      buildStitchingSetup({ calibration: syntheticCalibration(), layout: PACKED }),
-    );
+    const renderer = open(setupAsRecorded(PACKED));
     renderer.setViewMode('equirectangular');
     present(renderer, [halvesFrame('#ff0000', '#0000ff')]);
     expect(pixelTowards(renderer, [0, 0, 1]).r).toBeGreaterThan(BRIGHT);
@@ -495,36 +550,20 @@ describe('ThreeFrameRenderer', () => {
   });
 
   it('samples a Mei lens within its canvas square exactly where the core model projects', () => {
-    expectLensZeroSampledWhereTheModelProjects(parseOffsetString(OFFICE_MEI));
+    expectLensZeroSampledWhereTheSetupDrawsIt(parseOffsetString(OFFICE_MEI));
   });
 
-  // Exaggerated terms, one family at a time: a gradient step is a few canvas pixels, and a term
-  // read with the wrong sign or order moves the sample by tens of them.
-  for (const [family, distortion] of [
-    ['five radial terms', { ...NO_DISTORTION, radial: [0.8, -0.4, 0.3, -0.2, 0.1] }],
-    [
-      'two tangential orders',
-      {
-        ...NO_DISTORTION,
-        tangential: [
-          { p1: 0.08, p2: -0.06 },
-          { p1: 0.3, p2: 0.25 },
-        ],
-      },
-    ],
-    [
-      'two thin-prism orders',
-      {
-        ...NO_DISTORTION,
-        thinPrism: [
-          { x: 0.25, y: -0.2 },
-          { x: 0.5, y: 0.6 },
-        ],
-      },
-    ],
-  ] as const) {
-    it(`samples a Mei lens with ${family} where the core model projects`, () => {
-      expectLensZeroSampledWhereTheModelProjects(syntheticMeiCalibration(distortion));
+  it('samples a Mei lens drawn at a radial scale where the scaled model projects', () => {
+    // Exaggerated: a tenth further out moves the farthest probe some forty canvas pixels.
+    expectLensZeroSampledWhereTheSetupDrawsIt({
+      ...parseOffsetString(OFFICE_MEI),
+      radialScale: 1.1,
+    });
+  });
+
+  for (const [term, distortion] of ONE_TERM_DISTORTIONS) {
+    it(`samples a Mei lens with its ${term} alone where the core model projects`, () => {
+      expectLensZeroSampledWhereTheSetupDrawsIt(syntheticMeiCalibration(distortion));
     });
   }
 
@@ -571,10 +610,7 @@ describe('ThreeFrameRenderer', () => {
 
   it('does not bleed the other half of a packed frame across the raw tiles’ inner edge', () => {
     const size = { width: 256, height: 128 };
-    const renderer = open(
-      buildStitchingSetup({ calibration: syntheticCalibration(), layout: PACKED }),
-      size,
-    );
+    const renderer = open(setupAsRecorded(PACKED), size);
     renderer.setViewMode('raw-lenses');
     present(renderer, [halvesFrame('#ff0000', '#0000ff')]);
     const lastOfLeftTile = pixelAt(
@@ -651,7 +687,7 @@ describe('ThreeFrameRenderer', () => {
     gl.getProgramParameter = (program: WebGLProgram, name: number): unknown =>
       name === gl.LINK_STATUS ? false : parameterOf(program, name);
     gl.getProgramInfoLog = (): string => 'too many uniforms';
-    const setup = buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
+    const setup = setupAsRecorded(MULTI_TRACK);
     expect(() => ThreeFrameRenderer.create(canvas, setup)).toThrow(
       expect.objectContaining({
         code: 'render-unavailable',
@@ -673,14 +709,14 @@ describe('ThreeFrameRenderer', () => {
       );
     gl.getProgramParameter = (program: WebGLProgram, name: number): unknown =>
       name === gl.LINK_STATUS && isSeamAnalysis(program) ? false : parameterOf(program, name);
-    const setup = buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
+    const setup = setupAsRecorded(MULTI_TRACK);
     expect(() => ThreeFrameRenderer.create(canvas, setup)).toThrow(
       expect.objectContaining({ code: 'render-unavailable' }),
     );
   });
 
   it('refuses a layout with more decoded frames than the shader samples', () => {
-    const setup = buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
+    const setup = setupAsRecorded(MULTI_TRACK);
     expect(() => open({ ...setup, frameSlotCount: 3 })).toThrow(
       expect.objectContaining({ code: 'unsupported-layout' }),
     );

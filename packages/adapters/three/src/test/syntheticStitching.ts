@@ -1,8 +1,7 @@
 import {
-  AS_READ,
+  buildStitchingSetup,
   degrees,
   degreesToRadians,
-  EquidistantModel,
   FULL_FRAME,
   LEFT_HALF,
   RIGHT_HALF,
@@ -10,8 +9,14 @@ import {
   type LensLayout,
   type LensModel,
   type MeiDistortion,
+  type StitchingSetup,
 } from '@gyroview/core';
-import { MeiModel } from '@gyroview/core/testing';
+import {
+  EquidistantModel,
+  MeiModel,
+  RADIUS_AS_READ,
+  shownAsRecorded,
+} from '@gyroview/core/testing';
 
 const SQUARE = 1000;
 const HALF_SQUARE = 500;
@@ -58,11 +63,11 @@ function backToBack(
     model: modelAt({ x: lensIndex * SQUARE + HALF_SQUARE, y: HALF_SQUARE }),
     orientation: { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) },
     translation: [0, 0, 0],
-    radialScale: AS_READ,
   });
   return {
     canvas: { width: 2 * SQUARE, height: SQUARE },
     lenses: [lens(0), lens(1)],
+    radialScale: RADIUS_AS_READ,
   };
 }
 
@@ -83,3 +88,14 @@ export const PACKED: LensLayout = {
   ],
   evidence: [],
 };
+
+/**
+ * The setup of `calibration` on `layout`, every lens shown as recorded: the synthetic lenses by
+ * default.
+ */
+export function setupAsRecorded(
+  layout: LensLayout,
+  calibration: CalibrationSet = syntheticCalibration(),
+): StitchingSetup {
+  return buildStitchingSetup({ calibration, layout, displayConversions: shownAsRecorded(layout) });
+}

@@ -1,9 +1,12 @@
-import { buildStitchingSetup } from '@gyroview/core';
 import { Texture } from 'three';
 import { expect } from 'vitest';
 
-import { MULTI_TRACK, syntheticCalibration } from './syntheticStitching';
-import { createRendererUniforms, type RendererUniforms } from '../rendererUniforms';
+import { MULTI_TRACK, setupAsRecorded } from './syntheticStitching';
+import {
+  createRendererUniforms,
+  type RendererUniforms,
+  type ShaderDefines,
+} from '../rendererUniforms';
 
 const UNIFORM_DECLARATION = /^uniform\s+\w+\s+(?<name>\w+)/gmu;
 
@@ -27,14 +30,11 @@ export function expectBound(declared: readonly string[], bound: readonly string[
 }
 
 export function baseUniforms(): RendererUniforms {
-  const setup = buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
+  const setup = setupAsRecorded(MULTI_TRACK);
   return createRendererUniforms(setup, [new Texture(), new Texture()]);
 }
 
-export function expectDefinesRead(
-  defines: Readonly<Record<string, number>>,
-  chunks: readonly string[],
-): void {
+export function expectDefinesRead(defines: ShaderDefines, chunks: readonly string[]): void {
   const source = chunks.join('\n');
   for (const name of Object.keys(defines)) {
     expect(source, name).toMatch(new RegExp(String.raw`\b${name}\b`, 'u'));

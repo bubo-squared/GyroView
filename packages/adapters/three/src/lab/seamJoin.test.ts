@@ -1,6 +1,5 @@
 import {
   binDisparitiesOf,
-  buildStitchingSetup,
   degrees,
   degreesToRadians,
   FIXED_SEAM_ALIGNMENT,
@@ -23,7 +22,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { LabRenderer } from './LabRenderer';
 import { directionAt, nearScenePair, ringScene, type DisparityProfile } from './test/nearScene';
 import { readPixels } from '../test/readPixels';
-import { MULTI_TRACK, syntheticCalibration } from '../test/syntheticStitching';
+import { MULTI_TRACK, setupAsRecorded, syntheticCalibration } from '../test/syntheticStitching';
 
 const SIZE = { width: 256, height: 128 };
 const RGBA = 4;
@@ -155,7 +154,7 @@ describe('the seam join', () => {
    */
   function openNearScene(disparity: DisparityProfile): OnScreen {
     const calibration = syntheticCalibration();
-    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
+    const setup = setupAsRecorded(MULTI_TRACK, calibration);
     const canvas = document.createElement('canvas');
     canvas.width = SIZE.width;
     canvas.height = SIZE.height;

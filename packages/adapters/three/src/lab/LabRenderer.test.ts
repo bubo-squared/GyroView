@@ -1,5 +1,4 @@
 import {
-  buildStitchingSetup,
   degrees,
   multiplyMatrices,
   radians,
@@ -15,7 +14,7 @@ import { LabRenderer } from './LabRenderer';
 import { nearScenePair } from './test/nearScene';
 import { readPixels } from '../test/readPixels';
 import { solidFrame } from '../test/syntheticFrames';
-import { MULTI_TRACK, syntheticCalibration } from '../test/syntheticStitching';
+import { MULTI_TRACK, setupAsRecorded, syntheticCalibration } from '../test/syntheticStitching';
 import { ThreeFrameRenderer } from '../ThreeFrameRenderer';
 
 const SIZE = { width: 64, height: 32 };
@@ -57,7 +56,7 @@ describe('LabRenderer', () => {
 
   it('draws under the fixed join exactly what the player’s renderer draws', () => {
     const calibration = syntheticCalibration();
-    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
+    const setup = setupAsRecorded(MULTI_TRACK, calibration);
     const drawn = [ThreeFrameRenderer, LabRenderer].map((kind) => {
       const canvas = canvasOfSize();
       const renderer = kind.create(canvas, setup, { preserveDrawingBuffer: true });
@@ -70,7 +69,7 @@ describe('LabRenderer', () => {
   });
 
   it('turns one lens to a new pose: the back lens turned to face forward shows with the front, and the back goes black', () => {
-    const setup = buildStitchingSetup({ calibration: syntheticCalibration(), layout: MULTI_TRACK });
+    const setup = setupAsRecorded(MULTI_TRACK);
     const canvas = canvasOfSize();
     const renderer = LabRenderer.create(canvas, setup, { preserveDrawingBuffer: true });
     renderers.push(renderer);

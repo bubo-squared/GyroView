@@ -42,10 +42,15 @@ export const LENS_TEXTURES = 2;
 const LENS_MEI = 0;
 const LENS_RADIAL_POLYNOMIAL = 1;
 /**
+ * Preprocessor defines by name: an int as a number, a float as its GLSL literal (`glslFloat`).
+ */
+export type ShaderDefines = Readonly<Record<string, number | string>>;
+
+/**
  * The constants the player's GLSL sources refer to, injected as preprocessor defines so that
  * this file is their only home; the lab adds its own.
  */
-export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntries([
+export const SHADER_DEFINES: ShaderDefines = Object.fromEntries([
   ['MAX_LENSES', MAX_LENSES],
   ['LENS_MEI', LENS_MEI],
   ['LENS_RADIAL_POLYNOMIAL', LENS_RADIAL_POLYNOMIAL],

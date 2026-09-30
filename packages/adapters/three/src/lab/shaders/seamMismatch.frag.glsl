@@ -43,7 +43,7 @@ vec3 directionOf(vec2 angles) {
 float lumaOf(int i, vec3 dirBody, out bool isImaged) {
   LensSample seen = sampleLensWith(i, dirBody, SAMPLING_BILINEAR);
   isImaged = seen.isImaged;
-  return dot(uMismatchGain[i] * seen.color, LUMA);
+  return dot(shownOf(i, uMismatchGain[i] * seen.signal), LUMA);
 }
 
 vec4 encode(float mismatchOfCap, float validity) {

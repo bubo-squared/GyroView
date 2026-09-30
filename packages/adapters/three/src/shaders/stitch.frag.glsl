@@ -25,7 +25,8 @@ void main() {
     if (!lens.isImaged) continue;
     // Weighed by the angle from the lens's axis where it is read, which a seam join may move.
     float weight = 1.0 - smoothstep(feather.x, feather.y, lens.theta);
-    sum += weight * uLensGain[i] * lens.color;
+    // Matched in exposure where exposure is a factor, then brought to the display (ADR 0033).
+    sum += weight * shownOf(i, uLensGain[i] * lens.signal);
     weightSum += weight;
   }
   bool isShown = isInArea(point) && weightSum > 0.0;

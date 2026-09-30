@@ -1,29 +1,37 @@
 import {
+  BT709_LUMINANCE,
   HLG_OETF,
   IDENTITY_MATRIX3,
-  type DisplayConversionParameters,
+  type DisplayConversion,
   type LensStitch,
 } from '@gyroview/core';
 import { Vector4, type IUniform, type Matrix3 } from 'three';
 
+import { glslFloat } from './glslLiterals';
 import { toThreeMatrix } from './threeMatrix';
 
+/**
+ * The kinds of conversion as the shader tells them apart; it shows any kind but HLG's as
+ * recorded.
+ */
 const CONVERSION_AS_RECORDED = 0;
 const CONVERSION_HLG_TO_SDR_BT709 = 1;
 
 /**
- * The constants `displayConversion.glsl` refers to: the conversion kinds and BT.2100 HLG's, from
- * the core.
+ * The constants `displayConversion.glsl` refers to: HLG's kind, BT.2100 HLG's constants and
+ * BT.709's luminance, from the core.
  */
-export const CONVERSION_DEFINES: readonly (readonly [name: string, value: number])[] = [
-  ['CONVERSION_AS_RECORDED', CONVERSION_AS_RECORDED],
+export const CONVERSION_DEFINES: readonly (readonly [name: string, value: number | string])[] = [
   ['CONVERSION_HLG_TO_SDR_BT709', CONVERSION_HLG_TO_SDR_BT709],
-  ['HLG_A', HLG_OETF.a],
-  ['HLG_B', HLG_OETF.b],
-  ['HLG_C', HLG_OETF.c],
-  ['HLG_SEGMENT_JOIN', HLG_OETF.segmentJoin],
-  ['HLG_SQUARE_SEGMENT_DIVISOR', HLG_OETF.squareSegmentDivisor],
-  ['HLG_LOG_SEGMENT_DIVISOR', HLG_OETF.logSegmentDivisor],
+  ['HLG_A', glslFloat(HLG_OETF.a)],
+  ['HLG_B', glslFloat(HLG_OETF.b)],
+  ['HLG_C', glslFloat(HLG_OETF.c)],
+  ['HLG_SEGMENT_JOIN', glslFloat(HLG_OETF.segmentJoin)],
+  ['HLG_SQUARE_SEGMENT_DIVISOR', glslFloat(HLG_OETF.squareSegmentDivisor)],
+  ['HLG_LOG_SEGMENT_DIVISOR', glslFloat(HLG_OETF.logSegmentDivisor)],
+  ['BT709_LUMINANCE_RED', glslFloat(BT709_LUMINANCE[0])],
+  ['BT709_LUMINANCE_GREEN', glslFloat(BT709_LUMINANCE[1])],
+  ['BT709_LUMINANCE_BLUE', glslFloat(BT709_LUMINANCE[2])],
 ];
 
 /**
@@ -32,6 +40,7 @@ export const CONVERSION_DEFINES: readonly (readonly [name: string, value: number
  */
 export interface ConversionUniforms {
   readonly uLensConversion: IUniform<number[]>;
+  readonly uLensMatrixCorrection: IUniform<Matrix3[]>;
   readonly uLensGamut: IUniform<Matrix3[]>;
   readonly uLensTone: IUniform<Vector4[]>;
 }
@@ -40,6 +49,7 @@ export function conversionUniforms(lenses: readonly LensStitch[]): ConversionUni
   const slots = lenses.map((lens) => conversionSlotOf(lens.displayConversion));
   return {
     uLensConversion: { value: slots.map((slot) => slot.kind) },
+    uLensMatrixCorrection: { value: lenses.map(() => toThreeMatrix(IDENTITY_MATRIX3)) },
     uLensGamut: { value: slots.map((slot) => slot.gamut) },
     uLensTone: { value: slots.map((slot) => slot.tone) },
   };
@@ -52,29 +62,24 @@ interface ConversionSlot {
 }
 
 /**
- * A tone the as-recorded kind never reads: gain 1, no roll-off before its ceiling, encoding 1.
- */
-const UNREAD_TONE = new Vector4(1, 1, 2, 1);
-
-/**
  * Exhaustive over the conversion kinds: a new kind does not compile until it is packed. What a
- * kind does not use stays neutral.
+ * kind does not use stays neutral: the identity gamut, a tone of zeros.
  */
-function conversionSlotOf(parameters: DisplayConversionParameters): ConversionSlot {
-  switch (parameters.kind) {
+function conversionSlotOf(conversion: DisplayConversion): ConversionSlot {
+  switch (conversion.kind) {
     case 'as-recorded': {
       return {
         kind: CONVERSION_AS_RECORDED,
         gamut: toThreeMatrix(IDENTITY_MATRIX3),
-        tone: UNREAD_TONE,
+        tone: new Vector4(),
       };
     }
     case 'hlg-to-sdr-bt709': {
-      const { gain, kneeStart, ceiling, exponent } = parameters.tone;
+      const { exposure, kneeStart, ceiling, exponent } = conversion.tone;
       return {
         kind: CONVERSION_HLG_TO_SDR_BT709,
-        gamut: toThreeMatrix(parameters.gamut),
-        tone: new Vector4(gain, kneeStart, ceiling, exponent),
+        gamut: toThreeMatrix(conversion.gamut),
+        tone: new Vector4(exposure, kneeStart, ceiling, exponent),
       };
     }
   }

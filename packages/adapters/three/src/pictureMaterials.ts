@@ -10,7 +10,7 @@ import {
 
 import { compileAndProve } from './compileAndProve';
 import { createPassMaterial } from './fullscreenPass';
-import { SHADER_DEFINES, type RendererUniforms } from './rendererUniforms';
+import { SHADER_DEFINES, type RendererUniforms, type ShaderDefines } from './rendererUniforms';
 import { PICTURE_PROGRAMS, type PicturePrograms } from './shaderPrograms';
 
 /**
@@ -23,7 +23,7 @@ export type PictureMaterials = Readonly<Record<PictureKind, RawShaderMaterial>>;
  */
 export interface PictureShaders {
   readonly programs: PicturePrograms;
-  readonly defines: Readonly<Record<string, number>>;
+  readonly defines: ShaderDefines;
 }
 
 /**

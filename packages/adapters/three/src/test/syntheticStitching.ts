@@ -1,4 +1,5 @@
 import {
+  AS_READ,
   degrees,
   degreesToRadians,
   EquidistantModel,
@@ -57,6 +58,7 @@ function backToBack(
     model: modelAt({ x: lensIndex * SQUARE + HALF_SQUARE, y: HALF_SQUARE }),
     orientation: { yaw: degrees(0), pitch: degrees(0), roll: degrees(0) },
     translation: [0, 0, 0],
+    radialScale: AS_READ,
   });
   return {
     canvas: { width: 2 * SQUARE, height: SQUARE },

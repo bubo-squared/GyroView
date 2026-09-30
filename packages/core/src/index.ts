@@ -80,11 +80,12 @@ export {
   CalibrationVersion,
   type VersionedCalibration,
 } from './domain/format/calibration/CalibrationVersion';
-export type {
-  CalibrationSet,
-  CanvasSize,
-  EulerDegrees,
-  LensCalibration,
+export {
+  AS_READ,
+  type CalibrationSet,
+  type CanvasSize,
+  type EulerDegrees,
+  type LensCalibration,
 } from './domain/optics/LensCalibration';
 export type { LensModel, LensModelKind, LensProjectionParameters } from './domain/optics/LensModel';
 export { lensRotation, mirroredRoll } from './domain/optics/lensPose';

@@ -4,15 +4,19 @@ import { Transfers } from './Transfers';
 import type { SampleTable } from '../../domain/container/SampleTable';
 import type { TrackSampleTable } from '../../domain/container/TrackSampleTable';
 import type { DownloadPolicy } from '../../domain/download/DownloadPolicy';
+import { isReadyToResume } from '../../domain/download/isReadyToResume';
 import {
   planDownloads,
+  type CursorPosition,
   type DownloadDecisions,
   type WindowAnchor,
 } from '../../domain/download/planDownloads';
+import type { MediaBuffer } from '../../ports/MediaBuffer';
 import type { ByteStream } from '../../ports/ByteStream';
 import type { ByteRange } from '../../shared/binary/ByteRange';
 import { ByteRangeSet } from '../../shared/binary/ByteRangeSet';
 import { asGyroViewError, ensureInvariant } from '../../shared/errors/GyroViewError';
+import type { Seconds } from '../../shared/units/time';
 
 export type { CursorSample, SampleCursor } from './SampleCursor';
 
@@ -34,8 +38,9 @@ interface FailedRange {
  * waiting cursor its sample once the bytes have come. A range that failed is not asked for again
  * until a cursor opens, a seek or a replay, lest a failing server be asked without end.
  */
-export class FileDownload {
+export class FileDownload implements MediaBuffer {
   private readonly store = new BlockStore();
+  private readonly progressListeners = new Set<() => void>();
   private readonly transfers: Transfers;
   private readonly cursors = new Set<SampleCursor>();
   private readonly host: CursorHost;
@@ -52,6 +57,7 @@ export class FileDownload {
       listener: {
         onChunk: (): void => {
           this.serveCursors();
+          for (const listener of this.progressListeners) listener();
         },
         onEnd: (): void => {
           this.schedulePlan();
@@ -86,6 +92,28 @@ export class FileDownload {
   public startReadingAhead(): void {
     this.isReadingAhead = true;
     this.schedulePlan();
+  }
+
+  /**
+   * Enough is downloaded ahead of its pictures for playback that starved at `time` to play again.
+   */
+  public isReadyToResumeAt(time: Seconds): boolean {
+    return isReadyToResume({
+      cursors: this.positions(),
+      held: this.store.held,
+      time,
+      policy: this.parts.policy,
+    });
+  }
+
+  public onProgress(listener: () => void): () => void {
+    const own = (): void => {
+      listener();
+    };
+    this.progressListeners.add(own);
+    return (): void => {
+      this.progressListeners.delete(own);
+    };
   }
 
   public dispose(): void {
@@ -127,11 +155,7 @@ export class FileDownload {
 
   private plan(): void {
     const decisions = planDownloads({
-      cursors: [...this.cursors].map((cursor) => ({
-        track: cursor.track,
-        sample: cursor.position,
-        isWaiting: cursor.isWaiting,
-      })),
+      cursors: this.positions(),
       held: this.store.held,
       transfers: this.transfers.states,
       unreadable: ByteRangeSet.of(this.failures.map((failure) => failure.range)),
@@ -141,6 +165,14 @@ export class FileDownload {
     });
     this.anchor = decisions.anchor;
     this.carryOut(decisions);
+  }
+
+  private positions(): CursorPosition[] {
+    return [...this.cursors].map((cursor) => ({
+      track: cursor.track,
+      sample: cursor.position,
+      isWaiting: cursor.isWaiting,
+    }));
   }
 
   private carryOut(decisions: DownloadDecisions): void {

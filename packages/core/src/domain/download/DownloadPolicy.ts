@@ -31,6 +31,11 @@ export interface DownloadPolicy {
    * ranges rather than a small one for every frame shown.
    */
   readonly refillBytes: number;
+  /**
+   * How much of the picture ahead must be downloaded before playback that starved of it plays
+   * again, at most what the budget holds less one request (ADR 0011).
+   */
+  readonly resumeSeconds: Seconds;
 }
 
 const MEBIBYTE = 1_048_576;
@@ -47,6 +52,11 @@ const REQUEST_MEBIBYTES = 8;
 const REQUESTS_IN_FLIGHT = 2;
 const BRIDGED_GAP_MEBIBYTES = 1;
 const REFILL_FRACTION = 0.25;
+/**
+ * Long enough that a link slower than the recording plays in stretches rather than frame by
+ * frame, short enough that the wait does not feel like a stop.
+ */
+const RESUME_SECONDS = 4;
 
 /**
  * The policy for one file of a recording of `fileCount` files, by its bit rate.
@@ -71,5 +81,6 @@ export function downloadPolicyFor(
     requestsInFlight: REQUESTS_IN_FLIGHT,
     bridgedGap: BRIDGED_GAP_MEBIBYTES * MEBIBYTE,
     refillBytes: Math.round(aheadBytes * REFILL_FRACTION),
+    resumeSeconds: seconds(RESUME_SECONDS),
   };
 }

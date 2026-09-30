@@ -31,6 +31,7 @@ const POLICY: DownloadPolicy = {
   requestsInFlight: 2,
   bridgedGap: 2 ** 20,
   refillBytes: 25 * SLOT,
+  resumeSeconds: seconds(1),
 };
 /**
  * A tick is a frame's time: the link carries half again what playing takes, after two frames.
@@ -322,5 +323,31 @@ describe('FileDownload', () => {
     await expect(cursor.nextSample()).resolves.toBeUndefined();
     await idle(context.link, 5);
     expect(context.link.requests).toHaveLength(0);
+  });
+
+  it('is ready to resume once the frames of the next seconds have come', async () => {
+    const context = setup();
+    openReaders(context.download, 0);
+    context.download.startReadingAhead();
+    await settle();
+    expect(context.download.isReadyToResumeAt(seconds(0))).toBe(false);
+    await idle(context.link, 200);
+    expect(context.download.isReadyToResumeAt(seconds(0))).toBe(true);
+  });
+
+  it('tells its listeners of every chunk that comes, until they stop listening', async () => {
+    const context = setup();
+    let progress = 0;
+    const stop = context.download.onProgress(() => {
+      progress += 1;
+    });
+    openReaders(context.download, 0);
+    context.download.startReadingAhead();
+    await idle(context.link, 5);
+    const heard = progress;
+    stop();
+    await idle(context.link, 5);
+    expect(heard).toBeGreaterThan(0);
+    expect(progress).toBe(heard);
   });
 });

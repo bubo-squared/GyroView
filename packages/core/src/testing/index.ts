@@ -46,6 +46,7 @@ export {
   type IndexedLayoutOptions,
 } from './TrailerFixtureBuilder';
 export { FakeCodecReader } from './FakeCodecReader';
+export { FakeMediaBuffer } from './FakeMediaBuffer';
 export { describeCodecReaderContract, type CodecReaderUnderTest } from './CodecReader.contract';
 export { FakeAudioSampleSource } from './FakeAudioSampleSource';
 export { describeByteStreamContract } from './ByteStream.contract';

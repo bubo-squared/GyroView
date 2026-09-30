@@ -39,4 +39,8 @@ describe('downloadPolicyFor', () => {
     expect(policy.bridgedGap).toBe(MEBIBYTE);
     expect(policy.refillBytes).toBe(32 * MEBIBYTE);
   });
+
+  it('resumes after starving once 4 s are downloaded', () => {
+    expect(downloadPolicyFor(X5_OFFICE, 1).resumeSeconds).toBe(4);
+  });
 });

@@ -31,10 +31,6 @@ describe('ByteReader', () => {
     expect(large.uint64BeAt(0)).toBe(6_868_806_542);
   });
 
-  it('reads a big-endian uint16', () => {
-    expect(reader.uint16BeAt(0)).toBe(0x01_02);
-  });
-
   it('reads signed big-endian 32-bit integers, as an edit list or a composition offset holds', () => {
     const signed = new ByteReader(
       new Uint8Array([0xff, 0xff, 0xff, 0xff, 0x80, 0, 0, 0, 0, 0, 3, 0xe9]),
@@ -89,9 +85,6 @@ describe('ByteReader', () => {
   });
 
   it('bounds-checks the big-endian reads', () => {
-    expect(captureError(() => reader.uint16BeAt(19))).toMatchObject({
-      code: 'binary-out-of-bounds',
-    });
     expect(captureError(() => reader.int32BeAt(17))).toMatchObject({
       code: 'binary-out-of-bounds',
     });

@@ -29,8 +29,7 @@ class FillingBlock implements Block {
 
 /**
  * The bytes a download holds, a block for each range it asked for. A range within one block is
- * handed out as a view of it; one across blocks is copied out of them. What counts against the
- * budget is what the blocks take, whether their bytes have come or not.
+ * handed out as a view of it; one across blocks is copied out of them.
  */
 export class BlockStore {
   private blocks: FillingBlock[] = [];
@@ -39,6 +38,9 @@ export class BlockStore {
     return ByteRangeSet.of(this.blocks.map((block) => block.filledRange));
   }
 
+  /**
+   * The memory the blocks take, whether their bytes have come or not.
+   */
   public get allocatedBytes(): number {
     return this.blocks.reduce((total, block) => total + block.bytes.byteLength, 0);
   }

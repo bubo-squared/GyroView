@@ -70,11 +70,17 @@ describe('TrackSampleTable', () => {
     expect(table.syncSampleAtOrBefore(3)).toBe(1);
     expect(table.syncSampleAtOrBefore(4)).toBe(4);
     expect(table.syncSampleAtOrBefore(0)).toBeUndefined();
-    expect(table.firstSyncSample()).toBe(1);
   });
 
-  it('has no first sync sample when it lists none', () => {
-    expect(new TrackSampleTable(partsOf({ syncSamples: [] })).firstSyncSample()).toBeUndefined();
+  it('finds the sync sample at or after a sample, and none past the last', () => {
+    const table = new TrackSampleTable(partsOf({ syncSamples: [1, 4] }));
+    expect([0, 1, 2, 4].map((sample) => table.syncSampleAtOrAfter(sample))).toEqual([1, 1, 4, 4]);
+    expect(table.syncSampleAtOrAfter(5)).toBeUndefined();
+  });
+
+  it('has no sync sample at all when it lists none', () => {
+    const table = new TrackSampleTable(partsOf({ syncSamples: [] }));
+    expect(table.syncSampleAtOrAfter(0)).toBeUndefined();
   });
 
   it('orders by presentation where frames show in another order than they decode', () => {
@@ -126,7 +132,9 @@ describe('TrackSampleTable', () => {
   });
 
   it('starts decoding at the first sample of a track that lists no sync samples, and nowhere in an empty one', () => {
-    expect(new TrackSampleTable(partsOf({ syncSamples: undefined })).firstSyncSample()).toBe(0);
+    const listing = new TrackSampleTable(partsOf({ syncSamples: undefined }));
+    expect([0, 3].map((sample) => listing.syncSampleAtOrAfter(sample))).toEqual([0, 3]);
+    expect(listing.syncSampleAtOrAfter(listing.sampleCount)).toBeUndefined();
     const empty = new TrackSampleTable(
       partsOf({
         offsets: new Float64Array(),
@@ -136,7 +144,7 @@ describe('TrackSampleTable', () => {
         syncSamples: undefined,
       }),
     );
-    expect(empty.firstSyncSample()).toBeUndefined();
+    expect(empty.syncSampleAtOrAfter(0)).toBeUndefined();
     expect(empty.keyframeAt(seconds(1))).toBeUndefined();
   });
 });

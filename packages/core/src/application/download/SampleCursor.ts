@@ -23,7 +23,7 @@ export interface CursorHost {
   /**
    * The cursor moved on, began waiting or closed: what to read may have changed.
    */
-  changed(cursor: SampleCursor): void;
+  changed(): void;
   closed(cursor: SampleCursor): void;
 }
 
@@ -116,14 +116,14 @@ export class SampleCursor {
   private waitForBytes(): Promise<CursorSample | undefined> {
     return new Promise((resolve, reject) => {
       this.waiter = { resolve, reject };
-      this.host.changed(this);
+      this.host.changed();
     });
   }
 
   private take(bytes: Uint8Array): CursorSample {
     const sample = this.next;
     this.next += 1;
-    this.host.changed(this);
+    this.host.changed();
     return { sample, bytes };
   }
 }

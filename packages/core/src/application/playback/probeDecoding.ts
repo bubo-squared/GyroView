@@ -55,8 +55,8 @@ const KEY_FRAME_LATE: Outcome = {
  * a deadline. The host resolves `deadline` once the probe has taken too long (the core has no
  * timers); sources still undecided then report `timed-out`, or `key-frame-late` while their key
  * frame was still being read, and their decoders are closed. A track that cannot be read rejects
- * the probe with its own failure, and the other sources' decoders are closed then, not at the
- * deadline.
+ * the probe with its own failure, as a platform without decoders does, and the other sources'
+ * decoders are closed then, not at the deadline.
  */
 export async function probeDecoding<Handle>(
   frameSources: readonly VideoTrackReader[],

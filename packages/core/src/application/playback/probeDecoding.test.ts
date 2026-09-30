@@ -114,6 +114,19 @@ class RefusingPort implements VideoDecoderPort<never> {
 }
 
 /**
+ * A platform without video decoders at all, as a browser without WebCodecs is.
+ */
+class DecoderlessPort implements VideoDecoderPort<never> {
+  public isSupported(): Promise<boolean> {
+    return Promise.reject(new GyroViewError('webcodecs-unavailable', 'no decoders here'));
+  }
+
+  public create(): Promise<VideoDecoderHandle> {
+    return Promise.reject(new GyroViewError('webcodecs-unavailable', 'no decoders here'));
+  }
+}
+
+/**
  * A decoder that reports an error instead of a picture for every packet.
  */
 class ErroringPort implements VideoDecoderPort<never> {
@@ -206,6 +219,11 @@ describe('probeDecoding', () => {
     await settle();
     expect(port.decoders).toHaveLength(1);
     expect(port.decoders[0]?.isClosed).toBe(true);
+  });
+
+  it('rejects with the failure of a platform without decoders, not a codec verdict', async () => {
+    const probing = probeDecoding(tracks([30, 30]), new DecoderlessPort(), new Deferred<void>());
+    await expect(probing).rejects.toMatchObject({ code: 'webcodecs-unavailable' });
   });
 
   it('maps a refused decoder creation onto the codec verdicts', async () => {

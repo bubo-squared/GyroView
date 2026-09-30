@@ -40,6 +40,9 @@ describe('messagesWith', () => {
     expect(DEFAULT_MESSAGES.errors['codec-unsupported']).toBe(
       'This browser cannot play this video.',
     );
+    expect(DEFAULT_MESSAGES.errors['webcodecs-unavailable']).toBe(
+      'This browser cannot play this video.',
+    );
     expect(DEFAULT_MESSAGES.errors['invalid-trailer']).toBe('This file cannot be played.');
   });
 });

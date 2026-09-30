@@ -127,6 +127,7 @@ const ERRORS: Readonly<Record<GyroViewErrorCode, string>> = {
   'unsupported-gyro-record': UNREADABLE,
   'unsupported-info-format': UNREADABLE,
   'unsupported-layout': UNREADABLE,
+  'webcodecs-unavailable': UNSUPPORTED_BROWSER,
 };
 
 export const DEFAULT_MESSAGES: GyroViewMessages = {

@@ -27,10 +27,11 @@ const HARDWARE_ACCELERATION: HardwareAcceleration = 'no-preference';
  */
 export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
   /**
-   * A configuration WebCodecs finds malformed is one it does not support.
+   * A configuration WebCodecs finds malformed is one it does not support. A browser without
+   * WebCodecs refuses to answer, since no configuration would do.
    */
   public async isSupported(configuration: VideoDecoderConfiguration): Promise<boolean> {
-    if (typeof VideoDecoder === 'undefined') return false;
+    if (typeof VideoDecoder === 'undefined') throw webCodecsUnavailable();
     try {
       const support = await VideoDecoder.isConfigSupported(this.toWebCodecsConfig(configuration));
       return support.supported === true;
@@ -56,9 +57,7 @@ export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
     configuration: VideoDecoderConfiguration,
     callbacks: VideoDecoderCallbacks<VideoFrame>,
   ): VideoDecoderHandle {
-    if (typeof VideoDecoder === 'undefined') {
-      throw new GyroViewError('codec-unsupported', 'this browser has no WebCodecs VideoDecoder');
-    }
+    if (typeof VideoDecoder === 'undefined') throw webCodecsUnavailable();
     return new WebCodecsDecoderHandle(this.toWebCodecsConfig(configuration), callbacks);
   }
 
@@ -159,6 +158,17 @@ class WebCodecsDecoderHandle implements VideoDecoderHandle {
   public close(): void {
     if (this.decoder.state !== 'closed') this.decoder.close();
   }
+}
+
+/**
+ * Browsers expose WebCodecs only in secure contexts, so a page served over plain HTTP is the
+ * likelier cause than an old browser, and the one its developer can fix.
+ */
+function webCodecsUnavailable(): GyroViewError {
+  const reason = globalThis.isSecureContext
+    ? 'this browser has no WebCodecs VideoDecoder'
+    : 'WebCodecs exists only in secure contexts (HTTPS), and this page is not one';
+  return new GyroViewError('webcodecs-unavailable', reason);
 }
 
 function chunkOf(packet: EncodedVideoPacket): EncodedVideoChunk {

@@ -1,4 +1,5 @@
 import type {
+  ByteStream,
   Demuxer,
   PictureQuality,
   PictureRenderer,
@@ -14,11 +15,20 @@ import type { OpenedRecording } from './OpenedRecording';
 import type { MediaInput, UrlInput } from '../PlayerSource';
 
 /**
- * Turns a named input into the byte source the core reads; `signal` ends the reads of a load
- * that was given up, so a superseded load stops downloading.
+ * One input's bytes, as the core reads them: at random, to open the recording, and streamed in
+ * ranges while it plays (ADR 0029). Both read one file, so they know one size and one version.
+ */
+export interface OpenedSource {
+  readonly source: RandomAccessSource;
+  readonly stream: ByteStream;
+}
+
+/**
+ * Opens a named input's bytes; `signal` ends the reads of a load that was given up, so a
+ * superseded load stops downloading.
  */
 export interface SourceOpener {
-  open(input: MediaInput, signal: AbortSignal): RandomAccessSource;
+  open(input: MediaInput, signal: AbortSignal): OpenedSource;
 }
 
 /**

@@ -1,5 +1,6 @@
 import {
   Deferred,
+  SourceByteStream,
   type Demuxer,
   type ResourceLocator,
   type VideoDecoderPort,
@@ -16,7 +17,7 @@ import {
   type FakeVideoTrackOptions,
 } from '@gyroview/core/testing';
 
-import type { RecordingPorts, SourceOpener } from '../composition/ports';
+import type { OpenedSource, RecordingPorts, SourceOpener } from '../composition/ports';
 import { isUrlInput, type MediaInput } from '../PlayerSource';
 
 export { default as X5_RECORDING_URL } from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
@@ -80,13 +81,13 @@ export class MapSourceOpener implements SourceOpener {
     return source;
   }
 
-  public open(input: MediaInput, signal: AbortSignal): InMemoryRandomAccessSource {
+  public open(input: MediaInput, signal: AbortSignal): OpenedSource {
     this.signals.push(signal);
     this.inputs.push(input);
     const key = isUrlInput(input) ? input.url : input.name;
     const source = this.sources.get(key);
     if (!source) throw new Error(`no bytes registered for ${key}`);
-    return source;
+    return { source, stream: new SourceByteStream(source) };
   }
 }
 

@@ -14,5 +14,6 @@ export type {
   PipelineFactory,
   PipelineParts,
   RecordingPorts,
+  OpenedSource,
   SourceOpener,
 } from './ports';

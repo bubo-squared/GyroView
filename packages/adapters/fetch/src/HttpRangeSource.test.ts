@@ -3,6 +3,7 @@ import { describeRandomAccessSourceContract } from '@gyroview/core/testing';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import { HttpRangeSource } from './HttpRangeSource';
+import { HttpResource, type HttpResourceOptions } from './HttpResource';
 import { TestServer } from './test/testServer';
 
 const servers: TestServer[] = [];
@@ -17,13 +18,21 @@ async function serve(bytes: Uint8Array, behaviour = {}): Promise<TestServer> {
   return server;
 }
 
+function sourceAt(
+  url: string,
+  options?: HttpResourceOptions,
+  signal?: AbortSignal,
+): HttpRangeSource {
+  return new HttpRangeSource(new HttpResource(url, options, signal));
+}
+
 afterAll(async () => {
   await Promise.all(servers.map((server) => server.stop()));
 });
 
 describeRandomAccessSourceContract(async (bytes) => {
   const server = await serve(bytes);
-  return new HttpRangeSource(server.url);
+  return sourceAt(server.url);
 });
 
 /**
@@ -89,7 +98,7 @@ describe('HttpRangeSource', () => {
       if (init?.method === 'HEAD') headRequests += 1;
       return fetch(input, init);
     };
-    const source = new HttpRangeSource(server.url, { fetch: counting });
+    const source = sourceAt(server.url, { fetch: counting });
     await source.size();
     await source.size();
     await source.read(ByteRange.of(10, 5));
@@ -104,27 +113,27 @@ describe('HttpRangeSource', () => {
       attempts += 1;
       return attempts <= 2 ? Promise.reject(new Error('offline')) : fetch(input, init);
     };
-    const source = new HttpRangeSource(server.url, { fetch: flaky });
+    const source = sourceAt(server.url, { fetch: flaky });
     await expect(source.size()).rejects.toMatchObject({ code: 'source-unreadable' });
     await expect(source.size()).resolves.toBe(5000);
   });
 
   it('falls back to a one-byte range when HEAD carries no Content-Length', async () => {
     const server = await serve(content, { hidesContentLength: true });
-    await expect(new HttpRangeSource(server.url).size()).resolves.toBe(5000);
+    await expect(sourceAt(server.url).size()).resolves.toBe(5000);
   });
 
   it.each([405, 403])(
     'falls back to a one-byte range when the server refuses HEAD with %i',
     async (status) => {
       const server = await serve(content, { answersHeadWith: status });
-      await expect(new HttpRangeSource(server.url).size()).resolves.toBe(5000);
+      await expect(sourceAt(server.url).size()).resolves.toBe(5000);
     },
   );
 
   it('names the status a size lookup got instead of a byte range', async () => {
     const server = await serve(content, { answersHeadWith: 405, ignoresRanges: true });
-    await expect(new HttpRangeSource(server.url).size()).rejects.toMatchObject({
+    await expect(sourceAt(server.url).size()).rejects.toMatchObject({
       code: 'source-unreadable',
       message: expect.stringContaining('answered 200 to a byte range') as string,
     });
@@ -132,21 +141,21 @@ describe('HttpRangeSource', () => {
 
   it('reports a server that ignores Range requests with the range-unsupported code', async () => {
     const server = await serve(content, { ignoresRanges: true });
-    await expect(new HttpRangeSource(server.url).read(ByteRange.of(0, 10))).rejects.toMatchObject({
+    await expect(sourceAt(server.url).read(ByteRange.of(0, 10))).rejects.toMatchObject({
       code: 'range-unsupported',
     });
   });
 
   it('reports HTTP failures with the source-unreadable code and the status', async () => {
     const server = await serve(content, { failsWith: 404 });
-    await expect(new HttpRangeSource(server.url).size()).rejects.toMatchObject({
+    await expect(sourceAt(server.url).size()).rejects.toMatchObject({
       code: 'source-unreadable',
       message: expect.stringContaining('404') as string,
     });
   });
 
   it('reports network failures with the source-unreadable code and keeps the cause', async () => {
-    const source = new HttpRangeSource('http://127.0.0.1:1/unreachable.insv');
+    const source = sourceAt('http://127.0.0.1:1/unreachable.insv');
     await expect(source.size()).rejects.toMatchObject({
       code: 'source-unreadable',
       cause: expect.any(Error) as Error,
@@ -155,13 +164,13 @@ describe('HttpRangeSource', () => {
 
   it('asks again for a range whose body broke off, and reads it', async () => {
     const server = await serve(content, { breaksOffRanges: 1 });
-    const source = new HttpRangeSource(server.url, { retryDelaysMs: NO_WAIT });
+    const source = sourceAt(server.url, { retryDelaysMs: NO_WAIT });
     await expect(source.read(ByteRange.of(0, 4000))).resolves.toEqual(content.subarray(0, 4000));
   });
 
   it('reports a range that keeps breaking off as source-unreadable once the retries are spent', async () => {
     const server = await serve(content, { breaksOffRanges: 3 });
-    const source = new HttpRangeSource(server.url, { retryDelaysMs: NO_WAIT });
+    const source = sourceAt(server.url, { retryDelaysMs: NO_WAIT });
     await expect(source.read(ByteRange.of(0, 4000))).rejects.toMatchObject({
       code: 'source-unreadable',
       message: expect.stringContaining('broke off') as string,
@@ -171,13 +180,13 @@ describe('HttpRangeSource', () => {
   it('asks again after a server error, never after a refusal', async () => {
     const server = await serve(content);
     const busy = firstRangeAnswered(503);
-    const recovering = new HttpRangeSource(server.url, {
+    const recovering = sourceAt(server.url, {
       fetch: busy.fetch,
       retryDelaysMs: NO_WAIT,
     });
     await expect(recovering.read(ByteRange.of(0, 10))).resolves.toEqual(content.subarray(0, 10));
     const refusing = firstRangeAnswered(404);
-    const refused = new HttpRangeSource(server.url, {
+    const refused = sourceAt(server.url, {
       fetch: refusing.fetch,
       retryDelaysMs: NO_WAIT,
     });
@@ -197,16 +206,14 @@ describe('HttpRangeSource', () => {
       }
       return fetch(input, init);
     };
-    const source = new HttpRangeSource(server.url, { fetch: refusing, retryDelaysMs: NO_WAIT });
+    const source = sourceAt(server.url, { fetch: refusing, retryDelaysMs: NO_WAIT });
     await expect(source.read(ByteRange.of(0, 10))).rejects.toMatchObject({ code: 'cors' });
     expect(ranges).toBe(1);
   });
 
   it('says cors when a server that refuses HEAD hides Content-Range from this origin', async () => {
     const server = await serve(content, { answersHeadWith: 403 });
-    await expect(
-      new HttpRangeSource(server.url, { fetch: hidingRangeHeaders }).size(),
-    ).rejects.toMatchObject({
+    await expect(sourceAt(server.url, { fetch: hidingRangeHeaders }).size()).rejects.toMatchObject({
       code: 'cors',
       message: expect.stringContaining('Access-Control-Expose-Headers') as string,
     });
@@ -217,7 +224,7 @@ describe('HttpRangeSource', () => {
     const answered = firstRangeFailing(false);
     let probes = 0;
     let isSized = false;
-    const source = new HttpRangeSource(server.url, {
+    const source = sourceAt(server.url, {
       fetch: (input, init): Promise<Response> => {
         if (init?.mode === 'no-cors') probes += 1;
         return isSized ? answered(input, init) : fetch(input, init);
@@ -232,7 +239,7 @@ describe('HttpRangeSource', () => {
 
   it('asks again for a range whose request did not get through', async () => {
     const server = await serve(content);
-    const source = new HttpRangeSource(server.url, {
+    const source = sourceAt(server.url, {
       fetch: firstRangeFailing(true),
       retryDelaysMs: NO_WAIT,
     });
@@ -244,7 +251,7 @@ describe('HttpRangeSource', () => {
     const answered: typeof fetch = firstRangeFailing(false);
     let hasReadOnce = false;
     let probes = 0;
-    const source = new HttpRangeSource(server.url, {
+    const source = sourceAt(server.url, {
       fetch: (input, init): Promise<Response> => {
         if (init?.mode === 'no-cors') probes += 1;
         return hasReadOnce ? answered(input, init) : fetch(input, init);
@@ -261,7 +268,7 @@ describe('HttpRangeSource', () => {
     const server = await serve(content);
     const load = new AbortController();
     const busy = firstRangeAnswered(503);
-    const source = new HttpRangeSource(
+    const source = sourceAt(
       server.url,
       { fetch: busy.fetch, retryDelaysMs: [60_000] },
       load.signal,
@@ -277,12 +284,12 @@ describe('HttpRangeSource', () => {
   it("stops reading once its signal or the host's aborts", async () => {
     const server = await serve(content);
     const load = new AbortController();
-    const source = new HttpRangeSource(server.url, {}, load.signal);
+    const source = sourceAt(server.url, {}, load.signal);
     load.abort();
     await expect(source.read(ByteRange.of(0, 10))).rejects.toMatchObject({ name: 'AbortError' });
 
     const host = new AbortController();
-    const hosted = new HttpRangeSource(
+    const hosted = sourceAt(
       server.url,
       { requestInit: { signal: host.signal } },
       new AbortController().signal,
@@ -298,7 +305,7 @@ describe('HttpRangeSource', () => {
       methods.push(init?.method ?? 'GET');
       return fetch(input, init);
     };
-    const source = new HttpRangeSource(server.url, { fetch: recording });
+    const source = sourceAt(server.url, { fetch: recording });
     await expect(source.read(ByteRange.of(3, 0))).resolves.toEqual(new Uint8Array());
     expect(methods).toEqual(['HEAD']);
   });
@@ -310,7 +317,7 @@ describe('HttpRangeSource', () => {
       seenHeaders = new Headers(init?.headers);
       return fetch(input, init);
     };
-    const source = new HttpRangeSource(server.url, {
+    const source = sourceAt(server.url, {
       requestInit: { headers: { Authorization: 'Bearer token' } },
       fetch: spying,
     });
@@ -321,7 +328,7 @@ describe('HttpRangeSource', () => {
 
   it('fails with source-changed once the recording at the URL is replaced', async () => {
     const server = await serve(new Uint8Array(100), { validators: { etag: '"v1"' } });
-    const source = new HttpRangeSource(server.url);
+    const source = sourceAt(server.url);
     await source.read(ByteRange.of(0, 10));
     server.replace(new Uint8Array(100), { etag: '"v2"' });
     await expect(source.read(ByteRange.of(10, 10))).rejects.toMatchObject({

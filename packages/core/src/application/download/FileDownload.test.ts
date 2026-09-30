@@ -350,4 +350,13 @@ describe('FileDownload', () => {
     expect(heard).toBeGreaterThan(0);
     expect(progress).toBe(heard);
   });
+
+  it('becomes ready to resume when its budget binds, its picture readers stopped and no sound read', async () => {
+    const policy = { ...POLICY, resumeSeconds: seconds(1.5) };
+    const context = setup(policy);
+    for (const track of [RECORDING.lens0, RECORDING.lens1]) context.download.openCursor(track, 0);
+    context.download.startReadingAhead();
+    await idle(context.link, 400);
+    expect(context.download.isReadyToResumeAt(seconds(0))).toBe(true);
+  });
 });

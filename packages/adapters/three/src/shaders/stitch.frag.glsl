@@ -1,6 +1,7 @@
 // The stitched sphere through the picture's rays: each lens's texel for the ray, read and weighted
-// across the feather band as the seam join says, and matched in exposure. Every pixel samples, even outside the picture's area,
-// so the footprints' derivatives are defined; the area decides what shows.
+// across the feather band as the seam join says, and matched in exposure. Every pixel samples,
+// even outside the picture's area, so the footprints' derivatives are defined; the area decides
+// what shows.
 uniform mat3 uViewRotation;
 uniform mat3 uStabilization;
 uniform vec3 uLensGain[MAX_LENSES];

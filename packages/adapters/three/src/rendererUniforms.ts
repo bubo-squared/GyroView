@@ -41,6 +41,7 @@ export const LENS_TEXTURES = 2;
 
 const LENS_MEI = 0;
 const LENS_RADIAL_POLYNOMIAL = 1;
+
 /**
  * Preprocessor defines by name: an int as a number, a float as its GLSL literal (`glslFloat`).
  */

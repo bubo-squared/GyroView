@@ -1,6 +1,7 @@
 import {
   COLOUR_PRIMARIES,
   MATRIX_COEFFICIENTS,
+  namedOrUnspecified,
   TRANSFER_CHARACTERISTICS,
   type ColourRange,
   type TrackColour,
@@ -17,13 +18,6 @@ export function trackColourOf(colorSpace: VideoColorSpaceInit | undefined): Trac
     matrix: namedOrUnspecified(MATRIX_COEFFICIENTS, colorSpace?.matrix),
     range: rangeOf(colorSpace?.fullRange),
   };
-}
-
-function namedOrUnspecified<Name extends string>(
-  names: readonly Name[],
-  value: string | null | undefined,
-): Name | 'unspecified' {
-  return names.find((name) => name === value) ?? 'unspecified';
 }
 
 function rangeOf(fullRange: boolean | null | undefined): ColourRange {

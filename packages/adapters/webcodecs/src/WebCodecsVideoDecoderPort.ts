@@ -71,7 +71,7 @@ export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
       codedWidth: configuration.codedWidth,
       codedHeight: configuration.codedHeight,
       ...(description && { description }),
-      ...(Object.keys(colorSpace).length > 0 && { colorSpace }),
+      ...(colorSpace && { colorSpace }),
       hardwareAcceleration: HARDWARE_ACCELERATION,
       optimizeForLatency: false,
     };

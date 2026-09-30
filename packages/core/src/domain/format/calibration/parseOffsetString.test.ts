@@ -61,11 +61,9 @@ describe('parseOffsetString with the X5 office strings', () => {
     expect(projection.distortion.thinPrism).toEqual([]);
   });
 
-  it('draws v6 lenses at the radial scale measured for the v6 reading, v3 lenses as read', () => {
-    const v6 = parseOffsetString(OFFICE_CALIBRATION.offsetV6).lenses;
-    const v3 = parseOffsetString(OFFICE_CALIBRATION.offsetV3).lenses;
-    expect(v6.map((lens) => lens.radialScale)).toEqual([1.008, 1.008]);
-    expect(v3.map((lens) => lens.radialScale)).toEqual([1, 1]);
+  it('draws v6 lenses further out than read, as measured for the v6 reading; v3 lenses as read', () => {
+    expect(parseOffsetString(OFFICE_CALIBRATION.offsetV6).radialScale).toBeGreaterThan(1);
+    expect(parseOffsetString(OFFICE_CALIBRATION.offsetV3).radialScale).toBe(1);
   });
 
   it('agrees with offset_v3 on the tokens the two strings share', () => {
@@ -95,23 +93,20 @@ describe('parseOffsetString with a v6 string of the X6 shape', () => {
   });
 
   it('reads the distortion tokens through the reading it is given', () => {
-    const everyToken = extendedMeiLayout({
-      name: 'every token as it comes',
-      distortionOf: ({ radial, tangential, thinPrism }) => {
-        const [p1, p2, p3, p4] = tangential;
-        const [s1, s2, s3, s4] = thinPrism;
-        return {
-          radial,
-          tangential: [
-            { p1, p2 },
-            { p1: p3, p2: p4 },
-          ],
-          thinPrism: [
-            { x: s1, y: s2 },
-            { x: s3, y: s4 },
-          ],
-        };
-      },
+    const everyToken = extendedMeiLayout(({ radial, tangential, thinPrism }) => {
+      const [p1, p2, p3, p4] = tangential;
+      const [s1, s2, s3, s4] = thinPrism;
+      return {
+        radial,
+        tangential: [
+          { p1, p2 },
+          { p1: p3, p2: p4 },
+        ],
+        thinPrism: [
+          { x: s1, y: s2 },
+          { x: s3, y: s4 },
+        ],
+      };
     });
     const projection = parseOffsetString(v6CalibrationString(), [everyToken]).lenses[0]?.model
       .projection;

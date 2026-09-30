@@ -15,7 +15,6 @@ export {
   type GyroViewErrorCode,
 } from './errors/GyroViewError';
 export { keysOf } from './keysOf';
-export { mapRecord } from './mapRecord';
 export { lazy } from './lazy';
 export { Outbox, type EventSink } from './events/Outbox';
 export { clamp } from './math/clamp';

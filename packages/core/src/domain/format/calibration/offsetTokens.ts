@@ -87,7 +87,7 @@ export const V6Token = {
 
 /**
  * Tokens after the lens blocks. v1 ends with canvas width, canvas height and a version word;
- * v2 and v3 end with the version word only.
+ * v2, v3 and v6 end with the version word only.
  */
 export const V1Trailing = { CanvasWidth: 0, CanvasHeight: 1, VersionWord: 2 } as const;
 

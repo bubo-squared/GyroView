@@ -3,8 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { parseInfoRecord } from './parseInfoRecord';
 import { FileLayoutValue, TrackOrderValue } from './infoFields';
 import { InfoRecordFormat } from '../constants';
-import { CALIBRATION_SOURCES } from './calibrationSources';
-import { mapRecord } from '../../../shared/mapRecord';
 import { minimalInfoFields, minimalInfoRecord } from '../../../testing/minimalInfoRecord';
 import { encodeProtobuf, stringField } from '../../../testing/protobufWriter';
 import { captureError } from '../../../../test/support/errors';
@@ -122,14 +120,19 @@ describe('parseInfoRecord layout hints', () => {
 });
 
 describe('parseInfoRecord calibration strings', () => {
-  it('reads each string from the field its calibration source names', () => {
-    const texts = mapRecord(CALIBRATION_SOURCES, (source) => `string of field ${source.field}`);
+  it('reads each string from its field: 5, 53, 54 and 111', () => {
     const record = encodeProtobuf([
       ...minimalInfoFields({ model: 'Insta360 X4' }),
-      ...Object.values(CALIBRATION_SOURCES).map((source) =>
-        stringField(source.field, `string of field ${source.field}`),
-      ),
+      stringField(5, 'the legacy string'),
+      stringField(53, 'the v2 string'),
+      stringField(54, 'the v3 string'),
+      stringField(111, 'the v6 string'),
     ]);
-    expect(parseInfoRecord(record, InfoRecordFormat.Protobuf).calibration).toEqual(texts);
+    expect(parseInfoRecord(record, InfoRecordFormat.Protobuf).calibration).toEqual({
+      offset: 'the legacy string',
+      offsetV2: 'the v2 string',
+      offsetV3: 'the v3 string',
+      offsetV6: 'the v6 string',
+    });
   });
 });

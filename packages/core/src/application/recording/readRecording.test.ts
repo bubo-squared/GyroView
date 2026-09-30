@@ -5,7 +5,10 @@ import { readRecording } from './readRecording';
 import { InfoRecordFormat, RecordType } from '../../domain/format/constants';
 import { CalibrationVersion } from '../../domain/format/calibration/CalibrationVersion';
 import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSource';
+import { minimalInfoFields } from '../../testing/minimalInfoRecord';
+import { encodeProtobuf, stringField } from '../../testing/protobufWriter';
 import { TrailerFixtureBuilder } from '../../testing/TrailerFixtureBuilder';
+import { v6CalibrationString } from '../../../test/support/calibrationStrings';
 import { loadFixture } from '../../../test/support/fixtures';
 import { minimalMp4Prefix } from '../../../test/support/mp4Prefix';
 import { officeRecording, officeRecords } from '../../../test/support/officeRecording';
@@ -85,6 +88,25 @@ describe('readRecording on synthetic X5 files', () => {
     const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
     expect(recording.calibration).toEqual({ calibration: undefined, warnings: [] });
     expect(recording.info.model).toBeUndefined();
+  });
+
+  it('reads the calibration of an X6-shaped file, whose info record carries only the v6 string', async () => {
+    const info = encodeProtobuf([
+      ...minimalInfoFields({ model: 'Insta360 X6' }),
+      stringField(111, v6CalibrationString()),
+    ]);
+    const file = new TrailerFixtureBuilder()
+      .withPrefix(minimalMp4Prefix())
+      .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: info })
+      .buildIndexed({ alignment: 4096, wrapInInstBox: true });
+    const recording = await readRecording(new InMemoryRandomAccessSource(file.bytes));
+    expect(recording.info.model).toBe('Insta360 X6');
+    expect(recording.calibration.warnings).toEqual([]);
+    expect(recording.calibration.calibration).toMatchObject({
+      version: CalibrationVersion.ExtendedMei,
+      canvas: { width: 15_488, height: 7744 },
+      lenses: [{ lensIndex: 0 }, { lensIndex: 1 }],
+    });
   });
 
   // A float-layout camera writes every capture stamp in milliseconds, as telemetry-parser reads

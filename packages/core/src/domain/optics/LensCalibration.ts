@@ -26,17 +26,12 @@ export interface LensCalibration {
    * the back lens of an X5. Unknown (zero) in the legacy format.
    */
   readonly translation: Vector3;
-  /**
-   * The factor on the image radius the lens is drawn at, against its model's reading of the
-   * string: what the reading of a string version measured it needs, or 1 (ADR 0023).
-   */
-  readonly radialScale: number;
 }
 
 /**
- * The radial scale of a reading drawn as its string gives it.
+ * The radial scale of lenses drawn as their string reads.
  */
-export const AS_READ = 1;
+export const RADIUS_AS_READ = 1;
 
 /**
  * The full factory calibration of a recording: every lens on a shared canvas whose width holds
@@ -45,4 +40,9 @@ export const AS_READ = 1;
 export interface CalibrationSet {
   readonly canvas: CanvasSize;
   readonly lenses: readonly LensCalibration[];
+  /**
+   * The factor on the image radius every lens is drawn at, against its model's reading of the
+   * string: what the string version was measured to need, or {@link RADIUS_AS_READ} (ADR 0023).
+   */
+  readonly radialScale: number;
 }

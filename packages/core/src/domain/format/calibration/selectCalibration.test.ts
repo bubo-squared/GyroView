@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { CalibrationVersion } from './CalibrationVersion';
-import { CALIBRATION_PREFERENCE, selectCalibration } from './selectCalibration';
+import {
+  CALIBRATION_PREFERENCE,
+  selectCalibration,
+  usableCalibrationsOf,
+} from './selectCalibration';
 import { CALIBRATION_SOURCES } from '../info/calibrationSources';
 import { parseInfoRecord } from '../info/parseInfoRecord';
 import { InfoRecordFormat } from '../constants';
@@ -78,5 +82,22 @@ describe('selectCalibration', () => {
     });
     expect(choice.calibration?.version).toBe(CalibrationVersion.Mei);
     expect(choice.warnings[0]).toContain('offset skipped');
+  });
+});
+
+describe('usableCalibrationsOf', () => {
+  it('reads every usable string in preference order, leaving out the ones it cannot use', () => {
+    const versions = usableCalibrationsOf({ ...OFFICE_CALIBRATION, offsetV3: '2_1_2_3' }).map(
+      (calibration) => calibration.version,
+    );
+    expect(versions).toEqual([
+      CalibrationVersion.Legacy,
+      CalibrationVersion.ExtendedMei,
+      CalibrationVersion.Polynomial,
+    ]);
+  });
+
+  it('reads nothing from a recording without strings', () => {
+    expect(usableCalibrationsOf(NONE)).toEqual([]);
   });
 });

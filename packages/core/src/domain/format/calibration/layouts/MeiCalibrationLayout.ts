@@ -5,7 +5,7 @@ import {
   type CalibrationStringLayout,
   type LensBlock,
 } from './CalibrationStringLayout';
-import { AS_READ, type LensCalibration } from '../../../optics/LensCalibration';
+import { RADIUS_AS_READ, type LensCalibration } from '../../../optics/LensCalibration';
 import type { MeiDistortion } from '../../../optics/MeiDistortion';
 import { CalibrationVersion } from '../CalibrationVersion';
 import { MeiModel } from '../../../optics/MeiModel';
@@ -17,7 +17,11 @@ import {
   V6Token,
   VERSIONED_TRAILING_TOKENS,
 } from '../offsetTokens';
-import { V6_TERM_READING, type V6DistortionTokens, type V6TermReading } from '../v6TermReading';
+import {
+  RADIAL_AND_FIRST_PAIR,
+  type V6DistortionTokens,
+  type V6TermReading,
+} from '../v6TermReading';
 
 /**
  * What tells one Mei string version from another: the version its word declares, the length of
@@ -41,6 +45,7 @@ export function meiLayout(format: MeiStringFormat): CalibrationStringLayout {
     version: format.version,
     lensTokens: format.lensTokens,
     trailingTokens: VERSIONED_TRAILING_TOKENS,
+    radialScale: format.radialScale,
     versionWordProblem: (versionWord) => versionWordMismatch(versionWord, format.version),
     parseLens: (block, lensIndex) => meiLensOf(block, lensIndex, format),
     canvasOf: (_numbers, blocks) =>
@@ -63,7 +68,6 @@ function meiLensOf(block: LensBlock, lensIndex: number, format: MeiStringFormat)
       block(MeiToken.TranslationY),
       block(MeiToken.TranslationZ),
     ],
-    radialScale: format.radialScale,
   };
 }
 
@@ -81,7 +85,7 @@ export const MEI_CALIBRATION_LAYOUT = meiLayout({
     tangential: [{ p1: block(V3Token.P1), p2: block(V3Token.P2) }],
     thinPrism: [],
   }),
-  radialScale: AS_READ,
+  radialScale: RADIUS_AS_READ,
 });
 
 /**
@@ -101,12 +105,16 @@ export function extendedMeiLayout(reading: V6TermReading): CalibrationStringLayo
     version: CalibrationVersion.ExtendedMei,
     lensTokens: V6_LENS_TOKENS,
     canvasTokens: { width: V6Token.CanvasWidth, height: V6Token.CanvasHeight },
-    distortionOf: (block) => reading.distortionOf(v6DistortionTokensOf(block)),
+    distortionOf: (block) => reading(v6DistortionTokensOf(block)),
     radialScale: V6_RADIAL_SCALE,
   });
 }
 
-export const EXTENDED_MEI_CALIBRATION_LAYOUT = extendedMeiLayout(V6_TERM_READING);
+/**
+ * `offset_v6` as the player reads it: its radial terms and first tangential pair (ADR 0032,
+ * provisional).
+ */
+export const EXTENDED_MEI_CALIBRATION_LAYOUT = extendedMeiLayout(RADIAL_AND_FIRST_PAIR);
 
 function v6DistortionTokensOf(block: LensBlock): V6DistortionTokens {
   return {

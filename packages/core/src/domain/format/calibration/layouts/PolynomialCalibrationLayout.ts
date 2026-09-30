@@ -5,7 +5,11 @@ import {
   type CalibrationStringLayout,
   type LensBlock,
 } from './CalibrationStringLayout';
-import { AS_READ, type CanvasSize, type LensCalibration } from '../../../optics/LensCalibration';
+import {
+  RADIUS_AS_READ,
+  type CanvasSize,
+  type LensCalibration,
+} from '../../../optics/LensCalibration';
 import { CalibrationVersion } from '../CalibrationVersion';
 import { V2_LENS_TOKENS, V2Token, VERSIONED_TRAILING_TOKENS } from '../offsetTokens';
 import { PolynomialModel } from '../../../optics/PolynomialModel';
@@ -18,6 +22,7 @@ export const POLYNOMIAL_CALIBRATION_LAYOUT: CalibrationStringLayout = {
   version: CalibrationVersion.Polynomial,
   lensTokens: V2_LENS_TOKENS,
   trailingTokens: VERSIONED_TRAILING_TOKENS,
+  radialScale: RADIUS_AS_READ,
 
   versionWordProblem: (versionWord: number): string | undefined =>
     versionWordMismatch(versionWord, CalibrationVersion.Polynomial),
@@ -36,7 +41,6 @@ export const POLYNOMIAL_CALIBRATION_LAYOUT: CalibrationStringLayout = {
         block(V2Token.TranslationY),
         block(V2Token.TranslationZ),
       ],
-      radialScale: AS_READ,
     };
   },
 

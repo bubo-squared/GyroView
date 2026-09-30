@@ -17,6 +17,10 @@ export interface CalibrationStringLayout {
   readonly lensTokens: number;
   readonly trailingTokens: number;
   /**
+   * The radial scale the version's lenses are drawn at (`CalibrationSet.radialScale`).
+   */
+  readonly radialScale: number;
+  /**
    * A message when the version word contradicts this layout, undefined when it fits; a layout
    * whose last word is no version (the legacy string's) has nothing to check.
    */
@@ -30,7 +34,7 @@ export function eulerDegrees(yaw: number, pitch: number, roll: number): EulerDeg
 }
 
 /**
- * For the versioned strings (v2, v3): what is wrong with a version word that does not declare
+ * For the versioned strings (v2, v3, v6): what is wrong with a version word that does not declare
  * `expected` in its high bits, if anything.
  */
 export function versionWordMismatch(

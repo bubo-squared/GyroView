@@ -5,7 +5,11 @@ import {
 } from './CalibrationStringLayout';
 import { EquidistantModel } from '../../../optics/EquidistantModel';
 import { LEGACY_RADIUS_ANGLE } from '../../../optics/opticsConstants';
-import { AS_READ, type CanvasSize, type LensCalibration } from '../../../optics/LensCalibration';
+import {
+  RADIUS_AS_READ,
+  type CanvasSize,
+  type LensCalibration,
+} from '../../../optics/LensCalibration';
 import { CalibrationVersion } from '../CalibrationVersion';
 import {
   FIRST_LENS_TOKEN,
@@ -25,6 +29,7 @@ export const LEGACY_CALIBRATION_LAYOUT: CalibrationStringLayout = {
   version: CalibrationVersion.Legacy,
   lensTokens: V1_LENS_TOKENS,
   trailingTokens: V1_TRAILING_TOKENS,
+  radialScale: RADIUS_AS_READ,
 
   parseLens(block: LensBlock, lensIndex: number): LensCalibration {
     return {
@@ -36,7 +41,6 @@ export const LEGACY_CALIBRATION_LAYOUT: CalibrationStringLayout = {
       }),
       orientation: eulerDegrees(block(V1Token.Yaw), block(V1Token.Pitch), block(V1Token.Roll)),
       translation: [0, 0, 0],
-      radialScale: AS_READ,
     };
   },
 

@@ -13,10 +13,7 @@ export interface V6DistortionTokens {
  * One way of reading the v6 string's distortion tokens into the Mei distortion: which terms the
  * lens is drawn with, and in which role (ADR 0032).
  */
-export interface V6TermReading {
-  readonly name: string;
-  distortionOf(tokens: V6DistortionTokens): MeiDistortion;
-}
+export type V6TermReading = (tokens: V6DistortionTokens) => MeiDistortion;
 
 /**
  * The five radial terms and the first tangential pair, the terms v3 carries too and reads the
@@ -24,15 +21,7 @@ export interface V6TermReading {
  * v3's image to about two canvas pixels. `p3`, `p4` and `s1` to `s4` are left out until real
  * footage says how Insta360's stitch reads them.
  */
-export const RADIAL_AND_FIRST_PAIR: V6TermReading = {
-  name: 'radial terms and the first tangential pair',
-  distortionOf: ({ radial, tangential }) => {
-    const [p1, p2] = tangential;
-    return { radial, tangential: [{ p1, p2 }], thinPrism: [] };
-  },
+export const RADIAL_AND_FIRST_PAIR: V6TermReading = ({ radial, tangential }) => {
+  const [p1, p2] = tangential;
+  return { radial, tangential: [{ p1, p2 }], thinPrism: [] };
 };
-
-/**
- * The reading the player draws v6 lenses with (ADR 0032, provisional).
- */
-export const V6_TERM_READING = RADIAL_AND_FIRST_PAIR;

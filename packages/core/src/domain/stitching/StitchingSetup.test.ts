@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildStitchingSetup, lensFrameOrder } from './StitchingSetup';
+import { buildStitchingSetup, lensFrameOrder, type StitchingSetup } from './StitchingSetup';
 import { FULL_FRAME, LEFT_HALF, RIGHT_HALF, type LensLayout } from './LensLayout';
+import { AS_RECORDED, HLG_TO_SDR_BT709 } from '../colour/DisplayConversion';
 import { parseOffsetString } from '../format/calibration/parseOffsetString';
+import type { CalibrationSet } from '../optics/LensCalibration';
+import { shownAsRecorded } from '../../testing/shownAsRecorded';
 import { transformVector } from '../../shared/math/Matrix3';
 import { v6CalibrationString } from '../../../test/support/calibrationStrings';
 import { captureError } from '../../../test/support/errors';
@@ -48,11 +51,18 @@ describe('lensFrameOrder', () => {
   });
 });
 
+/**
+ * The setup of `calibration` on `layout`, every lens shown as recorded.
+ */
+function setupOn(calibration: CalibrationSet, layout: LensLayout): StitchingSetup {
+  return buildStitchingSetup({ calibration, layout, displayConversions: shownAsRecorded(layout) });
+}
+
 describe('buildStitchingSetup', () => {
   const calibration = parseOffsetString(OFFICE_CALIBRATION.offsetV3);
 
   it('maps each lens onto its frame and the whole canvas square holding its principal point', () => {
-    const setup = buildStitchingSetup({ calibration, layout: MULTI_TRACK });
+    const setup = setupOn(calibration, MULTI_TRACK);
     expect(setup.frameSlotCount).toBe(2);
     expect(setup.feather.start).toBeLessThan(setup.feather.end);
     expect(setup.lenses.map((lens) => [lens.lensIndex, lens.frameSlot])).toEqual([
@@ -70,7 +80,7 @@ describe('buildStitchingSetup', () => {
 
   it('finds each lens of the X6 shape in its 7744-pixel square', () => {
     const x6Shaped = parseOffsetString(v6CalibrationString());
-    const setup = buildStitchingSetup({ calibration: x6Shaped, layout: MULTI_TRACK });
+    const setup = setupOn(x6Shaped, MULTI_TRACK);
     expect(setup.lenses.map((lens) => lens.window)).toEqual([
       { x: 0, y: 0, width: 7744, height: 7744 },
       { x: 7744, y: 0, width: 7744, height: 7744 },
@@ -78,11 +88,7 @@ describe('buildStitchingSetup', () => {
   });
 
   it('draws each lens at the radial scale of its calibration', () => {
-    const scaled = {
-      ...calibration,
-      lenses: calibration.lenses.map((lens) => ({ ...lens, radialScale: 1.5 })),
-    };
-    const setup = buildStitchingSetup({ calibration: scaled, layout: MULTI_TRACK });
+    const setup = setupOn({ ...calibration, radialScale: 1.5 }, MULTI_TRACK);
     const [lens] = setup.lenses;
     const [model] = calibration.lenses.map((calibrated) => calibrated.model.projection);
     if (lens?.projection.kind !== 'mei' || model?.kind !== 'mei') throw new Error('not Mei');
@@ -91,7 +97,7 @@ describe('buildStitchingSetup', () => {
   });
 
   it('gives each file of a split-file pair its own frame', () => {
-    const setup = buildStitchingSetup({ calibration, layout: SPLIT_FILES });
+    const setup = setupOn(calibration, SPLIT_FILES);
     expect(setup.frameSlotCount).toBe(2);
     expect(setup.lenses.map((lens) => lens.frameSlot)).toEqual([0, 1]);
   });
@@ -100,13 +106,13 @@ describe('buildStitchingSetup', () => {
     const [first] = calibration.lenses;
     if (!first) throw new Error('no lens');
     const twice = { ...calibration, lenses: [first, first] };
-    expect(
-      captureError(() => buildStitchingSetup({ calibration: twice, layout: MULTI_TRACK })),
-    ).toMatchObject({ code: 'invalid-calibration' });
+    expect(captureError(() => setupOn(twice, MULTI_TRACK))).toMatchObject({
+      code: 'invalid-calibration',
+    });
   });
 
   it('shares one frame between the halves of a packed layout', () => {
-    const setup = buildStitchingSetup({ calibration, layout: PACKED });
+    const setup = setupOn(calibration, PACKED);
     expect(setup.frameSlotCount).toBe(1);
     expect(setup.lenses.map((lens) => [lens.frameSlot, lens.region])).toEqual([
       [0, LEFT_HALF],
@@ -116,18 +122,49 @@ describe('buildStitchingSetup', () => {
 
   it('refuses a layout whose lens count differs from the calibration', () => {
     const oneLens: LensLayout = { ...PACKED, sources: PACKED.sources.slice(0, 1) };
-    expect(captureError(() => buildStitchingSetup({ calibration, layout: oneLens }))).toMatchObject(
-      { code: 'unsupported-layout' },
-    );
+    expect(captureError(() => setupOn(calibration, oneLens))).toMatchObject({
+      code: 'unsupported-layout',
+    });
   });
 
   it('exposes the polynomial and legacy calibrations as radial polynomials', () => {
     for (const text of [OFFICE_CALIBRATION.offsetV2, OFFICE_CALIBRATION.offset]) {
-      const setup = buildStitchingSetup({
-        calibration: parseOffsetString(text),
-        layout: MULTI_TRACK,
-      });
+      const setup = setupOn(parseOffsetString(text), MULTI_TRACK);
       expect(setup.lenses.every((lens) => lens.projection.kind === 'radial-polynomial')).toBe(true);
+    }
+  });
+
+  it("shows each lens with its own frame's conversion", () => {
+    const setup = buildStitchingSetup({
+      calibration,
+      layout: SPLIT_FILES,
+      displayConversions: [HLG_TO_SDR_BT709, AS_RECORDED],
+    });
+    expect(setup.lenses.map((lens) => lens.displayConversion)).toEqual([
+      HLG_TO_SDR_BT709,
+      AS_RECORDED,
+    ]);
+  });
+
+  it("shows both halves of a packed frame with the frame's one conversion", () => {
+    const setup = buildStitchingSetup({
+      calibration,
+      layout: PACKED,
+      displayConversions: [HLG_TO_SDR_BT709],
+    });
+    expect(setup.lenses.map((lens) => lens.displayConversion)).toEqual([
+      HLG_TO_SDR_BT709,
+      HLG_TO_SDR_BT709,
+    ]);
+  });
+
+  it('refuses conversions that are not one per frame source', () => {
+    for (const displayConversions of [[AS_RECORDED], [AS_RECORDED, AS_RECORDED, AS_RECORDED]]) {
+      expect(
+        captureError(() =>
+          buildStitchingSetup({ calibration, layout: MULTI_TRACK, displayConversions }),
+        ),
+      ).toMatchObject({ code: 'invariant-violation' });
     }
   });
 });

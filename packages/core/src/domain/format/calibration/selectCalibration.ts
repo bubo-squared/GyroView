@@ -47,14 +47,31 @@ export const CALIBRATION_PREFERENCE: readonly (keyof CalibrationStrings)[] = [
  */
 export function selectCalibration(strings: CalibrationStrings): CalibrationChoice {
   const warnings: string[] = [];
-  for (const key of CALIBRATION_PREFERENCE) {
-    const text = strings[key];
-    if (text === undefined) continue;
-    const attempt = tryParse(CALIBRATION_SOURCES[key], text);
+  for (const attempt of attemptsOf(strings)) {
     if ('calibration' in attempt) return { calibration: attempt.calibration, warnings };
     warnings.push(attempt.warning);
   }
   return { calibration: undefined, warnings };
+}
+
+/**
+ * Every usable calibration string of a recording, in {@link CALIBRATION_PREFERENCE}: what the
+ * measurements compare, where playback takes the first.
+ */
+export function usableCalibrationsOf(strings: CalibrationStrings): VersionedCalibration[] {
+  return [...attemptsOf(strings)].flatMap((attempt) =>
+    'calibration' in attempt ? [attempt.calibration] : [],
+  );
+}
+
+/**
+ * The strings the recording carries, each parsed when asked for, in preference order.
+ */
+function* attemptsOf(strings: CalibrationStrings): Generator<Attempt> {
+  for (const key of CALIBRATION_PREFERENCE) {
+    const text = strings[key];
+    if (text !== undefined) yield tryParse(CALIBRATION_SOURCES[key], text);
+  }
 }
 
 function tryParse({ name }: CalibrationSource, text: string): Attempt {

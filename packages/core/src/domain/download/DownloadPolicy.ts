@@ -33,7 +33,7 @@ export interface DownloadPolicy {
   readonly refillBytes: number;
   /**
    * How much of the picture ahead must be downloaded before playback that starved of it plays
-   * again, at most what the budget holds less one request (ADR 0011).
+   * again, at most what the budget holds less a request (ADR 0011).
    */
   readonly resumeSeconds: Seconds;
 }

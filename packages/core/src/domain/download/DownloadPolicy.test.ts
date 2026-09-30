@@ -40,6 +40,10 @@ describe('downloadPolicyFor', () => {
     expect(policy.refillBytes).toBe(32 * MEBIBYTE);
   });
 
+  it('takes a reader up to 2 s behind the picture for one that follows it', () => {
+    expect(downloadPolicyFor(X5_OFFICE, 1).keepBehindSeconds).toBe(2);
+  });
+
   it('resumes after starving once 4 s are downloaded', () => {
     expect(downloadPolicyFor(X5_OFFICE, 1).resumeSeconds).toBe(4);
   });

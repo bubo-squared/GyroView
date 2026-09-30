@@ -68,13 +68,13 @@ export interface DownloadDecisions {
  * of, but for a stretch kept behind the picture.
  */
 export function planDownloads(state: DownloadState): DownloadDecisions {
-  const pictures = state.cursors.filter((cursor) => cursor.track.kind === 'video');
+  const pictures = state.cursors.filter((cursor) => isPicture(cursor));
   const anchor = pictures.length > 0 ? anchorOf(pictures) : state.anchor;
   const windowStart = anchor ?? soundLeadOf(state);
   if (!windowStart) return nothingToRead(state);
   const ahead = state.isReadingAhead ? state.policy.aheadSeconds : 0;
   const windowEnd = seconds(windowStart.time + ahead);
-  const wanted = wantedBytes({ state, windowStart, windowEnd, pictures }).bridgingGapsBelow(
+  const wanted = wantedBytes({ state, windowStart, windowEnd }).bridgingGapsBelow(
     state.policy.bridgedGap,
   );
   const kept = state.transfers.filter((transfer) => wanted.overlaps(transfer.remaining));
@@ -82,7 +82,7 @@ export function planDownloads(state: DownloadState): DownloadDecisions {
   const missing = wanted.subtract(state.held).subtract(coming).subtract(state.unreadable);
   const room = state.policy.requestsInFlight - kept.length;
   const threshold = thresholdOf(state, windowStart);
-  const isDue = isTopUpDue({ state, windowEnd, missing, threshold });
+  const isDue = isTopUpDue({ state, windowStart, windowEnd, missing, threshold });
   return {
     start: isDue ? requestsFor(missing, state.policy, room) : [],
     cancel: state.transfers
@@ -117,23 +117,38 @@ interface Window {
   readonly state: DownloadState;
   readonly windowStart: WindowAnchor;
   readonly windowEnd: Seconds;
-  readonly pictures: readonly CursorPosition[];
 }
 
 /**
- * Every sample a cursor will hand out within the window, clipped to the bytes the policy allows
- * ahead, nearest first; and every picture reader's next frame, whatever the window and the
- * budget, so no picture waits for ever, however far from the others it reads.
+ * Every sample the readers following the picture will hand out within the window, clipped to
+ * the bytes the policy allows ahead, nearest first; and the next sample of every picture reader
+ * and of every reader waiting within the window, whatever the budget and wherever the file
+ * puts it, so no reader waits for ever.
  */
 function wantedBytes(window: Window): ByteRangeSet {
-  const { state, windowStart, windowEnd, pictures } = window;
-  const floor = keptBehindStart(windowStart, state.policy);
-  const needs = state.cursors
-    .filter((cursor) => offsetOf(cursor) >= floor)
-    .flatMap((cursor) => needsOf(cursor, windowEnd));
-  const reading = pictures.filter((cursor) => !isAtItsEnd(cursor));
-  const nextFrames = ByteRangeSet.of(reading.map((cursor) => cursor.track.rangeOf(cursor.sample)));
-  return withinBytes(ByteRangeSet.of(needs), state.policy.aheadBytes).union(nextFrames);
+  const { state, windowEnd } = window;
+  const following = state.cursors.filter((cursor) => isFollowing(cursor, window));
+  const needs = following.flatMap((cursor) => needsOf(cursor, windowEnd));
+  const next = following.filter((cursor) => isNextSampleOwed(cursor, windowEnd));
+  const nextSamples = ByteRangeSet.of(next.map((cursor) => cursor.track.rangeOf(cursor.sample)));
+  return withinBytes(ByteRangeSet.of(needs), state.policy.aheadBytes).union(nextSamples);
+}
+
+/**
+ * A reader no further behind the picture than the policy allows: the sound lags the picture
+ * by the decoders' lead, and until it follows a seek it stands far behind.
+ */
+function isFollowing(cursor: CursorPosition, window: Window): boolean {
+  return timeOf(cursor) >= window.windowStart.time - window.state.policy.keepBehindSeconds;
+}
+
+function isNextSampleOwed(cursor: CursorPosition, windowEnd: Seconds): boolean {
+  const isWaitingWithin = cursor.isWaiting && timeOf(cursor) <= windowEnd;
+  return !isAtItsEnd(cursor) && (isPicture(cursor) || isWaitingWithin);
+}
+
+function isPicture(cursor: CursorPosition): boolean {
+  return cursor.track.kind === 'video';
 }
 
 /**
@@ -145,29 +160,37 @@ function thresholdOf(state: DownloadState, windowStart: WindowAnchor): ByteRange
   return state.isReadingAhead ? resumeThresholdOf(need) : ByteRangeSet.empty;
 }
 
-interface TopUp {
-  readonly state: DownloadState;
-  readonly windowEnd: Seconds;
+interface TopUp extends Window {
   readonly missing: ByteRangeSet;
   readonly threshold: ByteRangeSet;
 }
 
 /**
- * Whether to ask for what is missing now: a cursor waits on it, the resume threshold is not all
- * held, a refill's worth is missing, or the window reaches the last sample of every track read,
- * so no more will ever be missing.
+ * Whether to ask for what is missing now: a reader needs it at once, the resume threshold is
+ * not all held, a refill's worth is missing, or the window reaches the last sample of every
+ * track read, so no more will ever be missing.
  */
 function isTopUpDue(topUp: TopUp): boolean {
   const { state, windowEnd, missing, threshold } = topUp;
   if (missing.ranges.some((range) => threshold.overlaps(range))) return true;
   const isStarving = state.cursors.some(
     (cursor) =>
-      cursor.isWaiting &&
-      !isAtItsEnd(cursor) &&
-      missing.overlaps(cursor.track.rangeOf(cursor.sample)),
+      isNeededAtOnce(cursor, topUp) && missing.overlaps(cursor.track.rangeOf(cursor.sample)),
   );
   const isAtTheEnd = state.cursors.every((cursor) => isLastSampleWithin(cursor, windowEnd));
   return isStarving || isAtTheEnd || missing.totalLength >= state.policy.refillBytes;
+}
+
+/**
+ * A reader waiting on a sample playback needs now: a picture's, or one due within the resume
+ * seconds. Sound that buffers far ahead waits where the downloaded bytes end, and would
+ * otherwise ask for a small range every time the picture moved.
+ */
+function isNeededAtOnce(cursor: CursorPosition, topUp: TopUp): boolean {
+  if (!cursor.isWaiting || isAtItsEnd(cursor)) return false;
+  const { windowStart, state } = topUp;
+  const horizon = windowStart.time + (state.isReadingAhead ? state.policy.resumeSeconds : 0);
+  return isPicture(cursor) || timeOf(cursor) <= horizon;
 }
 
 function isLastSampleWithin(cursor: CursorPosition, windowEnd: Seconds): boolean {

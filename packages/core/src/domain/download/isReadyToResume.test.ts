@@ -21,6 +21,7 @@ const POLICY: DownloadPolicy = {
   aheadSeconds: seconds(10),
   aheadBytes: 100 * SLOT,
   keepBehindBytes: 10 * SLOT,
+  keepBehindSeconds: seconds(2),
   requestSize: 10 * SLOT,
   requestsInFlight: 2,
   bridgedGap: SLOT,

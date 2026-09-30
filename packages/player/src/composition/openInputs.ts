@@ -10,8 +10,6 @@ import {
   timeRecording,
   type AudioPackager,
   type AudioSegmentSource,
-  type AudioTrackReader,
-  type DownloadedAudioTrack,
   type DownloadedFile,
   type FrameSourceKey,
   type Recording,
@@ -116,7 +114,8 @@ function assemble(
     duration,
     frameTimes: timing.frameTimes,
     motion: timing.motion,
-    audioTrack: sound && packagedTrack(sound, packager),
+    soundSegments:
+      sound && ((): AudioSegmentSource => packager.segmentsOf(sound.samples, sound.configuration)),
     metadata: metadataOf(parts, duration, sound !== undefined),
     warnings: timing.warnings,
     readAhead: (): void => {
@@ -124,18 +123,6 @@ function assemble(
     },
     buffer: new RecordingBuffer(files.map((file) => file.download)),
     dispose: disposables.toDisposer(),
-  };
-}
-
-/**
- * The sound track as the platform's media pipeline takes it, packaged when it is opened.
- */
-function packagedTrack(sound: DownloadedAudioTrack, packager: AudioPackager): AudioTrackReader {
-  return {
-    openSegments: async (): Promise<AudioSegmentSource> => {
-      await Promise.resolve();
-      return packager.segmentsOf(sound.samples, sound.configuration);
-    },
   };
 }
 

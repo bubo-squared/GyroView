@@ -252,7 +252,6 @@ export { SampleTable } from './domain/container/SampleTable';
 export { TrackSampleTable } from './domain/container/TrackSampleTable';
 
 // Playback ports and pipeline
-export type { AudioTrackReader } from './ports/AudioTrackReader';
 export type { VideoTrackReader } from './ports/VideoTrackReader';
 export type {
   EncodedVideoPacket,

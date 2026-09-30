@@ -20,12 +20,12 @@ export async function openAudioClock(
   opened: OpenedRecording,
   cleanups: (() => void)[],
 ): Promise<MediaSourceAudioClock> {
-  const { audioTrack } = opened;
-  if (!audioTrack) throw new Error('the recording has no audio track');
+  const { soundSegments } = opened;
+  if (!soundSegments) throw new Error('the recording has no audio track');
   const element = document.createElement('audio');
   element.muted = true;
   document.body.append(element);
-  const clock = await MediaSourceAudioClock.open(element, await audioTrack.openSegments());
+  const clock = await MediaSourceAudioClock.open(element, soundSegments());
   cleanups.push(() => {
     clock.dispose();
     element.remove();

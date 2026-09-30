@@ -1,5 +1,5 @@
 import type {
-  AudioTrackReader,
+  AudioSegmentSource,
   FrameTimes,
   LensLayout,
   MediaBuffer,
@@ -27,7 +27,11 @@ export interface OpenedRecording {
   readonly duration: Seconds;
   readonly frameTimes: FrameTimes | undefined;
   readonly motion: MotionSetup | undefined;
-  readonly audioTrack: AudioTrackReader | undefined;
+  /**
+   * Packages the recording's sound for the platform's media pipeline, where it has sound;
+   * throws `codec-unsupported` for sound it cannot package.
+   */
+  readonly soundSegments: (() => AudioSegmentSource) | undefined;
   readonly metadata: PlayerMetadata;
   /**
    * What the recording lacked or had damaged, and the player worked around.

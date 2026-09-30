@@ -180,6 +180,7 @@ export type { CalibrationChoice } from './domain/format/calibration/selectCalibr
 export {
   COLOUR_PRIMARIES,
   MATRIX_COEFFICIENTS,
+  namedOrUnspecified,
   TRANSFER_CHARACTERISTICS,
   type ColourPrimaries,
   type ColourRange,

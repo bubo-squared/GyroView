@@ -43,3 +43,14 @@ export const UNSPECIFIED_COLOUR: TrackColour = {
   matrix: 'unspecified',
   range: 'unspecified',
 };
+
+/**
+ * A value as WebCodecs spells it, as the core names it: one of `names`, or unspecified for any
+ * other value or none.
+ */
+export function namedOrUnspecified<Name extends string>(
+  names: readonly Name[],
+  value: string | null | undefined,
+): Name | Unspecified {
+  return names.find((name) => name === value) ?? 'unspecified';
+}

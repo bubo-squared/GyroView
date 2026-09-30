@@ -9,10 +9,12 @@ export type HttpMethod = 'GET' | 'HEAD';
 export const FIRST_BYTE_RANGE = 'bytes=0-0';
 
 /**
- * The response headers a cross-origin page must be let read, as the fix a CORS failure names.
+ * The response headers a cross-origin page must be let read, as the fix a CORS failure names;
+ * `ETag` is optional, and tells a recording replaced while it plays more surely than
+ * `Last-Modified`, which a page may always read.
  */
 export const EXPOSED_HEADERS_ADVICE =
-  'Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges';
+  'Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges, ETag';
 
 /**
  * What a server must add for a page to read it across origins. A request that carries the

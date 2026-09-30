@@ -185,7 +185,7 @@ loads a recording only for the player in view, removing `src` from the others.
   Access-Control-Allow-Origin: https://your-site.example
   Access-Control-Allow-Methods: GET, HEAD
   Access-Control-Allow-Headers: Range
-  Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges
+  Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges, ETag
   ```
 
   Recordings kept behind the visitor's cookies take `crossorigin="use-credentials"` on the

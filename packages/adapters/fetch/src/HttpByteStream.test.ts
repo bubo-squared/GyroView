@@ -182,4 +182,16 @@ describe('HttpByteStream', () => {
     await expect.poll(() => server.requests.at(-1)?.wasCutShort).toBe(true);
     expect(rangesAskedOf(server)).toEqual(['bytes=0-99']);
   });
+
+  it('fails with source-changed once the recording at the URL is replaced', async () => {
+    const server = await serve(BODY, {
+      validators: { lastModified: 'Wed, 30 Sep 2026 10:00:00 GMT' },
+    });
+    const stream = streamOf(server.url);
+    await bytesOf(stream, ByteRange.of(0, 10));
+    server.replace(BODY, { lastModified: 'Thu, 01 Oct 2026 10:00:00 GMT' });
+    await expect(bytesOf(stream, ByteRange.of(10, 10))).rejects.toMatchObject({
+      code: 'source-changed',
+    });
+  });
 });

@@ -318,4 +318,15 @@ describe('HttpRangeSource', () => {
     expect(seenHeaders?.get('authorization')).toBe('Bearer token');
     expect(seenHeaders?.get('range')).toBe('bytes=100-103');
   });
+
+  it('fails with source-changed once the recording at the URL is replaced', async () => {
+    const server = await serve(new Uint8Array(100), { validators: { etag: '"v1"' } });
+    const source = new HttpRangeSource(server.url);
+    await source.read(ByteRange.of(0, 10));
+    server.replace(new Uint8Array(100), { etag: '"v2"' });
+    await expect(source.read(ByteRange.of(10, 10))).rejects.toMatchObject({
+      code: 'source-changed',
+      message: `${server.url} was replaced while it played; load it again`,
+    });
+  });
 });

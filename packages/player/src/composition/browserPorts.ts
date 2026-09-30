@@ -6,7 +6,7 @@ import {
   HttpResourceLocator,
   type HttpRequestOptions,
 } from '@gyroview/adapter-fetch';
-import { MediabunnyDemuxer } from '@gyroview/adapter-mediabunny';
+import { MediabunnyAudioPackager, MediabunnyCodecReader } from '@gyroview/adapter-mediabunny';
 import { WebCodecsVideoDecoderPort } from '@gyroview/adapter-webcodecs';
 import { Deferred, SourceByteStream } from '@gyroview/core';
 
@@ -35,7 +35,8 @@ export function browserPorts(options: BrowserPortsOptions = {}): RecordingPorts<
   const probeTimeoutMs = options.probeTimeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
   return {
     sources: browserSources(http),
-    demuxer: new MediabunnyDemuxer(),
+    codecReader: new MediabunnyCodecReader(),
+    audioPackager: new MediabunnyAudioPackager(),
     decoderPort: new WebCodecsVideoDecoderPort(),
     locatorFor: (input) => new HttpResourceLocator(requestOptionsFor(http, input)),
     probeDeadline: () => deadlineIn(probeTimeoutMs),

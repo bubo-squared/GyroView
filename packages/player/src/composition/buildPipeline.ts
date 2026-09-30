@@ -3,6 +3,7 @@ import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
   GainMatchingFrameSink,
+  isFlowing,
   messageOf,
   milliseconds,
   PlaybackSession,
@@ -59,6 +60,7 @@ export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
     disposables.add(() => {
       session.dispose();
     });
+    readAheadOnceFlowing(session, parts.opened);
     return {
       session,
       renderer: drawing.renderer,
@@ -173,6 +175,16 @@ function sinkOver(renderer: ThreeFrameRenderer, opened: OpenedRecording): SinkCh
     frameTimes: opened.frameTimes,
   });
   return { sink: stabilizing, stabilizing };
+}
+
+/**
+ * The downloads read only what the picture waits for until playing first starts, so a page of
+ * players that were never played stays quiet; from then on they read ahead, paused or not.
+ */
+function readAheadOnceFlowing(session: PlaybackSession<VideoFrame>, opened: OpenedRecording): void {
+  session.events.on('statechange', (state) => {
+    if (isFlowing(state)) opened.readAhead();
+  });
 }
 
 function sessionFor(

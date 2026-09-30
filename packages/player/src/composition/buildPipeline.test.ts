@@ -47,4 +47,35 @@ describe('buildPipeline', () => {
     expect(canvas.getContext('2d')).not.toBeNull();
     opened.dispose();
   });
+
+  it('lets the downloads read ahead once playing starts, and not before', async () => {
+    const ports = browserPorts();
+    const opened = await openRecording(
+      { main: { url: X5_RECORDING_WITH_AUDIO_URL }, second: undefined },
+      ports,
+      new AbortController().signal,
+    );
+    const canvas = document.createElement('canvas');
+    const audio = document.createElement('audio');
+    audio.muted = true;
+    hosts.push(canvas, audio);
+    let readsAhead = 0;
+    const readAhead = (): void => {
+      readsAhead += 1;
+      opened.readAhead();
+    };
+    const pipeline = await buildPipeline({
+      opened: { ...opened, readAhead },
+      host: { canvas, audio },
+      decoderPort: ports.decoderPort,
+      signal: new AbortController().signal,
+    });
+    expect(readsAhead).toBe(0);
+
+    await pipeline.session.play();
+
+    expect(readsAhead).toBeGreaterThan(0);
+    pipeline.dispose();
+    opened.dispose();
+  });
 });

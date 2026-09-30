@@ -12,8 +12,8 @@ import type {
 import type { PlayerMetadata } from '../PlayerMetadata';
 
 /**
- * A recording opened as far as the pipeline needs: metadata read, inputs demuxed, layout
- * decided, decodability proven, timing and motion resolved. Owns the demuxed inputs.
+ * A recording opened as far as the pipeline needs: metadata and sample tables read, layout
+ * decided, decodability proven, timing and motion resolved. Owns the downloads of its files.
  */
 export interface OpenedRecording {
   readonly recording: Recording;
@@ -32,5 +32,13 @@ export interface OpenedRecording {
    * What the recording lacked or had damaged, and the player worked around.
    */
   readonly warnings: readonly string[];
+  /**
+   * Playing has started: the downloads read ahead of the picture from now on (ADR 0029); until
+   * then they read only what the picture waits for.
+   */
+  readAhead(): void;
+  /**
+   * Gives up every download, what it has coming and every read of its tracks.
+   */
   dispose(): void;
 }

@@ -1,6 +1,7 @@
 import type {
+  AudioPackager,
   ByteStream,
-  Demuxer,
+  CodecReader,
   PictureQuality,
   PictureRenderer,
   PlaybackSession,
@@ -37,7 +38,8 @@ export interface SourceOpener {
  */
 export interface RecordingPorts<Handle = unknown> {
   readonly sources: SourceOpener;
-  readonly demuxer: Demuxer;
+  readonly codecReader: CodecReader;
+  readonly audioPackager: AudioPackager;
   readonly decoderPort: VideoDecoderPort<Handle>;
   /**
    * Looks for files beside `input` as `input` itself is read, so the other lens file of a split

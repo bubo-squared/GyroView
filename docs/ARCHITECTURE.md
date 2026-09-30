@@ -65,10 +65,11 @@ sizes; every constant is named and cites its source.
   where the other lens file of a split-file pair lives; the guess is always verified against the
   file.
 - `info/calibrationSources` declares where the info record keeps each calibration string;
-  `calibration/parseOffsetString` turns the three generations of calibration strings
-  (`offset`, `offset_v2`, `offset_v3`, one layout class each) into the optics `CalibrationSet`;
-  `calibration/selectCalibration` picks the first usable one in the calibration preference, the
-  legacy string first (ADR 0023).
+  `calibration/parseOffsetString` turns its four versions (`offset`, `offset_v2`, and the Mei
+  strings `offset_v3` and `offset_v6`, two rows of one `meiLayout` family, the v6 terms read by
+  a `V6TermReading`, ADR 0032) into the optics `CalibrationSet`, with the radial scale its
+  version is drawn at; `calibration/selectCalibration` picks the first usable one in the
+  calibration preference, the legacy string first (ADR 0023).
 - `captureOrigin` resolves the first frame's capture time in the gyro layout's unit, so motion
   receives branded values only.
 
@@ -76,11 +77,21 @@ Format is the anti-corruption layer: it produces motion, optics, view and stitch
 only it reads bytes through a port. Dependency rules keep every other domain folder free of format,
 ports and application code.
 
-**`optics`: lenses and calibration.** A `CalibrationSet` holds one `LensCalibration` per lens;
-each lens has a `LensModel` strategy (`MeiModel`, `PolynomialModel`, `EquidistantModel`) that maps a
-direction to a canvas pixel and also exposes its parameters for the shader. `lensPose` gives
-the body-to-lens rotation from the calibration's yaw, pitch and roll (ADR 0008, ADR 0025). `gainMatch`
-holds the exposure-matching model (ADR 0012).
+**`optics`: lenses and calibration.** A `CalibrationSet` holds one `LensCalibration` per lens
+and the radial scale they are drawn at; each lens has a `LensModel` strategy (`MeiModel`,
+`PolynomialModel`, `EquidistantModel`) that maps a direction to a canvas pixel and also exposes
+its parameters for the shader. The Mei model's distortion is `MeiDistortion`, families of terms
+by order evaluated by `distortMei`, and `scaledProjection` applies a radial scale to any model's
+parameters. `lensPose` gives the body-to-lens rotation from the calibration's yaw, pitch and
+roll (ADR 0008, ADR 0025). `gainMatch` holds the exposure-matching model (ADR 0012).
+
+**`colour`: how a track's texels reach the display.** `TrackColour` is a video track's colour as
+its bitstream names it. `DisplayConversion` is the data of one way of showing a track's texels
+on the SDR BT.709 canvas, chosen per frame source by `displayConversionsOf` through a table over
+every transfer: as recorded for SDR, HLG to SDR BT.709 for HLG (ADR 0033). `exposureSignalOf`
+and `shownOf` are its two stages around the exposure gain, the references the shader is held
+to; `matrixCorrectionOf` brings R′G′B′ a platform derived through another matrix back to the
+track's.
 
 **`motion`: time and orientation.** `CaptureClock` relates the camera's microsecond clock to
 video time. `FrameTimes` and the frame time sources (exposure record, track
@@ -94,9 +105,10 @@ into a body-to-world quaternion per sample (bias from the stillest window, gravi
 rotation the renderer applies.
 
 **`stitching`**: `LensLayout` (where each lens's pixels are: which input, track and frame
-region) and `StitchingSetup`, which joins calibration and layout into the per-lens numbers a
-renderer binds (each frame shows its whole calibration square, ADR 0014) and orders the frame
-sources the session decodes (`lensFrameOrder`). The seam instruments measure how well the
+region) and `StitchingSetup`, which joins calibration, layout and each frame source's display
+conversion into the per-lens numbers a renderer binds (each frame shows its whole calibration
+square, ADR 0014; each lens drawn at its calibration's radial scale, ADR 0023) and orders the
+frame sources the session decodes (`lensFrameOrder`). The seam instruments measure how well the
 lenses agree without drawing a picture: `seamStrip` (the seam ring 90 degrees from body +z and
 the band 7 degrees either side of it, in 5-degree azimuth bins), `seamMismatch` (a bin's cost)
 and `seamDisparity` (per bin, the slide of lens 0's sampling across the ring that aligns it with

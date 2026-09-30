@@ -87,10 +87,12 @@ in Chromium and WebKit.
   where the X5's units would want 1.02 to 1.04 from the same kind of string) and tone curve
   are provisional. The v6 string's higher-order terms (`p3`, `p4`, `s1` to `s4`) stay unread:
   one clip cannot tell their reading (ADR 0032).
-- HDR is shown as SDR: HLG through Insta360 Studio's curve, fitted to its luma; PQ is drawn as
-  recorded, with a warning. The 10 bits reach the shader as 8.
+- HDR is shown as SDR: HLG through Insta360 Studio's curve, fitted to its pixels; PQ is drawn
+  as recorded, with a warning. The 10 bits reach the shader as 8.
 - The X6's 8K at 50 fps in 10 bits decodes at twice its frame rate on an M4 Pro (123 pairs a
-  second in Chromium, 98 in WebKit); a machine with half that decoder falls behind and waits.
+  second in Chromium, 98 in WebKit), counting the decoders alone; drawing, 50 fps on a 60 Hz
+  display, Windows' GPUs and an iPhone's memory (a 10-bit frame is twice an X5's) are still to
+  be checked. A machine with half that decoder falls behind and waits.
 - Recordings split into several `_NNN` segment files play one segment at a time.
 - Playback speed is 1x: another speed needs the decoders to keep up with it, which an 8K
   recording's barely do at 1x, and the sound to follow at that rate.

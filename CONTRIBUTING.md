@@ -48,11 +48,15 @@ The end-to-end tests in `tools/integration/src/browser` play the local sample re
 are not started without the samples (as in CI), and they drive the installed Google Chrome on
 macOS when there is one, because Playwright's own Chromium build has no HEVC decoder.
 `pnpm measure` runs them again writing their renders to `.artifacts/` for inspection, with the
-measurements too slow for every run, such as the IMU frame ranking of ADR 0009.
+measurements too slow for every run, such as the IMU frame ranking of ADR 0009. The player's
+renders and `measure/readingRenders.test.ts`'s, every calibration reading of both X5 samples at
+a fixed moment, draw the same pixels run after run: saved before a change to a lens model, the
+stitch or the colour, and compared after it, they show what the change moved.
 
 A recording someone shared privately stays local (ADR 0031). Describe it in
 `samples/catalogue.json`, git-ignored with the samples: its folder and file, frame rate, the
-moments the tests render and rank at, its Studio export's frames if there is one, and its
+moments the tests render and rank at, its Studio export's frames and the moment its seam
+steadiness is measured from if there is one, and its
 `privateTokens` (the file name, the serial). The tests pick it up from there, and
 `pnpm privacy:check` (part of `pnpm verify`, and of the commit hooks) refuses any of those words
 in tracked files, staged changes or a commit message. Its bytes and its numbers never enter the

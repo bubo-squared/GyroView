@@ -104,7 +104,9 @@ without a reference: the far bins' disparity at zero.
 
 The X6 carries no legacy string: it stitches through its v6 string, the Mei model with more
 terms (ADR 0032), whose radial profile equals v3's. On one recording (ADR 0031), three frames
-each in Chromium and WebKit, with the X6's measured IMU frame:
+each in Chromium and WebKit, with the X6's measured IMU frame, the scales drawn at (measured
+before the v6 reading had a scale of its own; the saved scores now give it as
+`drawnRadialScale`):
 
 | v6 reading, radial scale | Studio far-field cost | Seam far bins, lower quartile (°) |
 | ------------------------ | --------------------- | --------------------------------- |

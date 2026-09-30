@@ -18,6 +18,7 @@ import {
   TRAILER_MAGIC,
 } from '../domain/format/constants';
 import { encodeAscii } from './encodeAscii';
+import { concatenated } from '../shared/binary/concatenated';
 
 export interface FixtureRecordSpec {
   readonly id: number;
@@ -86,7 +87,7 @@ export class TrailerFixtureBuilder {
     }
     parts.push(encodeFooter(cursor - this.prefix.byteLength + TRAILER_FOOTER_SIZE));
     return {
-      bytes: concat([this.prefix, ...parts]),
+      bytes: concatenated([this.prefix, ...parts]),
       payloadStart: this.prefix.byteLength,
       records: expected,
       indexSize: 0,
@@ -112,10 +113,10 @@ export class TrailerFixtureBuilder {
     );
     cursor += index.byteLength + RECORD_HEADER_SIZE;
     parts.push(encodeFooter(cursor - payloadStart + TRAILER_FOOTER_SIZE));
-    const payload = concat(parts);
+    const payload = concatenated(parts);
     const trailer = options.wrapInInstBox ? encodeBox(BoxType.Insta360Trailer, payload) : payload;
     return {
-      bytes: concat([this.prefix, trailer]),
+      bytes: concatenated([this.prefix, trailer]),
       payloadStart,
       records: expected,
       indexSize: index.byteLength,
@@ -165,15 +166,4 @@ function encodeIndex(records: readonly ExpectedRecord[], payloadStart: number): 
 
 function alignUp(value: number, alignment: number): number {
   return Math.ceil(value / alignment) * alignment;
-}
-
-function concat(parts: readonly Uint8Array[]): Uint8Array {
-  const total = parts.reduce((sum, part) => sum + part.byteLength, 0);
-  const result = new Uint8Array(total);
-  let cursor = 0;
-  for (const part of parts) {
-    result.set(part, cursor);
-    cursor += part.byteLength;
-  }
-  return result;
 }

@@ -6,7 +6,8 @@ import { EVERY_SAMPLE_IS_A_KEYFRAME } from '../container/KeyframeRule';
 import { TrackSampleTable, type TrackKind } from '../container/TrackSampleTable';
 import { ByteRange } from '../../shared/binary/ByteRange';
 import { ByteRangeSet } from '../../shared/binary/ByteRangeSet';
-import { seconds } from '../../shared/units/time';
+import { seconds, type Seconds } from '../../shared/units/time';
+import { cameraRecording, type CameraRecording } from '../../testing/cameraRecording';
 
 /**
  * A file laid out as the cameras write theirs: per frame, the first lens's frame, a sound
@@ -15,15 +16,27 @@ import { seconds } from '../../shared/units/time';
 const FRAME = 60_000;
 const SOUND = 500;
 const SLOT = 2 * FRAME + SOUND;
-const FRAME_DURATION = 1 / 60;
+const FRAME_RATE = 60;
 const GOP = 30;
 
-interface CameraFile {
-  readonly lens0: TrackSampleTable;
-  readonly sound: TrackSampleTable;
-  readonly lens1: TrackSampleTable;
+function cameraFile(frames = 1200): CameraRecording {
+  return cameraRecording({
+    frames,
+    frameBytes: FRAME,
+    soundBytes: SOUND,
+    frameRate: FRAME_RATE,
+    framesPerGop: GOP,
+  });
 }
 
+function frameTime(frame: number): Seconds {
+  return seconds(frame / FRAME_RATE);
+}
+
+/**
+ * A track of its own, for a file laid out otherwise: `frames` samples of `size`, a slot apart
+ * from `at`, timed as the camera file's.
+ */
 function trackOf(
   kind: TrackKind,
   frames: number,
@@ -36,23 +49,12 @@ function trackOf(
     kind,
     offsets: each((frame) => frame * SLOT + place.at),
     sizes: each(() => place.size),
-    timestamps: each((frame) => frame * FRAME_DURATION),
-    durations: each(() => FRAME_DURATION),
-    syncSamples:
-      kind === 'video'
-        ? Array.from({ length: Math.ceil(frames / GOP) }, (_, gop) => gop * GOP)
-        : undefined,
-    end: seconds(frames * FRAME_DURATION),
+    timestamps: each((frame) => frame / FRAME_RATE),
+    durations: each(() => 1 / FRAME_RATE),
+    syncSamples: kind === 'video' ? [] : undefined,
+    end: frameTime(frames),
     keyframeRule: EVERY_SAMPLE_IS_A_KEYFRAME,
   });
-}
-
-function cameraFile(frames = 1200): CameraFile {
-  return {
-    lens0: trackOf('video', frames, { at: 0, size: FRAME }),
-    sound: trackOf('audio', frames, { at: FRAME, size: SOUND }),
-    lens1: trackOf('video', frames, { at: FRAME + SOUND, size: FRAME }),
-  };
 }
 
 const POLICY: DownloadPolicy = {
@@ -71,7 +73,7 @@ function at(track: TrackSampleTable, sample: number, isWaiting = false): CursorP
   return { track, sample, isWaiting };
 }
 
-function everyTrackAt(file: CameraFile, frame: number, isWaiting = false): CursorPosition[] {
+function everyTrackAt(file: CameraRecording, frame: number, isWaiting = false): CursorPosition[] {
   return [
     at(file.lens0, frame, isWaiting),
     at(file.sound, frame, isWaiting),
@@ -145,7 +147,7 @@ describe('planDownloads', () => {
   it('reads the sound where the picture last stood once its readers closed, as after its last frame', () => {
     const file = cameraFile(50);
     const anchor = {
-      time: seconds(50 * FRAME_DURATION),
+      time: frameTime(50),
       offset: 50 * SLOT,
       keyframeOffset: 30 * SLOT,
     };
@@ -197,7 +199,7 @@ describe('planDownloads', () => {
     const file = cameraFile();
     const cursors = [file.lens0, file.lens1].map((track) => ({
       ...at(track, 0, true),
-      target: seconds(30 * FRAME_DURATION),
+      target: frameTime(30),
     }));
     const plan = planDownloads(stateOf({ cursors, isReadingAhead: false }));
     expect(spansOf(plan.start)).toEqual(slotSpans([0, 20], [20, 31]));
@@ -373,7 +375,7 @@ describe('planDownloads', () => {
 
   it('reads the last bytes once the window reaches the last frame exactly', () => {
     const file = cameraFile(50);
-    const policy = { ...POLICY, aheadSeconds: seconds(49 * FRAME_DURATION) };
+    const policy = { ...POLICY, aheadSeconds: frameTime(49) };
     const plan = planDownloads(
       stateOf({ cursors: everyTrackAt(file, 0), held: heldSlots(0, 48), policy }),
     );

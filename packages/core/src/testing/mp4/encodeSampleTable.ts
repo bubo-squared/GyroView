@@ -1,5 +1,5 @@
 import type { FixtureSample, FixtureTrack } from './FixtureTrack';
-import { concatenated } from './concatenated';
+import { concatenated } from '../../shared/binary/concatenated';
 import { encodeTable } from './encodeTable';
 import { Mp4BoxType } from '../../domain/format/mp4/mp4BoxTypes';
 import {

@@ -1,8 +1,7 @@
 import type { ByteStream } from '../../ports/ByteStream';
 import type { RandomAccessSource } from '../../ports/RandomAccessSource';
 import type { ByteRange } from '../../shared/binary/ByteRange';
-
-const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
+import { Ending, ITERATION_END } from '../../shared/async/iteration';
 
 /**
  * A ByteStream over any random-access source, a range read whole and handed on as one chunk:
@@ -25,7 +24,7 @@ export class SourceByteStream implements ByteStream {
  * under way comes as the end.
  */
 class WholeRangeReading implements AsyncIterator<Uint8Array> {
-  private isOver = false;
+  private readonly ending = new Ending();
 
   public constructor(
     private readonly source: RandomAccessSource,
@@ -34,22 +33,15 @@ class WholeRangeReading implements AsyncIterator<Uint8Array> {
 
   public async next(): Promise<IteratorResult<Uint8Array>> {
     await Promise.resolve();
-    if (this.hasEnded()) return DONE;
+    if (this.ending.hasEnded()) return ITERATION_END;
     const bytes = await this.source.read(this.range);
-    if (this.hasEnded()) return DONE;
-    this.isOver = true;
-    return bytes.byteLength === 0 ? DONE : { done: false, value: bytes };
+    if (this.ending.hasEnded()) return ITERATION_END;
+    this.ending.end();
+    return bytes.byteLength === 0 ? ITERATION_END : { done: false, value: bytes };
   }
 
   public return(): Promise<IteratorResult<Uint8Array>> {
-    this.isOver = true;
-    return Promise.resolve(DONE);
-  }
-
-  /**
-   * Asked afresh after every wait: the range may be given up meanwhile.
-   */
-  private hasEnded(): boolean {
-    return this.isOver;
+    this.ending.end();
+    return Promise.resolve(ITERATION_END);
   }
 }

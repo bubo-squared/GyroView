@@ -1,5 +1,6 @@
 import {
   Deferred,
+  ITERATION_END,
   readSampleTable,
   SourceByteStream,
   type AudioDecoderConfiguration,
@@ -163,13 +164,11 @@ export class RecordingAudioPackager implements AudioPackager {
       mimeType: 'audio/mp4; codecs="fake"',
       duration: samples.duration,
       segmentsFrom: () => ({
-        [Symbol.asyncIterator]: () => ({ next: () => Promise.resolve(DONE) }),
+        [Symbol.asyncIterator]: () => ({ next: () => Promise.resolve(ITERATION_END) }),
       }),
     };
   }
 }
-
-const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
 
 export interface FakePortsParts {
   readonly sources: SourceOpener;

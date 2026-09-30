@@ -5,6 +5,7 @@ import { Mp4BoxType } from '../../domain/format/mp4/mp4BoxTypes';
 import { parseMovie } from '../../domain/format/mp4/parseMovie';
 import type { RandomAccessSource } from '../../ports/RandomAccessSource';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
+import { concatenated } from '../../shared/binary/concatenated';
 
 /**
  * A file's sample table, and the bytes of its file type and movie boxes, one after the other:
@@ -34,10 +35,7 @@ export async function readSampleTable(source: RandomAccessSource): Promise<ReadS
     bytesOf(source, fileType),
     bytesOf(source, movie),
   ]);
-  const movieBytes = new Uint8Array(fileTypeBytes.byteLength + movieBox.byteLength);
-  movieBytes.set(fileTypeBytes);
-  movieBytes.set(movieBox, fileTypeBytes.byteLength);
-  return { table: parseMovie(movieBox), movieBytes };
+  return { table: parseMovie(movieBox), movieBytes: concatenated([fileTypeBytes, movieBox]) };
 }
 
 function bytesOf(source: RandomAccessSource, box: BoxDescriptor | undefined): Promise<Uint8Array> {

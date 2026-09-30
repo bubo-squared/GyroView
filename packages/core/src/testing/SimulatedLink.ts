@@ -1,4 +1,5 @@
 import type { ByteStream } from '../ports/ByteStream';
+import { ITERATION_END } from '../shared/async/iteration';
 import type { ByteRange } from '../shared/binary/ByteRange';
 
 /**
@@ -29,8 +30,6 @@ interface Failure {
   readonly isFailing: (range: ByteRange) => boolean;
   readonly error: Error;
 }
-
-const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
 
 /**
  * A network in virtual time, for tests of what streams byte ranges while a recording plays: the
@@ -136,15 +135,15 @@ class LinkTransfer implements AsyncIterator<Uint8Array> {
     await Promise.resolve();
     this.parts.range.ensureWithin(this.parts.bytes.byteLength, 'simulated file');
     while (this.isWaiting()) await new Promise<void>((resolve) => (this.wake = resolve));
-    if (this.wasGivenUp) return DONE;
+    if (this.wasGivenUp) return ITERATION_END;
     if (this.hasFailed) throw this.parts.failure ?? new Error('the simulated request failed');
-    return this.taken === this.delivered ? DONE : { done: false, value: this.take() };
+    return this.taken === this.delivered ? ITERATION_END : { done: false, value: this.take() };
   }
 
   public return(): Promise<IteratorResult<Uint8Array>> {
     if (this.endedAt === undefined) this.wasGivenUp = true;
     this.end();
-    return Promise.resolve(DONE);
+    return Promise.resolve(ITERATION_END);
   }
 
   public snapshot(): SimulatedRequest {

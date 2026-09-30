@@ -1,8 +1,6 @@
-import { ensureInvariant, GyroViewError } from '@gyroview/core';
+import { ensureInvariant, GyroViewError, ITERATION_END } from '@gyroview/core';
 
 type Segment = Uint8Array<ArrayBuffer>;
-
-const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
 
 /**
  * Hands segments from the muxer's synchronous callbacks to one asynchronous consumer, with a
@@ -123,7 +121,7 @@ class SegmentReading implements AsyncIterableIterator<Segment> {
   public constructor(private readonly parts: ReadingParts) {}
 
   public async next(): Promise<IteratorResult<Segment>> {
-    if (this.hasEnded) return DONE;
+    if (this.hasEnded) return ITERATION_END;
     try {
       const segment = await this.parts.take();
       return segment === undefined || this.wasEnded()
@@ -154,7 +152,7 @@ class SegmentReading implements AsyncIterableIterator<Segment> {
   private end(): IteratorReturnResult<undefined> {
     if (!this.hasEnded) this.parts.onEnd();
     this.hasEnded = true;
-    return DONE;
+    return ITERATION_END;
   }
 }
 

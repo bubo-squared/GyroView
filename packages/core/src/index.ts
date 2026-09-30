@@ -239,6 +239,7 @@ export {
 
 // Downloading a recording while it plays
 export { SourceByteStream } from './application/download/SourceByteStream';
+export { Ending, ITERATION_END } from './shared/async/iteration';
 export {
   startFileDownload,
   type DownloadedAudioTrack,

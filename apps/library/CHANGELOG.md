@@ -5,6 +5,24 @@ the API.
 
 ## Unreleased
 
+What a page may notice:
+
+- A recording named by URL is downloaded in file order as it plays, the picture and the sound
+  from the same bytes, each fetched about once (ADR 0029). Over a simulated link a little
+  slower than an X5 recording at its highest setting (200 Mbit/s against 210), it starts in
+  half the time, fetches under half the bytes, and after a seek shows the target in half the
+  time, asking for nothing of the old position.
+
+  | State                  | What it downloads                                                     |
+  | ---------------------- | --------------------------------------------------------------------- |
+  | Loaded, never played   | What opening and the first frame need; with `preload="none"` no frame |
+  | Playing                | Up to 10 s or 128 MiB ahead, whichever is less, topped up as it plays |
+  | Paused after playing   | On up to that budget, then nothing                                    |
+  | A seek                 | The old position's requests end at once; the target first             |
+  | Starved by the network | Waits until the next 4 s are downloaded, then plays on                |
+
+- A range that breaks off or brings nothing for 10 s is asked for again from its next byte.
+
 New:
 
 - The `source-changed` error: the recording at the URL was replaced while it played, as its

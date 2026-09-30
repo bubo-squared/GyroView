@@ -116,8 +116,19 @@ player.lookAt(90, 0);
 
 The canvas keeps no picture once the browser has shown it: a snapshot (`drawImage`, `toBlob`)
 is taken in a `frame` listener, which runs right after each picture is drawn. There are no
-buffered ranges to show, since the player reads the recording as it plays, and no playback
-rates other than 1.
+buffered ranges to show yet, and no playback rates other than 1.
+
+## How a recording is downloaded
+
+A recording named by URL is read in byte ranges, in file order, as it plays: the lenses and
+the sound come from the same bytes, each fetched about once. Until the first play the player
+reads only what opening it and showing the first frame need (no frame with `preload="none"`).
+Playing, it keeps up to 10 s or 128 MiB ahead, whichever is less, shared by the two files of a
+split recording; paused, it reads on to that budget and stops. A seek ends the old position's
+requests at once. When the network falls behind the recording, playback waits until the next
+4 s are downloaded, and plays on in stretches rather than a frame at a time. A range that
+breaks off or stalls for 10 s is asked for again from its next byte, and a recording replaced at
+its URL while it plays fails with `source-changed`.
 
 `@bubo-squared/gyroview` also exports `GyroViewError`, the list of its codes
 (`GYRO_VIEW_ERROR_CODES`, with `isGyroViewErrorCode` to check a string against it), and the

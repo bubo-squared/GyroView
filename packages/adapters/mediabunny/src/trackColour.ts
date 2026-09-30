@@ -1,33 +1,10 @@
-import type {
-  ColourPrimaries,
-  ColourRange,
-  MatrixCoefficients,
-  TrackColour,
-  TransferCharacteristics,
+import {
+  COLOUR_PRIMARIES,
+  MATRIX_COEFFICIENTS,
+  TRANSFER_CHARACTERISTICS,
+  type ColourRange,
+  type TrackColour,
 } from '@gyroview/core';
-
-const PRIMARIES: readonly ColourPrimaries[] = [
-  'bt709',
-  'bt470bg',
-  'smpte170m',
-  'bt2020',
-  'smpte432',
-];
-const TRANSFERS: readonly TransferCharacteristics[] = [
-  'bt709',
-  'smpte170m',
-  'iec61966-2-1',
-  'linear',
-  'pq',
-  'hlg',
-];
-const MATRICES: readonly MatrixCoefficients[] = [
-  'rgb',
-  'bt709',
-  'bt470bg',
-  'smpte170m',
-  'bt2020-ncl',
-];
 
 /**
  * A track's colour in the core's terms, from the colour space mediabunny reads off its sample
@@ -35,9 +12,9 @@ const MATRICES: readonly MatrixCoefficients[] = [
  */
 export function trackColourOf(colorSpace: VideoColorSpaceInit | undefined): TrackColour {
   return {
-    primaries: namedOrUnspecified(PRIMARIES, colorSpace?.primaries),
-    transfer: namedOrUnspecified(TRANSFERS, colorSpace?.transfer),
-    matrix: namedOrUnspecified(MATRICES, colorSpace?.matrix),
+    primaries: namedOrUnspecified(COLOUR_PRIMARIES, colorSpace?.primaries),
+    transfer: namedOrUnspecified(TRANSFER_CHARACTERISTICS, colorSpace?.transfer),
+    matrix: namedOrUnspecified(MATRIX_COEFFICIENTS, colorSpace?.matrix),
     range: rangeOf(colorSpace?.fullRange),
   };
 }

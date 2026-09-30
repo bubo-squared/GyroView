@@ -13,6 +13,8 @@ import {
   type VideoDecoderPort,
 } from '@gyroview/core';
 
+import { colorSpaceOf } from './colorSpaceOf';
+
 /**
  * A hard `prefer-hardware` refuses codecs the browser could decode in software (H.264 recordings
  * on machines without a hardware decoder); with no preference the browser still picks hardware
@@ -62,13 +64,14 @@ export class WebCodecsVideoDecoderPort implements VideoDecoderPort<VideoFrame> {
   }
 
   private toWebCodecsConfig(configuration: VideoDecoderConfiguration): VideoDecoderConfig {
-    const { description, isFullRange } = configuration;
+    const { description } = configuration;
+    const colorSpace = colorSpaceOf(configuration.colour);
     return {
       codec: configuration.codec,
       codedWidth: configuration.codedWidth,
       codedHeight: configuration.codedHeight,
       ...(description && { description }),
-      ...(isFullRange !== undefined && { colorSpace: { fullRange: isFullRange } }),
+      ...(Object.keys(colorSpace).length > 0 && { colorSpace }),
       hardwareAcceleration: HARDWARE_ACCELERATION,
       optimizeForLatency: false,
     };

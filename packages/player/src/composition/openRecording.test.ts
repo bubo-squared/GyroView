@@ -1,9 +1,7 @@
 import {
-  AS_RECORDED,
   CalibrationVersion,
   Deferred,
   GyroViewError,
-  HLG_TO_SDR_BT709,
   seconds,
   type ContainerCodecs,
   type EncodedVideoPacket,
@@ -13,8 +11,10 @@ import {
   type VideoTrackReader,
 } from '@gyroview/core';
 import {
+  AS_RECORDED,
   FakeResourceLocator,
   FakeVideoDecoderPort,
+  HLG_TO_SDR_BT709,
   lensMp4File,
   minimalInfoRecord,
   type SimulatedLink,
@@ -168,6 +168,20 @@ async function captureRejection(promise: Promise<unknown>): Promise<unknown> {
   }
   throw new Error('expected the promise to reject');
 }
+
+const SDR_BT709: TrackColour = {
+  primaries: 'bt709',
+  transfer: 'bt709',
+  matrix: 'bt709',
+  range: 'full',
+};
+
+const HLG_BT2020: TrackColour = {
+  primaries: 'bt2020',
+  transfer: 'hlg',
+  matrix: 'bt2020-ncl',
+  range: 'limited',
+};
 
 /**
  * The X5 fixture opened as though both lens tracks declared `colour`.
@@ -333,24 +347,25 @@ describe('openRecording', () => {
     expect((failure as Error).message).toContain('key-frame-late');
   });
 
-  it('shows HLG lenses through the HLG conversion and says which transfer it cannot show', async () => {
-    const hlg = {
-      primaries: 'bt2020',
-      transfer: 'hlg',
-      matrix: 'bt2020-ncl',
-      range: 'limited',
-    } as const;
-    const pq = { ...hlg, transfer: 'pq' } as const;
-    const shown = await openWithLensColour(hlg);
-    expect(shown.displayConversions).toEqual([
-      HLG_TO_SDR_BT709.parameters,
-      HLG_TO_SDR_BT709.parameters,
-    ]);
-    expect(shown.warnings.some((warning) => warning.includes('hlg'))).toBe(false);
+  it('shows HLG lenses through the HLG conversion, with no warning of their colour', async () => {
+    const asRecorded = await openWithLensColour(SDR_BT709);
+    const shown = await openWithLensColour(HLG_BT2020);
+    expect(shown.displayConversions).toEqual([HLG_TO_SDR_BT709, HLG_TO_SDR_BT709]);
+    expect(shown.warnings).toEqual(asRecorded.warnings);
+    asRecorded.dispose();
     shown.dispose();
-    const unshown = await openWithLensColour(pq);
-    expect(unshown.displayConversions).toEqual([AS_RECORDED.parameters, AS_RECORDED.parameters]);
-    expect(unshown.warnings).toContainEqual(expect.stringContaining('pq'));
+  });
+
+  it('draws lenses of a transfer it cannot show as recorded, and warns of it once', async () => {
+    const asRecorded = await openWithLensColour(SDR_BT709);
+    const unshown = await openWithLensColour({ ...HLG_BT2020, transfer: 'pq' });
+    const asRecordedBt2020 = { ...AS_RECORDED, matrix: 'bt2020-ncl' };
+    expect(unshown.displayConversions).toEqual([asRecordedBt2020, asRecordedBt2020]);
+    expect(unshown.warnings).toEqual([
+      ...asRecorded.warnings,
+      'the pq transfer cannot be shown yet: drawn as recorded',
+    ]);
+    asRecorded.dispose();
     unshown.dispose();
   });
 

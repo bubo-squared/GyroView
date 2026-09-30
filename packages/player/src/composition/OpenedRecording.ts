@@ -1,6 +1,6 @@
 import type {
   AudioSegmentSource,
-  DisplayConversionParameters,
+  DisplayConversion,
   FrameTimes,
   LensLayout,
   MediaBuffer,
@@ -28,7 +28,7 @@ export interface OpenedRecording {
   /**
    * How each frame source is shown, in the order of {@link frameSources} (ADR 0033).
    */
-  readonly displayConversions: readonly DisplayConversionParameters[];
+  readonly displayConversions: readonly DisplayConversion[];
   readonly duration: Seconds;
   readonly frameTimes: FrameTimes | undefined;
   readonly motion: MotionSetup | undefined;

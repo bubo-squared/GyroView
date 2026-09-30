@@ -182,66 +182,7 @@ export type { CalibrationChoice } from './domain/format/calibration/selectCalibr
 export { CALIBRATION_SOURCES } from './domain/format/info/calibrationSources';
 
 // Shared vocabulary
-export {
-  asGyroViewError,
-  ensureIndexInRange,
-  ensureInvariant,
-  GYRO_VIEW_ERROR_CATEGORIES,
-  GYRO_VIEW_ERROR_CODES,
-  GyroViewError,
-  hasErrorCode,
-  isAbortError,
-  isGyroViewErrorCode,
-  messageOf,
-  type GyroViewErrorCategory,
-  type GyroViewErrorCode,
-} from './shared/errors/GyroViewError';
-export { keysOf } from './shared/keysOf';
-export { mapRecord } from './shared/mapRecord';
-export { lazy } from './shared/lazy';
-export { Outbox, type EventSink } from './shared/events/Outbox';
-export { clamp } from './shared/math/clamp';
-export { indexOfLeast, parabolicOffset } from './shared/math/minimum';
-export { magnitudeOf, type Vector3 } from './shared/math/Vector3';
-export {
-  IDENTITY_MATRIX3,
-  multiplyMatrices,
-  rotationAboutX,
-  rotationAboutY,
-  rotationAboutZ,
-  transformVector,
-  transposeMatrix,
-  type Matrix3,
-} from './shared/math/Matrix3';
-export {
-  conjugateQuaternion,
-  quaternionFromAxisAngle,
-  rotateVector,
-  type Quaternion,
-} from './shared/math/Quaternion';
-export type { ReadonlyFloat64Array } from './shared/binary/ReadonlyTypedArray';
-export {
-  microseconds,
-  microsecondsToSeconds,
-  milliseconds,
-  seconds,
-  secondsToMicroseconds,
-  secondsToMilliseconds,
-  type Microseconds,
-  type Milliseconds,
-  type Seconds,
-} from './shared/units/time';
-export {
-  degrees,
-  degreesToRadians,
-  FULL_TURN,
-  HALF_TURN,
-  QUARTER_TURN,
-  radians,
-  radiansToDegrees,
-  type Degrees,
-  type Radians,
-} from './shared/units/angle';
+export * from './shared';
 
 // Downloading a recording while it plays
 export { SourceByteStream } from './application/download/SourceByteStream';

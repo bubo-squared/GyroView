@@ -65,7 +65,7 @@ export class FakeVideoTrack implements VideoTrackReader {
     return Promise.resolve({
       ...codedShapeOf(this.options),
       description: undefined,
-      isFullRange: true,
+      colour: this.description.colour,
     });
   }
 

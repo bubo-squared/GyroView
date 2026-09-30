@@ -81,7 +81,6 @@ export {
   type VersionedCalibration,
 } from './domain/format/calibration/CalibrationVersion';
 export {
-  AS_READ,
   type CalibrationSet,
   type CanvasSize,
   type EulerDegrees,
@@ -144,7 +143,6 @@ export {
   type StabilizingParts,
 } from './application/stabilization/StabilizingFrameSink';
 export type { PixelPoint } from './domain/optics/PixelPoint';
-export { EquidistantModel, type EquidistantParameters } from './domain/optics/EquidistantModel';
 export { MEI_TERM_CAPACITY, type MeiDistortion } from './domain/optics/MeiDistortion';
 export {
   GainMatchingFrameSink,
@@ -179,25 +177,25 @@ export {
   type SeamJoin,
 } from './domain/stitching/seamJoin';
 export type { CalibrationChoice } from './domain/format/calibration/selectCalibration';
-export type * from './domain/colour/TrackColour';
-export { UNSPECIFIED_COLOUR } from './domain/colour/TrackColour';
 export {
-  AS_RECORDED,
-  DISPLAY_CONVERSIONS,
-  displayConversionFor,
+  COLOUR_PRIMARIES,
+  MATRIX_COEFFICIENTS,
+  TRANSFER_CHARACTERISTICS,
+  type ColourPrimaries,
+  type ColourRange,
+  type MatrixCoefficients,
+  type TrackColour,
+  type TransferCharacteristics,
+} from './domain/colour/TrackColour';
+export {
+  BT709_LUMINANCE,
   displayConversionsOf,
   HLG_OETF,
-  HLG_TO_SDR_BT709,
-  hlgInverseOetf,
-  toDisplay,
   type DisplayConversion,
   type DisplayConversionChoice,
-  type DisplayConversionParameters,
-  type Rgb,
-  type TexelSignal,
   type ToneCurve,
 } from './domain/colour/DisplayConversion';
-export { CALIBRATION_SOURCES } from './domain/format/info/calibrationSources';
+export { matrixCorrectionOf } from './domain/colour/matrixCorrection';
 
 // Shared vocabulary
 export * from './shared';

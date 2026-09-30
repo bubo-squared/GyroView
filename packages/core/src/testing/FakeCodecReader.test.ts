@@ -12,7 +12,12 @@ function lensCodec(trackId: number, trackIndex: number): ContainerCodecs['video'
   return {
     trackId,
     description: { trackIndex, codec: 'avc1.64000a', ...size, colour: UNSPECIFIED_COLOUR },
-    configuration: { codec: 'avc1.64000a', ...size, description: undefined, isFullRange: false },
+    configuration: {
+      codec: 'avc1.64000a',
+      ...size,
+      description: undefined,
+      colour: UNSPECIFIED_COLOUR,
+    },
   };
 }
 

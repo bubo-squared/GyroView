@@ -22,6 +22,11 @@ export interface TransferState {
 export interface WindowAnchor {
   readonly time: Seconds;
   readonly offset: number;
+  /**
+   * Where the key frame that decoding at the anchor started from lies: a seek back within its
+   * group decodes from there.
+   */
+  readonly keyframeOffset: number;
 }
 
 export interface DownloadState {
@@ -110,6 +115,7 @@ function anchorOf(cursors: readonly CursorPosition[]): WindowAnchor {
   return {
     time: seconds(Math.min(...cursors.map((cursor) => timeOf(cursor)))),
     offset: Math.min(...cursors.map((cursor) => offsetOf(cursor))),
+    keyframeOffset: Math.min(...cursors.map((cursor) => keyframeOffsetOf(cursor))),
   };
 }
 
@@ -220,7 +226,8 @@ function requestsFor(missing: ByteRangeSet, policy: DownloadPolicy, room: number
 }
 
 /**
- * The stretch behind the picture that is kept for short seeks back.
+ * The stretch behind the picture that is kept for short seeks back: its group of pictures from
+ * the key frame, or the policy's distance, whichever reaches further back.
  */
 function keptBehind(anchor: WindowAnchor, policy: DownloadPolicy): ByteRangeSet {
   const start = keptBehindStart(anchor, policy);
@@ -228,7 +235,7 @@ function keptBehind(anchor: WindowAnchor, policy: DownloadPolicy): ByteRangeSet 
 }
 
 function keptBehindStart(anchor: WindowAnchor, policy: DownloadPolicy): number {
-  return Math.max(0, anchor.offset - policy.keepBehindBytes);
+  return Math.max(0, Math.min(anchor.keyframeOffset, anchor.offset - policy.keepBehindBytes));
 }
 
 function isAtItsEnd(cursor: CursorPosition): boolean {
@@ -240,6 +247,16 @@ function isAtItsEnd(cursor: CursorPosition): boolean {
  */
 function timeOf(cursor: CursorPosition): Seconds {
   return isAtItsEnd(cursor) ? cursor.track.end : cursor.track.timestampOf(cursor.sample);
+}
+
+/**
+ * Where the key frame before a reader's next sample lies; a sound sample is its own.
+ */
+function keyframeOffsetOf(cursor: CursorPosition): number {
+  const { track } = cursor;
+  const last = Math.min(cursor.sample, track.sampleCount - 1);
+  const keyframe = track.syncSampleAtOrBefore(last);
+  return keyframe === undefined ? offsetOf(cursor) : track.rangeOf(keyframe).offset;
 }
 
 function offsetOf(cursor: CursorPosition): number {

@@ -144,7 +144,11 @@ describe('planDownloads', () => {
 
   it('reads the sound where the picture last stood once its readers closed, as after its last frame', () => {
     const file = cameraFile(50);
-    const anchor = { time: seconds(50 * FRAME_DURATION), offset: 50 * SLOT };
+    const anchor = {
+      time: seconds(50 * FRAME_DURATION),
+      offset: 50 * SLOT,
+      keyframeOffset: 30 * SLOT,
+    };
     const plan = planDownloads(stateOf({ cursors: [at(file.sound, 48, true)], anchor }));
     expect(spansOf(plan.start)).toEqual([[48 * SLOT + FRAME, 49 * SLOT + FRAME + SOUND]]);
     expect(plan.anchor).toEqual(anchor);
@@ -158,19 +162,27 @@ describe('planDownloads', () => {
   it('stands a picture reader that read all of its track at the end of its last frame', () => {
     const file = cameraFile(50);
     const plan = planDownloads(stateOf({ cursors: [at(file.lens0, 50), at(file.lens1, 50)] }));
-    expect(plan.anchor).toEqual({ time: file.lens0.end, offset: 49 * SLOT + FRAME });
+    expect(plan.anchor).toEqual({
+      time: file.lens0.end,
+      offset: 49 * SLOT + FRAME,
+      keyframeOffset: 30 * SLOT,
+    });
   });
 
   it('stands a picture reader of a track with no frames at the start', () => {
     const empty = trackOf('video', 0, { at: 0, size: FRAME });
     const plan = planDownloads(stateOf({ cursors: [at(empty, 0)] }));
-    expect(plan.anchor).toEqual({ time: 0, offset: 0 });
+    expect(plan.anchor).toEqual({ time: 0, offset: 0, keyframeOffset: 0 });
   });
 
   it('tells where the picture stands, for the plans to come', () => {
     const file = cameraFile();
     const plan = planDownloads(stateOf({ cursors: everyTrackAt(file, 60) }));
-    expect(plan.anchor).toEqual({ time: file.lens0.timestampOf(60), offset: 60 * SLOT });
+    expect(plan.anchor).toEqual({
+      time: file.lens0.timestampOf(60),
+      offset: 60 * SLOT,
+      keyframeOffset: 60 * SLOT,
+    });
   });
 
   it('before playing, reads only the frames the picture waits for, with the sound between them', () => {
@@ -415,12 +427,21 @@ describe('planDownloads', () => {
     ]);
   });
 
-  it('lets go of the bytes behind the kept distance and beyond the window', () => {
+  it('keeps behind the picture its group from the key frame, where that reaches past the kept distance', () => {
     const file = cameraFile();
     const plan = planDownloads(
       stateOf({ cursors: everyTrackAt(file, 50), held: heldSlots(0, 300) }),
     );
-    expect(spansOf(plan.release.ranges)).toEqual(slotSpans([0, 40], [150, 300]));
+    expect(spansOf(plan.release.ranges)).toEqual(slotSpans([0, 30], [150, 300]));
+  });
+
+  it('keeps behind the picture the kept distance, where that reaches past the key frame', () => {
+    const file = cameraFile();
+    const policy = { ...POLICY, keepBehindBytes: 30 * SLOT };
+    const plan = planDownloads(
+      stateOf({ cursors: everyTrackAt(file, 50), held: heldSlots(0, 300), policy }),
+    );
+    expect(spansOf(plan.release.ranges)).toEqual(slotSpans([0, 20], [150, 300]));
   });
 
   it('keeps behind the picture only the stretch it keeps, however far in the picture is', () => {

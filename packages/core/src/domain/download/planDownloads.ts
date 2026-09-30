@@ -35,6 +35,10 @@ export interface DownloadState {
   readonly held: ByteRangeSet;
   readonly transfers: readonly TransferState[];
   /**
+   * Ranges that failed, not to be asked for again.
+   */
+  readonly unreadable: ByteRangeSet;
+  /**
    * Whether playing has started: until then only what the picture waits for is read.
    */
   readonly isReadingAhead: boolean;
@@ -63,10 +67,10 @@ export interface DownloadDecisions {
  * Once playing the window reaches as far ahead as the policy's seconds and bytes allow, before
  * that only to the frames the picture waits for; every picture reader's next frame is read,
  * however far from the others. Sound is read within the window, never beyond it, and not at all
- * before a picture was ever read but once playing. What the window wants and is neither held nor coming is asked
- * for, lowest first, when a cursor waits on it, a refill's worth is missing, or the window
- * reaches the tracks' end; what it no longer wants is given up or let go of, but for a stretch
- * kept behind the picture.
+ * before a picture was ever read but once playing. What the window wants and is neither held,
+ * coming nor failed is asked for, lowest first, when a cursor waits on it, a refill's worth is
+ * missing, or the window reaches the tracks' end; what it no longer wants is given up or let go
+ * of, but for a stretch kept behind the picture.
  */
 export function planDownloads(state: DownloadState): DownloadDecisions {
   const pictures = state.cursors.filter((cursor) => cursor.track.kind === 'video');
@@ -78,7 +82,7 @@ export function planDownloads(state: DownloadState): DownloadDecisions {
   );
   const kept = state.transfers.filter((transfer) => wanted.overlaps(transfer.remaining));
   const coming = ByteRangeSet.of(kept.map((transfer) => transfer.remaining));
-  const missing = wanted.subtract(state.held).subtract(coming);
+  const missing = wanted.subtract(state.held).subtract(coming).subtract(state.unreadable);
   const room = state.policy.requestsInFlight - kept.length;
   const isDue = isTopUpDue({ state, pictures, windowEnd, missing });
   return {

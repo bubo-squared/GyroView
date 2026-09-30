@@ -231,9 +231,9 @@ describe('DecodePipeline', () => {
 
     const run = pipeline.run(seconds(0), queue);
     await settle();
-    expect(tracks.map((track) => track.openCursors)).toEqual([1, 1]);
+    expect(tracks.map((track) => track.openReadings)).toEqual([1, 1]);
     pipeline.abort();
-    expect(tracks.map((track) => track.openCursors)).toEqual([0, 0]);
+    expect(tracks.map((track) => track.openReadings)).toEqual([0, 0]);
     await run;
     queue.close();
   });
@@ -244,7 +244,7 @@ describe('DecodePipeline', () => {
 
     const run = pipeline.run(seconds(0), new FramePairQueue<FakeFrameHandle>(4));
     pipeline.abort();
-    expect(tracks.map((track) => track.openCursors)).toEqual([0, 0]);
+    expect(tracks.map((track) => track.openReadings)).toEqual([0, 0]);
     await run;
   });
 

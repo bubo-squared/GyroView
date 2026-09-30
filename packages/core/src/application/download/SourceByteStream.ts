@@ -15,7 +15,7 @@ export class SourceByteStream implements ByteStream {
   public stream(range: ByteRange): AsyncIterable<Uint8Array> {
     return {
       [Symbol.asyncIterator]: (): AsyncIterator<Uint8Array> =>
-        new WholeRangeRead(this.source, range),
+        new WholeRangeReading(this.source, range),
     };
   }
 }
@@ -24,7 +24,7 @@ export class SourceByteStream implements ByteStream {
  * One range, read on the first chunk asked for; given up, it reads nothing more and its read
  * under way comes as the end.
  */
-class WholeRangeRead implements AsyncIterator<Uint8Array> {
+class WholeRangeReading implements AsyncIterator<Uint8Array> {
   private isOver = false;
 
   public constructor(

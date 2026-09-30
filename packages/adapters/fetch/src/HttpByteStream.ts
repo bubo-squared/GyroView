@@ -40,12 +40,12 @@ export class HttpByteStream implements ByteStream {
   public stream(range: ByteRange): AsyncIterable<Uint8Array> {
     return {
       [Symbol.asyncIterator]: (): AsyncIterator<Uint8Array> =>
-        new RangeStreaming({ resource: this.resource, range, stallTimeoutMs: this.stallTimeoutMs }),
+        new RangeReading({ resource: this.resource, range, stallTimeoutMs: this.stallTimeoutMs }),
     };
   }
 }
 
-interface StreamingParts {
+interface ReadingParts {
   readonly resource: HttpResource;
   readonly range: ByteRange;
   readonly stallTimeoutMs: number;
@@ -64,12 +64,12 @@ interface Attempt {
  * more; returning the iteration aborts the request at once, a chunk still awaited coming as the
  * end.
  */
-class RangeStreaming implements AsyncIterator<Uint8Array> {
+class RangeReading implements AsyncIterator<Uint8Array> {
   private attempt: Attempt | undefined;
   private received = 0;
   private isOver = false;
 
-  public constructor(private readonly parts: StreamingParts) {}
+  public constructor(private readonly parts: ReadingParts) {}
 
   public async next(): Promise<IteratorResult<Uint8Array>> {
     try {

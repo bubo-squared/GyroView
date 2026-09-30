@@ -12,7 +12,7 @@ export class FakeAudioSampleSource implements AudioSampleSource {
   /**
    * Sample iterations started and neither finished nor returned.
    */
-  public openCursors = 0;
+  public openReadings = 0;
 
   public constructor(private readonly samples: readonly EncodedAudioSample[]) {}
 
@@ -23,21 +23,21 @@ export class FakeAudioSampleSource implements AudioSampleSource {
 
   public samplesFrom(time: Seconds): AsyncIterable<EncodedAudioSample> {
     return {
-      [Symbol.asyncIterator]: (): AsyncIterator<EncodedAudioSample> => this.cursorAt(time),
+      [Symbol.asyncIterator]: (): AsyncIterator<EncodedAudioSample> => this.readingAt(time),
     };
   }
 
-  private cursorAt(time: Seconds): FakeSampleCursor {
+  private readingAt(time: Seconds): FakeSampleReading {
     const playing = this.samples.findLastIndex((sample) => sample.timestamp <= time);
-    this.openCursors += 1;
+    this.openReadings += 1;
     const onClose = (): void => {
-      this.openCursors -= 1;
+      this.openReadings -= 1;
     };
-    return new FakeSampleCursor(this.samples.slice(Math.max(playing, 0)), onClose);
+    return new FakeSampleReading(this.samples.slice(Math.max(playing, 0)), onClose);
   }
 }
 
-class FakeSampleCursor implements AsyncIterator<EncodedAudioSample> {
+class FakeSampleReading implements AsyncIterator<EncodedAudioSample> {
   private position = 0;
   private isOpen = true;
 

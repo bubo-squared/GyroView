@@ -62,8 +62,8 @@ export class SegmentChannel {
    * segment is awaited, which then comes as the end. `onEnd` hears once of the end, however it
    * came: the producer's resources may go.
    */
-  public segments(onEnd: () => void = doNothing): SegmentCursor {
-    return new SegmentCursor({
+  public segments(onEnd: () => void = doNothing): SegmentReading {
+    return new SegmentReading({
       take: (): Promise<Segment | undefined> => this.take(),
       close: (): void => {
         this.close();
@@ -107,7 +107,7 @@ export class SegmentChannel {
   }
 }
 
-interface CursorParts {
+interface ReadingParts {
   readonly take: () => Promise<Segment | undefined>;
   readonly close: () => void;
   readonly onEnd: () => void;
@@ -117,10 +117,10 @@ interface CursorParts {
  * Iterates a channel's segments. A class, not a generator: a generator's return waits behind the
  * segment it awaits, and the producer would re-package another fragment for nobody.
  */
-class SegmentCursor implements AsyncIterableIterator<Segment> {
+class SegmentReading implements AsyncIterableIterator<Segment> {
   private hasEnded = false;
 
-  public constructor(private readonly parts: CursorParts) {}
+  public constructor(private readonly parts: ReadingParts) {}
 
   public async next(): Promise<IteratorResult<Segment>> {
     if (this.hasEnded) return DONE;

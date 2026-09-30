@@ -188,9 +188,9 @@ describe('FileDownload', () => {
     const error = new GyroViewError('source-unreadable', 'the connection dropped');
     context.link.failWhere((range) => range.end > 50 * SLOT, error);
     const cursor = context.download.openCursor(RECORDING.lens0, 60);
-    const next = cursor.nextSample();
+    const failed = expect(cursor.nextSample()).rejects.toBe(error);
     await idle(context.link, 5);
-    await expect(next).rejects.toBe(error);
+    await failed;
   });
 
   it('serves several readers of one track at once', async () => {

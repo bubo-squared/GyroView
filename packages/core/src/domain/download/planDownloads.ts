@@ -63,14 +63,14 @@ export interface DownloadDecisions {
  * Once playing the window reaches as far ahead as the policy's seconds and bytes allow, before
  * that only to the frames the picture waits for; every picture reader's next frame is read,
  * however far from the others. Sound is read within the window, never beyond it, and not at all
- * before a picture was ever read. What the window wants and is neither held nor coming is asked
+ * before a picture was ever read but once playing. What the window wants and is neither held nor coming is asked
  * for, lowest first, when a cursor waits on it, a refill's worth is missing, or the window
  * reaches the tracks' end; what it no longer wants is given up or let go of, but for a stretch
  * kept behind the picture.
  */
 export function planDownloads(state: DownloadState): DownloadDecisions {
   const pictures = state.cursors.filter((cursor) => cursor.track.kind === 'video');
-  const anchor = pictures.length > 0 ? anchorOf(pictures) : state.anchor;
+  const anchor = anchorFor(pictures, state);
   if (!anchor) return nothingToRead(state);
   const windowEnd = seconds(anchor.time + (state.isReadingAhead ? state.policy.aheadSeconds : 0));
   const wanted = wantedBytes({ state, windowEnd, pictures }).bridgingGapsBelow(
@@ -89,6 +89,20 @@ export function planDownloads(state: DownloadState): DownloadDecisions {
     release: state.held.subtract(wanted.union(keptBehind(anchor, state.policy))),
     anchor,
   };
+}
+
+/**
+ * Where the window starts: at the picture, or where it last stood; once playing, where no
+ * picture was ever read, at the sound, which then has no picture to follow.
+ */
+function anchorFor(
+  pictures: readonly CursorPosition[],
+  state: DownloadState,
+): PictureAnchor | undefined {
+  if (pictures.length > 0) return anchorOf(pictures);
+  const isSoundLeading =
+    state.anchor === undefined && state.isReadingAhead && state.cursors.length > 0;
+  return isSoundLeading ? anchorOf(state.cursors) : state.anchor;
 }
 
 function nothingToRead(state: DownloadState): DownloadDecisions {

@@ -108,11 +108,12 @@ function heldSlots(from: number, to: number): ByteRangeSet {
 }
 
 describe('planDownloads', () => {
-  it('reads nothing while no picture is read, however long the sound waits', () => {
+  it('before playing, reads nothing while no picture is read, however long the sound waits', () => {
     const file = cameraFile();
     const plan = planDownloads(
       stateOf({
         cursors: [at(file.sound, 0, true)],
+        isReadingAhead: false,
         held: heldSlots(0, 10),
         transfers: [{ id: 2, remaining: slots(10, 20) }],
       }),
@@ -120,6 +121,13 @@ describe('planDownloads', () => {
     expect(plan.start).toEqual([]);
     expect(plan.cancel).toEqual([2]);
     expect(plan.release.isEmpty).toBe(true);
+  });
+
+  it('once playing, reads ahead of the sound where no picture was ever read', () => {
+    const file = cameraFile();
+    const plan = planDownloads(stateOf({ cursors: [at(file.sound, 60, true)] }));
+    expect(plan.start[0]?.offset).toBe(60 * SLOT + FRAME);
+    expect(plan.anchor?.time).toBe(file.sound.timestampOf(60));
   });
 
   it('reads the sound where the picture last stood once its readers closed, as after its last frame', () => {

@@ -4,6 +4,7 @@ import type { CalibrationSet, LensCalibration } from '../optics/LensCalibration'
 import type { LensProjectionParameters } from '../optics/LensModel';
 import { lensRotation } from '../optics/lensPose';
 import { scaledProjection } from '../optics/scaledProjection';
+import { AS_RECORDED, type DisplayConversionParameters } from '../colour/DisplayConversion';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import type { Matrix3 } from '../../shared/math/Matrix3';
 import type { Rectangle } from '../../shared/math/Rectangle';
@@ -39,6 +40,10 @@ export interface LensStitch {
   readonly rotation: Matrix3;
   readonly projection: LensProjectionParameters;
   readonly halfFieldOfView: Radians;
+  /**
+   * How the lens's texels are brought to the display (ADR 0033).
+   */
+  readonly displayConversion: DisplayConversionParameters;
 }
 
 export interface StitchingSetup {
@@ -53,6 +58,12 @@ export interface StitchingSetup {
 export interface StitchingInputs {
   readonly calibration: CalibrationSet;
   readonly layout: LensLayout;
+  /**
+   * The conversion each frame source is shown with, in frame-slot order
+   * (`displayConversionsOf`); without them, as for SDR recordings, every lens is shown as
+   * recorded.
+   */
+  readonly displayConversions?: readonly DisplayConversionParameters[];
 }
 
 export interface FrameSourceKey {
@@ -101,14 +112,16 @@ export function buildStitchingSetup(inputs: StitchingInputs): StitchingSetup {
   const frames = lensFrameOrder(layout);
   const lenses = layout.sources.map((source) => {
     const lens = lensOf(calibration, source.lensIndex);
+    const frameSlot = frames.findIndex((key) => isSameSource(key, source));
     return {
       lensIndex: source.lensIndex,
-      frameSlot: frames.findIndex((key) => isSameSource(key, source)),
+      frameSlot,
       region: source.region,
       window: canvasWindowOf(calibration, lens),
       rotation: lensRotation(lens),
       projection: scaledProjection(lens.model.projection, lens.radialScale),
       halfFieldOfView: lens.model.halfFieldOfView,
+      displayConversion: inputs.displayConversions?.[frameSlot] ?? AS_RECORDED.parameters,
     };
   });
   return { lenses, frameSlotCount: frames.length, feather: DEFAULT_FEATHER };

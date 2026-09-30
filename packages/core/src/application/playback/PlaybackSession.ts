@@ -2,13 +2,13 @@ import { closeFramePair, type FramePair } from '../../ports/FramePair';
 import { ClockWatch, isAtEndOfMedia, isStoppedFromOutside } from './ClockWatch';
 import { SeekOrder } from './SeekOrder';
 import { TimeUpdates } from './TimeUpdates';
+import { Buffering } from './Buffering';
 import { SessionLifecycle, type PlaybackSessionEvents } from './SessionLifecycle';
 import { DecodeRun, type DecodeRunParts } from './DecodeRun';
 import { keyframeTimeAt } from './keyframeTimeAt';
 import type { PlayerState } from '../../domain/playback/PlayerState';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
-import { Deferred } from '../../shared/async/Deferred';
 import { asGyroViewError } from '../../shared/errors/GyroViewError';
 import { TypedEmitter } from '../../shared/events/TypedEmitter';
 import { seconds, type Seconds } from '../../shared/units/time';
@@ -49,10 +49,7 @@ export class PlaybackSession<Handle = unknown> {
    */
   private presented: Presentation<Handle> | undefined;
   private readonly timeUpdates = new TimeUpdates(this.lifecycle);
-  /**
-   * The `play` call waiting for the clock to start once frames are ready.
-   */
-  private startAttempt: Deferred<void> | undefined;
+  private readonly buffering = new Buffering(this.lifecycle);
   private readonly clockWatch = new ClockWatch();
   private readonly seeks = new SeekOrder();
 
@@ -76,7 +73,7 @@ export class PlaybackSession<Handle = unknown> {
   public async play(): Promise<void> {
     if (this.lifecycle.current === 'playing') return;
     if (this.lifecycle.current === 'buffering') {
-      await this.startAttempt?.promise;
+      await this.buffering.waitingStart;
       return;
     }
     await this.lifecycle.change(() => this.beginStart());
@@ -94,7 +91,7 @@ export class PlaybackSession<Handle = unknown> {
       if (wasRunning) this.clockWatch.stoppedAt(this.parts.clock.currentTime);
       if (!this.lifecycle.canMoveTo('paused')) return;
       this.lifecycle.moveTo('paused');
-      this.settleStartAttempt();
+      this.buffering.settleStart();
       this.timeUpdates.announce(this.parts.clock.currentTime);
     });
   }
@@ -121,7 +118,8 @@ export class PlaybackSession<Handle = unknown> {
       this.moveClockTo(target);
       this.startRun(target);
       this.lifecycle.moveTo('seeking');
-      this.lifecycle.moveTo(this.seeks.resumesPlaying ? 'buffering' : 'paused');
+      if (this.seeks.resumesPlaying) this.buffering.enter();
+      else this.lifecycle.moveTo('paused');
       this.timeUpdates.announce(target);
     });
   }
@@ -198,7 +196,7 @@ export class PlaybackSession<Handle = unknown> {
       this.presented = undefined;
       this.parts.clock.pause();
       this.lifecycle.moveTo('disposed');
-      this.settleStartAttempt();
+      this.buffering.settleStart();
     });
     this.events.removeAll();
   }
@@ -221,11 +219,8 @@ export class PlaybackSession<Handle = unknown> {
    * started (a media key's play). A pause settles the wait.
    */
   private startOncePrimed(): Promise<void> {
-    const attempt = new Deferred<void>();
-    this.startAttempt = attempt;
     this.parts.clock.pause();
-    this.lifecycle.moveTo('buffering');
-    return attempt.promise;
+    return this.buffering.enterForStart();
   }
 
   /**
@@ -268,7 +263,7 @@ export class PlaybackSession<Handle = unknown> {
     }
     if (this.run?.isStarvedAt(now, this.presented?.pair.timestamp) === true) {
       this.parts.clock.pause();
-      this.lifecycle.moveTo('buffering');
+      this.buffering.enter();
       return;
     }
     this.timeUpdates.followPlayback(now);
@@ -334,8 +329,12 @@ export class PlaybackSession<Handle = unknown> {
     const wasRunning = clock.isRunning;
     clock.pause();
     this.startRun(now);
-    this.lifecycle.moveTo(wasRunning ? 'buffering' : 'paused');
-    if (!wasRunning) this.timeUpdates.announce(now);
+    if (wasRunning) {
+      this.buffering.enter();
+      return;
+    }
+    this.lifecycle.moveTo('paused');
+    this.timeUpdates.announce(now);
   }
 
   /**
@@ -355,7 +354,7 @@ export class PlaybackSession<Handle = unknown> {
    * Called as pairs arrive and when a run ends: the moment `buffering` has what it waits for.
    */
   private resumeIfPrimed(): void {
-    if (this.lifecycle.current === 'buffering' && this.isPrimed()) void this.resume();
+    if (this.buffering.isOverAt(this.run, this.parts.clock.currentTime)) void this.resume();
   }
 
   /**
@@ -363,7 +362,7 @@ export class PlaybackSession<Handle = unknown> {
    * first start) lands `paused` and is reported to the waiting `play`.
    */
   private async resume(): Promise<void> {
-    const attempt = this.takeStartAttempt();
+    const attempt = this.buffering.takeStart();
     this.enterPlaying();
     try {
       await this.startClockOnceHeard();
@@ -380,16 +379,6 @@ export class PlaybackSession<Handle = unknown> {
       if (this.lifecycle.is('playing')) this.lifecycle.moveTo('paused');
       throw error;
     }
-  }
-
-  private settleStartAttempt(): void {
-    this.takeStartAttempt()?.resolve();
-  }
-
-  private takeStartAttempt(): Deferred<void> | undefined {
-    const attempt = this.startAttempt;
-    this.startAttempt = undefined;
-    return attempt;
   }
 
   /**
@@ -457,7 +446,7 @@ export class PlaybackSession<Handle = unknown> {
       this.parts.clock.pause();
       this.abortRun();
       this.lifecycle.moveTo('error');
-      this.settleStartAttempt();
+      this.buffering.settleStart();
       this.lifecycle.announce('error', asGyroViewError(error, 'decode', 'playback failed'));
     });
   }

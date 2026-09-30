@@ -4,7 +4,11 @@ import { Transfers } from './Transfers';
 import type { SampleTable } from '../../domain/container/SampleTable';
 import type { TrackSampleTable } from '../../domain/container/TrackSampleTable';
 import type { DownloadPolicy } from '../../domain/download/DownloadPolicy';
-import { planDownloads, type DownloadDecisions } from '../../domain/download/planDownloads';
+import {
+  planDownloads,
+  type DownloadDecisions,
+  type PictureAnchor,
+} from '../../domain/download/planDownloads';
 import type { ByteStream } from '../../ports/ByteStream';
 import type { ByteRange } from '../../shared/binary/ByteRange';
 import { asGyroViewError, ensureInvariant } from '../../shared/errors/GyroViewError';
@@ -35,6 +39,7 @@ export class FileDownload {
   private readonly cursors = new Set<SampleCursor>();
   private readonly host: CursorHost;
   private failures: FailedRange[] = [];
+  private anchor: PictureAnchor | undefined;
   private isReadingAhead = false;
   private isPlanDue = false;
   private isDisposed = false;
@@ -130,8 +135,10 @@ export class FileDownload {
       held: this.store.held,
       transfers: this.transfers.states,
       isReadingAhead: this.isReadingAhead,
+      anchor: this.anchor,
       policy: this.parts.policy,
     });
+    this.anchor = decisions.anchor;
     this.carryOut(decisions);
     this.serveCursors();
   }

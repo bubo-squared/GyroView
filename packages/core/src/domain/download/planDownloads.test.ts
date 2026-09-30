@@ -122,6 +122,20 @@ describe('planDownloads', () => {
     expect(plan.release.isEmpty).toBe(true);
   });
 
+  it('reads the sound where the picture last stood once its readers closed, as after its last frame', () => {
+    const file = cameraFile(50);
+    const anchor = { time: seconds(50 * FRAME_DURATION), offset: 50 * SLOT };
+    const plan = planDownloads(stateOf({ cursors: [at(file.sound, 48, true)], anchor }));
+    expect(spansOf(plan.start)).toEqual([[48 * SLOT + FRAME, 49 * SLOT + FRAME + SOUND]]);
+    expect(plan.anchor).toEqual(anchor);
+  });
+
+  it('tells where the picture stands, for the plans to come', () => {
+    const file = cameraFile();
+    const plan = planDownloads(stateOf({ cursors: everyTrackAt(file, 60) }));
+    expect(plan.anchor).toEqual({ time: file.lens0.timestampOf(60), offset: 60 * SLOT });
+  });
+
   it('before playing, reads only the frames the picture waits for, with the sound between them', () => {
     const file = cameraFile();
     const plan = planDownloads(
@@ -217,6 +231,13 @@ describe('planDownloads', () => {
       stateOf({ cursors: everyTrackAt(file, 45), held: heldSlots(45, 48) }),
     );
     expect(spansOf(plan.start)).toEqual(slotSpans([48, 50]));
+  });
+
+  it('reads the sound to its end once the picture has read all of its own', () => {
+    const file = cameraFile(50);
+    const cursors = [at(file.lens0, 50), at(file.lens1, 50), at(file.sound, 48, true)];
+    const plan = planDownloads(stateOf({ cursors }));
+    expect(spansOf(plan.start)).toEqual([[48 * SLOT + FRAME, 49 * SLOT + FRAME + SOUND]]);
   });
 
   it('reads no sound beyond the window of the picture', () => {

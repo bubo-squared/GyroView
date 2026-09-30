@@ -15,6 +15,7 @@ import {
 } from 'mediabunny';
 
 import { audioConfigurationOf, videoConfigurationOf } from './decoderConfigurations';
+import { trackColourOf } from './trackColour';
 
 /**
  * CodecReader over mediabunny: opens the file type and movie boxes as a file of their own, in
@@ -55,7 +56,13 @@ async function videoCodecOf(track: InputVideoTrack, trackIndex: number): Promise
       `video track ${trackIndex} has no decoder configuration in its sample entry`,
     );
   }
-  const description = { trackIndex, codedWidth, codedHeight, codec: config.codec };
+  const description = {
+    trackIndex,
+    codedWidth,
+    codedHeight,
+    codec: config.codec,
+    colour: trackColourOf(config.colorSpace),
+  };
   return {
     trackId: track.id,
     description,

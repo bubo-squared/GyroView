@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { readSampleTable, type VideoTrackCodec } from '@gyroview/core';
+import {
+  readSampleTable,
+  UNSPECIFIED_COLOUR,
+  type TrackColour,
+  type VideoTrackCodec,
+} from '@gyroview/core';
 import {
   buildMp4File,
   describeCodecReaderContract,
@@ -15,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 
 import { videoConfigurationOf } from './decoderConfigurations';
 import { MediabunnyCodecReader } from './MediabunnyCodecReader';
+import { trackColourOf } from './trackColour';
 
 const SYNTHETIC = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -25,6 +31,7 @@ const FIXTURES = [
   'dual-track-aac-64px-10fps-3s.mp4',
   'dual-track-aac-moov-at-end-64px-10fps-3s.mp4',
   'hevc-b-frames-dual-track-64px-10fps-3s.mp4',
+  'hevc-main10-hlg-dual-track-64px-10fps-3s.mp4',
   'late-start-64px-10fps-3s.mp4',
 ];
 
@@ -43,6 +50,7 @@ async function codecOf(track: InputVideoTrack, trackIndex: number): Promise<Vide
     codedWidth: await track.getCodedWidth(),
     codedHeight: await track.getCodedHeight(),
     codec: config.codec,
+    colour: trackColourOf(config.colorSpace),
   };
   return {
     trackId: track.id,
@@ -56,10 +64,16 @@ async function movieBytesOf(bytes: Uint8Array): Promise<Uint8Array> {
   return movieBytes;
 }
 
+/**
+ * What ffmpeg's H.264 encoder writes without colour options: the range, nothing else.
+ */
+const LIMITED_RANGE_ONLY: TrackColour = { ...UNSPECIFIED_COLOUR, range: 'limited' };
+
 describeCodecReaderContract(async () => ({
   reader: new MediabunnyCodecReader(),
   movieBytes: await movieBytesOf(fixtureBytes('dual-track-aac-64px-10fps-3s.mp4')),
   videoTrackIds: [1, 2],
+  videoColours: [LIMITED_RANGE_ONLY, LIMITED_RANGE_ONLY],
   audioTrackIds: [3],
   notMovie: Uint8Array.of(0, 0, 0, 8, 1, 2, 3, 4),
 }));
@@ -80,6 +94,15 @@ describe('MediabunnyCodecReader', () => {
       }
     },
   );
+
+  it("reads a 10-bit HLG track's colour from its SPS, as the X6's tracks carry no colr box", async () => {
+    const bytes = fixtureBytes('hevc-main10-hlg-dual-track-64px-10fps-3s.mp4');
+    const { video } = await new MediabunnyCodecReader().read(await movieBytesOf(bytes));
+    expect(video.map((codec) => codec.description.colour)).toEqual([
+      { primaries: 'bt2020', transfer: 'hlg', matrix: 'bt2020-ncl', range: 'limited' },
+      { primaries: 'bt2020', transfer: 'hlg', matrix: 'bt2020-ncl', range: 'limited' },
+    ]);
+  });
 
   it('tells the sound codec as mediabunny reading the whole file does', async () => {
     const bytes = fixtureBytes('dual-track-aac-64px-10fps-3s.mp4');

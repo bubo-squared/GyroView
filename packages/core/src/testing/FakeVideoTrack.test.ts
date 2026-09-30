@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVideoTrack } from './FakeVideoTrack';
 import { seconds } from '../shared/units/time';
 import { describeVideoTrackReaderContract } from './VideoTrackReader.contract';
+import { UNSPECIFIED_COLOUR } from '../domain/colour/TrackColour';
 
 describeVideoTrackReaderContract(
   'FakeVideoTrack',
@@ -44,6 +45,7 @@ describe('FakeVideoTrack shape options', () => {
       codedWidth: 1664,
       codedHeight: 832,
       codec: 'avc1.fake',
+      colour: UNSPECIFIED_COLOUR,
     });
     await expect(track.decoderConfiguration()).resolves.toMatchObject({
       codedWidth: 1664,

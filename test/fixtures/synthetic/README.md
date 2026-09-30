@@ -65,3 +65,15 @@ ffmpeg -f lavfi -i "testsrc=size=64x64:rate=10" -f lavfi -i "testsrc2=size=64x64
   -x265-params "keyint=10:min-keyint=10:bframes=2:log-level=error" -pix_fmt yuv420p -tag:v hvc1 \
   test/fixtures/synthetic/hevc-b-frames-dual-track-64px-10fps-3s.mp4
 ```
+
+`hevc-main10-hlg-dual-track-64px-10fps-3s.mp4`: two 64x64 HEVC Main 10 tracks (`hvc1`), 10-bit,
+BT.2020 primaries and matrix, HLG transfer, limited range, with the colour in the SPS alone and
+no `colr` box, as the X6 writes its tracks. For the codec reader's colour. Regenerate with:
+
+```sh
+ffmpeg -f lavfi -i "testsrc=size=64x64:rate=10" -f lavfi -i "testsrc2=size=64x64:rate=10" -t 3 \
+  -map 0:v -map 1:v -c:v libx265 -preset ultrafast -pix_fmt yuv420p10le \
+  -x265-params "keyint=10:bframes=0:colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc:range=limited" \
+  -tag:v hvc1 -movflags +faststart-write_colr \
+  test/fixtures/synthetic/hevc-main10-hlg-dual-track-64px-10fps-3s.mp4
+```

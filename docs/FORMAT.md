@@ -88,10 +88,18 @@ Field numbers (`packages/core/src/domain/format/info/infoFields.ts`): 1 serial, 
 (ms, double), 29 has gyro offset, 40 total frames, 42 flowstate online, 51 gyro type,
 53 `offset_v2`, 54 `offset_v3`, 62 raw gyro flag, 64 pts type (1 track timestamps, 2 exposure
 record), 65 gyro config {1 accelerometer range g, 2 gyroscope range dps}, 79 file layout
-(1 split files, 2 multi-track; provisional), 80 track order (provisional). The window crop
+(1 split files, 2 multi-track; provisional), 80 track order (provisional), 111 `offset_v6`
+(v6 calibration, 27 tokens a lens). The window crop
 (27: 1 sensor width, 2 sensor height, 3 crop width, 4 crop height, 5 offset x, 6 offset y;
 5376, 5376, 5312, 5312, 0, 0 on the X5) is parsed and reported but not applied to the
 canvas-to-frame mapping: the frames show the whole calibration square (ADR 0014).
+
+Each calibration string has an "original" copy beside it, the factory calibration where the
+string itself may already account for an accessory (insta360-rs): 17 for `offset`, 55 for
+`offset_v2`, 56 for `offset_v3`, 112 for `offset_v6`. On every recording seen the copies equal
+the strings, so the player does not read them. The X5 writes all four strings; the X6 writes
+only `offset_v6` and its copy. Neither writes field 136, which insta360-rs reads as the
+calibration generation: the version word of each string tells it.
 
 ## Gyro record (id 3)
 

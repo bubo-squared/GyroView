@@ -10,7 +10,12 @@ function infoWith(overrides: Partial<RecordingInfo>): RecordingInfo {
     serialNumber: undefined,
     model: undefined,
     firmware: undefined,
-    calibration: { offset: undefined, offsetV2: undefined, offsetV3: undefined },
+    calibration: {
+      offset: undefined,
+      offsetV2: undefined,
+      offsetV3: undefined,
+      offsetV6: undefined,
+    },
     dimension: undefined,
     frameRate: undefined,
     captureMode: undefined,

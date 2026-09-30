@@ -64,9 +64,11 @@ sizes; every constant is named and cites its source.
 - `naming/RecordingFileName` understands `VID_<date>_<time>_<lens><proxy>_<seq>.insv` to guess
   where the other lens file of a split-file pair lives; the guess is always verified against the
   file.
-- `calibration/parseOffsetString` turns the three generations of calibration strings
+- `info/calibrationSources` declares where the info record keeps each calibration string;
+  `calibration/parseOffsetString` turns the three generations of calibration strings
   (`offset`, `offset_v2`, `offset_v3`, one layout class each) into the optics `CalibrationSet`;
-  `calibration/selectCalibration` picks the newest usable one.
+  `calibration/selectCalibration` picks the first usable one in the calibration preference, the
+  legacy string first (ADR 0023).
 - `captureOrigin` resolves the first frame's capture time in the gyro layout's unit, so motion
   receives branded values only.
 

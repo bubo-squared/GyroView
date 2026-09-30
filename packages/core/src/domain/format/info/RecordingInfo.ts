@@ -41,6 +41,7 @@ export interface CalibrationStrings {
   readonly offset: string | undefined;
   readonly offsetV2: string | undefined;
   readonly offsetV3: string | undefined;
+  readonly offsetV6: string | undefined;
 }
 
 /**

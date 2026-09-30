@@ -44,7 +44,7 @@ export const InfoField = {
   */
   OffsetV2: 53,
   /**
-  Unified (MEI) camera model calibration string (v3, or v6 with more coefficients).
+  Unified (MEI) camera model calibration string (v3).
   */
   OffsetV3: 54,
   IsRawGyro: 62,
@@ -64,6 +64,12 @@ export const InfoField = {
   Observed (insta360-rs): 1 = track 0 is stream 10, 2 = track 0 is stream 00.
   */
   TrackOrder: 80,
+  /**
+  Unified (MEI) camera model calibration string with more distortion terms (v6, 27 tokens a
+  lens). Named "current V6 calibration" by insta360-rs; observed beside v1 to v3 on the X5, and
+  as the only calibration string of the X6.
+  */
+  OffsetV6: 111,
 } as const;
 
 export const DimensionField = { Width: 1, Height: 2 } as const;

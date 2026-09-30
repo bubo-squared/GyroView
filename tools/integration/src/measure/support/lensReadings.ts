@@ -1,8 +1,12 @@
 import {
   buildStitchingSetup,
+  CALIBRATION_SOURCES,
+  GyroViewError,
+  mapRecord,
   type CalibrationSet,
   type LensLayout,
   type StitchingSetup,
+  type VersionedCalibration,
 } from '@gyroview/core';
 import { parseOffsetString } from '@gyroview/core/testing';
 import type { OpenedRecording } from '@gyroview/player/composition';
@@ -18,20 +22,33 @@ export interface LensReading {
 }
 
 /**
- * The readings the strings allow: the unified (Mei) model of the v3 string, the polynomial of
- * the v2 string, the equidistant model of the legacy string with its radius at the angle the
- * core reads it at (96 degrees, ADR 0023). A radial scale multiplies what the reading draws.
+ * The readings the recording's calibration strings allow, each named by its lens model: the
+ * unified (Mei) model of the v3 string, the polynomial of the v2 string, the equidistant model of
+ * the legacy string with its radius at the angle the core reads it at (96 degrees, ADR 0023).
+ * The newest string comes first, as the alignment starts from the first reading; a string the
+ * core cannot read is left out. A radial scale multiplies what the reading draws.
  */
 export function readingsOf(opened: OpenedRecording): LensReading[] {
-  const { offset, offsetV2, offsetV3 } = opened.recording.info.calibration;
-  const strings = [
-    ['mei', offsetV3],
-    ['polynomial', offsetV2],
-    ['equidistant', offset],
-  ] as const;
-  return strings.flatMap(([name, text]) =>
-    text ? [{ name, calibration: parseOffsetString(text), radialScale: 1 }] : [],
-  );
+  const { calibration } = opened.recording.info;
+  return Object.values(mapRecord(CALIBRATION_SOURCES, (_source, key) => calibration[key]))
+    .flatMap((text) => (text === undefined ? [] : readableCalibrationOf(text)))
+    .toSorted((first, second) => second.version - first.version)
+    .map((calibration) => ({ name: modelKindOf(calibration), calibration, radialScale: 1 }));
+}
+
+function readableCalibrationOf(text: string): VersionedCalibration[] {
+  try {
+    return [parseOffsetString(text)];
+  } catch (error) {
+    if (error instanceof GyroViewError && error.code === 'unsupported-calibration') return [];
+    throw error;
+  }
+}
+
+function modelKindOf(calibration: CalibrationSet): string {
+  const [first] = calibration.lenses;
+  if (!first) throw new Error('a calibration without lenses');
+  return first.model.kind;
 }
 
 export function withRadialScale(reading: LensReading, radialScale: number): LensReading {

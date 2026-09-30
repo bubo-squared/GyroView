@@ -16,9 +16,11 @@ import type {
   TrackOrderHint,
   WindowCrop,
 } from './RecordingInfo';
+import { CALIBRATION_SOURCES } from './calibrationSources';
 import { InfoRecordFormat } from '../constants';
 import { GyroViewError } from '../../../shared/errors/GyroViewError';
 import { ProtobufMessage } from '../../../shared/protobuf/ProtobufMessage';
+import { mapRecord } from '../../../shared/mapRecord';
 
 import {
   milliseconds,
@@ -91,11 +93,7 @@ function trackOrderOf(value: number | undefined): TrackOrderHint | undefined {
 }
 
 function calibrationStringsOf(message: ProtobufMessage): CalibrationStrings {
-  return {
-    offset: message.string(InfoField.Offset),
-    offsetV2: message.string(InfoField.OffsetV2),
-    offsetV3: message.string(InfoField.OffsetV3),
-  };
+  return mapRecord(CALIBRATION_SOURCES, (source) => message.string(source.field));
 }
 
 function dimensionOf(message: ProtobufMessage | undefined): LensDimension | undefined {

@@ -16,7 +16,8 @@ export interface TransferListener {
    */
   onEnd(): void;
   /**
-   * A range failed after the stream's own retries; what of it came is kept.
+   * The part of a range that had not come failed, after the stream's own retries; what came is
+   * kept.
    */
   onFailure(range: ByteRange, error: unknown): void;
 }
@@ -104,7 +105,7 @@ export class Transfers {
     if (!this.isRunning(transfer)) return;
     this.running.delete(transfer.id);
     this.parts.store.trim(transfer.block);
-    this.parts.listener.onFailure(transfer.block.range, error);
+    this.parts.listener.onFailure(remainingOf(transfer), error);
   }
 
   private isRunning(transfer: Transfer): boolean {

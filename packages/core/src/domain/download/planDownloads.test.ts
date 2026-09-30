@@ -128,7 +128,16 @@ describe('planDownloads', () => {
     const file = cameraFile();
     const plan = planDownloads(stateOf({ cursors: [at(file.sound, 60, true)] }));
     expect(plan.start[0]?.offset).toBe(60 * SLOT + FRAME);
-    expect(plan.anchor?.time).toBe(file.sound.timestampOf(60));
+    expect(plan.anchor).toBeUndefined();
+  });
+
+  it('once playing, follows the sound as it moves on where no picture was ever read', () => {
+    const file = cameraFile();
+    const first = planDownloads(stateOf({ cursors: [at(file.sound, 60, true)] }));
+    const later = planDownloads(
+      stateOf({ cursors: [at(file.sound, 600, true)], anchor: first.anchor }),
+    );
+    expect(later.start[0]?.offset).toBe(600 * SLOT + FRAME);
   });
 
   it('reads the sound where the picture last stood once its readers closed, as after its last frame', () => {

@@ -22,10 +22,10 @@ export interface TransferState {
 }
 
 /**
- * Where the picture stands, in time and in the file: its slowest reader, or where it last stood
- * once its readers closed.
+ * Where the window starts, in time and in the file: at the slowest picture reader, where the
+ * picture last stood once its readers closed, or at the sound where no picture was ever read.
  */
-export interface PictureAnchor {
+export interface WindowAnchor {
   readonly time: Seconds;
   readonly offset: number;
 }
@@ -45,7 +45,7 @@ export interface DownloadState {
   /**
    * Where the picture stood at the last plan; none before a picture was ever read.
    */
-  readonly anchor?: PictureAnchor | undefined;
+  readonly anchor?: WindowAnchor | undefined;
   readonly policy: DownloadPolicy;
 }
 
@@ -57,7 +57,7 @@ export interface DownloadDecisions {
   readonly start: readonly ByteRange[];
   readonly cancel: readonly number[];
   readonly release: ByteRangeSet;
-  readonly anchor: PictureAnchor | undefined;
+  readonly anchor: WindowAnchor | undefined;
 }
 
 /**
@@ -74,9 +74,11 @@ export interface DownloadDecisions {
  */
 export function planDownloads(state: DownloadState): DownloadDecisions {
   const pictures = state.cursors.filter((cursor) => cursor.track.kind === 'video');
-  const anchor = anchorFor(pictures, state);
-  if (!anchor) return nothingToRead(state);
-  const windowEnd = seconds(anchor.time + (state.isReadingAhead ? state.policy.aheadSeconds : 0));
+  const anchor = pictures.length > 0 ? anchorOf(pictures) : state.anchor;
+  const windowStart = anchor ?? soundLeadOf(state);
+  if (!windowStart) return nothingToRead(state);
+  const ahead = state.isReadingAhead ? state.policy.aheadSeconds : 0;
+  const windowEnd = seconds(windowStart.time + ahead);
   const wanted = wantedBytes({ state, windowEnd, pictures }).bridgingGapsBelow(
     state.policy.bridgedGap,
   );
@@ -90,23 +92,17 @@ export function planDownloads(state: DownloadState): DownloadDecisions {
     cancel: state.transfers
       .filter((transfer) => !kept.includes(transfer))
       .map((transfer) => transfer.id),
-    release: state.held.subtract(wanted.union(keptBehind(anchor, state.policy))),
+    release: state.held.subtract(wanted.union(keptBehind(windowStart, state.policy))),
     anchor,
   };
 }
 
 /**
- * Where the window starts: at the picture, or where it last stood; once playing, where no
- * picture was ever read, at the sound, which then has no picture to follow.
+ * Where the window starts once playing where no picture was ever read: at the sound, which then
+ * has no picture to follow, and follows it as it moves on.
  */
-function anchorFor(
-  pictures: readonly CursorPosition[],
-  state: DownloadState,
-): PictureAnchor | undefined {
-  if (pictures.length > 0) return anchorOf(pictures);
-  const isSoundLeading =
-    state.anchor === undefined && state.isReadingAhead && state.cursors.length > 0;
-  return isSoundLeading ? anchorOf(state.cursors) : state.anchor;
+function soundLeadOf(state: DownloadState): WindowAnchor | undefined {
+  return state.isReadingAhead && state.cursors.length > 0 ? anchorOf(state.cursors) : undefined;
 }
 
 function nothingToRead(state: DownloadState): DownloadDecisions {
@@ -114,10 +110,10 @@ function nothingToRead(state: DownloadState): DownloadDecisions {
   return { start: [], cancel, release: ByteRangeSet.empty, anchor: undefined };
 }
 
-function anchorOf(pictures: readonly CursorPosition[]): PictureAnchor {
+function anchorOf(cursors: readonly CursorPosition[]): WindowAnchor {
   return {
-    time: seconds(Math.min(...pictures.map((cursor) => timeOf(cursor)))),
-    offset: Math.min(...pictures.map((cursor) => offsetOf(cursor))),
+    time: seconds(Math.min(...cursors.map((cursor) => timeOf(cursor)))),
+    offset: Math.min(...cursors.map((cursor) => offsetOf(cursor))),
   };
 }
 
@@ -208,7 +204,7 @@ function requestsFor(missing: ByteRangeSet, policy: DownloadPolicy, room: number
 /**
  * The stretch behind the picture that is kept for short seeks back.
  */
-function keptBehind(anchor: PictureAnchor, policy: DownloadPolicy): ByteRangeSet {
+function keptBehind(anchor: WindowAnchor, policy: DownloadPolicy): ByteRangeSet {
   const start = Math.max(0, anchor.offset - policy.keepBehindBytes);
   return ByteRangeSet.of([ByteRange.of(start, anchor.offset - start)]);
 }

@@ -58,7 +58,15 @@ export {
   describeAudioSampleSourceContract,
   type AudioSampleSourceExpectations,
 } from './AudioSampleSource.contract';
-export { minimalInfoRecord, type MinimalInfo } from './minimalInfoRecord';
+export { minimalInfoFields, minimalInfoRecord, type MinimalInfo } from './minimalInfoRecord';
+export {
+  doubleField,
+  encodeProtobuf,
+  messageField,
+  stringField,
+  varintField,
+  type ProtobufField,
+} from './protobufWriter';
 export { InfoRecordFormat, RecordType } from '../domain/format/constants';
 export { parseOffsetString } from '../domain/format/calibration/parseOffsetString';
 export {

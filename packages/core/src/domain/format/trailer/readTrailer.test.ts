@@ -85,6 +85,20 @@ describe('readTrailer with synthetic layouts', () => {
     }
   });
 
+  it('finds records of ids past the 31 slots of the X5 index, as newer cameras write them', async () => {
+    const laterIds = [0x34, 0x36];
+    const builder = syntheticRecords();
+    for (const id of laterIds) builder.addRecord({ id, payload: new Uint8Array(32).fill(id) });
+    const file = builder.buildIndexed({ alignment: 4096, wrapInInstBox: true });
+    const trailer = await readTrailer(new InMemoryRandomAccessSource(file.bytes));
+    expect(file.indexSize).toBe((Math.max(...laterIds) + 1) * INDEX_SLOT_SIZE);
+    for (const id of laterIds) {
+      expect(trailer.locationOf(id)?.payload.offset).toBe(
+        file.records.find((record) => record.id === id)?.offset,
+      );
+    }
+  });
+
   it('accepts an indexed record that starts exactly at the payload start', async () => {
     const file = syntheticRecords().buildIndexed({ alignment: 1 });
     const trailer = await readTrailer(new InMemoryRandomAccessSource(file.bytes));

@@ -1,17 +1,10 @@
 import type { DownloadPolicy } from './DownloadPolicy';
-import type { TrackSampleTable } from '../container/TrackSampleTable';
+import { needsOf, withinBytes, type CursorPosition } from './trackNeeds';
 import { ByteRange } from '../../shared/binary/ByteRange';
 import { ByteRangeSet } from '../../shared/binary/ByteRangeSet';
 import { seconds, type Seconds } from '../../shared/units/time';
 
-/**
- * Where one reader of a track stands: the next sample it hands out, and whether it waits for it.
- */
-export interface CursorPosition {
-  readonly track: TrackSampleTable;
-  readonly sample: number;
-  readonly isWaiting: boolean;
-}
+export type { CursorPosition } from './trackNeeds';
 
 /**
  * A range asked for and still coming: what of it has not arrived.
@@ -134,27 +127,6 @@ function wantedBytes(window: Window): ByteRangeSet {
   const reading = pictures.filter((cursor) => !isAtItsEnd(cursor));
   const nextFrames = ByteRangeSet.of(reading.map((cursor) => cursor.track.rangeOf(cursor.sample)));
   return withinBytes(ByteRangeSet.of(needs), state.policy.aheadBytes).union(nextFrames);
-}
-
-function needsOf(cursor: CursorPosition, windowEnd: Seconds): ByteRange[] {
-  const { track } = cursor;
-  const needs: ByteRange[] = [];
-  for (let sample = cursor.sample; sample < track.sampleCount; sample += 1) {
-    if (track.timestampOf(sample) > windowEnd) break;
-    needs.push(track.rangeOf(sample));
-  }
-  return needs;
-}
-
-function withinBytes(wanted: ByteRangeSet, budget: number): ByteRangeSet {
-  const kept: ByteRange[] = [];
-  let left = budget;
-  for (const range of wanted.ranges) {
-    if (left <= 0) break;
-    kept.push(ByteRange.of(range.offset, Math.min(range.length, left)));
-    left -= range.length;
-  }
-  return ByteRangeSet.of(kept);
 }
 
 interface TopUp {

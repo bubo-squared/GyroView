@@ -23,6 +23,7 @@ const POLICY: DownloadPolicy = {
   requestsInFlight: 2,
   bridgedGap: 100,
   refillBytes: 1000,
+  resumeSeconds: seconds(1),
 };
 
 function lensCodec(trackId: number, trackIndex: number): VideoTrackCodec {

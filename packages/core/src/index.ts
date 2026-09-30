@@ -245,6 +245,7 @@ export {
   type DownloadedFile,
 } from './application/download/startFileDownload';
 export { downloadPolicyFor } from './domain/download/DownloadPolicy';
+export { RecordingBuffer } from './application/download/RecordingBuffer';
 
 // The container's sample tables
 export { SampleTable } from './domain/container/SampleTable';
@@ -261,6 +262,7 @@ export type {
 } from './ports/VideoTrack';
 export type { AudioSegmentSource } from './ports/AudioSegmentSource';
 export type { ByteStream } from './ports/ByteStream';
+export type { MediaBuffer } from './ports/MediaBuffer';
 export type { AudioSampleSource } from './ports/AudioSampleSource';
 export type { AudioPackager } from './ports/AudioPackager';
 export type { AudioDecoderConfiguration, EncodedAudioSample } from './ports/AudioTrack';

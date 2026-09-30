@@ -34,6 +34,7 @@ const POLICY: DownloadPolicy = {
   requestsInFlight: 2,
   bridgedGap: 100,
   refillBytes: 1000,
+  resumeSeconds: seconds(1),
 };
 const NOT_A_KEYFRAME = 0xee;
 /**

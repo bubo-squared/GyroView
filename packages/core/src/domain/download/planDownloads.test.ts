@@ -63,6 +63,7 @@ const POLICY: DownloadPolicy = {
   requestsInFlight: 2,
   bridgedGap: 2 ** 20,
   refillBytes: 25 * SLOT,
+  resumeSeconds: seconds(1),
 };
 
 function at(track: TrackSampleTable, sample: number, isWaiting = false): CursorPosition {

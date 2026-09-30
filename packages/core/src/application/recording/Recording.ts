@@ -6,7 +6,7 @@ import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
 
 /**
  * Everything known about one `.insv` file after reading its metadata, plus on-demand access to
- * the large records. Video track details arrive later from the demuxer port.
+ * the large records. Video track details arrive later, from the sample table and the codecs.
  */
 export interface Recording {
   readonly info: RecordingInfo;

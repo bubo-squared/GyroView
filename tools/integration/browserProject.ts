@@ -62,7 +62,7 @@ export interface BrowserProjectOptions {
 }
 
 /**
- * Tests of the browser pipeline (HTTP ranges, demuxing, WebCodecs, the audio clock, WebGL)
+ * Tests of the browser pipeline (HTTP ranges, the download, WebCodecs, the audio clock, WebGL)
  * against the real recordings, served by Vite's dev server with Range support. A test whose
  * sample is absent skips itself; without any samples, as in CI, the project is not run at all.
  */

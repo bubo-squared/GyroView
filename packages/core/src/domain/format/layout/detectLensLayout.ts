@@ -23,7 +23,7 @@ const SCREEN_LENS_RANK = 2;
 export type LayoutHints = Pick<RecordingInfo, 'fileLayout' | 'trackOrder'>;
 
 /**
- * One opened file as the detector reads it; a demuxed input is one as it is.
+ * One opened file as the detector reads it: its name and its video tracks' descriptions.
  */
 export interface InputDescription {
   /**

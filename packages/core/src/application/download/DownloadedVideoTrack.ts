@@ -2,7 +2,7 @@ import type { FileDownload } from './FileDownload';
 import type { CursorSample, SampleCursor } from './SampleCursor';
 import type { TrackSampleTable } from '../../domain/container/TrackSampleTable';
 import type { VideoTrackCodec } from '../../ports/CodecReader';
-import type { VideoTrackReader } from '../../ports/Demuxer';
+import type { VideoTrackReader } from '../../ports/VideoTrackReader';
 import type {
   EncodedVideoPacket,
   KeyframeTime,

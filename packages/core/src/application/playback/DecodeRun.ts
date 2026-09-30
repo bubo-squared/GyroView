@@ -4,7 +4,7 @@ import {
   type DecodePipelineReport,
 } from './DecodePipeline';
 import { FramePairQueue } from './FramePairQueue';
-import type { VideoTrackReader } from '../../ports/Demuxer';
+import type { VideoTrackReader } from '../../ports/VideoTrackReader';
 import type { FramePair } from '../../ports/FramePair';
 import type { VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { seconds, type Seconds } from '../../shared/units/time';

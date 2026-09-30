@@ -243,24 +243,16 @@ export {
   startFileDownload,
   type DownloadedAudioTrack,
   type DownloadedFile,
-  type FileDownloadStart,
 } from './application/download/startFileDownload';
-export { FileDownload } from './application/download/FileDownload';
-export { DownloadedVideoTrack } from './application/download/DownloadedVideoTrack';
-export { DownloadedAudioSamples } from './application/download/DownloadedAudioSamples';
-export { downloadPolicyFor, type DownloadPolicy } from './domain/download/DownloadPolicy';
+export { downloadPolicyFor } from './domain/download/DownloadPolicy';
 
 // The container's sample tables
 export { SampleTable } from './domain/container/SampleTable';
-export {
-  TrackSampleTable,
-  type TrackKind,
-  type TrackSampleTableParts,
-} from './domain/container/TrackSampleTable';
-export { EVERY_SAMPLE_IS_A_KEYFRAME, type KeyframeRule } from './domain/container/KeyframeRule';
+export { TrackSampleTable } from './domain/container/TrackSampleTable';
 
 // Playback ports and pipeline
-export type { AudioTrackReader, DemuxedInput, Demuxer, VideoTrackReader } from './ports/Demuxer';
+export type { AudioTrackReader } from './ports/AudioTrackReader';
+export type { VideoTrackReader } from './ports/VideoTrackReader';
 export type {
   EncodedVideoPacket,
   KeyframeTime,

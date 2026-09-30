@@ -1,7 +1,7 @@
 import { frameTimesOf, type FrameTimeline } from './frameTimesOf';
 import { motionOf, type MotionSetup } from './motionOf';
 import type { Recording } from './Recording';
-import type { VideoTrackReader } from '../../ports/Demuxer';
+import type { VideoTrackReader } from '../../ports/VideoTrackReader';
 import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
 import type { FrameTimeSourceName } from '../../domain/motion/timing/FrameTimeSource';
 import type { FrameTimes } from '../../domain/motion/timing/FrameTimes';

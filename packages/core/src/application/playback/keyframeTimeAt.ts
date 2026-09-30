@@ -1,4 +1,4 @@
-import type { VideoTrackReader } from '../../ports/Demuxer';
+import type { VideoTrackReader } from '../../ports/VideoTrackReader';
 import type { Seconds } from '../../shared/units/time';
 
 /**

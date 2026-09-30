@@ -1,7 +1,7 @@
 import { FramePairer } from './FramePairer';
 import type { FramePairQueue } from './FramePairQueue';
 import { StartGate } from './StartGate';
-import type { VideoTrackReader } from '../../ports/Demuxer';
+import type { VideoTrackReader } from '../../ports/VideoTrackReader';
 import type { EncodedVideoPacket } from '../../ports/VideoTrack';
 import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';

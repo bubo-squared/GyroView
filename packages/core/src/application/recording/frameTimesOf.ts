@@ -1,5 +1,5 @@
 import type { Recording } from './Recording';
-import type { VideoTrackReader } from '../../ports/Demuxer';
+import type { VideoTrackReader } from '../../ports/VideoTrackReader';
 import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
 import type { Seconds } from '../../shared/units/time';
 import {

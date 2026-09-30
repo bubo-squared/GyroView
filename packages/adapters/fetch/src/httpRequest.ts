@@ -41,7 +41,7 @@ interface HttpRequest {
  * Browsers keep byte ranges of one URL as a sparse cache entry and revalidate them with
  * conditional requests. A 304 to such a request makes the browser answer from that entry, and
  * Chrome has been seen to hand back an empty body for a range it believed it held (ADR 0013).
- * The demuxer caches what it needs itself, so nothing is lost by leaving the cache out.
+ * The download holds what it needs itself, so nothing is lost by leaving the cache out.
  */
 const CACHE_MODE: RequestCache = 'no-store';
 

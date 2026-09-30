@@ -1,4 +1,5 @@
 import type { VideoTrackDescription } from '../ports/VideoTrack';
+import { ITERATION_END } from '../shared/async/iteration';
 import type { VideoTrackReader } from '../ports/VideoTrackReader';
 import type {
   EncodedVideoPacket,
@@ -28,7 +29,6 @@ export interface FakeVideoTrackOptions {
 }
 
 const DEFAULT_CODED_SIZE = 2880;
-const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
 const FAKE_CODEC = 'fake.1';
 const BYTE_MASK = 0xff;
 const BITS_PER_BYTE = 8;
@@ -156,7 +156,7 @@ class FakePacketReading implements AsyncIterator<EncodedVideoPacket> {
   private close(): IteratorReturnResult<undefined> {
     if (this.isOpen) this.onClose();
     this.isOpen = false;
-    return DONE;
+    return ITERATION_END;
   }
 }
 

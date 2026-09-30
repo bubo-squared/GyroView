@@ -1,5 +1,5 @@
 import type { FixtureTrack } from './FixtureTrack';
-import { concatenated } from './concatenated';
+import { concatenated } from '../../shared/binary/concatenated';
 import { encodeMovie, type HeaderVersion, type MovieLayout, type PlacedTrack } from './encodeMovie';
 import { BOX_HEADER_SIZE, LARGE_BOX_HEADER_SIZE } from '../../domain/format/boxes/boxConstants';
 import { Mp4BoxType } from '../../domain/format/mp4/mp4BoxTypes';

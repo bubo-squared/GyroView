@@ -3,14 +3,13 @@ import type { SampleCursor } from './SampleCursor';
 import type { TrackSampleTable } from '../../domain/container/TrackSampleTable';
 import type { AudioSampleSource } from '../../ports/AudioSampleSource';
 import type { EncodedAudioSample } from '../../ports/AudioTrack';
+import { Ending, ITERATION_END } from '../../shared/async/iteration';
 import type { Seconds } from '../../shared/units/time';
 
 export interface DownloadedAudioSamplesParts {
   readonly download: FileDownload;
   readonly track: TrackSampleTable;
 }
-
-const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
 
 /**
  * A sound track's samples read through the file's download, within the picture's reach.
@@ -36,7 +35,7 @@ export class DownloadedAudioSamples implements AudioSampleSource {
  * media pipeline keeps do not keep the download's blocks alive.
  */
 class SampleReading implements AsyncIterator<EncodedAudioSample> {
-  private isReturned = false;
+  private readonly ending = new Ending();
 
   public constructor(
     private readonly track: TrackSampleTable,
@@ -45,7 +44,7 @@ class SampleReading implements AsyncIterator<EncodedAudioSample> {
 
   public async next(): Promise<IteratorResult<EncodedAudioSample>> {
     const read = await this.cursor.nextSample();
-    if (!read || this.wasReturned()) return DONE;
+    if (!read || this.ending.hasEnded()) return ITERATION_END;
     const sample = {
       timestamp: this.track.timestampOf(read.sample),
       duration: this.track.durationOf(read.sample),
@@ -55,15 +54,8 @@ class SampleReading implements AsyncIterator<EncodedAudioSample> {
   }
 
   public return(): Promise<IteratorResult<EncodedAudioSample>> {
-    this.isReturned = true;
+    this.ending.end();
     this.cursor.close();
-    return Promise.resolve(DONE);
-  }
-
-  /**
-   * Asked afresh after the wait: the iteration may be returned meanwhile.
-   */
-  private wasReturned(): boolean {
-    return this.isReturned;
+    return Promise.resolve(ITERATION_END);
   }
 }

@@ -9,6 +9,7 @@ import type {
   VideoDecoderConfiguration,
   VideoTrackDescription,
 } from '../../ports/VideoTrack';
+import { Ending, ITERATION_END } from '../../shared/async/iteration';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import type { Seconds } from '../../shared/units/time';
 
@@ -17,8 +18,6 @@ export interface DownloadedVideoTrackParts {
   readonly track: TrackSampleTable;
   readonly codec: VideoTrackCodec;
 }
-
-const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
 
 /**
  * One lens's track, its packets read through the file's download. Where decoding may start comes
@@ -129,19 +128,19 @@ interface PacketReadingParts {
 class PacketReading implements AsyncIterator<EncodedVideoPacket> {
   private cursor: SampleCursor | undefined;
   private isVerified = false;
-  private isReturned = false;
+  private readonly ending = new Ending();
 
   public constructor(private readonly parts: PacketReadingParts) {
     this.cursor = parts.open();
   }
 
   public async next(): Promise<IteratorResult<EncodedVideoPacket>> {
-    if (this.wasReturned()) return DONE;
+    if (this.ending.hasEnded()) return ITERATION_END;
     const { cursor } = this;
     if (!cursor)
       throw new GyroViewError('no-key-frame', `track ${this.parts.track.trackId} has no key frame`);
     const read = await cursor.nextSample();
-    if (!read || this.wasReturned()) return DONE;
+    if (!read || this.ending.hasEnded()) return ITERATION_END;
     if (!this.isVerified && !this.parts.track.keyframeRule.isKeyframe(read.bytes))
       return this.startEarlier(cursor, read);
     this.isVerified = true;
@@ -149,9 +148,9 @@ class PacketReading implements AsyncIterator<EncodedVideoPacket> {
   }
 
   public return(): Promise<IteratorResult<EncodedVideoPacket>> {
-    this.isReturned = true;
+    this.ending.end();
     this.cursor?.close();
-    return Promise.resolve(DONE);
+    return Promise.resolve(ITERATION_END);
   }
 
   /**
@@ -165,12 +164,5 @@ class PacketReading implements AsyncIterator<EncodedVideoPacket> {
     cursor.close();
     this.cursor = this.parts.open();
     return this.next();
-  }
-
-  /**
-   * Asked afresh after every wait: the iteration may be returned meanwhile.
-   */
-  private wasReturned(): boolean {
-    return this.isReturned;
   }
 }

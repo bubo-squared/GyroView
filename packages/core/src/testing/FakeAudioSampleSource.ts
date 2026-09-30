@@ -1,8 +1,7 @@
 import type { AudioSampleSource } from '../ports/AudioSampleSource';
+import { ITERATION_END } from '../shared/async/iteration';
 import type { EncodedAudioSample } from '../ports/AudioTrack';
 import { seconds, type Seconds } from '../shared/units/time';
-
-const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
 
 /**
  * Test double for an audio track's samples, held in memory in decode order; each sample comes a
@@ -61,6 +60,6 @@ class FakeSampleReading implements AsyncIterator<EncodedAudioSample> {
   private close(): IteratorReturnResult<undefined> {
     if (this.isOpen) this.onClose();
     this.isOpen = false;
-    return DONE;
+    return ITERATION_END;
   }
 }

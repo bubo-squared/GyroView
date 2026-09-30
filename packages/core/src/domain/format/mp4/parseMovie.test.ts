@@ -10,7 +10,7 @@ import {
   type BuiltMp4File,
   type FixtureTrack,
 } from '../../../testing/mp4/buildMp4File';
-import { concatenated } from '../../../testing/mp4/concatenated';
+import { concatenated } from '../../../shared/binary/concatenated';
 import { audioSampleEntry, videoSampleEntry } from '../../../testing/mp4/sampleEntries';
 import { captureError } from '../../../../test/support/errors';
 

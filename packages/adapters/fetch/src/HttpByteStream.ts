@@ -1,11 +1,17 @@
-import { ByteRange, GyroViewError, isAbortError, type ByteStream } from '@gyroview/core';
+import {
+  ByteRange,
+  Ending,
+  GyroViewError,
+  isAbortError,
+  ITERATION_END,
+  type ByteStream,
+} from '@gyroview/core';
 
 import { contentRangeOf } from './contentRange';
 import type { HttpResource } from './HttpResource';
 import { passing } from './passingFailures';
 import { brokenOff, truncated } from './rangeFailures';
 
-const DONE: IteratorReturnResult<undefined> = { done: true, value: undefined };
 /**
  * Long enough for a slow mobile network to deliver its next packet, short enough that playback
  * waiting on a dead connection recovers well before the viewer gives up.
@@ -67,7 +73,7 @@ interface Attempt {
 class RangeReading implements AsyncIterator<Uint8Array> {
   private attempt: Attempt | undefined;
   private received = 0;
-  private isOver = false;
+  private readonly ending = new Ending();
 
   public constructor(private readonly parts: ReadingParts) {}
 
@@ -76,18 +82,18 @@ class RangeReading implements AsyncIterator<Uint8Array> {
       const chunk = await this.parts.resource.askingAgain(() => this.readChunk());
       if (chunk) return { done: false, value: chunk };
     } catch (error) {
-      if (!this.hasEnded()) {
+      if (!this.ending.hasEnded()) {
         this.end();
         throw error;
       }
     }
     this.end();
-    return DONE;
+    return ITERATION_END;
   }
 
   public return(): Promise<IteratorResult<Uint8Array>> {
     this.end();
-    return Promise.resolve(DONE);
+    return Promise.resolve(ITERATION_END);
   }
 
   /**
@@ -97,7 +103,7 @@ class RangeReading implements AsyncIterator<Uint8Array> {
   private async readChunk(): Promise<Uint8Array | undefined> {
     const { resource, range } = this.parts;
     await resource.ensureFits(range);
-    if (this.hasEnded() || range.length === 0) return undefined;
+    if (this.ending.hasEnded() || range.length === 0) return undefined;
     this.attempt ??= this.attemptAtTheRest();
     const { attempt } = this;
     try {
@@ -206,14 +212,7 @@ class RangeReading implements AsyncIterator<Uint8Array> {
    * put on the resource's own signal.
    */
   private end(): void {
-    this.isOver = true;
+    this.ending.end();
     if (this.attempt) this.drop(this.attempt);
-  }
-
-  /**
-   * Asked afresh after every wait: the range may be given up meanwhile.
-   */
-  private hasEnded(): boolean {
-    return this.isOver;
   }
 }

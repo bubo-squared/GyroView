@@ -32,9 +32,10 @@ export function describeByteStreamContract(
       await expect(bytesOf(stream, last)).resolves.toEqual([...CONTENT.subarray(-7)]);
     });
 
-    it('streams an empty range as no bytes', async () => {
+    it('streams an empty range as no chunk at all', async () => {
       const stream = await createStream(CONTENT);
-      await expect(bytesOf(stream, ByteRange.of(10, 0))).resolves.toEqual([]);
+      const chunks = await Array.fromAsync(stream.stream(ByteRange.of(10, 0)));
+      expect(chunks).toEqual([]);
     });
 
     it('fails a range past the end with invalid-byte-range', async () => {

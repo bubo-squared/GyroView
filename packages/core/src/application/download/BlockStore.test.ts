@@ -43,8 +43,10 @@ describe('BlockStore', () => {
     const store = new BlockStore();
     const first = store.allocate(ByteRange.of(0, 10));
     const second = store.allocate(ByteRange.of(10, 10));
+    const beyond = store.allocate(ByteRange.of(30, 10));
     store.write(first, countingFrom(0, 10));
     store.write(second, countingFrom(10, 10));
+    store.write(beyond, countingFrom(30, 10));
     expect([...(store.bytesOf(ByteRange.of(8, 4)) ?? [])]).toEqual([8, 9, 10, 11]);
   });
 
@@ -70,6 +72,22 @@ describe('BlockStore', () => {
     const store = new BlockStore();
     store.trim(store.allocate(ByteRange.of(0, 100)));
     expect(store.allocatedBytes).toBe(0);
+  });
+
+  it('lets go of a block given up, once what came of it is released', () => {
+    const store = new BlockStore();
+    const block = store.allocate(ByteRange.of(0, 100));
+    store.write(block, countingFrom(0, 30));
+    store.trim(block);
+    store.release(ByteRangeSet.of([ByteRange.of(0, 30)]));
+    expect(store.allocatedBytes).toBe(0);
+  });
+
+  it('refuses a block it does not hold', () => {
+    const block = new BlockStore().allocate(ByteRange.of(0, 10));
+    expect(() => {
+      new BlockStore().write(block, countingFrom(0, 10));
+    }).toThrow('the block is not one this store holds');
   });
 
   it('lets go of no block still filling, however much of it is released', () => {

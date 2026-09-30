@@ -67,10 +67,22 @@ describe('startFileDownload', () => {
     file.dispose();
   });
 
+  it('reads each sound track the codec reader told of', async () => {
+    const file = started({ video: [], audio: [SOUND_CODEC] });
+    file.download.startReadingAhead();
+    const samples = file.audioTracks[0]?.samples.samplesFrom(seconds(0)) ?? [];
+    const [first] = await Array.fromAsync(samples);
+    expect(first?.data.byteLength).toBe(RECORDING.sound.rangeOf(0).length);
+    file.dispose();
+  });
+
   it('refuses a codec for a track the sample table does not have', () => {
     const codecs: ContainerCodecs = { video: [lensCodec(99, 0)], audio: [] };
     expect(() => started(codecs)).toThrow(
-      expect.objectContaining({ code: 'unsupported-container' }) as Error,
+      expect.objectContaining({
+        code: 'unsupported-container',
+        message: 'the movie box has no video track 99 to read',
+      }) as Error,
     );
   });
 

@@ -76,7 +76,7 @@ export function describeVideoTrackReaderContract(
       await packets.next();
       const awaited = packets.next();
       await expect(packets.return?.()).resolves.toMatchObject({ done: true });
-      await awaited;
+      await expect(awaited).resolves.toMatchObject({ done: true });
       await expect(packets.next()).resolves.toMatchObject({ done: true });
     });
 

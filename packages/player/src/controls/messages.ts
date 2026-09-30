@@ -119,6 +119,7 @@ const ERRORS: Readonly<Record<GyroViewErrorCode, string>> = {
   'playback-blocked': FAILED,
   'range-unsupported': UNREACHABLE,
   'render-unavailable': UNSUPPORTED_BROWSER,
+  'source-changed': 'The video was replaced while it played.',
   'source-truncated': UNREACHABLE,
   'source-unreadable': UNREACHABLE,
   'unsupported-calibration': UNREADABLE,

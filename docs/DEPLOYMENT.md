@@ -134,7 +134,10 @@ the embed handle's promises.
 |                         | twice more first (ADR 0019); the first size request is not. Also when the    |
 |                         | first frames did not arrive before the decode check's deadline.              |
 | `range-unsupported`     | The server ignores `Range`: enable byte-range serving.                       |
-| `source-truncated`      | Fewer bytes came back than asked: the file changed or the server misbehaves. |
+| `source-changed`        | The recording at the URL was replaced while it played: its `ETag`, or its    |
+|                         | `Last-Modified` and size, changed. Load it again.                            |
+| `source-truncated`      | Fewer bytes came back than asked: the server misbehaves, or the file changed |
+|                         | where the server does not tell its version.                                  |
 | `codec-unsupported`     | This browser cannot decode the tracks (no HEVC hardware, or not a secure     |
 |                         | context).                                                                    |
 | `missing-second-file`   | One lens of a split-file pair without the other lens's file: set `src2`.     |

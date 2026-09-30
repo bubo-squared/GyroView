@@ -1,5 +1,7 @@
 # Contributing
 
+Everything for working on GyroView itself. Using the player is in the [README](README.md).
+
 ## Toolchain
 
 - Node 24 LTS (`.nvmrc`; run `nvm use`). dependency-cruiser refuses odd-numbered Node releases.
@@ -21,6 +23,32 @@ pnpm test:coverage              # every project with coverage, in Node, Chromium
 The browser projects (the player, the WebCodecs, Three.js and MSE adapters, the embed site)
 run in headless Chromium and WebKit through Playwright; `pnpm --filter
 @gyroview/adapter-webcodecs exec playwright install chromium webkit` installs them once.
+
+## Builds and tools
+
+```sh
+pnpm --filter @gyroview/embed dev               # developer page at http://localhost:5180 with the local samples
+pnpm --filter @gyroview/embed build             # static site, embed.js and gyro-view.js in apps/embed/dist
+pnpm --filter @bubo-squared/gyroview build      # the npm package in apps/library/dist
+pnpm inspect <file.insv>                        # what inspectRecording reads, for a file on disk
+pnpm fixtures:build                             # regenerate the synthetic recordings in test/fixtures
+pnpm measure                                    # renders of the local samples in .artifacts, IMU frame ranking
+pnpm --filter @gyroview/core run test:mutation  # Stryker over the core
+```
+
+## Sample recordings
+
+Sample recordings are large and live outside the repository. `samples/` holds symlinks to
+local folders and is git-ignored, as are all `.insv`, `.insp` and `.lrv` files. Small byte
+slices cut from them live in `test/fixtures/x5` with a manifest of their origin;
+`test/fixtures/synthetic` holds tiny two-track recordings with a real X5 trailer for the
+browser tests; `test/fixtures/thirdparty` holds two MIT-licensed trailer fixtures.
+
+The end-to-end tests in `tools/integration/src/browser` play the local sample recordings; they
+are not started without the samples (as in CI), and they drive the installed Google Chrome on
+macOS when there is one, because Playwright's own Chromium build has no HEVC decoder.
+`pnpm measure` runs them again writing their renders to `.artifacts/` for inspection, with the
+measurements too slow for every run, such as the IMU frame ranking of ADR 0009.
 
 ## On a phone
 
@@ -95,6 +123,17 @@ describes the components layer by layer:
 - `tools/*`: developer CLIs (`insv-inspect`), the fixture builder (`fixtures`) and the
   end-to-end tests over the real recordings (`integration`).
 
+## Documentation
+
+| Document                                     | What it answers                                                               |
+| -------------------------------------------- | ----------------------------------------------------------------------------- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the code is organised; every package and key component.                   |
+| [docs/FORMAT.md](docs/FORMAT.md)             | The `.insv` byte layout as the player reads it.                               |
+| [docs/GLOSSARY.md](docs/GLOSSARY.md)         | The vocabulary used in code and documents.                                    |
+| [docs/FEASIBILITY.md](docs/FEASIBILITY.md)   | The measurements the design rests on.                                         |
+| [docs/adr/](docs/adr/README.md)              | One record per non-obvious decision, listed in its index.                     |
+| [docs/ROADMAP.md](docs/ROADMAP.md)           | What is done and verified, what waits on real files or devices, what is next. |
+
 ## Releasing the npm package
 
 `.github/workflows/release.yml` publishes `apps/library` to npm as `@bubo-squared/gyroview` when
@@ -130,7 +169,8 @@ push.
 2. `pnpm verify` is green. No lint rule is disabled inline without a comment explaining why.
 3. Every byte offset, record id, size and tuning constant is a named constant with its source cited.
 4. New concepts use the vocabulary in `docs/GLOSSARY.md`; new terms are added there.
-5. A non-obvious decision has an ADR in `docs/adr/` listing the alternatives considered.
+5. A non-obvious decision has an ADR in `docs/adr/` listing the alternatives considered, and a
+   line in its index, `docs/adr/README.md`.
 6. Public API of a package has TSDoc; comments elsewhere explain why, not what.
 7. Commits are small and single-purpose, in conventional-commit style.
 

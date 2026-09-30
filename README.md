@@ -15,12 +15,11 @@ on any website as a `<gyro-view>` web component or an iframe. No Insta360 Studio
   an equirectangular panorama, or the two lens images raw, side by side or stacked.
 - Stabilizes from the gyro: lock, horizon or follow, sampled at each frame's mid-exposure.
 - Ships as the npm package `@bubo-squared/gyroview`, as an element (`gyro-view.js`) and as an
-  iframe (`embed.html` plus `embed.js`) with the same API and events, plus a developer page for
-  trying recordings.
+  iframe (`embed.html` plus `embed.js`) with the same API and events.
 
 Verified on Insta360 X5 recordings; other cameras' format variants are implemented from
-documentation and covered by synthetic fixtures. `docs/ROADMAP.md` says exactly what is
-verified, what is waiting on real files or devices, and what could come next.
+documentation and covered by synthetic fixtures. [The roadmap](docs/ROADMAP.md) says exactly
+what is verified, what is waiting on real files or devices, and what could come next.
 
 ## Using the player
 
@@ -29,7 +28,7 @@ recordings").
 
 ### As an element
 
-In a project with a bundler, install the npm package (`apps/library/README.md`):
+In a project with a bundler, install the [npm package](apps/library/README.md):
 
 ```sh
 npm install @bubo-squared/gyroview
@@ -221,8 +220,7 @@ query parameter (`controls=0` hides the controls; the snippet's `viewMode` optio
 
 `inspectRecording(fileOrUrl)`, from the npm package, reads what a recording holds without playing
 it, as plain data: the boxes and trailer records, the info record (camera, firmware, frame rate,
-capture mode), the lens calibration and summaries of the gyro and exposure records; `pnpm inspect`
-prints the same for a file on disk.
+capture mode), the lens calibration and summaries of the gyro and exposure records.
 
 ## Serving recordings
 
@@ -233,80 +231,29 @@ runs on another origin, which for the iframe form is the one serving `embed.html
 reported as `cors`). A recording kept behind the visitor's cookies on another origin needs
 `crossorigin="use-credentials"`, and a host that names the page's origin (not `*`) with
 `Access-Control-Allow-Credentials: true`. The player page itself must be served over HTTPS,
-because WebCodecs exists only in secure contexts. `docs/DEPLOYMENT.md` has the exact headers,
-the hosting layout and the error codes.
+because WebCodecs exists only in secure contexts. [The deployment guide](docs/DEPLOYMENT.md) has
+the exact headers, the hosting layout and the error codes.
+
+## Browsers
 
 Browsers decode HEVC only in hardware: 5.7K plays on recent laptops and phones, 8K needs a
 Level 6 decoder (Apple Silicon, recent NVIDIA and Intel). On Linux, Chrome reaches the decoder
 only through VA-API, so not with NVIDIA's own driver or in a virtual machine. A recording this
 browser cannot decode is reported as `codec-unsupported`; the camera's low-resolution `LRV`
-proxy is never played in its place (ADR 0017).
-
-## Development
-
-```sh
-nvm use           # Node 24 LTS from .nvmrc
-pnpm install
-pnpm --filter @gyroview/adapter-webcodecs exec playwright install chromium webkit
-pnpm verify       # typecheck, lint, format check, dependency rules, tests, build
-pnpm test:core    # the domain alone, in 1.5 s; pnpm test --project <name> for one project
-pnpm test:watch
-pnpm test:coverage
-pnpm --filter @gyroview/embed dev     # developer page at http://localhost:5180 with the local samples
-pnpm --filter @gyroview/embed build   # static site, embed.js and gyro-view.js in apps/embed/dist
-pnpm --filter @bubo-squared/gyroview build          # the npm package in apps/library/dist
-pnpm inspect <file.insv>              # print what the core understands about a recording
-pnpm fixtures:build                   # regenerate the synthetic recordings in test/fixtures
-pnpm measure                          # renders of the local samples in .artifacts, IMU frame ranking
-pnpm --filter @gyroview/core run test:mutation   # Stryker over the core
-```
-
-Browser adapters, the player and the embed site are tested in headless Chromium and WebKit
-through Playwright. The end-to-end tests in `tools/integration/src/browser` play the local
-sample recordings; they are not started without the samples (as in CI), and they drive the
-installed Google Chrome on macOS when there is one, because Playwright's own Chromium build has
-no HEVC decoder.
-`pnpm measure` runs them again writing their renders to `.artifacts/` for inspection, with the
-measurements too slow for every run, such as the IMU frame ranking of ADR 0009.
-
-### Local samples
-
-Sample recordings are large and live outside the repository. `samples/` holds symlinks to
-local folders and is git-ignored, as are all `.insv`, `.insp` and `.lrv` files. Small byte
-slices cut from them live in `test/fixtures/x5` with a manifest of their origin;
-`test/fixtures/synthetic` holds tiny two-track recordings with a real X5 trailer for the
-browser tests; `test/fixtures/thirdparty` holds two MIT-licensed trailer fixtures.
+proxy is never played in its place. The oldest browser versions that work are in the
+[npm package's requirements](apps/library/README.md#requirements).
 
 ## Documentation
 
-| Document               | What it answers                                                                  |
-| ---------------------- | -------------------------------------------------------------------------------- |
-| `docs/ARCHITECTURE.md` | How the code is organised; every package and key component.                      |
-| `docs/ROADMAP.md`      | What is done and verified, what waits on real files or devices, what is next.    |
-| `docs/DEPLOYMENT.md`   | Hosting the bundles and the recordings; every error code.                        |
-| `docs/FORMAT.md`       | The `.insv` byte layout as the player reads it.                                  |
-| `docs/GLOSSARY.md`     | The vocabulary used in code and documents.                                       |
-| `docs/FEASIBILITY.md`  | The measurements the design rests on.                                            |
-| `docs/adr/`            | One record per non-obvious decision, with the alternatives considered.           |
-| `CONTRIBUTING.md`      | Fast feedback, proposing a change, recipes, the dependency rule, the checklists. |
-| `SECURITY.md`          | How to report a vulnerability.                                                   |
-
-Architecture decision records: 0001 hexagonal architecture, 0002 WebCodecs over video
-elements, 0003 mediabunny as the demuxer, 0004 format variants selected from the file, 0005
-calibration string interpretation, 0006 Node 24 toolchain, 0007 the audio element as the
-clock, 0008 stitching frames and poses, 0009 IMU frame and stabilization, 0010 player
-composition and embedding, 0011 sound follows the picture, 0012 gain matching along the seam,
-0013 byte-range reads bypass the browser cache, 0014 the frame shows the whole calibration
-square, 0015 view modes replace projections, 0016 the player owns its settings, 0017 the
-recording itself or an error, 0018 every view mode zooms toward the pointer, 0019 a range that
-fails on the way is asked for again, 0020 one npm package bundles the core and the adapters, 0021
-changes are announced once whole, 0022 the player opens on the raw lenses, 0023 the legacy
-radius spans 96 degrees, 0024 lens sampling reads the pixel's footprint, 0025 the lens pose as
-measured against Studio, 0026 the seam bent by its disparity (a trial), 0027 credentials follow
-`crossorigin`, 0028 the controls fit the player and the pointer, 0029 the player reads the sample
-tables and downloads the bytes itself.
+| Document                              | What it answers                                                                      |
+| ------------------------------------- | ------------------------------------------------------------------------------------ |
+| [Deployment](docs/DEPLOYMENT.md)      | Hosting the bundles and the recordings; every error code.                            |
+| [Roadmap](docs/ROADMAP.md)            | What is verified, what waits on real files or devices, the known limits, next steps. |
+| [npm package](apps/library/README.md) | Installing it, its requirements and browsers, the player without the element.        |
+| [Contributing](CONTRIBUTING.md)       | Working on GyroView itself: setup, tests, the code's layout, the design documents.   |
+| [Security](SECURITY.md)               | How to report a vulnerability.                                                       |
 
 ## License
 
-MIT; see `LICENSE`. The two trailer fixtures under `test/fixtures/thirdparty` keep their own MIT
-license.
+MIT; see [LICENSE](LICENSE). The two trailer fixtures under `test/fixtures/thirdparty` keep their
+own MIT license.

@@ -61,6 +61,7 @@ export {
   type RecordingInspection,
   type RecordSummary,
   type StabilizationMode,
+  type TrackColour,
   type ViewMode,
   type UnreadableGyro,
   type UnreadExposure,

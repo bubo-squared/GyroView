@@ -16,6 +16,12 @@ import {
 } from '@gyroview/core';
 import { Matrix3, Vector2, Vector3, Vector4, type IUniform, type Texture } from 'three';
 
+import { toThreeMatrix } from './threeMatrix';
+import {
+  CONVERSION_DEFINES,
+  conversionUniforms,
+  type ConversionUniforms,
+} from './conversionUniforms';
 import {
   SAMPLING_BILINEAR,
   SAMPLING_SUPERSAMPLED,
@@ -46,6 +52,7 @@ export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntri
   ['MEI_RADIAL_TERMS', MEI_TERM_CAPACITY.radial],
   ['MEI_TANGENTIAL_ORDERS', MEI_TERM_CAPACITY.tangential],
   ['MEI_THIN_PRISM_ORDERS', MEI_TERM_CAPACITY.thinPrism],
+  ...CONVERSION_DEFINES,
   ['SAMPLING_BILINEAR', SAMPLING_BILINEAR],
   ['SAMPLING_TRILINEAR', SAMPLING_TRILINEAR],
   ['SAMPLING_SUPERSAMPLED', SAMPLING_SUPERSAMPLED],
@@ -53,10 +60,10 @@ export const SHADER_DEFINES: Readonly<Record<string, number>> = Object.fromEntri
 
 /**
  * Every uniform the player's programs declare, named exactly as in the GLSL chunks and shared by
- * all programs as the same objects; the only place the TypeScript side spells the shared uniform
- * names (the lab spells the ones only its programs add).
+ * all programs as the same objects; with {@link ConversionUniforms}, the only place the
+ * TypeScript side spells the shared uniform names (the lab spells the ones only its programs add).
  */
-export interface RendererUniforms {
+export interface RendererUniforms extends ConversionUniforms {
   readonly uLensCount: IUniform<number>;
   readonly uViewRotation: IUniform<Matrix3>;
   readonly uStabilization: IUniform<Matrix3>;
@@ -92,6 +99,7 @@ export function createRendererUniforms(
     ...viewUniforms(setup),
     ...projectionUniforms(lenses),
     ...samplingUniforms(lenses),
+    ...conversionUniforms(lenses),
     uTexture0: { value: textures[0] ?? null },
     uTexture1: { value: textures[1] ?? null },
   };
@@ -333,13 +341,6 @@ function valuesOf(picture: Picture, viewportAspect: number): PictureValues {
 
 function toVector4(area: ScreenRectangle): Vector4 {
   return new Vector4(area.x, area.y, area.width, area.height);
-}
-
-/**
- * Row-major core matrix into a three matrix, whose `set` takes rows too.
- */
-function toThreeMatrix(m: CoreMatrix3): Matrix3 {
-  return new Matrix3().set(...m);
 }
 
 function toVector2(point: { readonly x: number; readonly y: number }): Vector2 {

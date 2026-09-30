@@ -10,6 +10,7 @@ import {
   type HttpMethod,
   type HttpRequestOptions,
 } from './httpRequest';
+import { contentRangeOf } from './contentRange';
 import { isPassing, passing, passingIfUnreachable } from './passingFailures';
 import { isSameVersion, versionOf, type RecordingVersion } from './recordingVersion';
 
@@ -23,7 +24,6 @@ const HTTP_SERVER_ERROR = 500;
 const FIRST_RETRY_DELAY_MS = 250;
 const SECOND_RETRY_DELAY_MS = 1000;
 const DEFAULT_RETRY_DELAYS_MS: readonly number[] = [FIRST_RETRY_DELAY_MS, SECOND_RETRY_DELAY_MS];
-const CONTENT_RANGE_TOTAL = /\/(\d+)$/u;
 
 export interface HttpResourceOptions extends HttpRequestOptions {
   /**
@@ -206,17 +206,17 @@ export class HttpResource {
   }
 
   private totalOf(response: Response): number {
-    const contentRange = response.headers.get('content-range');
     // Across origins the header is hidden unless the server exposes it.
-    if (contentRange === null && response.type === 'cors') throw this.hiddenContentRange();
-    const total = CONTENT_RANGE_TOTAL.exec(contentRange ?? '')?.[1];
+    const isHidden = !response.headers.has('content-range') && response.type === 'cors';
+    if (isHidden) throw this.hiddenContentRange();
+    const total = contentRangeOf(response)?.total;
     if (total === undefined) {
       throw new GyroViewError(
         'source-unreadable',
         `${this.url} reports neither Content-Length nor Content-Range; cannot determine the file size`,
       );
     }
-    return Number(total);
+    return total;
   }
 
   private hiddenContentRange(): GyroViewError {

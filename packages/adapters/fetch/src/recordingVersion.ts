@@ -1,5 +1,6 @@
+import { contentRangeOf } from './contentRange';
+
 const HTTP_OK = 200;
-const CONTENT_RANGE_TOTAL = /\/(\d+)$/u;
 const WEAK_ETAG_PREFIX = /^W\//u;
 
 /**
@@ -49,10 +50,9 @@ function isSameWhereTold<T>(known: T | undefined, seen: T | undefined): boolean 
 }
 
 function sizeOf(response: Response): number | undefined {
-  const told =
+  const size =
     response.status === HTTP_OK
-      ? response.headers.get('content-length')
-      : CONTENT_RANGE_TOTAL.exec(response.headers.get('content-range') ?? '')?.[1];
-  const size = Number(told ?? NaN);
-  return Number.isSafeInteger(size) && size > 0 ? size : undefined;
+      ? Number(response.headers.get('content-length') ?? NaN)
+      : contentRangeOf(response)?.total;
+  return size !== undefined && Number.isSafeInteger(size) && size > 0 ? size : undefined;
 }

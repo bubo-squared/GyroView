@@ -19,7 +19,7 @@ export interface FrameTimingContext {
   readonly exposureRecord: ExposureRecord | undefined;
   /**
    * Presentation timestamps of the video track's samples, in seconds from the track start, in
-   * frame order. Supplied by the demuxer.
+   * frame order. Supplied by the track reader.
    */
   readonly trackTimestamps: readonly Seconds[] | undefined;
   /**

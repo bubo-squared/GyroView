@@ -20,7 +20,7 @@ export default defineConfig({
     emptyOutDir: false,
     target: 'es2022',
     minify: true,
-    // The player, Three.js and the demuxer in one module: about 1 MB, 280 kB compressed.
+    // The player, Three.js and mediabunny in one module: about 1 MB, 280 kB compressed.
     chunkSizeWarningLimit: 1400,
     lib: {
       entry: fileURLToPath(new URL('src/standalone.ts', import.meta.url)),

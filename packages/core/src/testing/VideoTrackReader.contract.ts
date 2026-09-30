@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { VideoTrackReader } from '../ports/Demuxer';
+import type { VideoTrackReader } from '../ports/VideoTrackReader';
 import type { EncodedVideoPacket } from '../ports/VideoTrack';
 import { seconds } from '../shared/units/time';
 

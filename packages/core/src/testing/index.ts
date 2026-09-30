@@ -1,5 +1,4 @@
 export { InMemoryRandomAccessSource } from './InMemoryRandomAccessSource';
-export { describeDemuxerContract, type DemuxerUnderTest } from './Demuxer.contract';
 export { describeRandomAccessSourceContract } from './RandomAccessSource.contract';
 export {
   describeAudioSegmentSourceContract,
@@ -46,7 +45,6 @@ export {
   type FixtureRecordSpec,
   type IndexedLayoutOptions,
 } from './TrailerFixtureBuilder';
-export { FakeDemuxer, type FakeInputSpec } from './FakeDemuxer';
 export { FakeCodecReader } from './FakeCodecReader';
 export { describeCodecReaderContract, type CodecReaderUnderTest } from './CodecReader.contract';
 export { FakeAudioSampleSource } from './FakeAudioSampleSource';

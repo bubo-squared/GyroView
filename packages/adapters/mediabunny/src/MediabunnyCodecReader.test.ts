@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { readSampleTable } from '@gyroview/core';
+import { readSampleTable, type VideoTrackCodec } from '@gyroview/core';
 import {
   buildMp4File,
   describeCodecReaderContract,
@@ -10,11 +10,11 @@ import {
   InMemoryRandomAccessSource,
   videoSampleEntry,
 } from '@gyroview/core/testing';
-import { ALL_FORMATS, BufferSource, Input } from 'mediabunny';
+import { ALL_FORMATS, BufferSource, Input, type InputVideoTrack } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
 
+import { videoConfigurationOf } from './decoderConfigurations';
 import { MediabunnyCodecReader } from './MediabunnyCodecReader';
-import { MediabunnyDemuxer } from './MediabunnyDemuxer';
 
 const SYNTHETIC = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -32,6 +32,25 @@ function fixtureBytes(name: string): Uint8Array {
   return new Uint8Array(readFileSync(path.join(SYNTHETIC, name)));
 }
 
+/**
+ * A video track's codec as mediabunny tells it reading the whole file, samples and all.
+ */
+async function codecOf(track: InputVideoTrack, trackIndex: number): Promise<VideoTrackCodec> {
+  const config = await track.getDecoderConfig();
+  if (!config) throw new Error(`video track ${trackIndex} has no decoder configuration`);
+  const description = {
+    trackIndex,
+    codedWidth: await track.getCodedWidth(),
+    codedHeight: await track.getCodedHeight(),
+    codec: config.codec,
+  };
+  return {
+    trackId: track.id,
+    description,
+    configuration: videoConfigurationOf(config, description),
+  };
+}
+
 async function movieBytesOf(bytes: Uint8Array): Promise<Uint8Array> {
   const { movieBytes } = await readSampleTable(new InMemoryRandomAccessSource(bytes));
   return movieBytes;
@@ -47,21 +66,15 @@ describeCodecReaderContract(async () => ({
 
 describe('MediabunnyCodecReader', () => {
   it.each(FIXTURES)(
-    'tells the video codecs of %s as the demuxer reading the whole file does',
+    'tells the video codecs of %s as mediabunny reading the whole file does',
     async (name) => {
       const bytes = fixtureBytes(name);
       const codecs = await new MediabunnyCodecReader().read(await movieBytesOf(bytes));
-      const input = await new MediabunnyDemuxer().open(new InMemoryRandomAccessSource(bytes));
+      const input = new Input({ formats: ALL_FORMATS, source: new BufferSource(bytes) });
       try {
-        const theirs = await Promise.all(
-          input.videoTracks.map(async (track) => ({
-            description: track.description,
-            configuration: await track.decoderConfiguration(),
-          })),
-        );
-        expect(
-          codecs.video.map(({ description, configuration }) => ({ description, configuration })),
-        ).toEqual(theirs);
+        const tracks = await input.getVideoTracks();
+        const theirs = await Promise.all(tracks.map((track, index) => codecOf(track, index)));
+        expect(codecs.video).toEqual(theirs);
       } finally {
         input.dispose();
       }

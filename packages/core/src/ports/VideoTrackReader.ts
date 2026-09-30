@@ -1,5 +1,3 @@
-import type { AudioSegmentSource } from './AudioSegmentSource';
-import type { RandomAccessSource } from './RandomAccessSource';
 import type {
   EncodedVideoPacket,
   KeyframeTime,
@@ -9,18 +7,7 @@ import type {
 import type { Seconds } from '../shared/units/time';
 
 /**
- * One audio track of an opened container. The core never reads audio samples: the track goes,
- * re-packaged, to the platform's media pipeline, which plays it as the master clock.
- */
-export interface AudioTrackReader {
-  /**
-   * The track as fragmented MP4; rejects with `codec-unsupported` when it cannot be re-packaged.
-   */
-  openSegments(): Promise<AudioSegmentSource>;
-}
-
-/**
- * Random access into one video track's samples.
+ * Port: random access into one video track's samples.
  */
 export interface VideoTrackReader {
   readonly description: VideoTrackDescription;
@@ -46,22 +33,4 @@ export interface VideoTrackReader {
    */
   sampleTimestamps(): Promise<readonly Seconds[]>;
   frameCount(): Promise<number>;
-}
-
-/**
- * One opened container file.
- */
-export interface DemuxedInput {
-  readonly name: string | undefined;
-  readonly duration: Seconds;
-  readonly videoTracks: readonly VideoTrackReader[];
-  readonly audioTracks: readonly AudioTrackReader[];
-  dispose(): void;
-}
-
-/**
- * Port: opens a container over a {@link RandomAccessSource}.
- */
-export interface Demuxer {
-  open(source: RandomAccessSource, name?: string): Promise<DemuxedInput>;
 }

@@ -1,7 +1,7 @@
 import type { Seconds } from '../shared/units/time';
 
 /**
- * What the demuxer tells the domain about one video track. Enough to decide the lens layout
+ * What the codec reader tells the domain about one video track. Enough to decide the lens layout
  * without knowing the container library.
  */
 export interface VideoTrackDescription {

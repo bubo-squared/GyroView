@@ -2,7 +2,7 @@
   "name": "@gyroview/adapter-mediabunny",
   "version": "0.0.0",
   "private": true,
-  "description": "Demuxer adapter for GyroView core ports, built on mediabunny.",
+  "description": "Codec reader and audio packager for GyroView core ports, built on mediabunny.",
   "type": "module",
   "exports": {
     ".": {

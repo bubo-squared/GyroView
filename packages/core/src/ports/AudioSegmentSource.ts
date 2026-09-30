@@ -2,8 +2,8 @@ import type { Seconds } from '../shared/units/time';
 
 /**
  * Port: a recording's audio track re-packaged as fragmented MP4 for a platform media pipeline
- * (Media Source Extensions), so that an audio element can be the master clock. Produced on the
- * demuxing side, consumed on the clock side.
+ * (Media Source Extensions), so that an audio element can be the master clock. Produced by the
+ * audio packager, consumed on the clock side.
  */
 export interface AudioSegmentSource {
   /**

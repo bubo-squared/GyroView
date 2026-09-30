@@ -239,6 +239,16 @@ export {
 
 // Downloading a recording while it plays
 export { SourceByteStream } from './application/download/SourceByteStream';
+export {
+  startFileDownload,
+  type DownloadedAudioTrack,
+  type DownloadedFile,
+  type FileDownloadStart,
+} from './application/download/startFileDownload';
+export { FileDownload } from './application/download/FileDownload';
+export { DownloadedVideoTrack } from './application/download/DownloadedVideoTrack';
+export { DownloadedAudioSamples } from './application/download/DownloadedAudioSamples';
+export { downloadPolicyFor, type DownloadPolicy } from './domain/download/DownloadPolicy';
 
 // The container's sample tables
 export { SampleTable } from './domain/container/SampleTable';

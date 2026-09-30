@@ -15,7 +15,9 @@ import {
   type CameraRecording,
 } from '../../testing/cameraRecording';
 import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSource';
+import { SimulatedLink } from '../../testing/SimulatedLink';
 import { describeVideoTrackReaderContract } from '../../testing/VideoTrackReader.contract';
+import { settle } from '../../../test/support/settle';
 
 const LAYOUT: CameraLayout = {
   frames: 30,
@@ -77,14 +79,27 @@ function lensOf(recording: CameraRecording, bytes?: Uint8Array): DownloadedVideo
   return new DownloadedVideoTrack({ download, track: recording.lens0, codec: CODEC });
 }
 
+/**
+ * A lens read while playing: the download reads ahead, so a next packet's bytes are mostly in.
+ */
+function playingLensOf(recording: CameraRecording): DownloadedVideoTrack {
+  const download = downloadOf(recording);
+  download.startReadingAhead();
+  return new DownloadedVideoTrack({ download, track: recording.lens0, codec: CODEC });
+}
+
+const CONTRACT_EXPECTATIONS = { frameCount: 30, frameRate: 10, framesPerGop: 10 };
+
 describeVideoTrackReaderContract(
-  'downloaded',
+  'downloaded, before playing',
   () => Promise.resolve(lensOf(cameraRecording(LAYOUT))),
-  {
-    frameCount: 30,
-    frameRate: 10,
-    framesPerGop: 10,
-  },
+  CONTRACT_EXPECTATIONS,
+);
+
+describeVideoTrackReaderContract(
+  'downloaded, playing',
+  () => Promise.resolve(playingLensOf(cameraRecording(LAYOUT))),
+  CONTRACT_EXPECTATIONS,
 );
 
 /**
@@ -98,10 +113,24 @@ function soundWithItsPicture(recording: CameraRecording): DownloadedAudioSamples
   return new DownloadedAudioSamples({ download, track: recording.sound });
 }
 
+function playingSoundOf(recording: CameraRecording): DownloadedAudioSamples {
+  const download = downloadOf(recording);
+  download.startReadingAhead();
+  return new DownloadedAudioSamples({ download, track: recording.sound });
+}
+
+const SOUND_EXPECTATIONS = { sampleCount: 30, sampleDuration: 0.1, firstTimestamp: 0 };
+
 describeAudioSampleSourceContract(
-  'downloaded',
+  'downloaded, before playing',
   () => Promise.resolve(soundWithItsPicture(cameraRecording(LAYOUT))),
-  { sampleCount: 30, sampleDuration: 0.1, firstTimestamp: 0 },
+  SOUND_EXPECTATIONS,
+);
+
+describeAudioSampleSourceContract(
+  'downloaded, playing',
+  () => Promise.resolve(playingSoundOf(cameraRecording(LAYOUT))),
+  SOUND_EXPECTATIONS,
 );
 
 describe('DownloadedVideoTrack', () => {
@@ -116,6 +145,8 @@ describe('DownloadedVideoTrack', () => {
     expect(packets.map((packet) => packet.data[0])).toEqual(
       Array.from({ length: 20 }, (_, index) => index + 11),
     );
+    const keyframes = packets.filter((packet) => packet.isKeyFrame);
+    expect(keyframes.map((packet) => packet.timestamp)).toEqual([1, 2]);
   });
 
   it('starts an earlier keyframe when the one listed turns out not to be one, and tells so after', async () => {
@@ -125,8 +156,9 @@ describe('DownloadedVideoTrack', () => {
     bytes.fill(NOT_A_KEYFRAME, listed.offset, listed.end);
     const lens = lensOf(recording, bytes);
     await expect(lens.keyframeAt(seconds(1.5))).resolves.toMatchObject({ timestamp: 1 });
-    const [first] = await Array.fromAsync(lens.packetsFrom(seconds(1.5)));
-    expect(first?.timestamp).toBe(0);
+    const packets = await Array.fromAsync(lens.packetsFrom(seconds(1.5)));
+    expect(packets[0]?.timestamp).toBe(0);
+    expect(packets.find((packet) => packet.timestamp === 1)?.isKeyFrame).toBe(false);
     await expect(lens.keyframeAt(seconds(1.5))).resolves.toMatchObject({ timestamp: 0 });
   });
 
@@ -145,7 +177,12 @@ describe('DownloadedVideoTrack', () => {
   it('fails its first packet with no-key-frame when the track has none to start from', async () => {
     const recording = cameraRecording({ ...LAYOUT, keyframeRule: { isKeyframe: () => false } });
     const packets = lensOf(recording).packetsFrom(seconds(1))[Symbol.asyncIterator]();
-    await expect(packets.next()).rejects.toMatchObject({ code: 'no-key-frame' });
+    await expect(packets.next()).rejects.toMatchObject({
+      code: 'no-key-frame',
+      message: 'track 1 has no key frame',
+    });
+    await expect(packets.return?.()).resolves.toMatchObject({ done: true });
+    await expect(packets.next()).resolves.toMatchObject({ done: true });
   });
 });
 
@@ -154,5 +191,22 @@ describe('DownloadedAudioSamples', () => {
     const sound = soundWithItsPicture(cameraRecording(LAYOUT));
     const [first] = await Array.fromAsync(sound.samplesFrom(seconds(0)));
     expect(first?.data.buffer.byteLength).toBe(LAYOUT.soundBytes);
+  });
+
+  it('returned, gives up what was coming for it', async () => {
+    const recording = cameraRecording(LAYOUT);
+    const link = new SimulatedLink(bytesOf(recording), { bytesPerTick: 50, latencyTicks: 1 });
+    const download = new FileDownload({ table: recording.table, stream: link, policy: POLICY });
+    download.startReadingAhead();
+    const sound = new DownloadedAudioSamples({ download, track: recording.sound });
+    const samples = sound.samplesFrom(seconds(0))[Symbol.asyncIterator]();
+    const first = samples.next();
+    await settle();
+    link.advance(3);
+    await settle();
+    await expect(first).resolves.toMatchObject({ done: false });
+    await samples.return?.();
+    await settle();
+    expect(link.requests.every((request) => request.endedAt !== undefined)).toBe(true);
   });
 });

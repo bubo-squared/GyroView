@@ -5,18 +5,23 @@ import type { DownloadPolicy } from '../../domain/download/DownloadPolicy';
 import type { TrackSampleTable } from '../../domain/container/TrackSampleTable';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { seconds } from '../../shared/units/time';
-import { cameraRecording, type CameraRecording } from '../../testing/cameraRecording';
+import {
+  cameraRecording,
+  type CameraLayout,
+  type CameraRecording,
+} from '../../testing/cameraRecording';
 import { SimulatedLink } from '../../testing/SimulatedLink';
 import { settle } from '../../../test/support/settle';
 
 const FRAME_RATE = 60;
-const RECORDING: CameraRecording = cameraRecording({
+const LAYOUT: CameraLayout = {
   frames: 1200,
   frameBytes: 2000,
   soundBytes: 100,
   frameRate: FRAME_RATE,
   framesPerGop: 30,
-});
+};
+const RECORDING: CameraRecording = cameraRecording(LAYOUT);
 const SLOT = RECORDING.slotBytes;
 const POLICY: DownloadPolicy = {
   aheadSeconds: seconds(2),
@@ -135,6 +140,9 @@ describe('FileDownload', () => {
     await idle(context.link, 400);
     const requestsAtRest = context.link.requests.length;
     await idle(context.link, 200);
+    expect(context.link.deliveredBytes).toBeGreaterThanOrEqual(
+      POLICY.aheadBytes - POLICY.refillBytes,
+    );
     expect(context.link.deliveredBytes).toBeLessThanOrEqual(POLICY.aheadBytes + 2 * SLOT);
     expect(context.link.requests).toHaveLength(requestsAtRest);
   });
@@ -183,6 +191,46 @@ describe('FileDownload', () => {
     ).toBeLessThanOrEqual(POLICY.aheadBytes + POLICY.requestsInFlight * POLICY.requestSize);
   });
 
+  it('reads ahead as soon as playing starts, with no reader waiting', async () => {
+    const context = setup();
+    openReaders(context.download, 0);
+    await settle();
+    context.download.startReadingAhead();
+    await idle(context.link, 1);
+    expect(context.link.requests).not.toHaveLength(0);
+  });
+
+  it('reads ahead for a reader opened once playing, before it reads', async () => {
+    const context = setup();
+    context.download.startReadingAhead();
+    await settle();
+    openReaders(context.download, 0);
+    await idle(context.link, 1);
+    expect(context.link.requests).not.toHaveLength(0);
+  });
+
+  it('gives up what was coming for readers that closed', async () => {
+    const context = setup();
+    const readers = openReaders(context.download, 0);
+    context.download.startReadingAhead();
+    await idle(context.link, 3);
+    for (const cursor of readers.cursors) cursor.close();
+    await settle();
+    expect(context.link.requests.every((request) => request.endedAt !== undefined)).toBe(true);
+  });
+
+  it('lets go of what lies behind the stretch it keeps, so a seek back there reads it again', async () => {
+    const context = setup();
+    const before = openReaders(context.download, 0);
+    context.download.startReadingAhead();
+    await play({ ...context, readers: before }, 0, 300);
+    for (const cursor of before.cursors) cursor.close();
+    const requestsBefore = context.link.requests.length;
+    openReaders(context.download, 0);
+    await idle(context.link, 1);
+    expect(context.link.requests[requestsBefore]?.range.offset).toBe(0);
+  });
+
   it('fails the reader waiting on a range that failed', async () => {
     const context = setup();
     const error = new GyroViewError('source-unreadable', 'the connection dropped');
@@ -191,6 +239,45 @@ describe('FileDownload', () => {
     const failed = expect(cursor.nextSample()).rejects.toBe(error);
     await idle(context.link, 5);
     await failed;
+  });
+
+  it('does not ask again for a range that failed, until a reader opens', async () => {
+    const context = setup();
+    const error = new GyroViewError('source-unreadable', 'the connection dropped');
+    context.link.failWhere((range) => range.end > 50 * SLOT, error);
+    const cursor = context.download.openCursor(RECORDING.lens0, 60);
+    const failed = expect(cursor.nextSample()).rejects.toBe(error);
+    await idle(context.link, 5);
+    await failed;
+    const requestsAfterFailing = context.link.requests.length;
+    await expect(cursor.nextSample()).rejects.toBe(error);
+    await idle(context.link, 5);
+    expect(context.link.requests).toHaveLength(requestsAfterFailing);
+    context.link.failWhere(() => false, error);
+    const again = context.download.openCursor(RECORDING.lens0, 60).nextSample();
+    await idle(context.link, 5);
+    await expect(again).resolves.toMatchObject({ sample: 60 });
+  });
+
+  it('fails a reader with source-unreadable when the stream fails otherwise', async () => {
+    const context = setup();
+    const cause = new Error('socket hang up');
+    context.link.failWhere(() => true, cause);
+    const cursor = context.download.openCursor(RECORDING.lens0, 0);
+    const failed = expect(cursor.nextSample()).rejects.toMatchObject({
+      code: 'source-unreadable',
+      message: 'a range of the recording could not be read',
+      cause,
+    });
+    await idle(context.link, 5);
+    await failed;
+  });
+
+  it('refuses a track of another file', () => {
+    const other = cameraRecording({ ...LAYOUT, frames: 10 });
+    expect(() => setup().download.openCursor(other.lens0, 0)).toThrow(
+      'the track is not one of this file',
+    );
   });
 
   it('serves several readers of one track at once', async () => {
@@ -213,5 +300,15 @@ describe('FileDownload', () => {
     await expect(next).resolves.toBeUndefined();
     await idle(context.link, 5);
     expect(context.link.requests.every((request) => request.endedAt !== undefined)).toBe(true);
+  });
+
+  it('once disposed, ends a reader opened after at once and reads nothing for it', async () => {
+    const context = setup();
+    context.download.startReadingAhead();
+    context.download.dispose();
+    const cursor = context.download.openCursor(RECORDING.lens0, 0);
+    await expect(cursor.nextSample()).resolves.toBeUndefined();
+    await idle(context.link, 5);
+    expect(context.link.requests).toHaveLength(0);
   });
 });

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { BlockStore } from './BlockStore';
 import { Transfers, type TransferListener } from './Transfers';
+import type { ByteStream } from '../../ports/ByteStream';
 import { ByteRange } from '../../shared/binary/ByteRange';
+import { ByteRangeSet } from '../../shared/binary/ByteRangeSet';
 import { SimulatedLink } from '../../testing/SimulatedLink';
 import { settle } from '../../../test/support/settle';
 
@@ -32,6 +34,19 @@ function listening(): { heard: Heard; listener: TransferListener } {
   };
 }
 
+/**
+ * A stream whose every read fails, and whose reads cannot be given up.
+ */
+function failingStream(error: Error): ByteStream {
+  return {
+    stream: (): AsyncIterable<Uint8Array> => ({
+      [Symbol.asyncIterator]: (): AsyncIterator<Uint8Array> => ({
+        next: (): Promise<IteratorResult<Uint8Array>> => Promise.reject(error),
+      }),
+    }),
+  };
+}
+
 function setup(): { link: SimulatedLink; store: BlockStore; transfers: Transfers; heard: Heard } {
   const link = new SimulatedLink(FILE, { bytesPerTick: 100, latencyTicks: 0 });
   const store = new BlockStore();
@@ -52,6 +67,8 @@ describe('Transfers', () => {
       ...FILE.subarray(200, 500),
     ]);
     expect(transfers.states).toEqual([]);
+    store.release(ByteRangeSet.of([ByteRange.of(200, 300)]));
+    expect(store.allocatedBytes).toBe(0);
   });
 
   it('tells what of each range is still to come', async () => {
@@ -89,6 +106,29 @@ describe('Transfers', () => {
     await settle();
     expect(heard.failures).toEqual([{ range: ByteRange.of(600, 100), error }]);
     expect(store.allocatedBytes).toBe(0);
+    expect(transfers.states).toEqual([]);
+  });
+
+  it('tells nothing of a range given up whose stream fails after, nor minds a stream it cannot stop', async () => {
+    const store = new BlockStore();
+    const { heard, listener } = listening();
+    const stream = failingStream(new Error('the connection dropped'));
+    const transfers = new Transfers({ stream, store, listener });
+    transfers.start(ByteRange.of(0, 100));
+    const [transfer] = transfers.states;
+    transfers.cancel(transfer?.id ?? -1);
+    await settle();
+    expect(heard.failures).toEqual([]);
+  });
+
+  it('minds no range given up twice, nor one it never started', async () => {
+    const { transfers } = setup();
+    transfers.start(ByteRange.of(0, 100));
+    const [transfer] = transfers.states;
+    transfers.cancel(transfer?.id ?? -1);
+    transfers.cancel(transfer?.id ?? -1);
+    transfers.cancel(99);
+    await settle();
     expect(transfers.states).toEqual([]);
   });
 

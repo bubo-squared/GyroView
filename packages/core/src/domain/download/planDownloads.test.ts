@@ -148,6 +148,23 @@ describe('planDownloads', () => {
     expect(plan.anchor).toEqual(anchor);
   });
 
+  it('reads nothing with no reader at all, even once playing', () => {
+    const plan = planDownloads(stateOf({ transfers: [{ id: 4, remaining: slots(0, 10) }] }));
+    expect(plan).toMatchObject({ start: [], cancel: [4], anchor: undefined });
+  });
+
+  it('stands a picture reader that read all of its track at the end of its last frame', () => {
+    const file = cameraFile(50);
+    const plan = planDownloads(stateOf({ cursors: [at(file.lens0, 50), at(file.lens1, 50)] }));
+    expect(plan.anchor).toEqual({ time: file.lens0.end, offset: 49 * SLOT + FRAME });
+  });
+
+  it('stands a picture reader of a track with no frames at the start', () => {
+    const empty = trackOf('video', 0, { at: 0, size: FRAME });
+    const plan = planDownloads(stateOf({ cursors: [at(empty, 0)] }));
+    expect(plan.anchor).toEqual({ time: 0, offset: 0 });
+  });
+
   it('tells where the picture stands, for the plans to come', () => {
     const file = cameraFile();
     const plan = planDownloads(stateOf({ cursors: everyTrackAt(file, 60) }));
@@ -178,6 +195,35 @@ describe('planDownloads', () => {
     const file = cameraFile();
     const plan = planDownloads(stateOf({ cursors: everyTrackAt(file, 0) }));
     expect(spansOf(plan.start)).toEqual(slotSpans([0, 20], [20, 40]));
+  });
+
+  it('before playing, reads nothing for readers that do not wait', () => {
+    const file = cameraFile();
+    const plan = planDownloads(stateOf({ cursors: everyTrackAt(file, 0), isReadingAhead: false }));
+    expect(plan.start).toEqual([]);
+  });
+
+  it('asks for a range no longer than what is missing, and none that is empty', () => {
+    const file = cameraFile();
+    const plan = planDownloads(
+      stateOf({
+        cursors: everyTrackAt(file, 0),
+        held: heldSlots(0, 80),
+        policy: { ...POLICY, requestsInFlight: 3, refillBytes: 20 * SLOT },
+      }),
+    );
+    expect(spansOf(plan.start)).toEqual(slotSpans([80, 100]));
+  });
+
+  it('counts against its budget only the bytes wanted, not the gaps skipped between them', () => {
+    const file = cameraFile();
+    const policy = { ...POLICY, aheadBytes: 2.5 * FRAME, bridgedGap: 1000, requestsInFlight: 3 };
+    const plan = planDownloads(stateOf({ cursors: [at(file.lens0, 0, true)], policy }));
+    expect(spansOf(plan.start)).toEqual([
+      [0, FRAME],
+      [SLOT, SLOT + FRAME],
+      [2 * SLOT, 2 * SLOT + FRAME / 2],
+    ]);
   });
 
   it('asks for no more ranges at once than the requests in flight leave room for', () => {
@@ -240,6 +286,20 @@ describe('planDownloads', () => {
     expect(plan.start).toEqual([]);
   });
 
+  it('tops up once exactly a quarter of its bytes is missing', () => {
+    const file = cameraFile();
+    const plan = planDownloads(stateOf({ cursors: everyTrackAt(file, 0), held: heldSlots(0, 75) }));
+    expect(spansOf(plan.start)).toEqual(slotSpans([75, 95], [95, 100]));
+  });
+
+  it('waits to top up while any track read has samples beyond the window', () => {
+    const file = cameraFile();
+    const shortSound = trackOf('audio', 50, { at: FRAME, size: SOUND });
+    const cursors = [at(file.lens0, 0), at(shortSound, 0), at(file.lens1, 0)];
+    const plan = planDownloads(stateOf({ cursors, held: heldSlots(0, 90) }));
+    expect(plan.start).toEqual([]);
+  });
+
   it('with only sound to follow, waits to top up until a quarter of its bytes is missing', () => {
     const file = cameraFile();
     const plan = planDownloads(
@@ -263,6 +323,15 @@ describe('planDownloads', () => {
     const file = cameraFile(50);
     const plan = planDownloads(
       stateOf({ cursors: everyTrackAt(file, 45), held: heldSlots(45, 48) }),
+    );
+    expect(spansOf(plan.start)).toEqual(slotSpans([48, 50]));
+  });
+
+  it('reads the last bytes once the window reaches the last frame exactly', () => {
+    const file = cameraFile(50);
+    const policy = { ...POLICY, aheadSeconds: seconds(49 * FRAME_DURATION) };
+    const plan = planDownloads(
+      stateOf({ cursors: everyTrackAt(file, 0), held: heldSlots(0, 48), policy }),
     );
     expect(spansOf(plan.start)).toEqual(slotSpans([48, 50]));
   });
@@ -301,5 +370,13 @@ describe('planDownloads', () => {
       stateOf({ cursors: everyTrackAt(file, 50), held: heldSlots(0, 300) }),
     );
     expect(spansOf(plan.release.ranges)).toEqual(slotSpans([0, 40], [150, 300]));
+  });
+
+  it('keeps behind the picture only the stretch it keeps, however far in the picture is', () => {
+    const file = cameraFile();
+    const plan = planDownloads(
+      stateOf({ cursors: everyTrackAt(file, 100), held: heldSlots(250, 260) }),
+    );
+    expect(spansOf(plan.release.ranges)).toEqual(slotSpans([250, 260]));
   });
 });

@@ -135,12 +135,19 @@ class RequestRecord {
     );
   }
 
+  /**
+   * A body piped through the link may go on after its request was aborted (WebKit lets the pipe
+   * run on): what passes then never reached the player.
+   */
   public receive(byteCount: number): void {
-    this.bytesReceived += byteCount;
+    if (!this.wasAborted) this.bytesReceived += byteCount;
   }
 
+  /**
+   * The first end is the request's: an abort, or its last byte.
+   */
   public finish(): void {
-    this.finishedAt = performance.now();
+    this.finishedAt ??= performance.now();
   }
 
   public snapshot(): RecordedRequest {

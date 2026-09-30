@@ -72,11 +72,22 @@ describe('BlockStore', () => {
     expect(store.allocatedBytes).toBe(0);
   });
 
+  it('lets go of no block still filling, however much of it is released', () => {
+    const store = new BlockStore();
+    const filling = store.allocate(ByteRange.of(0, 10));
+    store.write(filling, countingFrom(0, 4));
+    store.release(ByteRangeSet.of([ByteRange.of(0, 100)]));
+    store.write(filling, countingFrom(4, 6));
+    expect(store.allocatedBytes).toBe(10);
+    expect(spansOf(store.held)).toEqual([[0, 10]]);
+  });
+
   it('lets go of the blocks whose every byte is released, and keeps those partly wanted', () => {
     const store = new BlockStore();
     for (const offset of [0, 10, 20]) {
       const block = store.allocate(ByteRange.of(offset, 10));
       store.write(block, countingFrom(offset, 10));
+      store.complete(block);
     }
     store.release(ByteRangeSet.of([ByteRange.of(0, 15), ByteRange.of(20, 10)]));
     expect(spansOf(store.held)).toEqual([[10, 20]]);

@@ -44,25 +44,33 @@ download per file that is the only reader of the network while the recording pla
 - **One download per file, in file order.** A `FileDownload` knows where every consumer stands
   (the lenses' packet readers and the sound's sample reader, each a cursor) and requests, in
   file order, the ranges they need within a window ahead of the picture, in requests of at most
-  8 MiB, two at a time. Sound needs nothing of its own: its samples lie between the frames the
-  picture needs, and it is served from the same bytes.
+  8 MiB, two at a time for each file (four for a split pair). The sound's samples lie between
+  the frames the picture needs and are served from the same bytes; the next sample of every
+  reader waiting within the window is read wherever the file puts it.
 - **What no cursor needs any more is cancelled at once.** A seek releases the old cursors and
   aborts their requests before the new position is asked for. Requests stream: each sample is
   handed on as soon as its last byte has arrived. A range that breaks off, or brings no byte for
-  10 s, is asked for again from its next byte, under ADR 0019's rules.
+  10 s, is asked for again from its next byte, with ADR 0019's waits, counted afresh from each
+  chunk that comes.
 - **Sound follows the picture's window.** It is read within the window, never beyond it; once
   playing, where no picture is read (after the last frame), the window stands where the picture
-  last stood, or at the sound where no picture was ever read.
+  last stood, or at the sound where no picture was ever read. A sound reader more than 2 s
+  behind the picture, as the sound is until it follows a seek, wants nothing.
 - **A recording replaced while it plays fails.** Every answer is held to the version the first
   told of: its `ETag` where both expose one, else its `Last-Modified` and size, which a page on
   another origin may always read. A change is `source-changed`, never old and new bytes put
   together. The versions come from the answers themselves: a conditional request would cost
   every range a CORS preflight.
 - **The download follows a budget in time and bytes.** Ahead of the picture it keeps at most
-  10 s or 128 MiB, whichever is less, and tops up below three quarters of that; behind it keeps
-  2 s for short backward seeks. Paused after playing, it goes on up to the budget and stops.
-  Before the first play it downloads only what opening, the decode probe and the first picture
-  need, and nothing of that last with `preload="none"`.
+  10 s or 128 MiB, whichever is less (shared by the files of a split pair). It asks at once for
+  what playback needs now (a frame a picture reader waits for, sound due within 4 s, and the
+  next 4 s of the picture, which playback that starved waits for, ADR 0011) and for the rest
+  once a quarter of the budget is missing, so it asks in large ranges even while the sound reads
+  30 s ahead. Behind the picture it keeps the group of pictures from its key frame, or 2 s
+  (32 MiB at most), whichever reaches further back, for short backward seeks. Paused after
+  playing, it goes on up to the budget and stops. Before the first play it downloads only what
+  opening, the decode probe and the first picture need (the frames up to a seek's target at
+  once), and nothing of that last with `preload="none"`.
 - **mediabunny keeps what it does well.** It reads the decoder configurations and codec strings
   from the movie box held in memory, re-packages sound as fragmented MP4 for Media Source
   Extensions (ADR 0007), and in tests is the reference the core's sample tables must agree with,

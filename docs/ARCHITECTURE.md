@@ -110,8 +110,9 @@ bytes start a keyframe.
 
 **`download`**: `planDownloads`, the pure plan of a file's download from where its cursors
 stand (ADR 0029): the window the picture reads in, what it wants within the budget, which
-ranges to ask for, which transfers to give up and which bytes to let go of; and the
-`DownloadPolicy` a file's size and duration give.
+ranges to ask for, which transfers to give up and which bytes to let go of; `isReadyToResume`
+and the resume threshold it and the plan share (ADR 0011); and the `DownloadPolicy` a file's
+size and duration give.
 
 **`playback`**: `PlayerStateMachine` with the exhaustive transition table
 (`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`).
@@ -143,7 +144,8 @@ Use cases that orchestrate the domain through ports.
   ranges streaming, each into its block) and its `BlockStore`. `DownloadedVideoTrack` and
   `DownloadedAudioSamples` read a track through it; `startFileDownload` joins a file's tracks to
   their codecs by track id; `SourceByteStream` streams any random-access source a range at a
-  time.
+  time. A download is also a `MediaBuffer`, and `RecordingBuffer` is one over a recording's
+  files: ready to resume once every file is.
 - `recording/readRecording` opens a `RandomAccessSource` and reads everything cheap: the
   trailer's table of contents, the info record, the calibration choice. `inspectLayout` maps the
   boxes and the records' places for the inspector, which playing never needs. The result,
@@ -159,7 +161,7 @@ Use cases that orchestrate the domain through ports.
 - `playback/PlaybackSession` is the transport: it drives one `DecodeRun` at a time (a pipeline
   and its own queue, replaced whole on a seek) in step with a `PlaybackClock`, presents the pair due at each tick to a `FrameSink`, and owns the state
   machine. Sound follows the picture: playback waits in `buffering` until two pairs are queued,
-  after a seek, and whenever the decoders fall behind (ADR 0011). It also offers `preload`
+  after a seek, and whenever the decoders fall behind (ADR 0011); `Buffering` holds why, and after starvation waits for the resume threshold as well. It also offers `preload`
   (first frame while ready) and `scrub` (seek to the key frame at or before a time). Its state
   machine and announcements are a `SessionLifecycle`: every change is heard once it is whole
   (ADR 0021).
@@ -182,6 +184,7 @@ Use cases that orchestrate the domain through ports.
 | `VideoTrackReader`   | a video track's key frame times and its packets from a time                                                                                     | core `DownloadedVideoTrack`                                           |
 | `AudioSampleSource`  | a sound track's samples from a time                                                                                                             | core `DownloadedAudioSamples`                                         |
 | `AudioPackager`      | a sound track's samples re-packaged as an `AudioSegmentSource`                                                                                  | `MediabunnyAudioPackager`                                             |
+| `MediaBuffer`        | whether enough lies downloaded ahead for playback that starved to resume, and word when more comes                                              | core `FileDownload`, `RecordingBuffer`                                |
 | `VideoDecoderPort`   | create decoders that emit frames and apply backpressure                                                                                         | `WebCodecsVideoDecoderPort`                                           |
 | `PlaybackClock`      | current time, start/pause/seek, whether it runs, end and failure                                                                                | `MediaSourceAudioClock`, core `application/playback/WallClock`        |
 | `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                                          | `MediabunnyAudioPackager`'s segments                                  |
@@ -195,10 +198,12 @@ Use cases that orchestrate the domain through ports.
 page's monotonic clock) and holds no timer, so it is as pure as the rest; the player uses it when
 a recording has no sound this browser plays.
 
-Every port whose adapter talks to the platform has a contract suite that runs against its fake
-in `core/src/testing` and the real adapters alike (`RandomAccessSource`, `ByteStream`,
-`CodecReader`, `VideoTrackReader`, `AudioSampleSource`, `AudioSegmentSource`,
-`VideoDecoderPort`, `PlaybackClock`, `ResourceLocator`), asserting the error codes too.
+Every port has a contract suite in `core/src/testing`, run against its fake and its real
+implementations alike (`RandomAccessSource`, `ByteStream`, `CodecReader`, `VideoTrackReader`,
+`AudioSampleSource`, `MediaBuffer`, `VideoDecoderPort`, `PlaybackClock`, `ResourceLocator`),
+and `AudioSegmentSource`'s against the mediabunny packager alone, asserting the error codes too.
+`VideoTrackReader` and `MediaBuffer` are implemented in the core itself; they are ports because
+the playback use cases may see nothing else.
 `FakeFrameSink` only records what it is shown, for tests of what drives a sink; the renderer's
 own browser tests check what it draws. `SimulatedLink` is a network in virtual time, for the
 download's tests to assert to the byte what was asked for, what came and what was given up.

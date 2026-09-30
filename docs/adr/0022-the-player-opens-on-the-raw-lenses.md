@@ -34,3 +34,8 @@ sets `view-mode`.
   calibration lands: hides what a visitor came for, and a recording without the data to refine
   would wait for nothing.
 - Opening on the equirectangular panorama: stitched, so it shows the same seam.
+
+## Since ADR 0033 (2026-09-30)
+
+The raw lenses are shown through the display conversion: as recorded on an SDR camera, from HLG
+to SDR on the X6, so the first picture of an X6 recording is not flat.

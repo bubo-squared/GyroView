@@ -1,5 +1,6 @@
 import {
   detectLensLayout,
+  displayConversionsOf,
   downloadPolicyFor,
   ensureInvariant,
   GyroViewError,
@@ -104,6 +105,7 @@ function assemble(
 ): OpenedRecording {
   const { read, files, layout, frameSources, calibration, timing } = parts;
   const duration = seconds(Math.min(...files.map((file) => file.duration)));
+  const display = displayConversionsOf(frameSources.map((source) => source.description.colour));
   // Whichever file carries the sound: a split pair given either way round still plays it.
   const [sound] = files.flatMap((file) => file.audioTracks);
   return {
@@ -111,13 +113,14 @@ function assemble(
     layout,
     frameSources,
     calibration,
+    displayConversions: display.conversions,
     duration,
     frameTimes: timing.frameTimes,
     motion: timing.motion,
     soundSegments:
       sound && ((): AudioSegmentSource => packager.segmentsOf(sound.samples, sound.configuration)),
     metadata: metadataOf(parts, duration, sound !== undefined),
-    warnings: timing.warnings,
+    warnings: [...timing.warnings, ...display.warnings],
     readAhead: (): void => {
       for (const file of files) file.download.startReadingAhead();
     },

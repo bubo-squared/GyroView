@@ -1,10 +1,13 @@
 import {
+  AS_RECORDED,
   CalibrationVersion,
   Deferred,
   GyroViewError,
+  HLG_TO_SDR_BT709,
   seconds,
   type ContainerCodecs,
   type EncodedVideoPacket,
+  type TrackColour,
   type VideoDecoderHandle,
   type VideoDecoderPort,
   type VideoTrackReader,
@@ -19,6 +22,7 @@ import {
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { openRecording } from './openRecording';
+import type { OpenedRecording } from './OpenedRecording';
 import type { RecordingPorts } from './ports';
 import type { PlayerSource, UrlInput } from '../PlayerSource';
 import {
@@ -163,6 +167,15 @@ async function captureRejection(promise: Promise<unknown>): Promise<unknown> {
     return error;
   }
   throw new Error('expected the promise to reject');
+}
+
+/**
+ * The X5 fixture opened as though both lens tracks declared `colour`.
+ */
+async function openWithLensColour(colour: TrackColour): Promise<OpenedRecording> {
+  const codecs = lensCodecs({ lenses: 2, codec: HEVC, colour });
+  const { ports } = await worldOf([{ url: MAIN_URL, bytes: fixture.x5Bytes, codecs }]);
+  return openRecording(sourceOf(), ports, new AbortController().signal);
 }
 
 function sourceOf(overrides: Partial<PlayerSource> = {}): PlayerSource {
@@ -318,6 +331,27 @@ describe('openRecording', () => {
     expect(failure).toMatchObject({ code: 'source-unreadable' });
     expect((failure as Error).message).toContain('timed-out');
     expect((failure as Error).message).toContain('key-frame-late');
+  });
+
+  it('shows HLG lenses through the HLG conversion and says which transfer it cannot show', async () => {
+    const hlg = {
+      primaries: 'bt2020',
+      transfer: 'hlg',
+      matrix: 'bt2020-ncl',
+      range: 'limited',
+    } as const;
+    const pq = { ...hlg, transfer: 'pq' } as const;
+    const shown = await openWithLensColour(hlg);
+    expect(shown.displayConversions).toEqual([
+      HLG_TO_SDR_BT709.parameters,
+      HLG_TO_SDR_BT709.parameters,
+    ]);
+    expect(shown.warnings.some((warning) => warning.includes('hlg'))).toBe(false);
+    shown.dispose();
+    const unshown = await openWithLensColour(pq);
+    expect(unshown.displayConversions).toEqual([AS_RECORDED.parameters, AS_RECORDED.parameters]);
+    expect(unshown.warnings).toContainEqual(expect.stringContaining('pq'));
+    unshown.dispose();
   });
 
   it('opens a recording whose one track packs both lenses', async () => {

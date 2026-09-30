@@ -159,7 +159,11 @@ function wallClock(warning: string): ChosenClock {
 }
 
 function stitchingSetupOf(opened: OpenedRecording): StitchingSetup {
-  return buildStitchingSetup({ calibration: opened.calibration, layout: opened.layout });
+  return buildStitchingSetup({
+    calibration: opened.calibration,
+    layout: opened.layout,
+    displayConversions: opened.displayConversions,
+  });
 }
 
 interface SinkChoice {

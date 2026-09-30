@@ -30,7 +30,7 @@ const inspection: Inspection = {
     serialNumber: 'SERIAL',
     model: 'Insta360 X5',
     firmware: 'v1.7.43_build1',
-    calibration: { offset: undefined, offsetV2: undefined, offsetV3: 'x' },
+    calibration: { offset: undefined, offsetV2: undefined, offsetV3: 'x', offsetV6: undefined },
     dimension: { width: 2880, height: 2880 },
     frameRate: 60,
     captureMode: 'standard',

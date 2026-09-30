@@ -1,6 +1,7 @@
 import type { VersionedCalibration } from './CalibrationVersion';
 import { parseOffsetString } from './parseOffsetString';
 import { GyroViewError, type GyroViewErrorCode } from '../../../shared/errors/GyroViewError';
+import { CALIBRATION_SOURCES, type CalibrationSource } from '../info/calibrationSources';
 import type { CalibrationStrings } from '../info/RecordingInfo';
 
 export interface CalibrationChoice {
@@ -27,29 +28,36 @@ const SKIPPABLE: ReadonlySet<GyroViewErrorCode> = new Set([
 ]);
 
 /**
- * Picks the calibration a recording is stitched through: the legacy string first, whose
- * equidistant reading is the one Insta360's own stitch agrees with on the far field
- * (ADR 0023), then the Mei (v3) and polynomial (v2) strings for a recording without it. Strings
- * that cannot be used are reported, not silently dropped; having none is reported as absence,
- * not as a failure.
+ * The order the calibration strings are tried in: the legacy string first, whose equidistant
+ * reading is the one Insta360's own stitch agrees with on the far field (ADR 0023), then, for a
+ * recording without it, the Mei strings, the newer fit (v6) before the older (v3), and the
+ * polynomial (v2) last.
+ */
+export const CALIBRATION_PREFERENCE: readonly (keyof CalibrationStrings)[] = [
+  'offset',
+  'offsetV6',
+  'offsetV3',
+  'offsetV2',
+];
+
+/**
+ * Picks the calibration a recording is stitched through, the first usable string in
+ * {@link CALIBRATION_PREFERENCE}. Strings that cannot be used are reported, not silently
+ * dropped; having none is reported as absence, not as a failure.
  */
 export function selectCalibration(strings: CalibrationStrings): CalibrationChoice {
-  const candidates: readonly (readonly [name: string, text: string | undefined])[] = [
-    ['offset', strings.offset],
-    ['offset_v3', strings.offsetV3],
-    ['offset_v2', strings.offsetV2],
-  ];
   const warnings: string[] = [];
-  for (const [name, text] of candidates) {
+  for (const key of CALIBRATION_PREFERENCE) {
+    const text = strings[key];
     if (text === undefined) continue;
-    const attempt = tryParse(name, text);
+    const attempt = tryParse(CALIBRATION_SOURCES[key], text);
     if ('calibration' in attempt) return { calibration: attempt.calibration, warnings };
     warnings.push(attempt.warning);
   }
   return { calibration: undefined, warnings };
 }
 
-function tryParse(name: string, text: string): Attempt {
+function tryParse({ name }: CalibrationSource, text: string): Attempt {
   try {
     return { calibration: parseOffsetString(text) };
   } catch (error) {

@@ -177,6 +177,7 @@ export {
   type SeamJoin,
 } from './domain/stitching/seamJoin';
 export type { CalibrationChoice } from './domain/format/calibration/selectCalibration';
+export { CALIBRATION_SOURCES } from './domain/format/info/calibrationSources';
 
 // Shared vocabulary
 export {
@@ -194,6 +195,7 @@ export {
   type GyroViewErrorCode,
 } from './shared/errors/GyroViewError';
 export { keysOf } from './shared/keysOf';
+export { mapRecord } from './shared/mapRecord';
 export { lazy } from './shared/lazy';
 export { Outbox, type EventSink } from './shared/events/Outbox';
 export { clamp } from './shared/math/clamp';

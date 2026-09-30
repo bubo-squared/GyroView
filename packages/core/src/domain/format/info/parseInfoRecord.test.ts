@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { parseInfoRecord } from './parseInfoRecord';
 import { FileLayoutValue, TrackOrderValue } from './infoFields';
 import { InfoRecordFormat } from '../constants';
-import { minimalInfoRecord } from '../../../testing/minimalInfoRecord';
+import { CALIBRATION_SOURCES } from './calibrationSources';
+import { mapRecord } from '../../../shared/mapRecord';
+import { minimalInfoFields, minimalInfoRecord } from '../../../testing/minimalInfoRecord';
+import { encodeProtobuf, stringField } from '../../../testing/protobufWriter';
 import { captureError } from '../../../../test/support/errors';
 import { loadFixture } from '../../../../test/support/fixtures';
 import { OFFICE_CALIBRATION } from '../../../../test/support/officeCalibration';
@@ -23,12 +26,8 @@ describe('parseInfoRecord on the office X5 recording (5.7K60)', () => {
     });
   });
 
-  it('reads all three calibration strings', () => {
-    expect(info.calibration).toEqual({
-      offset: OFFICE_CALIBRATION.offset,
-      offsetV2: OFFICE_CALIBRATION.offsetV2,
-      offsetV3: OFFICE_CALIBRATION.offsetV3,
-    });
+  it('reads every calibration string', () => {
+    expect(info.calibration).toEqual(OFFICE_CALIBRATION);
   });
 
   it('reads the video geometry and timing', () => {
@@ -87,11 +86,7 @@ describe('parseInfoRecord edge cases', () => {
   it('returns a fully undefined info for an empty record instead of failing', () => {
     const info = parseInfoRecord(new Uint8Array(), InfoRecordFormat.Protobuf);
     expect(info.model).toBeUndefined();
-    expect(info.calibration).toEqual({
-      offset: undefined,
-      offsetV2: undefined,
-      offsetV3: undefined,
-    });
+    expect(Object.values(info.calibration).every((text) => text === undefined)).toBe(true);
     expect(info.dimension).toBeUndefined();
   });
 
@@ -123,5 +118,18 @@ describe('parseInfoRecord layout hints', () => {
 
   it('ignores values never observed', () => {
     expect(hintsOf(7, 9)).toEqual([undefined, undefined]);
+  });
+});
+
+describe('parseInfoRecord calibration strings', () => {
+  it('reads each string from the field its calibration source names', () => {
+    const texts = mapRecord(CALIBRATION_SOURCES, (source) => `string of field ${source.field}`);
+    const record = encodeProtobuf([
+      ...minimalInfoFields({ model: 'Insta360 X4' }),
+      ...Object.values(CALIBRATION_SOURCES).map((source) =>
+        stringField(source.field, `string of field ${source.field}`),
+      ),
+    ]);
+    expect(parseInfoRecord(record, InfoRecordFormat.Protobuf).calibration).toEqual(texts);
   });
 });

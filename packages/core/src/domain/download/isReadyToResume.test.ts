@@ -55,11 +55,23 @@ describe('isReadyToResume', () => {
     expect(isReadyToResume({ ...state, held: ByteRangeSet.of(lensFrames) })).toBe(true);
   });
 
-  it('wants of more seconds than the budget holds only what fits in it less one request', () => {
+  it('wants of more seconds than the budget holds only what fits in it less a request', () => {
     const policy = { ...POLICY, aheadBytes: 15 * FRAME_BYTES, requestSize: 5 * FRAME_BYTES };
     const state = { cursors: picturesAt(10), time: seconds(1), policy };
     expect(isReadyToResume({ ...state, held: heldSlots(10, 15) })).toBe(true);
     expect(isReadyToResume({ ...state, held: heldSlots(10, 14) })).toBe(false);
+  });
+
+  it('wants three quarters of a budget smaller than one request', () => {
+    const policy = {
+      ...POLICY,
+      aheadBytes: 20 * FRAME_BYTES,
+      requestSize: 100 * SLOT,
+      refillBytes: 5 * FRAME_BYTES,
+    };
+    const state = { cursors: picturesAt(10), time: seconds(1), policy };
+    expect(isReadyToResume({ ...state, held: heldSlots(10, 17) })).toBe(false);
+    expect(isReadyToResume({ ...state, held: heldSlots(10, 18) })).toBe(true);
   });
 
   it('is ready at the end of the tracks once what is left is held', () => {

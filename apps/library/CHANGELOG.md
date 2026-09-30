@@ -7,7 +7,9 @@ the API.
 
 New:
 
-- The `source-changed` error: the recording at the URL was replaced while it played.
+- The `source-changed` error: the recording at the URL was replaced while it played, as its
+  `ETag` tells, or else its `Last-Modified` and size. Exposing `ETag` across origins is
+  optional, and now named in the CORS advice.
 
 ## 0.2.0 (2026-09-29)
 

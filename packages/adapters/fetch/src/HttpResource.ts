@@ -11,6 +11,7 @@ import {
   type HttpRequestOptions,
 } from './httpRequest';
 import { isPassing, passing, passingIfUnreachable } from './passingFailures';
+import { isSameVersion, versionOf, type RecordingVersion } from './recordingVersion';
 
 const HTTP_OK = 200;
 const HTTP_PARTIAL_CONTENT = 206;
@@ -34,7 +35,8 @@ export interface HttpResourceOptions extends HttpRequestOptions {
 
 /**
  * One recording at a URL, as every reader of it sees it: its size, whether its server has shown
- * it lets this page read it (CORS), and how a range that failed on the way is asked for again.
+ * it lets this page read it (CORS), the version its first answer told of (ADR 0029), and how a
+ * range that failed on the way is asked for again.
  * The server must answer `Range` requests with 206 and, for cross-origin use, send CORS headers
  * that expose `Content-Range`; both are hard requirements of playing a remote recording and are
  * reported with distinct error codes.
@@ -48,6 +50,7 @@ export class HttpResource {
    * here on failed on the way, whatever the diagnosis says of an error page without CORS headers.
    */
   private hasReadRange = false;
+  private version: RecordingVersion | undefined;
 
   /**
    * `signal` ends every request made for the resource, with the host's own `requestInit` signal.
@@ -107,7 +110,23 @@ export class HttpResource {
       throw this.refusalOf(response.status);
     }
     this.hasReadRange = true;
+    this.ensureUnchanged(response);
     return response;
+  }
+
+  /**
+   * Every answer is of the version the first one told of: bytes of a recording replaced while it
+   * plays must not be put together with the old ones'.
+   */
+  private ensureUnchanged(response: Response): void {
+    const seen = versionOf(response);
+    this.version ??= seen;
+    if (isSameVersion(this.version, seen)) return;
+    discardBody(response);
+    throw new GyroViewError(
+      'source-changed',
+      `${this.url} was replaced while it played; load it again`,
+    );
   }
 
   /**
@@ -161,6 +180,7 @@ export class HttpResource {
     // A refused HEAD (a 405, or a 403 from a URL signed for GET alone) says nothing about the
     // file: the byte range the player needs anyway answers, and names any real problem.
     if (!response.ok) return this.sizeFromContentRange();
+    this.ensureUnchanged(response);
     const contentLength = Number(response.headers.get('content-length'));
     const hasContentLength = Number.isSafeInteger(contentLength) && contentLength > 0;
     return hasContentLength ? contentLength : this.sizeFromContentRange();
@@ -181,6 +201,7 @@ export class HttpResource {
       );
     }
     this.hasReadRange = true;
+    this.ensureUnchanged(response);
     return this.totalOf(response);
   }
 

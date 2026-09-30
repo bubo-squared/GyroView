@@ -44,14 +44,17 @@ bucket) hosting the `.insv` files must:
   Access-Control-Allow-Origin: https://your-site.example   (or *)
   Access-Control-Allow-Methods: GET, HEAD
   Access-Control-Allow-Headers: Range
-  Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges
+  Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges, ETag
   ```
 
-  Without them the browser hides the response and the player reports `cors`.
+  Without them the browser hides the response and the player reports `cors`. `ETag` is
+  optional: with it exposed, a recording replaced at its URL while it plays is told by its
+  `ETag`; without, by its `Last-Modified` and size, which a page may always read. Either way
+  the player reports `source-changed` rather than putting old and new bytes together.
 
-The player asks for every range with `cache: no-store`, so `Cache-Control` and `ETag` on the
-recordings matter to CDNs but never to the browser: it must not answer a range from its own
-cache (ADR 0013).
+The player asks for every range with `cache: no-store`, so `Cache-Control` on the recordings
+matters to CDNs but never to the browser: it must not answer a range from its own cache
+(ADR 0013).
 
 The other lens's file of a split-file recording is looked for beside the recording under its
 camera name (`..._10_...insv` beside `..._00_...insv`) with a `HEAD` request, only when the
@@ -82,7 +85,7 @@ Access-Control-Allow-Origin: https://your-site.example
 Access-Control-Allow-Credentials: true
 Access-Control-Allow-Methods: GET, HEAD
 Access-Control-Allow-Headers: Range
-Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges
+Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges, ETag
 Vary: Origin
 ```
 

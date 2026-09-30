@@ -3,7 +3,6 @@ import {
   ITERATION_END,
   readSampleTable,
   SourceByteStream,
-  UNSPECIFIED_COLOUR,
   type AudioDecoderConfiguration,
   type AudioPackager,
   type AudioSampleSource,
@@ -24,6 +23,7 @@ import {
   RecordType,
   SimulatedLink,
   TrailerFixtureBuilder,
+  UNSPECIFIED_COLOUR,
 } from '@gyroview/core/testing';
 
 import type { OpenedSource, RecordingPorts, SourceOpener } from '../composition/ports';
@@ -88,10 +88,11 @@ export function lensCodecs(spec: LensCodecsSpec): ContainerCodecs {
     codedWidth: spec.codedWidth ?? LENS_SIZE,
     codedHeight: spec.codedHeight ?? LENS_SIZE,
   };
+  const colour = spec.colour ?? UNSPECIFIED_COLOUR;
   const video = Array.from({ length: spec.lenses }, (_, trackIndex) => ({
     trackId: trackIndex + 1,
-    description: { trackIndex, codec, ...size, colour: spec.colour ?? UNSPECIFIED_COLOUR },
-    configuration: { codec, ...size, description: undefined, isFullRange: false },
+    description: { trackIndex, codec, ...size, colour },
+    configuration: { codec, ...size, description: undefined, colour },
   }));
   const soundId = spec.lenses + 1;
   const audio =

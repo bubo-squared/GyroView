@@ -45,6 +45,10 @@ sizes; every constant is named and cites its source.
 
 - `boxes/scanBoxes` walks the MP4 boxes and finds where the Insta360 trailer starts, whether
   it is wrapped in an `inst` box (newer firmware) or bare.
+- `mp4/parseMovie` reads the movie box into a `SampleTable` (ISO/IEC 14496-12: the track and
+  media headers, the sample description and every sample table, 64-bit chunk offsets,
+  composition offsets and edit lists included), each track with the key-frame rule of its codec
+  (`mp4/keyframeRules`); a fragmented file is refused. `docs/FORMAT.md` lists what it reads.
 - `trailer/readTrailer` reads the 72-byte footer and the records' table of contents, either
   through the index record or by walking record headers backwards (`locateRecords`), two
   strategies chosen by what the file contains.
@@ -55,7 +59,7 @@ sizes; every constant is named and cites its source.
   the info record or inferred from the bytes; `records/exposure` parses per-frame shutter times.
   `records/TrailerRecords` reads both on demand through the source.
 - `layout/detectLensLayout` decides how the lens images are stored (a stitching `LensLayout`)
-  from the tracks the demuxer port describes: multi-track (one file, two tracks), split files
+  from the video tracks the codec reader describes: multi-track (one file, two tracks), split files
   (`_00_` and `_10_`) or packed (both circles in one frame). The info record is only a hint.
 - `naming/RecordingFileName` understands `VID_<date>_<time>_<lens><proxy>_<seq>.insv` to guess
   where the other lens file of a split-file pair lives; the guess is always verified against the
@@ -99,6 +103,16 @@ and eased over time, and `seamJoin` names what a stitch does with it: the fixed 
 the lenses' images bent toward each other. They serve `pnpm measure`; the player draws the
 fixed join (ADR 0026).
 
+**`container`**: the `SampleTable` of a file, a `TrackSampleTable` per track as a structure
+of typed arrays: where each sample lies, when it shows and for how long, the sync sample at or
+before one, the sample shown at a time; and the `KeyframeRule` that says whether a sample's
+bytes start a keyframe.
+
+**`download`**: `planDownloads`, the pure plan of a file's download from where its cursors
+stand (ADR 0029): the window the picture reads in, what it wants within the budget, which
+ranges to ask for, which transfers to give up and which bytes to let go of; and the
+`DownloadPolicy` a file's size and duration give.
+
 **`playback`**: `PlayerStateMachine` with the exhaustive transition table
 (`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`).
 
@@ -121,6 +135,15 @@ Use cases that orchestrate the domain through ports.
   for its first frame source (`frameTimesOf`: the sources in the order the info record's pts
   type prefers, the sample table only if needed) and the orientation for stabilization (`motionOf`: gyro integration with the camera's
   IMU frame), each optional with a warning for what is missing.
+- `recording/readSampleTable` finds the movie box and reads it once, into the file's sample table
+  and the movie bytes (`ftyp` and `moov`) a codec reader tells the codecs from.
+- `download/FileDownload` downloads one file while it plays, the only reader of its bytes then
+  (ADR 0029): its `SampleCursor`s say where each reader stands, it plans once a turn whenever
+  that changes or a range comes whole, and carries the plan out through its `Transfers` (the
+  ranges streaming, each into its block) and its `BlockStore`. `DownloadedVideoTrack` and
+  `DownloadedAudioSamples` read a track through it; `startFileDownload` joins a file's tracks to
+  their codecs by track id; `SourceByteStream` streams any random-access source a range at a
+  time.
 - `recording/readRecording` opens a `RandomAccessSource` and reads everything cheap: the
   trailer's table of contents, the info record, the calibration choice. `inspectLayout` maps the
   boxes and the records' places for the inspector, which playing never needs. The result,
@@ -154,10 +177,14 @@ Use cases that orchestrate the domain through ports.
 | Port                 | What the core needs                                                                                                                             | Implementations                                                       |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `RandomAccessSource` | `size()`, `read(ByteRange)`                                                                                                                     | `FileRandomAccessSource`, `HttpRangeSource`, `BlobRandomAccessSource` |
-| `Demuxer`            | open a container, list `VideoTrackReader`s and audio tracks that open as `AudioSegmentSource`s                                                  | `MediabunnyDemuxer`                                                   |
+| `ByteStream`         | a range streamed a chunk at a time, given up by returning its iteration                                                                         | `HttpByteStream`, core `SourceByteStream`                             |
+| `CodecReader`        | each track's decoder configuration, from the movie bytes held in memory                                                                         | `MediabunnyCodecReader`                                               |
+| `VideoTrackReader`   | a video track's key frame times and its packets from a time                                                                                     | core `DownloadedVideoTrack`                                           |
+| `AudioSampleSource`  | a sound track's samples from a time                                                                                                             | core `DownloadedAudioSamples`                                         |
+| `AudioPackager`      | a sound track's samples re-packaged as an `AudioSegmentSource`                                                                                  | `MediabunnyAudioPackager`                                             |
 | `VideoDecoderPort`   | create decoders that emit frames and apply backpressure                                                                                         | `WebCodecsVideoDecoderPort`                                           |
 | `PlaybackClock`      | current time, start/pause/seek, whether it runs, end and failure                                                                                | `MediaSourceAudioClock`, core `application/playback/WallClock`        |
-| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                                          | `MediabunnyAudioSegments`                                             |
+| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                                          | `MediabunnyAudioPackager`'s segments                                  |
 | `FrameSink`          | present a frame pair                                                                                                                            | `ThreeFrameRenderer`                                                  |
 | `PictureRenderer`    | a `FrameSink` that also takes the stabilization rotation, framing, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
 | `SeamMeter`          | the mean colour each lens shows along the seam                                                                                                  | `SeamMeterPass`                                                       |
@@ -169,11 +196,12 @@ page's monotonic clock) and holds no timer, so it is as pure as the rest; the pl
 a recording has no sound this browser plays.
 
 Every port whose adapter talks to the platform has a contract suite that runs against its fake
-in `core/src/testing` and the real adapters alike (`RandomAccessSource`, `Demuxer`,
-`VideoTrackReader`, `VideoDecoderPort`, `PlaybackClock`, `ResourceLocator`), asserting the error
-codes too. `FakeFrameSink` only records what it is shown, for tests of what drives a sink; the
-renderer's own browser tests check what it draws. Audio
-reading and segmenting have no fake: only the real adapters exist and they are tested directly.
+in `core/src/testing` and the real adapters alike (`RandomAccessSource`, `ByteStream`,
+`CodecReader`, `VideoTrackReader`, `AudioSampleSource`, `AudioSegmentSource`,
+`VideoDecoderPort`, `PlaybackClock`, `ResourceLocator`), asserting the error codes too.
+`FakeFrameSink` only records what it is shown, for tests of what drives a sink; the renderer's
+own browser tests check what it draws. `SimulatedLink` is a network in virtual time, for the
+download's tests to assert to the byte what was asked for, what came and what was given up.
 `core/src/testing` also holds what only tests need: the fixture builders (with `encodeAscii`)
 and `equirectangularPixelOf`, the oracle the renderer tests read panoramas with.
 
@@ -191,14 +219,18 @@ on first request.
 One package per external technology; none imports another.
 
 - **`node`**: `FileRandomAccessSource` over the file system, for the CLI and Node tests.
-- **`fetch`**: `HttpRangeSource` reads byte ranges over HTTP, past the browser's own cache
-  (ADR 0013), asks again for a range that failed on the way (ADR 0019), and reports the
-  server's shortcomings with distinct codes (`range-unsupported`, `cors`, `source-unreadable`); `HttpResourceLocator` answers "does it
-  exist" with a HEAD, and a one-byte GET where a server refuses HEAD.
+- **`fetch`**: one `HttpResource` a URL holds what its readers share: the size, the proof of
+  CORS, the retry rules (ADR 0019) and the version the first answer told of, which a replaced
+  recording fails (`source-changed`). `HttpRangeSource` reads a range whole, `HttpByteStream`
+  streams one as it comes, resuming from its next byte a range that broke off or stalled; both
+  read past the browser's own cache (ADR 0013) and report the server's shortcomings with
+  distinct codes (`range-unsupported`, `cors`, `source-unreadable`). `HttpResourceLocator`
+  answers "does it exist" with a HEAD, and a one-byte GET where a server refuses HEAD.
 - **`blob`**: `BlobRandomAccessSource` slices a `File` from a picker or a drop.
-- **`mediabunny`**: the demuxer and track readers over the mediabunny library; an audio track
-  opens as `MediabunnyAudioSegments`, its packets re-packaged into fragmented MP4 without
-  re-encoding (ADR 0003, ADR 0007). The core never reads audio samples.
+- **`mediabunny`**: `MediabunnyCodecReader` tells each track's decoder configuration from the
+  movie bytes held in memory, and `MediabunnyAudioPackager` re-packages a sound track's samples
+  into fragmented MP4 without re-encoding (ADR 0003, ADR 0007, ADR 0029). mediabunny reads no
+  file of its own.
 - **`webcodecs`**: `WebCodecsVideoDecoderPort`, hardware decoding in the browser with the
   port's key-frame and backpressure contract (ADR 0002).
 - **`mse-audio`**: `MediaSourceAudioClock`, a hidden audio element fed through Media Source
@@ -226,13 +258,14 @@ One package per external technology; none imports another.
 The composition root and the user-facing element, in three layers.
 
 - **`composition`**: `openRecording` is the use case that opens what a `PlayerSource` names,
-  following the data: `readRecording`, demux every input, `detectLensLayout` (fetching the
-  other lens file of a lone split file when the server has it: before demuxing when the info
-  record says the recording is split, after the tracks fall short otherwise), calibration
-  required, the decode probe
-  (an undecodable recording is an error; nothing plays in its place, ADR 0017), then the core's
-  `timeRecording`.
-  It depends on `RecordingPorts` (`SourceOpener`, `Demuxer`, `VideoDecoderPort`, a
+  following the data: `readInputs` reads the trailer, and every input's sample table and codecs,
+  then `detectLensLayout` (fetching the other lens file of a lone split file when the server has
+  it: before reading its tracks when the info record says the recording is split, after they
+  fall short otherwise), calibration required, one download a file (ADR 0029), the decode probe
+  through them (an undecodable recording is an error; nothing plays in its place, ADR 0017),
+  then the core's `timeRecording`. The downloads read only what the picture waits for until the
+  pipeline's session first flows, then read ahead.
+  It depends on `RecordingPorts` (`SourceOpener`, `CodecReader`, `AudioPackager`, `VideoDecoderPort`, a
   `ResourceLocator` for each input, so the other lens file is looked for with the main file's
   credentials (ADR 0027), a deadline factory), so it is tested against fakes; `browserPorts`
   supplies the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
@@ -329,10 +362,11 @@ trial (ADR 0026).
 ## Two flows
 
 **Opening and playing a recording.** `<gyro-view src>` → `Player.load` → `openRecording`
-(bytes through `SourceOpener`, `readRecording`, demux, layout, calibration, probe, timing,
-motion) → `buildPipeline` (clock, `ThreeFrameRenderer`, `StabilizingFrameSink`,
-`GainMatchingFrameSink`, `PlaybackSession`) → `ready` event → `preload` shows the first frame → `play` → the session
-starts a `DecodePipeline`, waits in `buffering` for two pairs, starts the clock → on each
+(bytes through `SourceOpener`, `readRecording`, the sample tables and codecs, layout,
+calibration, the downloads, probe, timing, motion) → `buildPipeline` (clock, `ThreeFrameRenderer`, `StabilizingFrameSink`,
+`GainMatchingFrameSink`, `PlaybackSession`) → `ready` event → `preload` shows the first frame → `play` → the downloads read
+ahead, the session starts a `DecodePipeline`, waits in `buffering` for two pairs, starts the
+clock → on each
 animation frame `tick` takes the pair due, the stabilizing sink sets the rotation for its
 mid-exposure orientation, the renderer uploads the frames and draws one stitched pass; every
 half second the gain-match pass measures the seam and adjusts the lens gains.

@@ -1,6 +1,6 @@
 # ADR 0029: The player reads the sample tables and downloads the bytes itself
 
-Status: proposed (2026-09-30)
+Status: accepted (2026-09-30)
 
 ## Context
 
@@ -48,7 +48,16 @@ download per file that is the only reader of the network while the recording pla
   picture needs, and it is served from the same bytes.
 - **What no cursor needs any more is cancelled at once.** A seek releases the old cursors and
   aborts their requests before the new position is asked for. Requests stream: each sample is
-  handed on as soon as its last byte has arrived.
+  handed on as soon as its last byte has arrived. A range that breaks off, or brings no byte for
+  10 s, is asked for again from its next byte, under ADR 0019's rules.
+- **Sound follows the picture's window.** It is read within the window, never beyond it; once
+  playing, where no picture is read (after the last frame), the window stands where the picture
+  last stood, or at the sound where no picture was ever read.
+- **A recording replaced while it plays fails.** Every answer is held to the version the first
+  told of: its `ETag` where both expose one, else its `Last-Modified` and size, which a page on
+  another origin may always read. A change is `source-changed`, never old and new bytes put
+  together. The versions come from the answers themselves: a conditional request would cost
+  every range a CORS preflight.
 - **The download follows a budget in time and bytes.** Ahead of the picture it keeps at most
   10 s or 128 MiB, whichever is less, and tops up below three quarters of that; behind it keeps
   2 s for short backward seeks. Paused after playing, it goes on up to the budget and stops.

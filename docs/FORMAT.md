@@ -16,6 +16,35 @@ lens (`_00_` back lens, `_10_` screen-side lens) at 5.7K and a single 2:1 packed
 that (unverified: no sample). The LRV proxy is a 1664x832 packed dual fisheye with the same
 trailer.
 
+## Movie box
+
+The core reads the movie box itself into a sample table (`format/mp4`, ADR 0029), by ISO/IEC
+14496-12. What it reads, box by box:
+
+- `mvhd`: the movie timescale, for edit lists. `mvex` marks a fragmented file, which is refused
+  (`unsupported-container`); no camera writes one.
+- `trak/tkhd`: the track id, which joins the track to its codec. `mdia/mdhd`: the media
+  timescale. `mdia/hdlr`: `vide` or `soun`; tracks of any other handler (the cameras' own
+  metadata tracks) are left out.
+- `stbl/stsd`: the sample entry type, and for AVC and HEVC the NAL length size from `avcC`
+  (byte 4) or `hvcC` (byte 21), low two bits plus one.
+- `stts` durations, `ctts` composition offsets (read signed in both versions, as mediabunny
+  does), `stss` sync samples (none listed: every sample is one), `stsz` sizes, `stsc` samples a
+  chunk, `stco` or `co64` chunk offsets.
+- `edts/elst`: the first edit that shows media, at rate 1 (16.16 fixed point); an empty edit
+  before it delays the track by its length in the movie timescale.
+
+Timing matches mediabunny's to the sample: a sample's time is its presentation time less the
+edit's shift, divided once by the timescale; with composition offsets a sample lasts until the
+next one shows, the last shown keeping its own duration. A listed sync sample of AVC or HEVC is
+checked against its first slice before decoding starts there (an IDR for AVC, type 5; an IRAP
+for HEVC, types 16 to 23: ITU-T H.264 and H.265 Table 7-1); one that is none is passed over.
+
+Seen on every sample: the movie box at the end, beside the trailer; no fragments; one sample
+a chunk, the tracks' samples alternating in file order (a lens frame, the other lens's, and
+sound between); `co64` on large files and on the X3; one `ctts` entry on HEVC; an empty edit
+at the start of the X3's sound.
+
 ## File names
 
 `VID_20260814_132640_00_013.insv`: prefix, capture date and time, a two-digit stream code and a

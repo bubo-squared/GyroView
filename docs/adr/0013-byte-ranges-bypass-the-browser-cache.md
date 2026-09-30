@@ -2,7 +2,8 @@
 
 Status: accepted (2026-09-21); amended (2026-09-27): only a host that composes the player itself
 (`createBrowserPlayer` with `http.requestInit`) can choose another cache mode; the element and
-the embed always read with `no-store`
+the embed always read with `no-store`; amended (2026-09-30): what playing needs is held by the
+file download within its budget (ADR 0029), no longer by mediabunny's cache
 
 ## Context
 

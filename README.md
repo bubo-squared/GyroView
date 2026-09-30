@@ -39,7 +39,7 @@ npm install @bubo-squared/gyroview
 import '@bubo-squared/gyroview/define'; // registers <gyro-view>
 ```
 
-Without a bundler, load the package's standalone file (Three.js and the demuxer inside) from
+Without a bundler, load the package's standalone file (Three.js and mediabunny inside) from
 a CDN or your own host; the site build's `gyro-view.js` registers the element the same way:
 
 ```html
@@ -300,7 +300,10 @@ square, 0015 view modes replace projections, 0016 the player owns its settings, 
 recording itself or an error, 0018 every view mode zooms toward the pointer, 0019 a range that
 fails on the way is asked for again, 0020 one npm package bundles the core and the adapters, 0021
 changes are announced once whole, 0022 the player opens on the raw lenses, 0023 the legacy
-radius spans 96 degrees.
+radius spans 96 degrees, 0024 lens sampling reads the pixel's footprint, 0025 the lens pose as
+measured against Studio, 0026 the seam bent by its disparity (a trial), 0027 credentials follow
+`crossorigin`, 0028 the controls fit the player and the pointer, 0029 the player reads the sample
+tables and downloads the bytes itself.
 
 ## License
 

@@ -1,6 +1,8 @@
 # ADR 0002: Decode with WebCodecs, not with video elements
 
-Status: accepted (2026-09-18); the proxy fallback superseded by ADR 0017
+Status: accepted (2026-09-18); the proxy fallback superseded by ADR 0017; amended (2026-09-30):
+the packets come from the core's own sample tables through the file downloads, not from
+mediabunny (ADR 0029)
 
 ## Context
 

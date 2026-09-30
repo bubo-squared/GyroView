@@ -69,6 +69,7 @@ export {
 } from './protobufWriter';
 export { InfoRecordFormat, RecordType } from '../domain/format/constants';
 export { parseOffsetString } from '../domain/format/calibration/parseOffsetString';
+export { MeiModel, type MeiParameters } from '../domain/optics/MeiModel';
 export {
   equirectangularDirectionOf,
   equirectangularPixelOf,

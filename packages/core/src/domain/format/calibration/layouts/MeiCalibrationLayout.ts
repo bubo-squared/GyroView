@@ -29,8 +29,11 @@ export const MEI_CALIBRATION_LAYOUT: CalibrationStringLayout = {
         xi: block(V3Token.Xi),
         focal: [block(V3Token.FocalX), block(V3Token.FocalY)],
         principalPoint: { x: block(V3Token.CenterX), y: block(V3Token.CenterY) },
-        radial: [block(V3Token.K1), block(V3Token.K2), block(V3Token.K3)],
-        tangential: [block(V3Token.P1), block(V3Token.P2)],
+        distortion: {
+          radial: [block(V3Token.K1), block(V3Token.K2), block(V3Token.K3)],
+          tangential: [{ p1: block(V3Token.P1), p2: block(V3Token.P2) }],
+          thinPrism: [],
+        },
       }),
       orientation: eulerDegrees(block(V3Token.Yaw), block(V3Token.Pitch), block(V3Token.Roll)),
       translation: [

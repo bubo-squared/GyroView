@@ -111,7 +111,7 @@ export class TrackSampleTable {
 
   public syncSampleAtOrBefore(sample: number): number | undefined {
     const { syncSamples } = this.parts;
-    if (!syncSamples) return sample;
+    if (!syncSamples) return sample >= 0 ? sample : undefined;
     const count = countAtOrBelow(syncSamples.length, (index) => syncSamples[index] ?? 0, sample);
     return syncSamples[count - 1];
   }

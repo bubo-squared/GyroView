@@ -83,18 +83,14 @@ export class DownloadedVideoTrack implements VideoTrackReader {
     const { track } = this.parts;
     let sample = track.keyframeAt(time);
     while (sample !== undefined && this.rejected.has(sample)) {
-      sample = sample > 0 ? track.syncSampleAtOrBefore(sample - 1) : undefined;
+      sample = track.syncSampleAtOrBefore(sample - 1);
     }
     return sample;
   }
 
   private firstKeyframeSample(): number | undefined {
     const { track } = this.parts;
-    for (
-      let sample = track.firstSyncSample() ?? track.sampleCount;
-      sample < track.sampleCount;
-      sample += 1
-    ) {
+    for (let sample = 0; sample < track.sampleCount; sample += 1) {
       if (track.isSync(sample) && !this.rejected.has(sample)) return sample;
     }
     return undefined;

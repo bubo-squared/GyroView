@@ -21,7 +21,8 @@
     "test:core": "vitest run --project core",
     "test:coverage": "vitest run --coverage",
     "build": "pnpm --filter @gyroview/embed --filter @bubo-squared/gyroview build",
-    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm depcruise && pnpm test && pnpm build",
+    "privacy:check": "node test/checkPrivateSamples.mjs",
+    "verify": "pnpm privacy:check && pnpm typecheck && pnpm lint && pnpm format:check && pnpm depcruise && pnpm test && pnpm build",
     "inspect": "pnpm --filter @gyroview/insv-inspect exec tsx src/main.ts",
     "fixtures:build": "pnpm --filter @gyroview/fixtures build",
     "measure": "pnpm --filter @gyroview/integration measure"

@@ -16,7 +16,6 @@ import { matchedGains, measuredDisparity, type MeasuredDisparity } from './suppo
 import { quartilesOf } from './support/statistics';
 import { openStudioMoment, type StudioMoment } from './support/studioFrame';
 
-const COMPARED_TIMES = new Set([55, 100, 175]);
 /**
  * The radial scales tried on each reading, against the reading as the core reads it: the legacy
  * radius at 96 to 98 degrees for the equidistant model, both Mei readings up to the Mei model's
@@ -91,7 +90,7 @@ for (const clip of STUDIO_CLIPS) {
       for (const cleanup of cleanups.splice(0).toReversed()) cleanup();
     });
 
-    const compared = clip.frames.filter((frame) => COMPARED_TIMES.has(frame.time));
+    const compared = clip.frames.filter((frame) => clip.comparedTimes.includes(frame.time));
     for (const frame of compared) {
       it(
         `scores every reading and radial scale on the Studio frame at ${frame.time} s`,

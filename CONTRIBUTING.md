@@ -50,6 +50,15 @@ macOS when there is one, because Playwright's own Chromium build has no HEVC dec
 `pnpm measure` runs them again writing their renders to `.artifacts/` for inspection, with the
 measurements too slow for every run, such as the IMU frame ranking of ADR 0009.
 
+A recording someone shared privately stays local (ADR 0031). Describe it in
+`samples/catalogue.json`, git-ignored with the samples: its folder and file, frame rate, the
+moments the tests render and rank at, its Studio export's frames if there is one, and its
+`privateTokens` (the file name, the serial). The tests pick it up from there, and
+`pnpm privacy:check` (part of `pnpm verify`, and of the commit hooks) refuses any of those words
+in tracked files, staged changes or a commit message. Its bytes and its numbers never enter the
+repository: tests of its camera use synthetic fixtures, and ADRs report measurements on it as
+aggregates.
+
 ## On a phone
 
 The developer page (`pnpm --filter @gyroview/embed dev`) lists the recordings in `samples/` and

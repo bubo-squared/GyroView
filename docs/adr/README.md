@@ -34,4 +34,5 @@ new record takes the next number and a line here.
 - [ADR 0028](0028-the-controls-fit-the-player-and-the-pointer.md): The controls fit the player's width and the pointer
 - [ADR 0029](0029-the-player-reads-the-sample-tables-and-downloads-the-bytes.md): The player reads the sample tables and downloads the bytes itself
 - [ADR 0030](0030-errors-say-whose-side-they-are-on.md): Errors say whose side they are on; a browser without WebCodecs has its own code
+- [ADR 0031](0031-private-samples-stay-local.md): A recording shared privately stays local; the tests learn it from a git-ignored catalogue
 - [ADR 0032](0032-the-v6-string-is-a-mei-model-with-more-terms.md): The v6 calibration string is a Mei model with more terms, read as radial terms and one tangential pair (provisional)

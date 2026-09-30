@@ -1,6 +1,7 @@
 import { seconds, type Seconds } from '@gyroview/core';
 import { inject } from 'vitest';
 
+import { LOCAL_SAMPLES } from '../../browser/localSamples';
 import { OFFICE_5K7_60, SAILING_8K_30, type SampleRecording } from '../../browser/sampleUrls';
 
 /**
@@ -23,6 +24,9 @@ export const REFERENCE_PANORAMA_SIZE = { width: 1536, height: 768 } as const;
  *
  *   ffmpeg -ss <t> -i <export> -frames:v 1 -vf scale=1536:768 \
  *     .artifacts/reference/studio-<slug>-<t>s.png
+ *
+ * and, from an HLG export, with its own matrix and range, keeping the code values the lab draws
+ * a recording's texels as (`scale=1536:768:in_color_matrix=bt2020:in_range=tv:out_range=pc`).
  */
 export interface ReferenceClip {
   readonly slug: string;
@@ -34,6 +38,10 @@ export interface ReferenceClip {
    */
   readonly start: Seconds;
   readonly frames: readonly ReferenceFrame[];
+  /**
+   * The frames the lens readings, the slowest measurement, are scored on.
+   */
+  readonly comparedTimes: readonly number[];
 }
 
 /**
@@ -44,11 +52,34 @@ const FIRST_FRAME_SECONDS = 10;
 const FRAME_SPACING_SECONDS = 15;
 
 function framesOf(slug: string, count: number): ReferenceFrame[] {
-  return Array.from({ length: count }, (_, index) => {
-    const time = seconds(FIRST_FRAME_SECONDS + index * FRAME_SPACING_SECONDS);
-    return { time, url: `${inject('referenceFolder')}studio-${slug}-${time}s.png` };
-  });
+  return framesAt(
+    slug,
+    Array.from(
+      { length: count },
+      (_, index) => FIRST_FRAME_SECONDS + index * FRAME_SPACING_SECONDS,
+    ),
+  );
 }
+
+function framesAt(slug: string, times: readonly number[]): ReferenceFrame[] {
+  return times.map((time) => ({
+    time: seconds(time),
+    url: `${inject('referenceFolder')}studio-${slug}-${time}s.png`,
+  }));
+}
+
+/**
+ * The frames of both X5 exports the lens readings are scored on: early, midway and late, seven
+ * readings a frame taking half a minute each.
+ */
+const X5_EARLY_COMPARED_SECONDS = 55;
+const X5_MIDWAY_COMPARED_SECONDS = 100;
+const X5_LATE_COMPARED_SECONDS = 175;
+const X5_COMPARED_TIMES = [
+  X5_EARLY_COMPARED_SECONDS,
+  X5_MIDWAY_COMPARED_SECONDS,
+  X5_LATE_COMPARED_SECONDS,
+];
 
 /**
  * `Jedrenje 360.mp4` beside the sailing recording: 8K at 30 fps, the whole clip, 194 s.
@@ -60,6 +91,7 @@ const STUDIO_SAILING: ReferenceClip = {
   sample: SAILING_8K_30,
   start: seconds(0),
   frames: framesOf('sailing', SAILING_FRAME_COUNT),
+  comparedTimes: X5_COMPARED_TIMES,
 };
 
 /**
@@ -73,9 +105,33 @@ const STUDIO_OFFICE: ReferenceClip = {
   sample: OFFICE_5K7_60,
   start: seconds(OFFICE_START_SECONDS),
   frames: framesOf('office', OFFICE_FRAME_COUNT),
+  comparedTimes: X5_COMPARED_TIMES,
 };
 
-export const STUDIO_CLIPS: readonly ReferenceClip[] = [STUDIO_SAILING, STUDIO_OFFICE];
+/**
+ * The Studio exports of the local samples (ADR 0031), their frames at the times the catalogue
+ * names.
+ */
+const LOCAL_STUDIO_CLIPS: readonly ReferenceClip[] = LOCAL_SAMPLES.flatMap(
+  ({ slug, sample, studio }) =>
+    studio === undefined
+      ? []
+      : [
+          {
+            slug,
+            sample,
+            start: seconds(studio.start),
+            frames: framesAt(slug, studio.frameTimes),
+            comparedTimes: studio.comparedTimes,
+          },
+        ],
+);
+
+export const STUDIO_CLIPS: readonly ReferenceClip[] = [
+  STUDIO_SAILING,
+  STUDIO_OFFICE,
+  ...LOCAL_STUDIO_CLIPS,
+];
 
 /**
  * The recording's time of the export's frame.

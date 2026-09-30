@@ -7,6 +7,7 @@ import { playwright } from '@vitest/browser-playwright';
 import { defineProject, type UserWorkspaceConfig } from 'vitest/config';
 
 import { AUTOPLAY_WITHOUT_GESTURE, chromiumArguments } from '../../test/browserLaunch.mjs';
+import { localSampleEntries, realFolderOf, servedLocalSample } from './src/localCatalogueFile.ts';
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const ARTIFACTS = path.join(REPOSITORY_ROOT, '.artifacts');
@@ -40,6 +41,16 @@ const SAMPLE_FOLDERS = ['office', 'sailing', 'krnjaca-c2'].map((name) =>
 const sampleTargets = SAMPLE_FOLDERS.filter((folder) => existsSync(folder)).map((folder) =>
   realpathSync(folder),
 );
+/**
+ * The recordings only this machine has, from the git-ignored catalogue (ADR 0031), and the
+ * folders Vite serves: the repository's, and the real folders of every sample.
+ */
+const localSamples = localSampleEntries();
+const SERVED_FOLDERS = [
+  REPOSITORY_ROOT,
+  ...sampleTargets,
+  ...localSamples.map((entry) => realFolderOf(entry)),
+];
 
 /**
  * Playwright's own Chromium build has no HEVC decoder; the installed Google Chrome does. The
@@ -68,13 +79,15 @@ export interface BrowserProjectOptions {
  */
 export function browserProject(options: BrowserProjectOptions): UserWorkspaceConfig {
   return defineProject({
-    server: {
-      fs: { allow: [REPOSITORY_ROOT, ...sampleTargets] },
-    },
+    server: { fs: { allow: SERVED_FOLDERS } },
     test: {
       name: options.name,
       include: options.include,
-      provide: { savesArtifacts: options.savesArtifacts, referenceFolder: REFERENCE_FOLDER_URL },
+      provide: {
+        savesArtifacts: options.savesArtifacts,
+        referenceFolder: REFERENCE_FOLDER_URL,
+        localSamples: localSamples.map((entry) => servedLocalSample(entry)),
+      },
       testTimeout: 90_000,
       hookTimeout: 90_000,
       /**

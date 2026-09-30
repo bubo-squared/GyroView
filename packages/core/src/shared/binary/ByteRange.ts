@@ -43,6 +43,20 @@ export class ByteRange {
   }
 
   /**
+   * Whether the two share a byte; an empty range shares none.
+   */
+  public overlaps(other: ByteRange): boolean {
+    return Math.max(this.offset, other.offset) < Math.min(this.end, other.end);
+  }
+
+  /**
+   * Whether `other` lies wholly within this range.
+   */
+  public contains(other: ByteRange): boolean {
+    return this.offset <= other.offset && other.end <= this.end;
+  }
+
+  /**
    * Refuses a range that runs past the end of a `totalSize`-byte source with the error the
    * `RandomAccessSource` contract asks for; `source` names the source in the message.
    */

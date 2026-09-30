@@ -37,20 +37,14 @@ export class ByteRangeSet {
    * Whether every byte of `range` is in the set; an empty range always is.
    */
   public covers(range: ByteRange): boolean {
-    return (
-      range.length === 0 ||
-      this.ranges.some((held) => held.offset <= range.offset && range.end <= held.end)
-    );
+    return range.length === 0 || this.ranges.some((held) => held.contains(range));
   }
 
   /**
    * Whether any byte of `range` is in the set; an empty range never is.
    */
   public overlaps(range: ByteRange): boolean {
-    return (
-      range.length > 0 &&
-      this.ranges.some((held) => held.offset < range.end && range.offset < held.end)
-    );
+    return this.ranges.some((held) => held.overlaps(range));
   }
 
   /**

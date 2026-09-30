@@ -13,7 +13,8 @@ export interface RecordedRequest {
   readonly method: string;
   readonly range: RequestedRange | undefined;
   /**
-   * Page time, in milliseconds (`performance.now()`), of the request and of its last byte.
+   * Page time, in milliseconds (`performance.now()`), of the request, and of its last byte or its
+   * abort.
    */
   readonly startedAt: number;
   readonly finishedAt: number | undefined;
@@ -126,7 +127,9 @@ class RequestRecord {
     init?.signal?.addEventListener(
       'abort',
       () => {
-        this.wasAborted = this.finishedAt === undefined;
+        if (this.finishedAt !== undefined) return;
+        this.wasAborted = true;
+        this.finishedAt = performance.now();
       },
       { once: true },
     );

@@ -97,7 +97,7 @@ export class FileDownload {
     return {
       bytesOf: (range): Uint8Array | undefined => this.store.bytesOf(range),
       failureOf: (range): Error | undefined =>
-        this.failures.find((failed) => isOverlapping(failed.range, range))?.error,
+        this.failures.find((failed) => failed.range.overlaps(range))?.error,
       changed: (): void => {
         this.schedulePlan();
       },
@@ -147,7 +147,7 @@ export class FileDownload {
     for (const id of decisions.cancel) this.transfers.cancel(id);
     this.store.release(decisions.release);
     for (const range of decisions.start) {
-      const hasFailed = this.failures.some((failure) => isOverlapping(failure.range, range));
+      const hasFailed = this.failures.some((failure) => failure.range.overlaps(range));
       if (!hasFailed) this.transfers.start(range);
     }
   }
@@ -166,8 +166,4 @@ export class FileDownload {
     for (const cursor of this.cursors) cursor.fail(range, error);
     this.schedulePlan();
   }
-}
-
-function isOverlapping(left: ByteRange, right: ByteRange): boolean {
-  return left.offset < right.end && right.offset < left.end;
 }

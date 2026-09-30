@@ -43,4 +43,24 @@ describe('ByteRange', () => {
       message: 'cannot take 11 bytes from a 10-byte source',
     });
   });
+
+  it('overlaps another range when they share a byte', () => {
+    const range = ByteRange.of(10, 5);
+    expect(range.overlaps(ByteRange.of(14, 3))).toBe(true);
+    expect(range.overlaps(ByteRange.of(5, 6))).toBe(true);
+    expect(range.overlaps(ByteRange.of(15, 3))).toBe(false);
+    expect(range.overlaps(ByteRange.of(5, 5))).toBe(false);
+  });
+
+  it('overlaps no range when either is empty', () => {
+    expect(ByteRange.of(10, 5).overlaps(ByteRange.of(12, 0))).toBe(false);
+    expect(ByteRange.of(12, 0).overlaps(ByteRange.of(10, 5))).toBe(false);
+  });
+
+  it('contains a range lying wholly within it, up to both its ends', () => {
+    const range = ByteRange.of(10, 5);
+    expect(range.contains(ByteRange.of(10, 5))).toBe(true);
+    expect(range.contains(ByteRange.of(9, 3))).toBe(false);
+    expect(range.contains(ByteRange.of(13, 3))).toBe(false);
+  });
 });

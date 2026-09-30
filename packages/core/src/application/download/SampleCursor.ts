@@ -89,9 +89,7 @@ export class SampleCursor {
    */
   public fail(range: ByteRange, error: Error): void {
     const { waiter } = this;
-    if (waiter === undefined) return;
-    const awaited = this.track.rangeOf(this.next);
-    if (awaited.end <= range.offset || range.end <= awaited.offset) return;
+    if (waiter === undefined || !range.overlaps(this.track.rangeOf(this.next))) return;
     this.waiter = undefined;
     waiter.reject(error);
   }

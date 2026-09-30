@@ -77,7 +77,7 @@ export class BlockStore {
    * The bytes of `range`, if every one of them has come.
    */
   public bytesOf(range: ByteRange): Uint8Array | undefined {
-    const within = this.blocks.find((block) => isWithin(block.filledRange, range));
+    const within = this.blocks.find((block) => block.filledRange.contains(range));
     if (within) return viewOf(within, range);
     return this.held.covers(range) ? this.copyOf(range) : undefined;
   }
@@ -111,10 +111,6 @@ export class BlockStore {
     }
     return copy;
   }
-}
-
-function isWithin(outer: ByteRange, inner: ByteRange): boolean {
-  return outer.offset <= inner.offset && inner.end <= outer.end;
 }
 
 function viewOf(block: FillingBlock, range: ByteRange): Uint8Array {

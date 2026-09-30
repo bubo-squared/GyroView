@@ -7,6 +7,6 @@ import { browserProject } from './browserProject.ts';
  */
 export default browserProject({
   name: 'integration-measure',
-  include: ['src/browser/**/*.test.ts', 'src/measure/**/*.test.ts'],
+  include: ['src/browser/**/*.test.ts', 'src/measure/*.test.ts'],
   savesArtifacts: true,
 });

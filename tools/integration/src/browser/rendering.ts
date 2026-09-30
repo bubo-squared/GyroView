@@ -12,6 +12,7 @@ import {
   type StitchingSetup,
   type Vector3,
 } from '@gyroview/core';
+import { shownAsRecorded } from '@gyroview/core/testing';
 import type { OpenedRecording } from '@gyroview/player/composition';
 
 export interface CanvasSize {
@@ -89,7 +90,11 @@ export function setupOf(opened: OpenedRecording): StitchingSetup {
  * the X6) is compared with, so that colour stays out of the geometry.
  */
 export function recordedSetupOf(opened: OpenedRecording): StitchingSetup {
-  return buildStitchingSetup({ calibration: calibrationOf(opened), layout: opened.layout });
+  return buildStitchingSetup({
+    calibration: calibrationOf(opened),
+    layout: opened.layout,
+    displayConversions: shownAsRecorded(opened.layout),
+  });
 }
 
 /**

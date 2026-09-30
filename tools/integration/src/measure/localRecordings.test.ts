@@ -1,11 +1,5 @@
 import { readPixels } from '@gyroview/adapter-three/testing';
-import {
-  buildStitchingSetup,
-  DecodePipeline,
-  FramePairQueue,
-  seconds,
-  type Vector3,
-} from '@gyroview/core';
+import { DecodePipeline, FramePairQueue, seconds, type Vector3 } from '@gyroview/core';
 import { waitFor } from '@gyroview/player/testing';
 import {
   DECODE_PIPELINE_OPTIONS,
@@ -18,7 +12,7 @@ import { drawAndSaveRender, saveMeasurement, saveRender } from '../browser/artif
 import { LOCAL_SAMPLES } from '../browser/localSamples';
 import { coverageOf, measureCentre } from '../browser/pictureChecks';
 import { port } from '../browser/realRecordingSupport';
-import { calibrationOf, equirectangularRendering } from '../browser/rendering';
+import { equirectangularRendering, recordedSetupOf } from '../browser/rendering';
 import { SharedSample } from '../browser/SharedSample';
 
 const PANORAMA_SIZE = { width: 1536, height: 768 };
@@ -34,8 +28,9 @@ const THROUGHPUT_TIMEOUT_MS = 60_000;
 const MILLISECONDS_PER_SECOND = 1000;
 
 /**
- * How many pairs a second the decoders deliver from `from`, each closed as it arrives: what
- * playback needs to keep up with the recording's frame rate (ADR 0033's 8K50 question).
+ * How many pairs a second the decoders deliver from `from`, each closed as it arrives: the
+ * decoding alone, before any upload or drawing (ADR 0033's 8K50 question). Unlike `takePairs`,
+ * it keeps no frame, so the decoders are never held back by a full queue.
  */
 async function pairsPerSecondOf(opened: OpenedRecording, from: number): Promise<number> {
   const pipeline = new DecodePipeline<VideoFrame>(
@@ -47,25 +42,27 @@ async function pairsPerSecondOf(opened: OpenedRecording, from: number): Promise<
   const run = pipeline.run(seconds(from), queue);
   let taken = 0;
   let started: number | undefined;
-  await waitFor(
-    () => {
-      for (let head = queue.peekTimestamp(); head !== undefined; head = queue.peekTimestamp()) {
-        const pair = queue.takePairAt(head);
-        if (!pair) break;
-        for (const frame of pair.frames) frame.close();
-        started ??= performance.now();
-        taken += 1;
-      }
-      return taken > TIMED_PAIRS;
-    },
-    `${TIMED_PAIRS} decoded pairs`,
-    THROUGHPUT_TIMEOUT_MS,
-  );
-  const elapsed = (performance.now() - (started ?? 0)) / MILLISECONDS_PER_SECOND;
-  pipeline.abort();
-  await run;
-  queue.close();
-  return (taken - 1) / elapsed;
+  try {
+    await waitFor(
+      () => {
+        for (let head = queue.peekTimestamp(); head !== undefined; head = queue.peekTimestamp()) {
+          const pair = queue.takePairAt(head);
+          if (!pair) break;
+          for (const frame of pair.frames) frame.close();
+          started ??= performance.now();
+          taken += 1;
+        }
+        return taken > TIMED_PAIRS;
+      },
+      `${TIMED_PAIRS} decoded pairs`,
+      THROUGHPUT_TIMEOUT_MS,
+    );
+    return (taken - 1) / ((performance.now() - (started ?? 0)) / MILLISECONDS_PER_SECOND);
+  } finally {
+    pipeline.abort();
+    await run;
+    queue.close();
+  }
 }
 
 /**
@@ -74,54 +71,53 @@ async function pairsPerSecondOf(opened: OpenedRecording, from: number): Promise<
  * circle lies against the canvas window and the sensor window (ADR 0014), whose radius tells the
  * lens's field edge.
  */
-for (const local of LOCAL_SAMPLES) {
-  describe(`the local recording ${local.name}`, () => {
-    const shared = new SharedSample(local.sample);
+describe.skipIf(LOCAL_SAMPLES.length === 0)('the local recordings', () => {
+  for (const local of LOCAL_SAMPLES) {
+    describe(`the local recording ${local.name}`, () => {
+      const shared = new SharedSample(local);
 
-    afterAll(() => {
-      shared.dispose();
-    });
-
-    it(`stitches the frame at ${local.renderMoment} s into a panorama without holes`, async (context) => {
-      const opened = await shared.open(context);
-      const { first } = await shared.momentAt(context, local.renderMoment);
-      const { canvas, renderer, dispose } = equirectangularRendering(opened, PANORAMA_SIZE);
-      try {
-        renderer.present({ pair: first, mediaTime: first.timestamp });
-        const prefix = `${local.slug}-${local.renderMoment}s`;
-        await saveRender(`${prefix}-equirect`, canvas);
-        expect(coverageOf(readPixels(canvas))).toBeGreaterThan(MIN_COVERAGE);
-        await drawAndSaveRender(`${prefix}-lens0`, canvas, () => {
-          renderer.setLensGains([UNITY_GAIN, SILENCED]);
-        });
-        await drawAndSaveRender(`${prefix}-lens1`, canvas, () => {
-          renderer.setLensGains([SILENCED, UNITY_GAIN]);
-        });
-      } finally {
-        dispose();
-      }
-    });
-
-    it(`finds each lens's image circle at ${local.renderMoment} s`, async (context) => {
-      const opened = await shared.open(context);
-      const { first } = await shared.momentAt(context, local.renderMoment);
-      const setup = buildStitchingSetup({
-        calibration: calibrationOf(opened),
-        layout: opened.layout,
+      afterAll(() => {
+        shared.dispose();
       });
-      const measurements = setup.lenses.map((lens) => measureCentre(opened, lens, first));
-      await saveMeasurement(`${local.slug}-${local.renderMoment}s-image-circle`, measurements);
-      expect(measurements).toHaveLength(setup.lenses.length);
-    });
 
-    it(`decodes pairs from ${local.renderMoment} s at a pace it reports against its frame rate`, async (context) => {
-      const opened = await shared.open(context);
-      const pairsPerSecond = await pairsPerSecondOf(opened, local.renderMoment);
-      await saveMeasurement(`${local.slug}-decode-rate`, {
-        pairsPerSecond,
-        frameRate: local.frameRate,
+      it(`stitches the frame at ${local.renderMoment} s into a panorama without holes`, async (context) => {
+        const opened = await shared.open(context);
+        const { first } = await shared.momentAt(context, local.renderMoment);
+        const { canvas, renderer, dispose } = equirectangularRendering(opened, PANORAMA_SIZE);
+        try {
+          renderer.present({ pair: first, mediaTime: first.timestamp });
+          const prefix = `${local.slug}-${local.renderMoment}s`;
+          await saveRender(`${prefix}-equirect`, canvas);
+          expect(coverageOf(readPixels(canvas))).toBeGreaterThan(MIN_COVERAGE);
+          await drawAndSaveRender(`${prefix}-lens0`, canvas, () => {
+            renderer.setLensGains([UNITY_GAIN, SILENCED]);
+          });
+          await drawAndSaveRender(`${prefix}-lens1`, canvas, () => {
+            renderer.setLensGains([SILENCED, UNITY_GAIN]);
+          });
+        } finally {
+          dispose();
+        }
       });
-      expect(pairsPerSecond).toBeGreaterThan(0);
+
+      it(`measures where each lens's image circle lies at ${local.renderMoment} s`, async (context) => {
+        const opened = await shared.open(context);
+        const { first } = await shared.momentAt(context, local.renderMoment);
+        const setup = recordedSetupOf(opened);
+        const measurements = setup.lenses.map((lens) => measureCentre(opened, lens, first));
+        await saveMeasurement(`${local.slug}-${local.renderMoment}s-image-circle`, measurements);
+        expect(measurements).toHaveLength(setup.lenses.length);
+      });
+
+      it(`measures how many pairs a second it decodes from ${local.renderMoment} s`, async (context) => {
+        const opened = await shared.open(context);
+        const pairsPerSecond = await pairsPerSecondOf(opened, local.renderMoment);
+        await saveMeasurement(`${local.slug}-decode-rate`, {
+          pairsPerSecond,
+          frameRate: local.frameRate,
+        });
+        expect(pairsPerSecond).toBeGreaterThan(0);
+      });
     });
-  });
-}
+  }
+});

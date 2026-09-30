@@ -43,6 +43,15 @@ export interface LocalStudioClip {
    * The frames the lens readings are scored on, the slowest measurement.
    */
   readonly comparedTimes: readonly number[];
+  /**
+   * The recording's time the seam's steadiness is measured from.
+   */
+  readonly steadinessStart: number;
+  /**
+   * For an HDR recording, the frames of Studio's SDR export of the same stitch, extracted as
+   * `studio-<slug>-sdr-<time>s.png`: the reference of the player's colour (ADR 0033).
+   */
+  readonly sdrFrameTimes?: readonly number[];
 }
 
 /**
@@ -83,6 +92,10 @@ function studioOf(fields: Fields): LocalStudioClip {
     start: numberOf(fields, 'start'),
     frameTimes: numbersOf(fields, 'frameTimes'),
     comparedTimes: numbersOf(fields, 'comparedTimes'),
+    steadinessStart: numberOf(fields, 'steadinessStart'),
+    ...(fields['sdrFrameTimes'] !== undefined && {
+      sdrFrameTimes: numbersOf(fields, 'sdrFrameTimes'),
+    }),
   };
 }
 
@@ -117,9 +130,8 @@ function listOf<Item>(
   isItem: (item: unknown) => item is Item,
 ): Item[] {
   const value = fields[name];
-  const items: readonly unknown[] = Array.isArray(value) ? value : [value];
-  if (!Array.isArray(value) || items.some((item) => !isItem(item))) {
+  if (!Array.isArray(value) || !value.every(isItem)) {
     throw new TypeError(`${name} is no list of the kind it needs`);
   }
-  return items.filter((item) => isItem(item));
+  return value;
 }

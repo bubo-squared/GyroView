@@ -99,18 +99,8 @@ const RANKED_SAMPLES = [
   ['sailing', SAILING_8K_30, [20, 55, 85, 135, 170]],
   ['office', OFFICE_5K7_60, [3, 45, 120, 210, 240]],
   ['krnjaca', KRNJACA_8K_30, [20, 60, 100, 140, 180]],
-  ...LOCAL_SAMPLES.map(
-    ({ slug, sample, imuRankingTimes }) => [slug, sample, imuRankingTimes] as const,
-  ),
+  ...LOCAL_SAMPLES.map((local) => [local.slug, local, local.imuRankingTimes] as const),
 ] as const;
-
-/**
- * The frame the ranking must put first: the camera's, once measured; a frame still assumed has
- * nothing to hold the ranking to, which then says what to measure it as.
- */
-function expectedWinnerOf(frame: ImuFrame, ranking: readonly Ranked[]): string | undefined {
-  return frame.isVerified ? nameOf(frame) : ranking[0]?.name;
-}
 
 /**
  * In lock mode the world must stand still, so the IMU frame whose orientation keeps consecutive
@@ -146,8 +136,10 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
       }));
       const measured = await measureStillness({ opened, canvas, renderer, candidates, times });
       await saveMeasurement(`${slug}-imu-frame-ranking`, measured);
+      // A camera whose frame is still assumed has nothing to hold the ranking to: the saved
+      // ranking says what to measure it as.
       const configured = imuFrameFor(recording.info);
-      expect(measured.ranking[0]?.name).toBe(expectedWinnerOf(configured, measured.ranking));
+      if (configured.isVerified) expect(measured.ranking[0]?.name).toBe(nameOf(configured));
       expect(measured.ranking[0]?.stillness).toBeLessThan(measured.unstabilized);
     });
   }

@@ -7,7 +7,6 @@ import {
   seconds,
   StabilizingFrameSink,
   stabilizerFor,
-  buildStitchingSetup,
   type StabilizationMode,
   type Vector3,
 } from '@gyroview/core';
@@ -31,9 +30,9 @@ import {
   timingOf,
 } from './realRecordingSupport';
 import {
-  calibrationOf,
   equirectangularRendering,
   motionOf,
+  recordedSetupOf,
   type EquirectangularRendering,
 } from './rendering';
 import { KRNJACA_8K_30, OFFICE_5K7_60, OFFICE_PROXY, SAILING_8K_30 } from './sampleUrls';
@@ -204,10 +203,7 @@ describe('rendering the real recordings', () => {
     it(`finds the image circle of each ${name} frame where the core's canvas window puts the principal point, not the sensor window (ADR 0014)`, async (context) => {
       const opened = await shared.open(context);
       const { first } = await shared.momentAt(context, MOMENT);
-      const setup = buildStitchingSetup({
-        calibration: calibrationOf(opened),
-        layout: opened.layout,
-      });
+      const setup = recordedSetupOf(opened);
       const measurements = setup.lenses.map((lens) => measureCentre(opened, lens, first));
       await saveMeasurement(`${slug}-${MOMENT}s-image-circle`, measurements);
       for (const measured of measurements) {

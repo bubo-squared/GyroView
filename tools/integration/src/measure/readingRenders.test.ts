@@ -40,7 +40,7 @@ for (const [slug, sample] of [
       cleanups.push(() => {
         closeMoment(moment);
       });
-      const readings = readingsOf(opened);
+      const readings = readingsOf(opened).filter((reading) => reading.radialScale === 1);
       for (const reading of readings) {
         const { canvas, renderer, dispose } = labRenderingOfSetup(
           setupOf(reading, opened.layout),

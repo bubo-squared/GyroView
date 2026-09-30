@@ -5,47 +5,55 @@ import {
 } from '@gyroview/core/testing';
 
 /**
+ * A reading of the v6 string's distortion tokens, named as the measurements report it.
+ */
+export interface NamedTermReading {
+  readonly name: string;
+  readonly reading: V6TermReading;
+}
+
+/**
  * Ways the v6 string's p3, p4 and s1 to s4 may be read, besides the player's own reading, which
  * leaves them out (ADR 0032): each a Mei distortion, so the renderer draws any of them. The
  * measurement keeps a reading only if it beats the player's on real footage.
  */
-const RADIAL_ONLY: V6TermReading = {
+const RADIAL_ONLY: NamedTermReading = {
   name: 'radial terms only',
-  distortionOf: ({ radial }) => ({ radial, tangential: [], thinPrism: [] }),
+  reading: ({ radial }) => ({ radial, tangential: [], thinPrism: [] }),
 };
 
-const TWO_PAIRS: V6TermReading = {
+const TWO_PAIRS: NamedTermReading = {
   name: 'two tangential orders',
-  distortionOf: (tokens) => ({ radial: tokens.radial, tangential: pairsOf(tokens), thinPrism: [] }),
+  reading: (tokens) => ({ radial: tokens.radial, tangential: pairsOf(tokens), thinPrism: [] }),
 };
 
-const FIRST_PAIR_AND_PRISM: V6TermReading = {
+const FIRST_PAIR_AND_PRISM: NamedTermReading = {
   name: "the first pair and OpenCV's thin prism",
-  distortionOf: (tokens) => ({
-    ...RADIAL_AND_FIRST_PAIR.distortionOf(tokens),
+  reading: (tokens) => ({
+    ...RADIAL_AND_FIRST_PAIR(tokens),
     thinPrism: prismOf(tokens, 1),
   }),
 };
 
-const FIRST_PAIR_AND_NEGATED_PRISM: V6TermReading = {
+const FIRST_PAIR_AND_NEGATED_PRISM: NamedTermReading = {
   name: 'the first pair and the thin prism negated',
-  distortionOf: (tokens) => ({
-    ...RADIAL_AND_FIRST_PAIR.distortionOf(tokens),
+  reading: (tokens) => ({
+    ...RADIAL_AND_FIRST_PAIR(tokens),
     thinPrism: prismOf(tokens, -1),
   }),
 };
 
-const FIRST_PAIR_AND_SWAPPED_PRISM: V6TermReading = {
+const FIRST_PAIR_AND_SWAPPED_PRISM: NamedTermReading = {
   name: 'the first pair and the thin prism with its axes swapped',
-  distortionOf: (tokens) => ({
-    ...RADIAL_AND_FIRST_PAIR.distortionOf(tokens),
+  reading: (tokens) => ({
+    ...RADIAL_AND_FIRST_PAIR(tokens),
     thinPrism: prismOf(tokens, 1).map(({ x, y }) => ({ x: y, y: x })),
   }),
 };
 
-const TWO_PAIRS_AND_PRISM: V6TermReading = {
+const TWO_PAIRS_AND_PRISM: NamedTermReading = {
   name: "two tangential orders and OpenCV's thin prism",
-  distortionOf: (tokens) => ({
+  reading: (tokens) => ({
     radial: tokens.radial,
     tangential: pairsOf(tokens),
     thinPrism: prismOf(tokens, 1),
@@ -74,7 +82,7 @@ function prismOf({ thinPrism }: V6DistortionTokens, sign: number): { x: number; 
   ];
 }
 
-export const V6_TERM_CANDIDATES: readonly V6TermReading[] = [
+export const V6_TERM_CANDIDATES: readonly NamedTermReading[] = [
   RADIAL_ONLY,
   TWO_PAIRS,
   FIRST_PAIR_AND_PRISM,

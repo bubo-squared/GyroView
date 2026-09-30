@@ -5,6 +5,9 @@ camera's dual-fisheye file directly, over HTTP byte ranges or from a local file,
 lenses in hardware with WebCodecs, and stitches and gyro-stabilizes them on the GPU. No Insta360
 Studio export step.
 
+**Try it first:** [insv-player.com](https://insv-player.com/) plays `.insv` files with this
+package. Drop your own recording to check that your camera and browser work before you install.
+
 ## Install
 
 ```sh

@@ -69,10 +69,6 @@ const PLAYBACK_WITHIN_MS = 10_000;
  * A time past the first second, which a run stalled after it has not appended.
  */
 const SEEK_BEYOND_THE_FIRST = 2;
-/**
- * Bytes no parser takes for a segment: a box whose size is smaller than its own header.
- */
-const NOT_A_SEGMENT = Uint8Array.of(0, 0, 0, 4, 0x6d, 0x6f, 0x6f, 0x66);
 
 type Segments = AsyncIterable<Uint8Array<ArrayBuffer>>;
 
@@ -241,13 +237,16 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
 
   it("leaves a failed element's own error to say why, appending nothing more", async () => {
     const stalled = new Deferred<void>();
-    const { feeder, element, sourceBuffer, close } = await fixtureFeeder(
+    const { feeder, element, mediaSource, close } = await fixtureFeeder(
       stallingAfter(FIRST_SECOND, stalled),
     );
     feeder.restartFrom(seconds(0));
     await stalled.promise;
-    sourceBuffer.appendBuffer(NOT_A_SEGMENT);
+    // How a segment the parser cannot read fails the element, in every engine alike: the append
+    // error algorithm ends the stream with a decode error.
+    mediaSource.endOfStream('decode');
     await waitUntil(() => element.error !== null);
+    expect(element.error?.code).toBe(MediaError.MEDIA_ERR_DECODE);
     feeder.restartFrom(seconds(SEEK_BEYOND_THE_FIRST));
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(element.error).not.toBeNull();

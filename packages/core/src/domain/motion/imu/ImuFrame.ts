@@ -104,7 +104,7 @@ export const X6_IMU_FRAME = measuredImuFrame('X6', QUARTER_TURN_ABOUT_LATERAL);
 
 /**
  * Measured on one X4 Air recording (ADR 0009): the X5's arrangement again, which the ranking puts
- * first by about a quarter of the unstabilized movement, as on the X5's own recordings.
+ * first, the aligned frame third.
  */
 export const X4_AIR_IMU_FRAME = measuredImuFrame('X4 Air', QUARTER_TURN_ABOUT_LATERAL);
 
@@ -120,17 +120,20 @@ export interface ImuFrameHints {
   readonly model: string | undefined;
 }
 
-const IMU_FRAMES_BY_MODEL: readonly (readonly [modelPrefix: string, frame: ImuFrame])[] = [
+/**
+ * Keyed by the whole model name: a name that extends a measured one ("X4 Air" of "X4", an "X5
+ * Pro") is another camera, unmeasured until a recording of it is ranked.
+ */
+const IMU_FRAMES_BY_MODEL: ReadonlyMap<string, ImuFrame> = new Map([
   ['Insta360 X4 Air', X4_AIR_IMU_FRAME],
   ['Insta360 X5', X5_IMU_FRAME],
   ['Insta360 X6', X6_IMU_FRAME],
-];
+]);
 
 /**
  * The IMU frame for a recording, chosen from the camera model the file names. A starting point
  * the recording's own data can be checked against with the ranking test, never the last word.
  */
 export function imuFrameFor(hints: ImuFrameHints): ImuFrame {
-  const match = IMU_FRAMES_BY_MODEL.find(([prefix]) => hints.model?.startsWith(prefix));
-  return match?.[1] ?? ALIGNED_IMU_FRAME;
+  return IMU_FRAMES_BY_MODEL.get(hints.model?.trim() ?? '') ?? ALIGNED_IMU_FRAME;
 }

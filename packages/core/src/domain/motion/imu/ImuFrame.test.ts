@@ -53,15 +53,23 @@ describe('ImuFrame', () => {
     expect(X5_IMU_FRAME.toBody).toEqual([1, 0, 0, 0, 0, 1, 0, -1, 0]);
   });
 
-  it('picks the measured frame for the X4 Air, the X5 and the X6, and the unverified default for other cameras', () => {
+  it("picks a camera's measured frame by its model, the unverified default otherwise", () => {
     expect(imuFrameFor({ model: 'Insta360 X4 Air' })).toBe(X4_AIR_IMU_FRAME);
     expect(imuFrameFor({ model: 'Insta360 X5' })).toBe(X5_IMU_FRAME);
     expect(imuFrameFor({ model: 'Insta360 X6' })).toBe(X6_IMU_FRAME);
     expect(X4_AIR_IMU_FRAME).toMatchObject({ toBody: X5_IMU_FRAME.toBody, isVerified: true });
     expect(X6_IMU_FRAME).toMatchObject({ toBody: X5_IMU_FRAME.toBody, isVerified: true });
     expect(imuFrameFor({ model: 'Insta360 X3' })).toBe(ALIGNED_IMU_FRAME);
-    expect(imuFrameFor({ model: 'Insta360 X4' })).toBe(ALIGNED_IMU_FRAME);
-    expect(imuFrameFor({ model: 'Not an Insta360 X5' })).toBe(ALIGNED_IMU_FRAME);
     expect(imuFrameFor({ model: undefined }).isVerified).toBe(false);
+  });
+
+  it('keeps models whose names extend one another apart, each unmeasured until ranked', () => {
+    expect(imuFrameFor({ model: 'Insta360 X4' })).toBe(ALIGNED_IMU_FRAME);
+    expect(imuFrameFor({ model: 'Insta360 X5 Air' })).toBe(ALIGNED_IMU_FRAME);
+    expect(imuFrameFor({ model: 'Not an Insta360 X5' })).toBe(ALIGNED_IMU_FRAME);
+  });
+
+  it('reads the model without the whitespace around it', () => {
+    expect(imuFrameFor({ model: ' Insta360 X5 ' })).toBe(X5_IMU_FRAME);
   });
 });

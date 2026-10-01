@@ -21,6 +21,9 @@ What a page may notice:
 
 - A recording whose only calibration is a v6 string plays where it failed with
   `no-calibration`.
+- Stabilization samples the gyro half way through each frame's shutter, no longer half a
+  readout later. An X5's stabilized picture shifts by that half readout (4 ms at 5.7K60, 10.6 ms
+  at 8K30), and a swinging camera's world holds stiller (ADR 0034).
 - A track whose colour the player cannot show as it should is drawn with a
   `recording-degraded` warning: a PQ or linear-light transfer is drawn as recorded, SDR of wider
   primaries than BT.709's is shown as BT.709, HLG of primaries other than BT.709's or BT.2020's

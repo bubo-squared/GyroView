@@ -130,7 +130,7 @@ telemetry-parser reads them; verify on a float-layout file).
 frame's track time being zero unless an edit list starts the track later; gyro readings are
 additionally shifted by the info record's gyro offset (field 28, 1.6 ms on X5), which applies
 only where field 29 says the camera measured one. Stabilization samples the orientation at
-`video time + exposure / 2 + rolling shutter / 2`.
+`video time + exposure / 2`: an exposure entry's timestamp is its frame's middle row's (ADR 0034).
 
 ## Calibration strings
 

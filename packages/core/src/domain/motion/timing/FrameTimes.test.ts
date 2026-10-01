@@ -23,12 +23,29 @@ function capturedEvery(
   return FrameTimes.withoutShutterTimes({
     clock: CLOCK,
     captureTimes,
-    readoutTime: undefined,
     frameDuration,
   });
 }
 
 describe('FrameTimes', () => {
+  it("times a frame's gyro sample half way through its shutter, as the measurements find (ADR 0034)", () => {
+    const frames = new FrameTimes({
+      clock: CLOCK,
+      captureTimes: Float64Array.of(FIRST_FRAME_CAPTURE, FIRST_FRAME_CAPTURE + 20_000),
+      shutterTimes: Float64Array.of(0.02, 0.002),
+      frameDuration: undefined,
+    });
+    expect(frames.frameAt(0).midExposureVideoTime).toBeCloseTo(0.01, 9);
+    expect(frames.frameAt(1).midExposureVideoTime).toBeCloseTo(0.021, 9);
+  });
+
+  it('times a frame at its capture where its shutter is not known', () => {
+    expect(capturedEvery(20_000, 2, undefined).frameAt(1).midExposureVideoTime).toBeCloseTo(
+      0.02,
+      9,
+    );
+  });
+
   it('finds a presented frame by its place in the track, though the camera clock drifts from it', () => {
     // The office recording's capture clock runs about 1.3 µs a frame ahead of the track.
     const frames = capturedEvery(16_682.1, 15_710, NTSC_60);

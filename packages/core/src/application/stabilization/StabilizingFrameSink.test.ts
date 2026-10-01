@@ -47,14 +47,14 @@ function presentationAt(timestamp: number): Presentation<string> {
   return { pair: { timestamp: seconds(timestamp), frames: [] }, mediaTime: seconds(timestamp) };
 }
 
-function frameTimesAt(times: readonly number[], readoutTime: number): FrameTimes {
+function frameTimesAt(times: readonly number[], shutterTime: number): FrameTimes {
   const captureTimes = Float64Array.from(
     times.map((time) => SYNTHETIC_CLOCK.captureTimeOf(seconds(time))),
   );
-  return FrameTimes.withoutShutterTimes({
+  return new FrameTimes({
     clock: SYNTHETIC_CLOCK,
     captureTimes,
-    readoutTime: seconds(readoutTime),
+    shutterTimes: captureTimes.map(() => shutterTime),
     frameDuration: undefined,
   });
 }
@@ -93,7 +93,7 @@ describe('StabilizingFrameSink', () => {
 
   it('samples the orientation at the mid-exposure of the frame the pair shows', () => {
     const inner = new RecordingSink();
-    // A two-second readout puts the first frame's mid-exposure a second after its capture.
+    // A two-second shutter puts the first frame's mid-exposure a second after its capture.
     const frameTimes = frameTimesAt([0, 3, 6], 2);
     const sink = new StabilizingFrameSink({ sink: inner, orientations, frameTimes });
     sink.setStabilizer(new LockStabilization());

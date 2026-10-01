@@ -21,7 +21,6 @@ function fromExposureRecord(context: FrameTimingContext): FrameTimes | undefined
     clock,
     captureTimes: Float64Array.from(frames.captureTimes),
     shutterTimes: Float64Array.from(frames.shutterTimes),
-    readoutTime: context.readoutTime,
     frameDuration: context.frameDuration,
   });
 }
@@ -39,7 +38,6 @@ function fromTrackTimestamps(context: FrameTimingContext): FrameTimes | undefine
   return FrameTimes.withoutShutterTimes({
     clock,
     captureTimes,
-    readoutTime: context.readoutTime,
     frameDuration: context.frameDuration,
   });
 }
@@ -57,7 +55,6 @@ function fromNominalRate(context: FrameTimingContext): FrameTimes | undefined {
   return FrameTimes.withoutShutterTimes({
     clock,
     captureTimes,
-    readoutTime: context.readoutTime,
     frameDuration: context.frameDuration,
   });
 }

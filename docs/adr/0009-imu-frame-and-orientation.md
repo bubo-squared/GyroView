@@ -73,3 +73,9 @@ X5's arrangement (`x,z,-y`, the IMU a quarter turn about the lateral axis) keeps
 stillest, 7.4 against 14.6 unstabilized and 13.5 for the runner-up, alike in Chromium and
 WebKit. `X6_IMU_FRAME` is that arrangement, measured; the X5 and the X6 share its axes
 (`QUARTER_TURN_ABOUT_LATERAL`). Provisional until a second unit or a longer clip confirms it.
+
+## Since ADR 0034 (2026-10-01)
+
+A frame's mid-exposure time is its capture time plus half its shutter: the half readout the
+player added put the gyro's orientation half a readout late (10.6 ms on the X5 at 8K30), and
+the X6's stabilized world swayed with the camera.

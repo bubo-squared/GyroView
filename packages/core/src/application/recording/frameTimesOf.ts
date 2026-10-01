@@ -37,7 +37,6 @@ export async function frameTimesOf(
       ...timeline,
       frameCount,
       frameRate: info.frameRate,
-      readoutTime: info.readoutTime,
       exposureRecord,
     },
     info.preferredFrameTimeSource,

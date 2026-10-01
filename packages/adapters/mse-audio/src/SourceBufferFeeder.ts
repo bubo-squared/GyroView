@@ -87,7 +87,7 @@ export class SourceBufferFeeder {
   private async feed(from: Seconds, stop: RunStop): Promise<void> {
     try {
       await this.settlePendingAppend();
-      if (this.hasAllAudioFrom(from)) return;
+      if (stop.wasStopped || this.hasElementFailed() || this.hasAllAudioFrom(from)) return;
       await this.feedFrom(this.startOf(from), stop);
     } catch (error) {
       this.failureValue ??= asGyroViewError(error, 'decode', 'feeding the audio buffer failed');
@@ -126,11 +126,15 @@ export class SourceBufferFeeder {
 
   /**
    * Appends segments as the playhead needs them. True when the track ended, false when stopped.
+   * A run stops only between two whole segments (the port's promise) and never cancels an
+   * append, so the source buffer's parser is always at a segment's start when the next run
+   * appends its initialization segment.
    */
   private async pump(segments: Segments, stop: RunStop): Promise<boolean> {
     let next = await this.nextWhenNeeded(segments, stop);
     while (next !== STOPPED) {
       if (next.done === true) return true;
+      if (this.hasElementFailed()) return false;
       this.evictBehind();
       await this.append(next.value);
       next = await this.nextWhenNeeded(segments, stop);
@@ -195,6 +199,14 @@ export class SourceBufferFeeder {
     if ((await outcome) === 'error') {
       throw new GyroViewError('decode', 'the audio buffer could not parse a segment');
     }
+  }
+
+  /**
+   * The element failed: every append now throws, and the element's own error says why, not the
+   * feeder's.
+   */
+  private hasElementFailed(): boolean {
+    return this.parts.element.error !== null;
   }
 
   private async settlePendingAppend(): Promise<void> {

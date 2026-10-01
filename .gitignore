@@ -1,5 +1,5 @@
-# Local sample recordings (symlinks to large files outside the repo)
-samples/
+# Local sample recordings (symlinks to large files outside the repo), as a folder or as a link
+/samples
 
 # Personal notes and editor-assistant settings, not part of the project
 CLAUDE.md

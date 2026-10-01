@@ -1,36 +1,50 @@
 import { describe, expect, it } from 'vitest';
 
+import { boxesIn } from '../domain/format/mp4/movieBoxes';
 import type { AudioSegmentSource } from '../ports/AudioSegmentSource';
 import { seconds } from '../shared/units/time';
 
 const BOX_TYPE_OFFSET = 4;
 const BOX_TYPE_LENGTH = 4;
 
-const BOX_SIZE_LENGTH = 4;
-const IS_BIG_ENDIAN = false;
 /**
  * The segments read to check their shape: the initialization and a few media segments.
  */
 const SEGMENTS_CHECKED = 4;
+/**
+ * Where a run starts that the shape is checked on as well: a seek's, mid-track.
+ */
+const MID_TRACK = 0.5;
 
 function boxTypeOf(segment: Uint8Array): string {
   const type = segment.subarray(BOX_TYPE_OFFSET, BOX_TYPE_OFFSET + BOX_TYPE_LENGTH);
   return String.fromCodePoint(...type);
 }
 
-/**
- * The types of a segment's top-level boxes, in order.
- */
-function topLevelBoxTypesOf(segment: Uint8Array): string[] {
-  const view = new DataView(segment.buffer, segment.byteOffset, segment.byteLength);
-  const types: string[] = [];
-  for (let at = 0; at + BOX_SIZE_LENGTH + BOX_TYPE_LENGTH <= segment.byteLength;) {
-    const size = view.getUint32(at, IS_BIG_ENDIAN);
-    types.push(boxTypeOf(segment.subarray(at)));
-    if (size === 0) break;
-    at += size;
+interface SegmentShape {
+  readonly types: readonly string[];
+  /**
+   * Whether the boxes end exactly where the segment does: none cut short, nothing after them.
+   */
+  readonly isFilled: boolean;
+}
+
+function shapeOf(segment: Uint8Array): SegmentShape {
+  const boxes = boxesIn(segment);
+  const last = boxes.at(-1);
+  const end = last ? last.body.byteOffset + last.body.byteLength - segment.byteOffset : 0;
+  return { types: boxes.map((box) => box.type), isFilled: end === segment.byteLength };
+}
+
+async function shapesFrom(source: AudioSegmentSource, from: number): Promise<SegmentShape[]> {
+  const segments = source.segmentsFrom(seconds(from))[Symbol.asyncIterator]();
+  const shapes: SegmentShape[] = [];
+  for (let next = await segments.next(); next.done !== true; next = await segments.next()) {
+    shapes.push(shapeOf(next.value));
+    if (shapes.length === SEGMENTS_CHECKED) break;
   }
-  return types;
+  await segments.return?.();
+  return shapes;
 }
 
 export interface AudioSegmentSourceExpectations {
@@ -64,19 +78,18 @@ export function describeAudioSegmentSourceContract(
       expect(first.done === true ? undefined : boxTypeOf(first.value)).toBe('ftyp');
     });
 
-    it('hands out whole segments, so a consumer may stop between any two', async () => {
+    it('hands out whole segments, from the start or mid-track, so a consumer may stop between any two', async () => {
       const source = await open();
-      const segments = source.segmentsFrom(seconds(0))[Symbol.asyncIterator]();
-      const shapes: string[][] = [];
-      for (let next = await segments.next(); next.done !== true; next = await segments.next()) {
-        shapes.push(topLevelBoxTypesOf(next.value));
-        if (shapes.length === SEGMENTS_CHECKED) break;
+      for (const from of [0, expected.duration * MID_TRACK]) {
+        const [initialization, ...media] = await shapesFrom(source, from);
+        expect(initialization?.types.slice(0, 1)).toEqual(['ftyp']);
+        expect(initialization?.types).toContain('moov');
+        expect(initialization?.isFilled).toBe(true);
+        expect(media.length).toBeGreaterThan(0);
+        for (const { types, isFilled } of media) {
+          expect(types.includes('moof') && types.at(-1) === 'mdat' && isFilled).toBe(true);
+        }
       }
-      await segments.return?.();
-      const [initialization, ...media] = shapes;
-      expect(initialization).toEqual(['ftyp', 'moov']);
-      expect(media.length).toBeGreaterThan(0);
-      for (const shape of media) expect(shape).toEqual(['moof', 'mdat']);
     });
 
     it('ends at once when returned, a segment still awaited coming as the end', async () => {

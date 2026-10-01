@@ -12,9 +12,9 @@ export interface AudioSegmentSource {
   readonly mimeType: string;
   readonly duration: Seconds;
   /**
-   * Byte-stream pieces in order: the initialization segment, then media segments from the one
-   * holding `from` to the end of the track. Consumers pull; ending the iteration early stops the
-   * re-packaging.
+   * Whole segments in order: the initialization segment, then media segments from the one
+   * holding `from` to the end of the track, each one piece, so a consumer may stop between any
+   * two. Consumers pull; ending the iteration early stops the re-packaging.
    */
   segmentsFrom(from: Seconds): AsyncIterable<Uint8Array<ArrayBuffer>>;
 }

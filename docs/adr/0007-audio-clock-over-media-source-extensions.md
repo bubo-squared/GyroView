@@ -19,8 +19,11 @@ A hidden `<audio>` element is the `PlaybackClock`. Its data comes through Media 
 (`ManagedMediaSource` where it exists, `MediaSource` otherwise). The mediabunny adapter re-packages
 the audio packets, unchanged, into fragmented MP4 (`AudioSegmentSource`): an initialization
 segment followed by one-second `moof`/`mdat` fragments, starting at any requested time. Segments
-are taken from the muxer's box callbacks, not from its byte stream, so each is a whole box and
-the trailing `mfra` index (which MSE rejects) never appears. Fragmented output keeps the track's
+are assembled from the muxer's box callbacks, not taken from its byte stream, so each is a whole
+segment, `ftyp` with `moov` and each `moof` with its `mdat`, and the trailing `mfra` index (which
+MSE rejects) never appears. A seek stops a run between two segments; one stopped between a
+`moof` and its `mdat` left Chromium's parser reading the next run's bytes as samples, which
+failed playback with a decode error. Fragmented output keeps the track's
 timestamps, so a run started at a seek point lands at its true position without offsets. The
 audio clock adapter pulls segments only while less than a buffer-ahead window is buffered past
 the playhead and restarts the run on every seek. A seek to the end is the exception: the clock

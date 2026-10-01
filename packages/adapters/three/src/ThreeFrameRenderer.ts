@@ -28,9 +28,10 @@ import {
   type RawShaderMaterial,
 } from 'three';
 
+import { DRAW_AT_ONCE, type DrawSchedule } from './drawSchedules';
 import { MatrixCorrections } from './matrixCorrections';
 import { createFullscreenTriangle } from './fullscreenPass';
-import { createRenderer, type ThreeFrameRendererOptions } from './webglRenderer';
+import { createRenderer, type ContextOptions } from './webglRenderer';
 
 import { SeamMeterPass } from './seamMeter/SeamMeterPass';
 import { applyTextureFilters, createLensTextures } from './lensTextures';
@@ -80,7 +81,13 @@ interface Meter {
   dispose(): void;
 }
 
-export type { ThreeFrameRendererOptions } from './webglRenderer';
+export interface ThreeFrameRendererOptions extends ContextOptions {
+  /**
+   * When the picture is drawn again after a setting changes; at once unless given. A presented
+   * pair and a new size are drawn at once whatever the schedule.
+   */
+  readonly drawSchedule?: DrawSchedule;
+}
 
 export interface RendererParts {
   readonly renderer: WebGLRenderer;
@@ -95,6 +102,7 @@ export interface RendererParts {
   readonly uniforms: RendererUniforms;
   readonly matrixCorrections: MatrixCorrections;
   readonly lensCount: number;
+  readonly drawSchedule: DrawSchedule;
   /**
    * The seam meter made at creation to prove its program, kept so the program stays compiled
    * for the meter gain matching asks for at every load.
@@ -148,7 +156,8 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     ensureDrawable(setup);
     const renderer = createRenderer(canvas, opening.options);
     try {
-      return assembleParts(renderer, setup, opening.pictures);
+      const parts = assembleParts(renderer, setup, opening.pictures);
+      return { ...parts, drawSchedule: opening.options.drawSchedule ?? DRAW_AT_ONCE };
     } catch (error) {
       // A shader the GPU refuses fails here; what was built goes with it.
       renderer.dispose();
@@ -164,14 +173,14 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     this.ensureLive();
     this.framing = framing;
     this.applyFraming();
-    this.render();
+    this.redraw();
   }
 
   public setViewMode(mode: ViewMode): void {
     this.ensureLive();
     this.viewMode = mode;
     this.applyFraming();
-    this.render();
+    this.redraw();
   }
 
   /**
@@ -186,7 +195,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
       if (this.hasFrames) texture.needsUpdate = true;
     }
     applyShaderSampling(this.parts.uniforms, strategy);
-    this.render();
+    this.redraw();
   }
 
   public setLensGains(gains: readonly CoreVector3[]): void {
@@ -194,7 +203,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     for (const [lensIndex, gain] of gains.entries()) {
       applyLensGain(this.parts.uniforms, lensIndex, gain);
     }
-    this.render();
+    this.redraw();
   }
 
   /**
@@ -234,7 +243,7 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     }
     this.parts.matrixCorrections.follow(frames.map((frame) => frame.handle));
     this.hasFrames = true;
-    this.render();
+    this.drawNow();
   }
 
   /**
@@ -244,12 +253,14 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     this.ensureLive();
     this.parts.renderer.setSize(size.width, size.height, false);
     this.applyFraming();
-    this.render();
+    // A new size clears the canvas: a draw left to the next frame would show it black until then.
+    this.drawNow();
   }
 
   public dispose(): void {
     if (this.isDisposed) return;
     this.isDisposed = true;
+    this.parts.drawSchedule.cancel();
     this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
     for (const meter of this.meters) meter.dispose();
     this.parts.seamProof.dispose();
@@ -286,9 +297,11 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     return kept;
   }
 
-  protected render(): void {
-    if (!this.hasFrames) return;
-    this.parts.renderer.render(this.parts.scene, this.parts.camera);
+  /**
+   * Draws the picture again for a changed setting, when the draw schedule says.
+   */
+  protected redraw(): void {
+    this.parts.drawSchedule.request(this.draw);
   }
 
   protected ensureLive(): void {
@@ -301,7 +314,21 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
    * uploads the frames on screen again.
    */
   private readonly onContextRestored = (): void => {
-    this.render();
+    this.redraw();
+  };
+
+  /**
+   * Draws now what a draw asked for of the schedule would have drawn, which then has nothing left
+   * to draw.
+   */
+  private drawNow(): void {
+    this.parts.drawSchedule.cancel();
+    this.draw();
+  }
+
+  private readonly draw = (): void => {
+    if (!this.hasFrames) return;
+    this.parts.renderer.render(this.parts.scene, this.parts.camera);
   };
 
   /**
@@ -350,7 +377,7 @@ function assembleParts(
   renderer: WebGLRenderer,
   setup: StitchingSetup,
   pictures: RendererPictures,
-): RendererParts {
+): Omit<RendererParts, 'drawSchedule'> {
   const { textures, uniforms, materials } = sharedParts(setup, pictures);
   const pass = new Mesh(createFullscreenTriangle(), materials.rectilinear);
   const seamProof = provenSeamMeter(renderer, { pass, materials, textures, uniforms });

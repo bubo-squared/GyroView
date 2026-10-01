@@ -1,5 +1,5 @@
 import { MediaSourceAudioClock } from '@gyroview/adapter-mse-audio';
-import { ThreeFrameRenderer } from '@gyroview/adapter-three';
+import { AnimationFrameDraws, ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
   GainMatchingFrameSink,
@@ -85,10 +85,13 @@ interface Drawing {
 
 /**
  * The GPU stitcher on the host canvas, behind the stabilizing sink when there is a gyro, behind
- * gain matching, which measures what the stitcher drew.
+ * gain matching, which measures what the stitcher drew. A change of the view or the gains is
+ * drawn once at the next animation frame, where a frame presented in it draws it anyway.
  */
 function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
-  const renderer = ThreeFrameRenderer.create(parts.host.canvas, stitchingSetupOf(parts.opened));
+  const renderer = ThreeFrameRenderer.create(parts.host.canvas, stitchingSetupOf(parts.opened), {
+    drawSchedule: new AnimationFrameDraws(),
+  });
   disposables.add(() => {
     renderer.dispose();
   });

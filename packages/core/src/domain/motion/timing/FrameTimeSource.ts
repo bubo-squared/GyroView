@@ -12,10 +12,6 @@ export interface FrameTimingContext {
   readonly clock: CaptureClock;
   readonly frameCount: number;
   readonly frameRate: number | undefined;
-  /**
-   * Undefined when the camera does not say; the frames are then treated as read out at once.
-   */
-  readonly readoutTime: Seconds | undefined;
   readonly exposureRecord: ExposureRecord | undefined;
   /**
    * Presentation timestamps of the video track's samples, in seconds from the track start, in

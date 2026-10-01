@@ -12,8 +12,9 @@ export interface FrameTime {
    */
   readonly shutterTime: Seconds | undefined;
   /**
-   * Instant to sample the gyro orientation for this frame: half way through the exposure and
-   * half way through the rolling-shutter readout. Uses a zero shutter time when it is unknown.
+   * Instant to sample the gyro orientation for this frame: half way through its middle row's
+   * exposure. The capture time is the middle row's exposure start, so nothing is added for the
+   * readout (ADR 0034). Uses a zero shutter time when it is unknown.
    */
   readonly midExposureVideoTime: Seconds;
 }
@@ -22,10 +23,6 @@ export interface FrameTimesParts {
   readonly clock: CaptureClock;
   readonly captureTimes: Float64Array;
   readonly shutterTimes: Float64Array | undefined;
-  /**
-   * Undefined when unknown: the frame is then taken as read out at once.
-   */
-  readonly readoutTime: Seconds | undefined;
   /**
    * How far apart the track presents its frames, from the first frame's video time on;
    * undefined when the track does not say, and a presented frame is then found by capture time.
@@ -43,7 +40,6 @@ const GRID_TOLERANCE_FRAMES = 0.01;
  * Capture timing of every encoded frame, in frame order.
  */
 export class FrameTimes {
-  private readonly readoutTime: Seconds;
   private readonly clock: CaptureClock;
   private readonly captureTimes: Float64Array;
   private readonly shutterTimes: Float64Array | undefined;
@@ -57,7 +53,6 @@ export class FrameTimes {
     this.clock = parts.clock;
     this.captureTimes = parts.captureTimes;
     this.shutterTimes = parts.shutterTimes;
-    this.readoutTime = parts.readoutTime ?? seconds(0);
     this.frameDuration = parts.frameDuration;
   }
 
@@ -83,7 +78,7 @@ export class FrameTimes {
       captureTime,
       videoTime,
       shutterTime,
-      midExposureVideoTime: seconds(videoTime + (shutterTime ?? 0) / 2 + this.readoutTime / 2),
+      midExposureVideoTime: seconds(videoTime + (shutterTime ?? 0) / 2),
     };
   }
 

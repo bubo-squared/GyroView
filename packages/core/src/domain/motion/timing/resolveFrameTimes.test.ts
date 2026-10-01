@@ -3,18 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { CaptureClock } from './CaptureClock';
 import type { FrameTimingContext } from './FrameTimeSource';
 import { planFrameTimes, resolveFrameTimes, type ResolvedFrameTimes } from './resolveFrameTimes';
-import {
-  microseconds,
-  milliseconds,
-  millisecondsToSeconds,
-  seconds,
-} from '../../../shared/units/time';
+import { microseconds, milliseconds, seconds } from '../../../shared/units/time';
 import { parseExposureRecord } from '../../format/records/exposure/parseExposureRecord';
 import type { ExposureRecord } from '../exposure/ExposureRecord';
 import { loadFixture } from '../../../../test/support/fixtures';
 
 const OFFICE_FIRST_FRAME = microseconds(921_751_839);
-const OFFICE_READOUT = millisecondsToSeconds(milliseconds(8.4075));
 const OFFICE_FPS = 60_000 / 1001;
 function officeExposureHead(): ExposureRecord {
   const record = parseExposureRecord(
@@ -44,7 +38,6 @@ function context(overrides: Partial<FrameTimingContext> = {}): FrameTimingContex
     clock: new CaptureClock(OFFICE_FIRST_FRAME, milliseconds(1.6)),
     frameCount: 10,
     frameRate: OFFICE_FPS,
-    readoutTime: OFFICE_READOUT,
     exposureRecord: exposureHead,
     trackTimestamps: undefined,
     frameDuration: undefined,
@@ -70,14 +63,11 @@ describe('resolveFrameTimes with the office exposure record', () => {
     expect(four.frameAt(3).captureTime).toBe(exposureHead.entryAt(9).captureTime);
   });
 
-  it('carries shutter and readout time into the mid-exposure sampling time', () => {
+  it("carries the exposure record's shutter into the frame's gyro time", () => {
     const frame = resolved.frameTimes.frameAt(1);
     expect(frame.shutterTime).toBeCloseTo(1 / 640, 8);
     expect(frame.videoTime).toBeCloseTo(1 / OFFICE_FPS, 4);
-    expect(frame.midExposureVideoTime).toBeCloseTo(
-      frame.videoTime + 1 / 1280 + OFFICE_READOUT / 2,
-      9,
-    );
+    expect(frame.midExposureVideoTime).toBeCloseTo(frame.videoTime + 1 / 1280, 9);
   });
 
   it('finds the frame shown at a video time, including exactly on a capture time', () => {

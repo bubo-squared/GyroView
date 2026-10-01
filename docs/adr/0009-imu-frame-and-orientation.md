@@ -1,6 +1,7 @@
 # ADR 0009: IMU frame, orientation integration and stabilization modes
 
-Status: accepted (2026-09-20), verified on the X5 office and sailing recordings
+Status: accepted (2026-09-20), verified on the X5 office and sailing recordings; the X6 and the
+X4 Air on one recording each
 
 ## Context
 
@@ -21,10 +22,10 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
   Mahony proportional term (gain 0.2) whenever the specific force lies within 0.9-1.1 g. The
   initial pose levels the gravity of the opening half second with no yaw (identity when the
   camera accelerates then; the pull levels it within seconds).
-- **IMU frame** (`imuFrameFor`): chosen from the camera model in the info record. On the X5 the
-  IMU sits a quarter turn about the camera's lateral axis: body x = IMU x, body y = IMU z,
-  body z = -IMU y. The same frame fits recordings from firmware 1.7 and 1.11. Other cameras get
-  an unverified aligned default, reported as such.
+- **IMU frame** (`imuFrameFor`): chosen by the whole camera model name in the info record. On
+  the X5 the IMU sits a quarter turn about the camera's lateral axis: body x = IMU x, body y =
+  IMU z, body z = -IMU y. The same frame fits recordings from firmware 1.7 and 1.11. Other
+  cameras get an unverified aligned default, reported as such.
 - **Modes** (`Stabilizer` strategies): `off`, `lock` (view fixed to the world), `horizon` (roll
   and pitch removed, heading follows the camera), `follow` (view low-passes the camera direction
   with a 1.5 s time constant, resetting on a seek). The renderer applies the resulting rotation
@@ -59,10 +60,11 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
 
 ## Consequences
 
-Cameras other than the X5 stabilize with an unverified frame until a recording is measured; the
-player must surface `ImuFrame.isVerified` as a warning and offer `off`. A new camera is measured
-by adding its recording to the ranking and running `pnpm measure`; every test run keeps a
-cheaper guard, that lock keeps the sailing recording's world stiller than no stabilization. The residual motion in lock mode on the sailing
+Cameras without a measured frame (all but the X5, the X6 and the X4 Air) stabilize with an
+unverified frame until a recording is measured; the player must surface `ImuFrame.isVerified`
+as a warning and offer `off`. A new camera is measured by adding its recording to the ranking
+and running `pnpm measure`; every test run keeps a cheaper guard, that lock keeps the sailing
+recording's world stiller than no stabilization. The residual motion in lock mode on the sailing
 recording comes from the boat and people moving and from the accelerometer sensing the boat's
 acceleration; the horizon itself stays level.
 
@@ -74,18 +76,29 @@ stillest, 7.4 against 14.6 unstabilized and 13.5 for the runner-up, alike in Chr
 WebKit. `X6_IMU_FRAME` is that arrangement, measured; the X5 and the X6 share its axes
 (`QUARTER_TURN_ABOUT_LATERAL`). Provisional until a second unit or a longer clip confirms it.
 
-## On the X4 Air (2026-10-01)
-
-One X4 Air recording (one file holding a track per lens, a local sample, ADR 0031), ranked at
-nine moments of its 15 seconds: the X5's arrangement keeps the world stillest, 21.5 against 29.7
-unstabilized and 26.3 for the runner-up, alike in Chromium and WebKit, about the X5 recordings'
-own margin. The aligned frame the X4 Air fell back to ranks third, at 26.6: it turned the
-stabilized picture about the wrong axes. `X4_AIR_IMU_FRAME` is the X5's arrangement, measured;
-with it the gyro's timing holds as ADR 0034 has it, the world stillest 0.6 ms from the frame's
-own time, within a standard error of 2.5 ms. Provisional until a second unit confirms it.
-
 ## Since ADR 0034 (2026-10-01)
 
 A frame's mid-exposure time is its capture time plus half its shutter: the half readout the
 player added put the gyro's orientation half a readout late (10.6 ms on the X5 at 8K30), and
 the X6's stabilized world swayed with the camera.
+
+## On the X4 Air (2026-10-01)
+
+One X4 Air recording (one file holding a track per lens, a local sample, ADR 0031), ranked at
+nine moments of its 15 seconds: the X5's arrangement keeps the world stillest, 21.5 against 29.7
+unstabilized and 26.3 for the runner-up, alike in Chromium and WebKit, about the X5 recordings'
+own margin. The aligned frame the X4 Air fell back to ranks third, at 26.6: it got the pan right
+and turned tilt and roll about the wrong axes, so the stabilized picture still swayed.
+`X4_AIR_IMU_FRAME` is the X5's arrangement, measured. With it the gyro's timing is consistent
+with the frame's own time, as ADR 0034 has it: 0.6 ms off, with a standard error of 2.5 ms over
+16 moments.
+
+The camera stood upright through the clip, gravity along the IMU's x, as on the X5 sailing
+recording: the four frames ranked first are the four quarter turns about that axis, which map
+gravity and pan alike and differ only in tilt and roll. Only the clip's tilt and roll tell them
+apart, never gravity; provisional until a recording held another way (on its side, or flat on a
+table) confirms it, as the office and krnjaca recordings confirmed the X5's.
+
+From here on the model is matched by its whole name: the X4 Air's extends the X4's, and a name
+that extends a measured one ("Insta360 X5 Pro") belongs to another camera, unmeasured until it
+is ranked.

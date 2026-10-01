@@ -8,8 +8,12 @@ the API.
 What a page may notice:
 
 - An Insta360 X4 Air recording is stabilized about the right axes: its IMU frame is measured
-  (ADR 0009) where it was assumed, and its load no longer warns (`recording-degraded`) that the
-  IMU frame has not been verified on a recording.
+  (ADR 0009) where it was assumed. The `ready` event's `imuFrame` is
+  `{ name: 'X4 Air', isVerified: true }` where it was the unverified aligned frame, and the load
+  no longer warns (`recording-degraded`) that the IMU frame has not been verified on a recording.
+- A camera is given a measured IMU frame only by its whole model name: a model whose name merely
+  begins with a measured camera's, such as a later "X5 Pro", gets the unverified frame and its
+  warning until a recording of it is measured.
 
 ## 0.4.0 (2026-10-01)
 

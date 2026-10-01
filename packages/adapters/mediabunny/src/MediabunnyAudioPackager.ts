@@ -1,4 +1,5 @@
 import {
+  ensureInvariant,
   GyroViewError,
   type AudioDecoderConfiguration,
   type AudioPackager,
@@ -24,10 +25,9 @@ import { SegmentChannel } from './SegmentChannel';
  */
 const FRAGMENT_DURATION_SECONDS = 1;
 /**
- * Segments (each fragment is two: `moof` and `mdat`) that may wait for the consumer before
- * re-packaging pauses.
+ * Media segments that may wait for the consumer before re-packaging pauses.
  */
-const SEGMENTS_AHEAD = 4;
+const SEGMENTS_AHEAD = 2;
 /**
  * The codec strings of the audio the cameras record, AAC (`mp4a.40.2` for AAC-LC), and mediabunny's
  * name for it. Other codecs are not re-packaged: the picture then plays on a silent clock.
@@ -39,10 +39,10 @@ type Segment = Uint8Array<ArrayBuffer>;
 
 /**
  * AudioPackager over mediabunny: the samples re-packaged, unchanged, into fragmented MP4.
- * Segments are taken from the muxer's box callbacks rather than from its byte stream: that
- * yields whole `ftyp`/`moov`/`moof`/`mdat` boxes and leaves out the `mfra` index the muxer
- * appends at the end, which Media Source Extensions do not accept. Fragmented output keeps the
- * track's own timestamps, so segments started mid-track land at their true time.
+ * Segments are assembled from the muxer's box callbacks rather than taken from its byte stream:
+ * that yields whole segments and leaves out the `mfra` index the muxer appends at the end, which
+ * Media Source Extensions do not accept. Fragmented output keeps the track's own timestamps, so
+ * segments started mid-track land at their true time.
  */
 export class MediabunnyAudioPackager implements AudioPackager {
   public segmentsOf(
@@ -157,16 +157,52 @@ function decoderConfigOf(configuration: AudioDecoderConfiguration): AudioDecoder
   };
 }
 
+/**
+ * The muxer's boxes handed on as whole segments: the initialization segment (`ftyp` and `moov`)
+ * and each media segment (`moof` and its `mdat`). A consumer that stops between two segments, as
+ * a seek does, then never leaves a source buffer's parser inside one, where Chromium reads the
+ * next segments' bytes as the samples of the `moof` it holds and fails to decode them.
+ */
 function fragmentedMp4Into(channel: SegmentChannel): Mp4OutputFormat {
-  const forward = (data: Uint8Array): void => {
-    channel.push(new Uint8Array(data));
-  };
+  const segment = new SegmentAssembly(channel);
   return new Mp4OutputFormat({
     fastStart: 'fragmented',
     minimumFragmentDuration: FRAGMENT_DURATION_SECONDS,
-    onFtyp: forward,
-    onMoov: forward,
-    onMoof: forward,
-    onMdat: forward,
+    onFtyp: (data): void => {
+      segment.begin(data);
+    },
+    onMoov: (data): void => {
+      segment.end(data);
+    },
+    onMoof: (data): void => {
+      segment.begin(data);
+    },
+    onMdat: (data): void => {
+      segment.end(data);
+    },
   });
+}
+
+/**
+ * A segment's first box held until the box that ends it arrives, then both pushed as one.
+ */
+class SegmentAssembly {
+  private opening: Uint8Array | undefined;
+
+  public constructor(private readonly channel: SegmentChannel) {}
+
+  public begin(box: Uint8Array): void {
+    ensureInvariant(this.opening === undefined, 'a segment began before the last one ended');
+    this.opening = new Uint8Array(box);
+  }
+
+  public end(box: Uint8Array): void {
+    const { opening } = this;
+    ensureInvariant(opening !== undefined, 'a segment ended that never began');
+    const whole = new Uint8Array(opening.byteLength + box.byteLength);
+    whole.set(opening);
+    whole.set(box, opening.byteLength);
+    this.opening = undefined;
+    this.channel.push(whole);
+  }
 }

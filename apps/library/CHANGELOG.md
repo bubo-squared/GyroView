@@ -32,6 +32,9 @@ What a page may notice:
   browser's WebCodecs does not know one of its values).
 - Where a browser's decoder converts a track's colour through another matrix than the track's
   own, as Safari's does with the X6's BT.2020, the picture is brought back to the track's.
+- Seeking again and again, or dragging the seek bar, no longer stops playback now and then with
+  `decode` ("the audio element failed (media error 3)"): the sound is handed to the browser in
+  whole segments, so a seek can no longer cut one in half.
 
 ## 0.3.1 (2026-09-30)
 

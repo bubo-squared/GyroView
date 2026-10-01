@@ -1,7 +1,7 @@
 import { GyroViewError } from '@gyroview/core';
 import { WebGLRenderer } from 'three';
 
-export interface ThreeFrameRendererOptions {
+export interface ContextOptions {
   /**
    * Keep the drawing buffer after a frame, so tests can read it back and captures can save it;
    * costs a copy per frame, so off by default.
@@ -13,10 +13,7 @@ export interface ThreeFrameRendererOptions {
  * The WebGL 2 context a picture renderer draws on, wrapped by three, with every shader failure
  * made an error.
  */
-export function createRenderer(
-  canvas: HTMLCanvasElement,
-  options: ThreeFrameRendererOptions,
-): WebGLRenderer {
+export function createRenderer(canvas: HTMLCanvasElement, options: ContextOptions): WebGLRenderer {
   // The context attributes must be given here: three keeps a context it is handed as it is.
   const context = canvas.getContext('webgl2', {
     preserveDrawingBuffer: options.preserveDrawingBuffer ?? false,

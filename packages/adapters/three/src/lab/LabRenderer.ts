@@ -46,7 +46,7 @@ export class LabRenderer extends ThreeFrameRenderer {
   public setLensPose(lensIndex: number, rotation: CoreMatrix3): void {
     this.ensureLive();
     applyLensPose(this.uniforms, lensIndex, rotation);
-    this.render();
+    this.redraw();
   }
 
   /**
@@ -56,7 +56,7 @@ export class LabRenderer extends ThreeFrameRenderer {
   public setSeamAlignment(alignment: SeamAlignment): void {
     this.ensureLive();
     applySeamAlignment(this.join, alignment);
-    this.render();
+    this.redraw();
   }
 
   /**

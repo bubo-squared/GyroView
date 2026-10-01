@@ -257,7 +257,8 @@ One package per external technology; none imports another.
   Extensions (`ManagedMediaSource` where it exists), so the recording's own sound is the master
   clock; `SourceBufferFeeder` keeps a window buffered and evicts behind the playhead.
 - **`three`**: `ThreeFrameRenderer`, one fullscreen pass per frame with the program of the
-  picture the view mode asks for (`pictureMaterials`). The stitch (`stitch.frag.glsl` with the
+  picture the view mode asks for (`pictureMaterials`); a changed setting is drawn when its
+  `DrawSchedule` says, at once or once an animation frame (ADR 0035). The stitch (`stitch.frag.glsl` with the
   `rectilinearRays` or `equirectangularRays` chunk) turns every pixel of the picture's area into
   a ray, applies the view and stabilization rotations, projects through each lens model and
   blends across the feather band; `rawLenses.frag.glsl` copies each lens's frame region into its

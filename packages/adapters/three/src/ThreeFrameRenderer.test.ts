@@ -24,6 +24,7 @@ import {
 import { equirectangularPixelOf, MeiModel, parseOffsetString } from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { DRAW_AT_ONCE, type DrawSchedule } from './drawSchedules';
 import { readPixels } from './test/readPixels';
 import {
   gradientFrame,
@@ -226,20 +227,52 @@ function blockStats(renderer: ThreeFrameRenderer, centre: Position, side: number
   return { mean, spread: Math.max(...levels) - Math.min(...levels) };
 }
 
+/**
+ * A draw schedule that holds the draw asked for until the test draws it.
+ */
+class HeldDraws implements DrawSchedule {
+  private pending: (() => void) | undefined;
+
+  public get isPending(): boolean {
+    return this.pending !== undefined;
+  }
+
+  public request(draw: () => void): void {
+    this.pending = draw;
+  }
+
+  public cancel(): void {
+    this.pending = undefined;
+  }
+
+  public drawPending(): void {
+    const draw = this.pending;
+    this.pending = undefined;
+    draw?.();
+  }
+}
+
 describe('ThreeFrameRenderer', () => {
   const canvases: HTMLCanvasElement[] = [];
   const renderers: ThreeFrameRenderer[] = [];
   const gainMatchers: GainMatchingFrameSink<VideoFrame>[] = [];
   const frames: DecodedFrame<VideoFrame>[] = [];
 
-  function open(setup?: StitchingSetup, size = SIZE): ThreeFrameRenderer {
+  function open(
+    setup?: StitchingSetup,
+    size = SIZE,
+    drawSchedule: DrawSchedule = DRAW_AT_ONCE,
+  ): ThreeFrameRenderer {
     const canvas = document.createElement('canvas');
     canvas.width = size.width;
     canvas.height = size.height;
     document.body.append(canvas);
     canvases.push(canvas);
     const stitching = setup ?? setupAsRecorded(MULTI_TRACK);
-    const renderer = ThreeFrameRenderer.create(canvas, stitching, { preserveDrawingBuffer: true });
+    const renderer = ThreeFrameRenderer.create(canvas, stitching, {
+      preserveDrawingBuffer: true,
+      drawSchedule,
+    });
     renderers.push(renderer);
     canvasOf.set(renderer, canvas);
     return renderer;
@@ -638,6 +671,33 @@ describe('ThreeFrameRenderer', () => {
     expect(
       pixelAt(renderer, { column: 64, row: 32 }, { width: 128, height: 64 }).r,
     ).toBeGreaterThan(BRIGHT);
+  });
+
+  it('draws a change of view when its schedule says, and a presented pair at once, leaving the schedule nothing to draw', () => {
+    const schedule = new HeldDraws();
+    const renderer = open(undefined, SIZE, schedule);
+    renderer.setViewMode('normal');
+    presentRedAndBlue(renderer);
+    renderer.setFraming(framingOf({ ...DEFAULT_VIEW, yaw: degrees(180) }));
+    expect(pixelAt(renderer, CENTRE).r).toBeGreaterThan(BRIGHT);
+    schedule.drawPending();
+    expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
+    renderer.setFraming(framingOf(DEFAULT_VIEW));
+    presentRedAndBlue(renderer);
+    expect(pixelAt(renderer, CENTRE).r).toBeGreaterThan(BRIGHT);
+    expect(schedule.isPending).toBe(false);
+  });
+
+  it('draws a new size at once whatever its schedule, since the resized canvas is blank', () => {
+    const schedule = new HeldDraws();
+    const renderer = open(undefined, SIZE, schedule);
+    renderer.setViewMode('normal');
+    presentRedAndBlue(renderer);
+    renderer.resize({ width: 128, height: 64 });
+    expect(
+      pixelAt(renderer, { column: 64, row: 32 }, { width: 128, height: 64 }).r,
+    ).toBeGreaterThan(BRIGHT);
+    expect(schedule.isPending).toBe(false);
   });
 
   it('draws the standing frame again once a lost context is restored', async () => {

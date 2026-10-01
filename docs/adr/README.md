@@ -38,3 +38,4 @@ new record takes the next number and a line here.
 - [ADR 0032](0032-the-v6-string-is-a-mei-model-with-more-terms.md): The v6 calibration string is a Mei model with more terms, read as radial terms and one tangential pair (provisional)
 - [ADR 0033](0033-hdr-is-shown-as-sdr-converted-after-sampling.md): HDR is shown as SDR BT.709, converted in the shader right after a lens is sampled
 - [ADR 0034](0034-a-frame-is-timed-half-way-through-its-shutter.md): A frame's gyro time is half way through its shutter, with nothing added for the readout
+- [ADR 0035](0035-a-changed-setting-is-drawn-once-an-animation-frame.md): A changed setting is drawn once an animation frame

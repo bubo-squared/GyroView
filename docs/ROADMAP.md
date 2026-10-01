@@ -3,7 +3,7 @@
 What the player does today, what is verified on real material, what is waiting on something
 external, and what a next step could be. Dated so a reader can tell how current it is.
 
-## Done (as of 2026-09-30)
+## Done (as of 2026-10-01)
 
 **Playback of raw recordings.** Opens `.insv` files over HTTP byte ranges or from local
 files; reads the Insta360 trailer (indexed or bare, `inst`-wrapped or not), the protobuf info
@@ -90,6 +90,9 @@ the gyro's timing against its frames (ADR 0034), in Chromium and WebKit.
   where the X5's units would want 1.02 to 1.04 from the same kind of string) and tone curve
   are provisional. The v6 string's higher-order terms (`p3`, `p4`, `s1` to `s4`) stay unread:
   one clip cannot tell their reading (ADR 0032).
+- The X4 Air's IMU frame rests on one clip held upright, gravity along one IMU axis: only its
+  tilt and roll told the frame from the three other quarter turns about that axis. Provisional
+  until a recording held another way confirms it (ADR 0009).
 - HDR is shown as SDR: HLG through Insta360 Studio's curve, fitted to its pixels; PQ is drawn
   as recorded, with a warning. The 10 bits reach the shader as 8.
 - The X6's 8K at 50 fps in 10 bits decodes at twice its frame rate on an M4 Pro (123 pairs a

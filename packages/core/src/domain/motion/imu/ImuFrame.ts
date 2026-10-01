@@ -103,6 +103,12 @@ export const X5_IMU_FRAME = measuredImuFrame('X5', QUARTER_TURN_ABOUT_LATERAL);
 export const X6_IMU_FRAME = measuredImuFrame('X6', QUARTER_TURN_ABOUT_LATERAL);
 
 /**
+ * Measured on one X4 Air recording (ADR 0009): the X5's arrangement again, which the ranking puts
+ * first by about a quarter of the unstabilized movement, as on the X5's own recordings.
+ */
+export const X4_AIR_IMU_FRAME = measuredImuFrame('X4 Air', QUARTER_TURN_ABOUT_LATERAL);
+
+/**
  * Until a recording proves otherwise, the IMU is assumed aligned with the body.
  */
 export const ALIGNED_IMU_FRAME = assumedImuFrame('aligned (unverified)', ['x', 'y', 'z']);
@@ -115,6 +121,7 @@ export interface ImuFrameHints {
 }
 
 const IMU_FRAMES_BY_MODEL: readonly (readonly [modelPrefix: string, frame: ImuFrame])[] = [
+  ['Insta360 X4 Air', X4_AIR_IMU_FRAME],
   ['Insta360 X5', X5_IMU_FRAME],
   ['Insta360 X6', X6_IMU_FRAME],
 ];

@@ -53,7 +53,7 @@ export function parseInfoRecord(payload: Uint8Array, format: number): RecordingI
     firstFrameTimestamp: message.varint(InfoField.FirstFrameTimestamp),
     readoutTime: secondsFromMilliseconds(message.double(InfoField.RollingShutterTimeMs)),
     windowCrop: windowCropOf(message.message(InfoField.WindowCropInfo)),
-    gyroOffset: optionalMilliseconds(message.double(InfoField.GyroTimestampMs)),
+    gyroOffset: gyroOffsetOf(message),
     gyroType: message.varint(InfoField.GyroType),
     isRawGyro: message.boolean(InfoField.IsRawGyro),
     preferredFrameTimeSource: frameTimeSourceOf(message.varint(InfoField.PtsType)),
@@ -65,6 +65,16 @@ export function parseInfoRecord(payload: Uint8Array, format: number): RecordingI
 
 function secondsFromMilliseconds(value: number | undefined): Seconds | undefined {
   return value === undefined ? undefined : millisecondsToSeconds(milliseconds(value));
+}
+
+/**
+ * The gyro's offset from the frames, only where the camera says it measured one (field 29), as
+ * telemetry-parser reads it: a value in field 28 without that is not one.
+ */
+function gyroOffsetOf(message: ProtobufMessage): Milliseconds | undefined {
+  return message.boolean(InfoField.HasGyroTimestamp) === true
+    ? optionalMilliseconds(message.double(InfoField.GyroTimestampMs))
+    : undefined;
 }
 
 function optionalMilliseconds(value: number | undefined): Milliseconds | undefined {

@@ -4,7 +4,12 @@ import { parseInfoRecord } from './parseInfoRecord';
 import { FileLayoutValue, TrackOrderValue } from './infoFields';
 import { InfoRecordFormat } from '../constants';
 import { minimalInfoFields, minimalInfoRecord } from '../../../testing/minimalInfoRecord';
-import { encodeProtobuf, stringField } from '../../../testing/protobufWriter';
+import {
+  doubleField,
+  encodeProtobuf,
+  stringField,
+  varintField,
+} from '../../../testing/protobufWriter';
 import { captureError } from '../../../../test/support/errors';
 import { loadFixture } from '../../../../test/support/fixtures';
 import { OFFICE_CALIBRATION } from '../../../../test/support/officeCalibration';
@@ -134,5 +139,30 @@ describe('parseInfoRecord calibration strings', () => {
       offsetV3: 'the v3 string',
       offsetV6: 'the v6 string',
     });
+  });
+});
+
+const GYRO_OFFSET_MS = 2.5;
+
+/**
+ * The gyro offset read from a record holding field 28 and the field-29 fields given.
+ */
+function offsetWith(fieldsBesides: readonly ReturnType<typeof varintField>[]): unknown {
+  const record = encodeProtobuf([
+    ...minimalInfoFields({ model: 'Insta360 X4' }),
+    doubleField(28, GYRO_OFFSET_MS),
+    ...fieldsBesides,
+  ]);
+  return parseInfoRecord(record, InfoRecordFormat.Protobuf).gyroOffset;
+}
+
+describe('parseInfoRecord gyro offset', () => {
+  it('reads field 28 as the gyro offset where field 29 says the camera measured one', () => {
+    expect(offsetWith([varintField(29, 1)])).toBe(GYRO_OFFSET_MS);
+  });
+
+  it('takes no offset where field 29 is unset or says none', () => {
+    expect(offsetWith([])).toBeUndefined();
+    expect(offsetWith([varintField(29, 0)])).toBeUndefined();
   });
 });

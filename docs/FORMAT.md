@@ -128,7 +128,8 @@ layout's unit: microseconds on raw-layout cameras, milliseconds on float-layout 
 telemetry-parser reads them; verify on a float-layout file).
 `video time = first frame's track time + (timestamp - first_frame_timestamp) / 1e6`, the first
 frame's track time being zero unless an edit list starts the track later; gyro readings are
-additionally shifted by the info record's gyro offset (1.6 ms on X5). Stabilization samples the orientation at
+additionally shifted by the info record's gyro offset (field 28, 1.6 ms on X5), which applies
+only where field 29 says the camera measured one. Stabilization samples the orientation at
 `video time + exposure / 2 + rolling shutter / 2`.
 
 ## Calibration strings

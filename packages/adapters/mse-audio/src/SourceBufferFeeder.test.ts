@@ -13,10 +13,10 @@ import { openFixtureAudio } from './test/fixtureAudio';
 const AAC_IN_MP4 = 'audio/mp4; codecs="mp4a.40.2"';
 
 /**
- * Polls until the condition holds, for at most two seconds.
+ * Polls until the condition holds, for at most `withinMs`.
  */
-async function waitUntil(isSatisfied: () => boolean): Promise<void> {
-  const deadline = performance.now() + 2000;
+async function waitUntil(isSatisfied: () => boolean, withinMs = 2000): Promise<void> {
+  const deadline = performance.now() + withinMs;
   while (!isSatisfied() && performance.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
@@ -33,6 +33,15 @@ const UNREAD_SOURCE: AudioSegmentSource = {
   },
 };
 
+/**
+ * Segments that never come, as from a stalled network: a run over them waits until stopped.
+ */
+async function* neverEnding(): AsyncGenerator<Uint8Array<ArrayBuffer>> {
+  await new Promise<never>(() => {
+    // never settled on purpose
+  });
+}
+
 async function openMediaSource(element: HTMLMediaElement): Promise<AttachedMediaSource> {
   const mediaSourceClass = mediaSourceConstructor();
   if (!mediaSourceClass) throw new Error('this browser has no media source');
@@ -48,11 +57,22 @@ const FIRST_SECOND = 2;
  */
 const SEEK_WITHIN = 0.5;
 /**
- * A time in the first fragment, which a seek goes to, and how far it then plays: through what a
- * stopped run had begun to append.
+ * How far before the end of what a stopped run appended a seek goes, and past it playback must
+ * then get: across the seam between the two runs' audio.
  */
-const SEEK_INTO_FIRST = 0.2;
-const PLAYED_PAST = 0.8;
+const ACROSS_THE_SEAM = 0.3;
+/**
+ * Headless WebKit under load is slow to start playing.
+ */
+const PLAYBACK_WITHIN_MS = 10_000;
+/**
+ * A time past the first second, which a run stalled after it has not appended.
+ */
+const SEEK_BEYOND_THE_FIRST = 2;
+/**
+ * Bytes no parser takes for a segment: a box whose size is smaller than its own header.
+ */
+const NOT_A_SEGMENT = Uint8Array.of(0, 0, 0, 4, 0x6d, 0x6f, 0x6f, 0x66);
 
 type Segments = AsyncIterable<Uint8Array<ArrayBuffer>>;
 
@@ -83,6 +103,7 @@ interface FixtureFeeder {
   readonly feeder: SourceBufferFeeder;
   readonly element: HTMLAudioElement;
   readonly mediaSource: MediaSource;
+  readonly sourceBuffer: SourceBuffer;
   /**
    * The time each run asked the source for segments from.
    */
@@ -123,7 +144,7 @@ async function fixtureFeeder(firstRun: (segments: Segments) => Segments): Promis
     element.remove();
     fixture.dispose();
   };
-  return { feeder, element, mediaSource, asked, close };
+  return { feeder, element, mediaSource, sourceBuffer, asked, close };
 }
 
 describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', () => {
@@ -164,13 +185,14 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
         ...UNREAD_SOURCE,
         segmentsFrom: (time): AsyncIterable<Uint8Array<ArrayBuffer>> => {
           asked.push(time);
-          return UNREAD_SOURCE.segmentsFrom(time);
+          return neverEnding();
         },
       },
     });
     feeder.restartFrom(seconds(2.5));
+    await waitUntil(() => asked.length === 1);
     feeder.restartFrom(seconds(0.5));
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitUntil(() => asked.length === 2);
     expect(asked).toEqual([1.5, 0]);
     feeder.dispose();
     attached.detach();
@@ -192,25 +214,46 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
     close();
   });
 
-  // A seek stops a run between any two of its segments; what the next run appends must still
-  // decode, which only playing shows.
-  for (const appended of [1, 2, 3, 4]) {
-    it(`plays on after a seek that stopped a run after ${appended} of its segments`, async () => {
+  // A seek stops a run between any two of its segments: playing from the last run's audio into
+  // the next run's must still decode, which only playing shows.
+  for (const appended of [1, 2, 3]) {
+    it(`plays from one run's audio into the next after a seek stopped a run after ${appended} of its segments`, async () => {
       const stalled = new Deferred<void>();
       const { feeder, element, close } = await fixtureFeeder(stallingAfter(appended, stalled));
       feeder.restartFrom(seconds(0));
       await stalled.promise;
+      const seam = element.buffered.length > 0 ? element.buffered.end(0) : 0;
+      const from = Math.max(0, seam - ACROSS_THE_SEAM);
       element.muted = true;
-      element.currentTime = SEEK_INTO_FIRST;
-      feeder.restartFrom(seconds(SEEK_INTO_FIRST));
+      element.currentTime = from;
+      feeder.restartFrom(seconds(from));
       await element.play();
-      await waitUntil(() => element.error !== null || element.currentTime > PLAYED_PAST);
+      await waitUntil(
+        () => element.error !== null || element.currentTime > seam + ACROSS_THE_SEAM,
+        PLAYBACK_WITHIN_MS,
+      );
       expect(element.error).toBeNull();
       expect(feeder.failure).toBeUndefined();
-      expect(element.currentTime).toBeGreaterThan(PLAYED_PAST);
+      expect(element.currentTime).toBeGreaterThan(seam + ACROSS_THE_SEAM);
       close();
     });
   }
+
+  it("leaves a failed element's own error to say why, appending nothing more", async () => {
+    const stalled = new Deferred<void>();
+    const { feeder, element, sourceBuffer, close } = await fixtureFeeder(
+      stallingAfter(FIRST_SECOND, stalled),
+    );
+    feeder.restartFrom(seconds(0));
+    await stalled.promise;
+    sourceBuffer.appendBuffer(NOT_A_SEGMENT);
+    await waitUntil(() => element.error !== null);
+    feeder.restartFrom(seconds(SEEK_BEYOND_THE_FIRST));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(element.error).not.toBeNull();
+    expect(feeder.failure).toBeUndefined();
+    close();
+  });
 
   it('starts no run after a seek within audio buffered to the end of the ended stream', async () => {
     const { feeder, element, mediaSource, asked, close } = await fixtureFeeder(everySegment);

@@ -56,6 +56,9 @@ want, by Studio's far field and the seam agreeing (ADR 0023), the lens pose (ADR
 canvas window and the field edge (ADR 0014), and HLG shown as Studio's SDR shows it (ADR 0033),
 in Chromium and WebKit.
 
+One Insta360 X4 Air recording (a local sample, ADR 0031): the X4 Air's IMU frame (ADR 0009) and
+the gyro's timing against its frames (ADR 0034), in Chromium and WebKit.
+
 ## Waiting on something only a user can supply
 
 - **An X3 or X4 recording** (a 5.7K `_00_`/`_10_` pair and a packed sub-5.7K file would cover

@@ -3,6 +3,14 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+What a page may notice:
+
+- An Insta360 X4 Air recording is stabilized about the right axes: its IMU frame is measured
+  (ADR 0009) where it was assumed, and its load no longer warns (`recording-degraded`) that the
+  IMU frame has not been verified on a recording.
+
 ## 0.4.0 (2026-10-01)
 
 New:

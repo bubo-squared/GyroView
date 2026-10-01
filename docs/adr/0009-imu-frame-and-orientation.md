@@ -74,6 +74,16 @@ stillest, 7.4 against 14.6 unstabilized and 13.5 for the runner-up, alike in Chr
 WebKit. `X6_IMU_FRAME` is that arrangement, measured; the X5 and the X6 share its axes
 (`QUARTER_TURN_ABOUT_LATERAL`). Provisional until a second unit or a longer clip confirms it.
 
+## On the X4 Air (2026-10-01)
+
+One X4 Air recording (one file holding a track per lens, a local sample, ADR 0031), ranked at
+nine moments of its 15 seconds: the X5's arrangement keeps the world stillest, 21.5 against 29.7
+unstabilized and 26.3 for the runner-up, alike in Chromium and WebKit, about the X5 recordings'
+own margin. The aligned frame the X4 Air fell back to ranks third, at 26.6: it turned the
+stabilized picture about the wrong axes. `X4_AIR_IMU_FRAME` is the X5's arrangement, measured;
+with it the gyro's timing holds as ADR 0034 has it, the world stillest 0.6 ms from the frame's
+own time, within a standard error of 2.5 ms. Provisional until a second unit confirms it.
+
 ## Since ADR 0034 (2026-10-01)
 
 A frame's mid-exposure time is its capture time plus half its shutter: the half readout the

@@ -17,7 +17,7 @@ import {
   ZERO_VECTOR3,
   type Vector3,
 } from '../../../shared/math/Vector3';
-import { seconds, type Seconds } from '../../../shared/units/time';
+import { microseconds, seconds, type Seconds } from '../../../shared/units/time';
 import type { GyroSample, GyroTrack } from '../gyro/GyroTrack';
 import { toBodyFrame, type ImuFrame } from '../imu/ImuFrame';
 import type { CaptureClock } from '../timing/CaptureClock';
@@ -173,9 +173,7 @@ interface TimedSample {
  * lookup's binary search holds.
  */
 function sampleVideoTimes(gyro: GyroTrack, clock: CaptureClock): Float64Array {
-  return Float64Array.from({ length: gyro.length }, (_unused, index) =>
-    clock.gyroVideoTimeOf(gyro.sampleAt(index).captureTime),
-  );
+  return gyro.captureTimes.map((captureTime) => clock.gyroVideoTimeOf(microseconds(captureTime)));
 }
 
 function finiteSample(gyro: GyroTrack, index: number): GyroSample {

@@ -24,10 +24,17 @@ export class SampleColumns {
     this.angularVelocities = new Float32Array(capacity * VECTOR3_COMPONENTS);
   }
 
+  /**
+   * Component by component: `set` from an array of three takes a generic path several times
+   * slower, once per sample of an hour-long record.
+   */
   public push(sample: GyroSample): void {
+    const base = this.length * VECTOR3_COMPONENTS;
     this.recordedTimes[this.length] = sample.captureTime;
-    this.accelerations.set(sample.acceleration, this.length * VECTOR3_COMPONENTS);
-    this.angularVelocities.set(sample.angularVelocity, this.length * VECTOR3_COMPONENTS);
+    for (let axis = 0; axis < VECTOR3_COMPONENTS; axis += 1) {
+      this.accelerations[base + axis] = sample.acceleration[axis] ?? NaN;
+      this.angularVelocities[base + axis] = sample.angularVelocity[axis] ?? NaN;
+    }
     this.length += 1;
   }
 

@@ -8,8 +8,12 @@ export const VECTOR3_COMPONENTS = 3;
 
 export const ZERO_VECTOR3: Vector3 = [0, 0, 0];
 
+/**
+ * The square root of the squares, not `Math.hypot`: several times slower in V8, it guards against
+ * overflow no reading or direction here comes near, and gyro integration takes a million of these.
+ */
 export function magnitudeOf(vector: Vector3): number {
-  return Math.hypot(vector[0], vector[1], vector[2]);
+  return Math.sqrt(dotProduct(vector, vector));
 }
 
 export function dotProduct(a: Vector3, b: Vector3): number {

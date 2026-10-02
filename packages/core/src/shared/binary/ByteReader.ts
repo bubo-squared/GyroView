@@ -4,6 +4,11 @@ const UINT8_SIZE = 1;
 const UINT16_SIZE = 2;
 const UINT32_SIZE = 4;
 const UINT64_SIZE = 8;
+/**
+ * The safe integer range as big integers, made once: a gyro record reads a stamp per sample.
+ */
+const MIN_SAFE_BIGINT = BigInt(Number.MIN_SAFE_INTEGER);
+const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 const INT32_SIZE = 4;
 const INT64_SIZE = 8;
 const FLOAT64_SIZE = 8;
@@ -97,8 +102,7 @@ export class ByteReader {
   }
 
   private toSafeNumber(value: bigint, offset: number): number {
-    const isSafe =
-      value >= BigInt(Number.MIN_SAFE_INTEGER) && value <= BigInt(Number.MAX_SAFE_INTEGER);
+    const isSafe = value >= MIN_SAFE_BIGINT && value <= MAX_SAFE_BIGINT;
     if (!isSafe) {
       throw new GyroViewError(
         'binary-unsafe-integer',

@@ -1,6 +1,7 @@
 # ADR 0029: The player reads the sample tables and downloads the bytes itself
 
-Status: accepted (2026-09-30)
+Status: accepted (2026-09-30); amended (2026-10-02) by ADR 0036: a reader moving on plans again
+only every few mebibytes, and a wait on bytes a transfer brings plans not at all
 
 ## Context
 

@@ -35,11 +35,12 @@ interface FailedRange {
 
 /**
  * One file of a recording downloaded while it plays (ADR 0029): the only reader of its bytes.
- * Its cursors say where the readers of its tracks stand; whenever one opens or closes or waits
- * for bytes no transfer brings, once they have moved on by the policy's replan bytes (ADR 0036),
- * and whenever a range comes whole, it plans anew, once per turn, what to ask for, give up and let go of, and hands each
- * waiting cursor its sample once the bytes have come. A range that failed is not asked for again
- * until a cursor opens, a seek or a replay, lest a failing server be asked without end.
+ * Its cursors say where the readers of its tracks stand. It plans anew, once per turn, what to
+ * ask for, give up and let go of when a cursor opens, closes or waits for bytes no transfer
+ * brings, once the cursors have moved on by the policy's replan bytes (ADR 0036), when a range
+ * comes whole or fails, and when reading ahead starts; it hands each waiting cursor its sample
+ * once the bytes have come. A range that failed is not asked for again until a cursor opens, a
+ * seek or a replay, lest a failing server be asked without end.
  */
 export class FileDownload implements MediaBuffer {
   private readonly store = new BlockStore();
@@ -138,7 +139,8 @@ export class FileDownload implements MediaBuffer {
         this.takenSincePlan += length;
         if (this.takenSincePlan >= this.parts.policy.replanBytes) this.schedulePlan();
       },
-      // Bytes a transfer brings come without a plan; a plan made for them would decide nothing.
+      // Bytes a transfer brings come without a plan: one made now would ask nothing for this
+      // cursor, and in a simulated playback changed no decision; the next plan tops up.
       waiting: (range): void => {
         if (!this.transfers.isBringing(range)) this.schedulePlan();
       },

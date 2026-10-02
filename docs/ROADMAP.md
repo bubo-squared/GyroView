@@ -108,8 +108,8 @@ the gyro's timing against its frames (ADR 0034), in Chromium and WebKit.
 - Opening a recording integrates its whole gyro record on the main thread before the first
   frame: 70 ms for the 4.4-minute X5 office recording on an M4 Pro, a long task of half a second
   under six times CPU throttling, and longer the longer the recording.
-- A device whose decoders cannot keep up with both lens tracks waits for them (`buffering`)
-  rather than dropping frames: the 8K and 5.7K60 modes need a decoder of 8K30 class.
+- The 8K and 5.7K60 modes decode about as many pixels a second as one 8K30 stream: a phone
+  or laptop whose decoder is of 4K60 class plays them in stretches between waits.
 - Recordings split into several `_NNN` segment files play one segment at a time.
 - Playback speed is 1x: another speed needs the decoders to keep up with it, which an 8K
   recording's barely do at 1x, and the sound to follow at that rate.
@@ -140,14 +140,15 @@ In rough order of value:
 6. `.insp` photos through the same stitcher.
 7. The decode pipeline in a worker, if main-thread scheduling ever shows in profiles (it did
    not on an M4 Pro).
-8. For decoders that fall behind, decoding the base temporal layer alone: the X5's 5.7K60 and
-   the X4 Air's recordings mark every other frame a sub-layer non-reference picture (HEVC
-   `TSA_N`, temporal id 1), which nothing else refers to, so skipping them halves the decode
-   load at half the frame rate. The 8K recordings and the X6's mark every frame a reference.
+8. For decoders that fall behind, decoding the base temporal layer alone, at half the frame
+   rate, if a slower picture is wanted over a waiting one: in the X5 5.7K60 recording and the
+   X4 Air recording examined, every other frame is a sub-layer non-reference picture (HEVC
+   `TSA_N`, temporal id 1) that nothing else refers to, so skipping those halves the decode load.
+   In the X5 8K30 recordings and the X6 recording examined, every frame is a reference.
 9. The gyro integrated after the first frame, in slices between frames: the raw lenses, the
    default view, need no orientation, and the stitched views could wait for it.
-10. A quality that follows the device: `fast` when frames are presented late while decoded ones
-    wait, which only the GPU explains. Both lens frames are uploaded whole at every frame (two
+10. A quality that follows the device, if the page's choice may be overruled: `fast` when frames
+    are presented late while decoded ones wait, which only the GPU explains. Both lens frames are uploaded whole at every frame (two
     3840-pixel squares at 8K, about 120 MB of texels), which a phone's memory bandwidth feels
     first.
 

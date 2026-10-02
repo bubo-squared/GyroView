@@ -17,7 +17,8 @@ import {
 import { openDownloadedSource } from '@gyroview/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { hasSamples, OFFICE_RECORDING, SAILING_RECORDING } from './samples';
+import { localSampleEntries, recordingPathOf } from './localCatalogueFile';
+import { hasSamples, KRNJACA_RECORDING, OFFICE_RECORDING, SAILING_RECORDING } from './samples';
 
 const TIMEOUT_MS = 30_000;
 /**
@@ -88,6 +89,45 @@ describe.skipIf(!hasSamples())('the motion of the real X5 recordings', () => {
       } finally {
         await source.close();
       }
+    },
+    TIMEOUT_MS,
+  );
+});
+
+async function mountingNameOf(file: string): Promise<string | undefined> {
+  const source = await FileRandomAccessSource.open(file);
+  const input = await openDownloadedSource(source, new MediabunnyCodecReader());
+  try {
+    const timing = await timeRecording(await readRecording(source), input.videoTracks[0]);
+    return timing.motion?.mounting.name;
+  } finally {
+    input.dispose();
+    await source.close();
+  }
+}
+
+/**
+ * How each recording's camera stood, which `off` and `follow` draw it by (ADR 0038): the
+ * evidence the mounting was decided on.
+ */
+describe.skipIf(!hasSamples())('the mounting of the real recordings', () => {
+  it.each([
+    ['office', OFFICE_RECORDING, 'upright'],
+    ['krnjaca', KRNJACA_RECORDING, 'upright'],
+    ['sailing', SAILING_RECORDING, 'on its right side'],
+  ])(
+    'stands the %s recording as its camera stood',
+    async (_name, file, mounting) => {
+      expect(await mountingNameOf(file)).toBe(mounting);
+    },
+    TIMEOUT_MS,
+  );
+
+  const locals = localSampleEntries().filter((entry) => entry.mounting !== undefined);
+  it.skipIf(locals.length === 0).each(locals.map((entry) => [entry.slug, entry] as const))(
+    'stands the local recording %s as its camera stood',
+    async (_slug, entry) => {
+      expect(await mountingNameOf(recordingPathOf(entry))).toBe(entry.mounting);
     },
     TIMEOUT_MS,
   );

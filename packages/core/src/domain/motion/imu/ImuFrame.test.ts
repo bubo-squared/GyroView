@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  A1_IMU_FRAME,
   ALIGNED_IMU_FRAME,
   assumedImuFrame,
   imuFrameFor,
@@ -17,6 +18,10 @@ import { captureError } from '../../../../test/support/errors';
  */
 const OFFICE_ON_TABLE_UPRIGHT: Vector3 = [-0.068, 0.018, -0.999];
 const SAILING_ON_A_POLE: Vector3 = [-0.955, -0.036, 0.294];
+/**
+ * An invented reading of a drone standing level (ADR 0031): the specific force along IMU y.
+ */
+const DRONE_STANDING_LEVEL: Vector3 = [0.05, 0.99, -0.1];
 
 function expectVector(actual: Vector3, expected: Vector3, digits: number): void {
   for (const [index, value] of expected.entries()) {
@@ -32,6 +37,10 @@ describe('ImuFrame', () => {
   it('maps the X5 accelerometer on a pole to an upward specific force left of lens 0, along body -x', () => {
     const up = toBodyFrame(X5_IMU_FRAME, SAILING_ON_A_POLE);
     expect(up[0]).toBeLessThan(-0.9);
+  });
+
+  it("maps the A1's specific force standing level onto its lens axis, lens 0 facing up", () => {
+    expectVector(toBodyFrame(A1_IMU_FRAME, DRONE_STANDING_LEVEL), [0.1, -0.05, 0.99], 9);
   });
 
   it('builds a proper rotation from signed axes', () => {
@@ -57,6 +66,8 @@ describe('ImuFrame', () => {
     expect(imuFrameFor({ model: 'Insta360 X4 Air' })).toBe(X4_AIR_IMU_FRAME);
     expect(imuFrameFor({ model: 'Insta360 X5' })).toBe(X5_IMU_FRAME);
     expect(imuFrameFor({ model: 'Insta360 X6' })).toBe(X6_IMU_FRAME);
+    expect(imuFrameFor({ model: 'Antigravity A1' })).toBe(A1_IMU_FRAME);
+    expect(A1_IMU_FRAME).toMatchObject({ toBody: [0, 0, -1, -1, 0, 0, 0, 1, 0], isVerified: true });
     expect(X4_AIR_IMU_FRAME).toMatchObject({ toBody: X5_IMU_FRAME.toBody, isVerified: true });
     expect(X6_IMU_FRAME).toMatchObject({ toBody: X5_IMU_FRAME.toBody, isVerified: true });
     expect(imuFrameFor({ model: 'Insta360 X3' })).toBe(ALIGNED_IMU_FRAME);

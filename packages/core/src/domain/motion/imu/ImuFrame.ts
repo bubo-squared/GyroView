@@ -109,6 +109,13 @@ export const X6_IMU_FRAME = measuredImuFrame('X6', QUARTER_TURN_ABOUT_LATERAL);
 export const X4_AIR_IMU_FRAME = measuredImuFrame('X4 Air', QUARTER_TURN_ABOUT_LATERAL);
 
 /**
+ * Measured on one Antigravity A1 recording (ADR 0009): the drone's lens axis is its vertical, the
+ * IMU's y, lens 0 facing up; the ranking puts this quarter turn about that axis first, the X5's
+ * arrangement fourth.
+ */
+export const A1_IMU_FRAME = measuredImuFrame('A1', ['-z', '-x', 'y']);
+
+/**
  * Until a recording proves otherwise, the IMU is assumed aligned with the body.
  */
 export const ALIGNED_IMU_FRAME = assumedImuFrame('aligned (unverified)', ['x', 'y', 'z']);
@@ -125,6 +132,7 @@ export interface ImuFrameHints {
  * Pro") is another camera, unmeasured until a recording of it is ranked.
  */
 const IMU_FRAMES_BY_MODEL: ReadonlyMap<string, ImuFrame> = new Map([
+  ['Antigravity A1', A1_IMU_FRAME],
   ['Insta360 X4 Air', X4_AIR_IMU_FRAME],
   ['Insta360 X5', X5_IMU_FRAME],
   ['Insta360 X6', X6_IMU_FRAME],

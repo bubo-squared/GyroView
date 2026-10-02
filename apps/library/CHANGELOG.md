@@ -3,6 +3,27 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+New:
+
+- Antigravity A1 recordings play. The A1 leaves the profile, tier and level of its HEVC
+  configuration blank, so the codec string is read from the stream's SPS instead (ADR 0037), and
+  its IMU frame is measured (ADR 0009): the `ready` event's `imuFrame` is
+  `{ name: 'A1', isVerified: true }`.
+
+What a page may notice:
+
+- An HEVC recording's codec in the `ready` event's `tracks[].codec` begins with the track's
+  sample entry type, `hvc1` on every camera seen, where it began with `hev1`; its profile, tier
+  and level are unchanged (ADR 0037).
+- A recording whose camera stood on its side, upside down or with its lens axis vertical, and
+  whose IMU frame is measured, stands upright in `off` and `follow`, as the camera was mounted
+  (ADR 0038). Under `horizon`, such a camera's view keeps its heading while the camera pitches.
+- `lock` and `horizon` open facing lens 0, unless the camera's lens axis was vertical: then they
+  open a quarter turn from lens 0, where Insta360 Studio centres the A1, and a `yaw` set to face
+  a direction moves by as much (ADR 0038).
+
 ## 0.4.2 (2026-10-02)
 
 What a page may notice:

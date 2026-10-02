@@ -4,7 +4,7 @@ Status: accepted (2026-10-03), seen on one Antigravity A1 recording
 
 ## Context
 
-The decoder is configured with a codec string, `hvc1.1.6.L183.80` for an X5 at 8K, that names
+The decoder is configured with a codec string, `hev1.1.6.L183.80` for an X5 at 8K, that names
 the stream's profile, tier and level. mediabunny builds it from the header of the track's `hvcC`
 box, the HEVC decoder configuration, which ISO/IEC 14496-15 §8.3.3.1 says repeats the SPS's
 profile_tier_level. The Antigravity A1 leaves that header blank: profile 0, no compatibility or
@@ -36,7 +36,10 @@ with `codec-unsupported` and blamed the browser. Both decode the stream once tol
 
 ## Consequences
 
-- Every HEVC recording's codec string begins with `hvc1` rather than `hev1`; its profile, tier
-  and level are those it had.
+- Every HEVC recording's codec string begins with its sample entry type, `hvc1` on every camera
+  seen, rather than `hev1`; its profile, tier and level are those it had. The `ready` event's
+  `tracks[].codec` shows it: a page matching on `hev1` notices.
 - A blank header in a configuration without an SPS (an `hev1` track may keep its parameter sets
-  in the stream) still names profile 0 and is refused as before.
+  in the stream), or whose parameter sets run past its end, still names profile 0 and is refused
+  as before (`codec-unsupported`).
+- An encrypted track, its sample entry `encv`, keeps mediabunny's string.

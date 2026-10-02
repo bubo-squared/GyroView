@@ -37,6 +37,12 @@ export interface DownloadPolicy {
    */
   readonly refillBytes: number;
   /**
+   * Readers moving on through bytes that have come change the plan by little: it is made again
+   * once they have taken this many bytes since the last, and at once whenever one waits, opens
+   * or closes, so a top-up comes at most this late.
+   */
+  readonly replanBytes: number;
+  /**
    * How much of the picture ahead must be downloaded before playback that starved of it plays
    * again, at most what the budget holds less a request (ADR 0011).
    */
@@ -57,6 +63,11 @@ const REQUEST_MEBIBYTES = 8;
 const REQUESTS_IN_FLIGHT = 2;
 const BRIDGED_GAP_MEBIBYTES = 1;
 const REFILL_FRACTION = 0.25;
+/**
+ * Planning walks every sample in the window, a few thousand on a fast recording: made for each
+ * sample read, it took more of a slow phone's main thread than drawing the frames.
+ */
+const REPLANS_PER_REFILL = 16;
 /**
  * Long enough that a link slower than the recording plays in stretches rather than frame by
  * frame, short enough that the wait does not feel like a stop.
@@ -87,6 +98,7 @@ export function downloadPolicyFor(
     requestsInFlight: REQUESTS_IN_FLIGHT,
     bridgedGap: BRIDGED_GAP_MEBIBYTES * MEBIBYTE,
     refillBytes: Math.round(aheadBytes * REFILL_FRACTION),
+    replanBytes: Math.round((aheadBytes * REFILL_FRACTION) / REPLANS_PER_REFILL),
     resumeSeconds: seconds(RESUME_SECONDS),
   };
 }

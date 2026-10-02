@@ -35,8 +35,9 @@ interface FailedRange {
 
 /**
  * One file of a recording downloaded while it plays (ADR 0029): the only reader of its bytes.
- * Its cursors say where the readers of its tracks stand; whenever that changes, or a range comes
- * whole, it plans anew, once per turn, what to ask for, give up and let go of, and hands each
+ * Its cursors say where the readers of its tracks stand; whenever one opens or closes or waits
+ * for bytes no transfer brings, once they have moved on by the policy's replan bytes (ADR 0036),
+ * and whenever a range comes whole, it plans anew, once per turn, what to ask for, give up and let go of, and hands each
  * waiting cursor its sample once the bytes have come. A range that failed is not asked for again
  * until a cursor opens, a seek or a replay, lest a failing server be asked without end.
  */
@@ -50,6 +51,10 @@ export class FileDownload implements MediaBuffer {
   private anchor: WindowAnchor | undefined;
   private isReadingAhead = false;
   private isPlanDue = false;
+  /**
+   * What the readers have taken since the last plan.
+   */
+  private takenSincePlan = 0;
   private isDisposed = false;
 
   public constructor(private readonly parts: FileDownloadParts) {
@@ -129,8 +134,13 @@ export class FileDownload implements MediaBuffer {
       bytesOf: (range): Uint8Array | undefined => this.store.bytesOf(range),
       failureOf: (range): Error | undefined =>
         this.failures.find((failed) => failed.range.overlaps(range))?.error,
-      changed: (): void => {
-        this.schedulePlan();
+      movedOn: (length): void => {
+        this.takenSincePlan += length;
+        if (this.takenSincePlan >= this.parts.policy.replanBytes) this.schedulePlan();
+      },
+      // Bytes a transfer brings come without a plan; a plan made for them would decide nothing.
+      waiting: (range): void => {
+        if (!this.transfers.isBringing(range)) this.schedulePlan();
       },
       closed: (cursor): void => {
         this.cursors.delete(cursor);
@@ -170,6 +180,7 @@ export class FileDownload implements MediaBuffer {
   }
 
   private plan(): void {
+    this.takenSincePlan = 0;
     const decisions = planDownloads({
       cursors: this.positions(),
       held: this.store.held,

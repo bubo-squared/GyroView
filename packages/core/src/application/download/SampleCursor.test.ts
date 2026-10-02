@@ -19,7 +19,8 @@ const TRACK: TrackSampleTable = cameraRecording({
  * and what the cursor told it.
  */
 class FakeHost implements CursorHost {
-  public changes = 0;
+  public readonly movedOnBy: number[] = [];
+  public readonly waitsFor: ByteRange[] = [];
   public closings = 0;
   private readonly came = new Map<number, Uint8Array>();
   private failed: { readonly range: ByteRange; readonly error: Error } | undefined;
@@ -42,8 +43,12 @@ class FakeHost implements CursorHost {
     return this.failed?.range.overlaps(range) === true ? this.failed.error : undefined;
   }
 
-  public changed(): void {
-    this.changes += 1;
+  public movedOn(length: number): void {
+    this.movedOnBy.push(length);
+  }
+
+  public waiting(range: ByteRange): void {
+    this.waitsFor.push(range);
   }
 
   public closed(): void {
@@ -64,14 +69,16 @@ describe('SampleCursor', () => {
       bytes: Uint8Array.of(1),
     });
     expect(cursor.position).toBe(2);
-    expect(host.changes).toBe(1);
+    expect(host.movedOnBy).toEqual([1]);
+    expect(host.waitsFor).toEqual([]);
   });
 
   it('waits for bytes still to come, telling so, and hands the sample out once they have', async () => {
     const { cursor, host } = cursorAt(0);
     expect(cursor.isWaiting).toBe(false);
     const next = cursor.nextSample();
-    expect([cursor.isWaiting, host.changes]).toEqual([true, 1]);
+    expect(cursor.isWaiting).toBe(true);
+    expect(host.waitsFor).toEqual([TRACK.rangeOf(0)]);
     host.bring(1);
     cursor.serve();
     expect(cursor.isWaiting).toBe(true);

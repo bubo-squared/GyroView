@@ -26,6 +26,7 @@ const POLICY: DownloadPolicy = {
   requestsInFlight: 2,
   bridgedGap: SLOT,
   refillBytes: 25 * SLOT,
+  replanBytes: 2 * SLOT,
   resumeSeconds: seconds(1),
 };
 

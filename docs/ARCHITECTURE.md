@@ -154,7 +154,8 @@ Use cases that orchestrate the domain through ports.
   and the movie bytes (`ftyp` and `moov`) a codec reader tells the codecs from.
 - `download/FileDownload` downloads one file while it plays, the only reader of its bytes then
   (ADR 0029): its `SampleCursor`s say where each reader stands, it plans once a turn whenever
-  that changes or a range comes whole, and carries the plan out through its `Transfers` (the
+  a reader opens, closes or waits for bytes no transfer brings, once the readers have moved on
+  by the policy's replan bytes (ADR 0036), or a range comes whole, and carries the plan out through its `Transfers` (the
   ranges streaming, each into its block) and its `BlockStore`. `DownloadedVideoTrack` and
   `DownloadedAudioSamples` read a track through it; `startFileDownload` joins a file's tracks to
   their codecs by track id; `SourceByteStream` streams any random-access source a range at a

@@ -13,7 +13,8 @@ older firmware appends it bare, so a top-level box walk ends in non-box bytes. `
 64-bit large-size header form. Lens images are separate square video tracks in one file on
 X4/X5 (`hvc1`, 2880 or 3840 square, 8-bit full-range BT.709) and on the X6 (`hvc1`, 3840 square,
 HEVC Main 10, limited-range BT.2020 with HLG, the colour in the SPS alone without a `colr` box;
-50 fps at 8K); X3 and older write one file per lens (`_00_` back lens, `_10_` screen-side lens)
+50 fps at 8K) and on the Antigravity A1 (`hvc1`, 3840 square, 8-bit full-range BT.709, no sound
+track, the `hvcC` header blank); X3 and older write one file per lens (`_00_` back lens, `_10_` screen-side lens)
 at 5.7K and a single 2:1 packed frame below that (unverified: no sample). The LRV proxy is a
 1664x832 packed dual fisheye with the same trailer (2048x1024 8-bit HLG on the X6).
 
@@ -29,6 +30,9 @@ The core reads the movie box itself into a sample table (`format/mp4`, ADR 0029)
   metadata tracks) are left out.
 - `stbl/stsd`: the sample entry type, and for AVC and HEVC the NAL length size from `avcC`
   (byte 4) or `hvcC` (byte 21), low two bits plus one.
+- `hvcC`, for the codec string: the profile, tier and level in bytes 1 to 12, or, where they name
+  profile 0 (the Antigravity A1 leaves them blank), those of the first SPS the box carries
+  (ADR 0037).
 - `stts` durations, `ctts` composition offsets (read signed in both versions, as mediabunny
   does), `stss` sync samples (none listed: every sample is one), `stsz` sizes, `stsc` samples a
   chunk, `stco` or `co64` chunk offsets.

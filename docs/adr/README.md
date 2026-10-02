@@ -40,3 +40,4 @@ new record takes the next number and a line here.
 - [ADR 0034](0034-a-frame-is-timed-half-way-through-its-shutter.md): A frame's gyro time is half way through its shutter, with nothing added for the readout
 - [ADR 0035](0035-a-changed-setting-is-drawn-once-an-animation-frame.md): A changed setting is drawn once an animation frame
 - [ADR 0036](0036-the-download-plans-again-every-few-mebibytes-read.md): The download plans again every few mebibytes its readers take
+- [ADR 0037](0037-an-hevc-codec-string-is-read-from-the-sps-where-the-header-is-blank.md): An HEVC track's codec string is the core's, read from the SPS where the configuration's header is blank

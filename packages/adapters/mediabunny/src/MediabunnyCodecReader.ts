@@ -7,15 +7,23 @@ import {
   type VideoTrackCodec,
 } from '@gyroview/core';
 import {
-  ALL_FORMATS,
   BufferSource,
   Input,
+  MP4,
+  QTFF,
   type InputAudioTrack,
   type InputVideoTrack,
 } from 'mediabunny';
 
 import { audioConfigurationOf, videoConfigurationOf } from './decoderConfigurations';
 import { trackColourOf } from './trackColour';
+
+/**
+ * The movie bytes are an ISO BMFF file's type and movie boxes, whatever its brand: with only
+ * these two formats named, a page's bundle leaves out mediabunny's other demuxers, a third of
+ * its weight.
+ */
+const MOVIE_FORMATS = [MP4, QTFF];
 
 /**
  * CodecReader over mediabunny: opens the file type and movie boxes as a file of their own, in
@@ -25,7 +33,7 @@ import { trackColourOf } from './trackColour';
  */
 export class MediabunnyCodecReader implements CodecReader {
   public async read(movieBytes: Uint8Array): Promise<ContainerCodecs> {
-    const input = new Input({ formats: ALL_FORMATS, source: new BufferSource(movieBytes) });
+    const input = new Input({ formats: MOVIE_FORMATS, source: new BufferSource(movieBytes) });
     try {
       const [videoTracks, audioTracks] = await Promise.all([
         input.getVideoTracks(),

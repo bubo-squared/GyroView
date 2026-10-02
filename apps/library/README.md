@@ -40,7 +40,7 @@ times a second while playing, as a media element's does; `frame` comes with ever
 drawn.
 
 A page without a bundler loads the standalone file, which has Three.js and mediabunny inside
-(about 280 KB compressed) and registers the element; it exports what the package does:
+(about 260 KB compressed) and registers the element; it exports what the package does:
 
 ```html
 <script

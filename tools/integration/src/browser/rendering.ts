@@ -11,6 +11,7 @@ import {
   type Matrix3,
   type MotionSetup,
   type Seconds,
+  type StabilizationMode,
   type StitchingSetup,
   type Vector3,
 } from '@gyroview/core';
@@ -54,13 +55,33 @@ export function motionOf(opened: OpenedRecording): MotionSetup {
 }
 
 /**
- * The gyro's lock stabilization at a video time: the stabilized frame into the body, through the
- * camera's upright frame, as the player turns it.
+ * A mode's stabilization at a video time: the stabilized frame into the body, through the
+ * camera's upright frame, as the player turns it. Follow remembers earlier frames, so only the
+ * modes that do not are asked at a single time.
+ */
+function stabilizedAt(
+  opened: OpenedRecording,
+  mode: Exclude<StabilizationMode, 'follow'>,
+  time: Seconds,
+): Matrix3 {
+  const { orientations, mounting } = motionOf(opened);
+  const rotation = stabilizerFor(mode).nextRotation(orientations.orientationAt(time), time);
+  return rotationIntoBody(mounting, rotation);
+}
+
+/**
+ * The gyro's lock stabilization at a video time.
  */
 export function lockAt(opened: OpenedRecording, time: Seconds): Matrix3 {
-  const { orientations, mounting } = motionOf(opened);
-  const lock = stabilizerFor('lock').nextRotation(orientations.orientationAt(time), time);
-  return rotationIntoBody(mounting, lock);
+  return stabilizedAt(opened, 'lock', time);
+}
+
+/**
+ * The gyro's horizon stabilization at a video time: levelled, facing where the camera's upright
+ * frame faces.
+ */
+export function horizonAt(opened: OpenedRecording, time: Seconds): Matrix3 {
+  return stabilizedAt(opened, 'horizon', time);
 }
 
 /**

@@ -52,7 +52,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    // The player chunk carries Three.js and mediabunny: about 1 MB, 270 kB compressed.
+    // The player chunk carries Three.js and mediabunny: about 1 MB, 260 kB compressed.
     chunkSizeWarningLimit: 1400,
     rollupOptions: {
       input: {

@@ -10,7 +10,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: false,
-    // One module holding the player, Three.js and mediabunny: about 1.2 MB, 290 kB compressed.
+    // One module holding the player, Three.js and mediabunny: about 1.2 MB, 280 kB compressed.
     chunkSizeWarningLimit: 1400,
     lib: {
       entry: fileURLToPath(new URL('src/component.ts', import.meta.url)),

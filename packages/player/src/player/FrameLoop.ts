@@ -1,17 +1,4 @@
-/**
- * Schedules work for the next animation frame; `requestAnimationFrame` in the browser.
- */
-export interface FrameScheduler {
-  request(callback: () => void): number;
-  cancel(handle: number): void;
-}
-
-const ANIMATION_FRAMES: FrameScheduler = {
-  request: (callback): number => requestAnimationFrame(callback),
-  cancel: (handle): void => {
-    cancelAnimationFrame(handle);
-  },
-};
+import { ANIMATION_FRAMES, type FrameScheduler } from '../composition/animationFrames';
 
 /**
  * Calls `tick` once per animation frame between {@link start} and {@link stop}.

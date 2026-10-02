@@ -184,8 +184,8 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   }
 
   /**
-   * The frames standing on screen are uploaded again with the new filters and mip chain, so the
-   * change shows at once, even while paused.
+   * The frames standing on screen are uploaded again with the new filters and mip chain at the
+   * next draw, so the change shows even while paused.
    */
   public setQuality(quality: PictureQuality): void {
     this.ensureLive();

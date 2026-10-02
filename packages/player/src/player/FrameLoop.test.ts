@@ -1,38 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { FrameLoop, type FrameScheduler } from './FrameLoop';
-
-/**
- * A scheduler the test advances by hand.
- */
-class ManualScheduler implements FrameScheduler {
-  private readonly pending = new Map<number, () => void>();
-  private next = 1;
-
-  public get pendingCount(): number {
-    return this.pending.size;
-  }
-
-  public request(callback: () => void): number {
-    const handle = this.next;
-    this.next += 1;
-    this.pending.set(handle, callback);
-    return handle;
-  }
-
-  public cancel(handle: number): void {
-    this.pending.delete(handle);
-  }
-
-  /**
-   * Runs what is due now; frames requested while firing wait for the next call.
-   */
-  public fire(): void {
-    const due = [...this.pending.values()];
-    this.pending.clear();
-    for (const callback of due) callback();
-  }
-}
+import { FrameLoop } from './FrameLoop';
+import { ManualScheduler } from '../test/animationFrames';
 
 describe('FrameLoop', () => {
   it('ticks once per frame while running and reschedules itself', () => {

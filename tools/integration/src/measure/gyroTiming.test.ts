@@ -1,11 +1,11 @@
-import { seconds, stabilizerFor, type OrientationTrack, type Vector3 } from '@gyroview/core';
+import { seconds, type OrientationTrack, type Vector3 } from '@gyroview/core';
 import type { OpenedRecording } from '@gyroview/player/composition';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { saveMeasurement } from '../browser/artifacts';
 import { LOCAL_SAMPLES } from '../browser/localSamples';
 import { openSample } from '../browser/realRecordingSupport';
-import { equirectangularRendering, motionOf } from '../browser/rendering';
+import { equirectangularRendering, lockAt, motionOf } from '../browser/rendering';
 import {
   KRNJACA_8K_30,
   OFFICE_5K7_60,
@@ -132,17 +132,14 @@ function curveAt(
   opened: OpenedRecording,
   renderable: Moment & Parameters<typeof worldMovement>[0],
 ): number[] {
-  const { orientations } = motionOf(opened);
   const { frameTimes } = opened;
   if (!frameTimes) throw new Error('the recording has no frame times');
-  const lock = stabilizerFor('lock');
   return OFFSETS_MS.map((offset) =>
     worldMovement(
       renderable,
       (pair) => {
         const frameTime = frameTimes.midExposureAt(pair.timestamp) ?? pair.timestamp;
-        const at = seconds(frameTime + offset / MILLISECONDS_PER_SECOND);
-        return lock.nextRotation(orientations.orientationAt(at), at);
+        return lockAt(opened, seconds(frameTime + offset / MILLISECONDS_PER_SECOND));
       },
       HORIZON_BAND,
     ),

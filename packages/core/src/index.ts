@@ -62,6 +62,12 @@ export {
   type SignedAxis,
 } from './domain/motion/imu/ImuFrame';
 export {
+  mountingOf,
+  uprightImuFrame,
+  UPRIGHT_MOUNTING,
+  type Mounting,
+} from './domain/motion/mounting/Mounting';
+export {
   OrientationTrack,
   type IntegrationOptions,
   type OrientationTrackParts,

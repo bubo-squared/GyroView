@@ -1,9 +1,11 @@
+import type { Mounting } from '../../domain/motion/mounting/Mounting';
 import type { OrientationTrack } from '../../domain/motion/orientation/OrientationTrack';
 import type { Stabilizer } from '../../domain/motion/stabilization/Stabilizer';
 import { OffStabilization } from '../../domain/motion/stabilization/stabilizers';
 import type { FrameTimes } from '../../domain/motion/timing/FrameTimes';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
 import type { PictureRenderer } from '../../ports/PictureRenderer';
+import { multiplyMatrices } from '../../shared/math/Matrix3';
 import type { Seconds } from '../../shared/units/time';
 
 export interface StabilizingParts<Handle> {
@@ -11,7 +13,15 @@ export interface StabilizingParts<Handle> {
    * What draws the picture, turned as each presentation's orientation says.
    */
   readonly sink: Pick<PictureRenderer<Handle>, 'present' | 'setStabilization'>;
+  /**
+   * The orientation of the camera's upright frame, which the stabilizer turns the picture by.
+   */
   readonly orientations: OrientationTrack;
+  /**
+   * How the camera stood, which turns the stabilizer's rotation from the upright frame into the
+   * body the lenses are posed in.
+   */
+  readonly mounting: Mounting;
   /**
    * Gives each frame its mid-exposure time; without it the frame's track timestamp stands in.
    */
@@ -34,7 +44,8 @@ export class StabilizingFrameSink<Handle = unknown> implements FrameSink<Handle>
   public present(presentation: Presentation<Handle>): void {
     const time = this.exposureTimeOf(presentation);
     const orientation = this.parts.orientations.orientationAt(time);
-    this.parts.sink.setStabilization(this.stabilizer.nextRotation(orientation, time));
+    const rotation = this.stabilizer.nextRotation(orientation, time);
+    this.parts.sink.setStabilization(multiplyMatrices(this.parts.mounting.toBody, rotation));
     this.parts.sink.present(presentation);
   }
 

@@ -2,12 +2,19 @@ import { describe, expect, it } from 'vitest';
 
 import { StabilizingFrameSink } from './StabilizingFrameSink';
 import { ALIGNED_IMU_FRAME } from '../../domain/motion/imu/ImuFrame';
+import { UPRIGHT_MOUNTING, type Mounting } from '../../domain/motion/mounting/Mounting';
 import { OrientationTrack } from '../../domain/motion/orientation/OrientationTrack';
 import { LockStabilization } from '../../domain/motion/stabilization/stabilizers';
 import { FrameTimes } from '../../domain/motion/timing/FrameTimes';
 import type { Presentation } from '../../ports/FrameSink';
 import type { PictureRenderer } from '../../ports/PictureRenderer';
-import { IDENTITY_MATRIX3, transformVector, type Matrix3 } from '../../shared/math/Matrix3';
+import {
+  IDENTITY_MATRIX3,
+  rotationAboutX,
+  transformVector,
+  type Matrix3,
+} from '../../shared/math/Matrix3';
+import { radians } from '../../shared/units/angle';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { seconds } from '../../shared/units/time';
 import {
@@ -17,6 +24,14 @@ import {
 } from '../../../test/support/syntheticGyro';
 
 const FORWARD: Vector3 = [0, 0, 1];
+const DOWN: Vector3 = [0, 1, 0];
+/**
+ * A drone's camera, lens 0 up: the upright frame's down is the body's minus z.
+ */
+const LENS_0_UP: Mounting = {
+  name: 'with lens 0 up',
+  toBody: rotationAboutX(radians(-Math.PI / 2)),
+};
 
 class RecordingSink implements Pick<PictureRenderer<string>, 'present' | 'setStabilization'> {
   public readonly rotations: Matrix3[] = [];
@@ -66,7 +81,12 @@ function forwardThrough(sink: RecordingSink): Vector3 {
 describe('StabilizingFrameSink', () => {
   it('passes the picture through unturned in the default off mode', () => {
     const inner = new RecordingSink();
-    const sink = new StabilizingFrameSink({ sink: inner, orientations, frameTimes: undefined });
+    const sink = new StabilizingFrameSink({
+      sink: inner,
+      orientations,
+      mounting: UPRIGHT_MOUNTING,
+      frameTimes: undefined,
+    });
     sink.present(presentationAt(1));
     expect(inner.rotations).toEqual([IDENTITY_MATRIX3]);
     expect(inner.presented).toHaveLength(1);
@@ -74,7 +94,12 @@ describe('StabilizingFrameSink', () => {
 
   it('turns the picture by the camera orientation at the frame time in lock mode', () => {
     const inner = new RecordingSink();
-    const sink = new StabilizingFrameSink({ sink: inner, orientations, frameTimes: undefined });
+    const sink = new StabilizingFrameSink({
+      sink: inner,
+      orientations,
+      mounting: UPRIGHT_MOUNTING,
+      frameTimes: undefined,
+    });
     sink.setStabilizer(new LockStabilization());
     sink.present(presentationAt(1));
     const forwardInBody = forwardThrough(inner);
@@ -82,10 +107,32 @@ describe('StabilizingFrameSink', () => {
     expect(forwardInBody[2]).toBeCloseTo(0, 2);
   });
 
+  it("turns the picture from the camera's upright frame into its body by the mounting", () => {
+    const inner = new RecordingSink();
+    const sink = new StabilizingFrameSink({
+      sink: inner,
+      orientations,
+      mounting: LENS_0_UP,
+      frameTimes: undefined,
+    });
+    sink.present(presentationAt(1));
+    sink.setStabilizer(new LockStabilization());
+    sink.present(presentationAt(1));
+    const [off, lock] = inner.rotations.map((rotation) => transformVector(rotation, DOWN));
+    expect(off?.[2]).toBeCloseTo(-1, 9);
+    expect(lock?.[2]).toBeCloseTo(-1, 2);
+    expect(transformVector(inner.rotations[1] ?? IDENTITY_MATRIX3, FORWARD)[0]).toBeCloseTo(-1, 2);
+  });
+
   it('falls back to the pair timestamp when the frame times hold no frames', () => {
     const inner = new RecordingSink();
     const frameTimes = frameTimesAt([], 0);
-    const sink = new StabilizingFrameSink({ sink: inner, orientations, frameTimes });
+    const sink = new StabilizingFrameSink({
+      sink: inner,
+      orientations,
+      mounting: UPRIGHT_MOUNTING,
+      frameTimes,
+    });
     sink.setStabilizer(new LockStabilization());
     sink.present(presentationAt(1));
     expect(forwardThrough(inner)[0]).toBeCloseTo(-1, 2);
@@ -95,7 +142,12 @@ describe('StabilizingFrameSink', () => {
     const inner = new RecordingSink();
     // A two-second shutter puts the first frame's mid-exposure a second after its capture.
     const frameTimes = frameTimesAt([0, 3, 6], 2);
-    const sink = new StabilizingFrameSink({ sink: inner, orientations, frameTimes });
+    const sink = new StabilizingFrameSink({
+      sink: inner,
+      orientations,
+      mounting: UPRIGHT_MOUNTING,
+      frameTimes,
+    });
     sink.setStabilizer(new LockStabilization());
     sink.present(presentationAt(0.5));
     expect(forwardThrough(inner)[0]).toBeCloseTo(-1, 2);

@@ -3,12 +3,14 @@ import {
   buildStitchingSetup,
   degreesToRadians,
   HALF_TURN,
+  multiplyMatrices,
   QUARTER_TURN,
   stabilizerFor,
   type CalibrationSet,
   type FramePair,
   type Matrix3,
   type MotionSetup,
+  type Seconds,
   type StitchingSetup,
   type Vector3,
 } from '@gyroview/core';
@@ -52,13 +54,20 @@ export function motionOf(opened: OpenedRecording): MotionSetup {
 }
 
 /**
- * The gyro's lock stabilization of the pair: the stabilized frame into the body.
+ * The gyro's lock stabilization at a video time: the stabilized frame into the body, through the
+ * camera's upright frame, as the player turns it.
+ */
+export function lockAt(opened: OpenedRecording, time: Seconds): Matrix3 {
+  const { orientations, mounting } = motionOf(opened);
+  const lock = stabilizerFor('lock').nextRotation(orientations.orientationAt(time), time);
+  return multiplyMatrices(mounting.toBody, lock);
+}
+
+/**
+ * The gyro's lock stabilization of the pair, at its timestamp.
  */
 export function lockOf(opened: OpenedRecording, pair: FramePair<VideoFrame>): Matrix3 {
-  return stabilizerFor('lock').nextRotation(
-    motionOf(opened).orientations.orientationAt(pair.timestamp),
-    pair.timestamp,
-  );
+  return lockAt(opened, pair.timestamp);
 }
 
 /**

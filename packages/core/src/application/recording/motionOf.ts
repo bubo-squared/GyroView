@@ -1,15 +1,18 @@
 import type { Recording } from './Recording';
 import type { ParsedGyroRecord } from '../../domain/format/records/gyro/parseGyroRecord';
 import { imuFrameFor, type ImuFrame } from '../../domain/motion/imu/ImuFrame';
+import { mountingOf, uprightImuFrame, type Mounting } from '../../domain/motion/mounting/Mounting';
 import { OrientationTrack } from '../../domain/motion/orientation/OrientationTrack';
 import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
 
 /**
- * What stabilization needs: the camera's orientation over the recording and the IMU frame it was
- * integrated with (reported so embedders know when it is a guess).
+ * What stabilization needs: how the camera stood, the orientation of its upright frame over the
+ * recording, and the IMU frame it was integrated with (reported so embedders know when it is a
+ * guess).
  */
 export interface MotionSetup {
   readonly orientations: OrientationTrack;
+  readonly mounting: Mounting;
   readonly imuFrame: ImuFrame;
 }
 
@@ -32,9 +35,11 @@ export async function motionOf(
   const gyro = await recording.readGyroRecord();
   if (!gyro) return { setup: undefined, warnings: [NO_GYRO_WARNING] };
   const imuFrame = imuFrameFor(recording.info);
-  const orientations = OrientationTrack.integrate({ gyro: gyro.track, clock, frame: imuFrame });
+  const mounting = mountingOf(gyro.track, imuFrame);
+  const frame = uprightImuFrame(imuFrame, mounting);
+  const orientations = OrientationTrack.integrate({ gyro: gyro.track, clock, frame });
   const warnings = [...unverifiedWarningsOf(imuFrame, recording), ...damageWarningsOf(gyro)];
-  return { setup: { orientations, imuFrame }, warnings };
+  return { setup: { orientations, mounting, imuFrame }, warnings };
 }
 
 function damageWarningsOf(gyro: ParsedGyroRecord): readonly string[] {

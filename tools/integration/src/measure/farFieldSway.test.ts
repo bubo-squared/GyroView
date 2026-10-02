@@ -1,11 +1,5 @@
 import { readPixels } from '@gyroview/adapter-three/testing';
-import {
-  DecodePipeline,
-  FramePairQueue,
-  seconds,
-  stabilizerFor,
-  type FramePair,
-} from '@gyroview/core';
+import { DecodePipeline, FramePairQueue, seconds, type FramePair } from '@gyroview/core';
 import {
   DECODE_PIPELINE_OPTIONS,
   PAIR_QUEUE_CAPACITY,
@@ -17,7 +11,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { saveMeasurement } from '../browser/artifacts';
 import { LOCAL_SAMPLES } from '../browser/localSamples';
 import { openSample, port } from '../browser/realRecordingSupport';
-import { equirectangularRendering, motionOf } from '../browser/rendering';
+import { equirectangularRendering, lockAt } from '../browser/rendering';
 import { SAILING_8K_30, type SampleRecording } from '../browser/sampleUrls';
 
 const SIZE = { width: 512, height: 256 };
@@ -103,12 +97,10 @@ function shiftBetween(before: Float64Array, after: Float64Array): number {
 async function profilesOf(opened: OpenedRecording, from: number): Promise<Float64Array[]> {
   const { canvas, renderer, dispose } = equirectangularRendering(opened, SIZE);
   cleanups.push(dispose);
-  const { orientations } = motionOf(opened);
-  const lock = stabilizerFor('lock');
   const profiles: Float64Array[] = [];
   const draw = (pair: FramePair<VideoFrame>): void => {
     const time = seconds(opened.frameTimes?.midExposureAt(pair.timestamp) ?? pair.timestamp);
-    renderer.setStabilization(lock.nextRotation(orientations.orientationAt(time), time));
+    renderer.setStabilization(lockAt(opened, time));
     renderer.present({ pair, mediaTime: pair.timestamp });
     profiles.push(profileOf(readPixels(canvas)));
   };

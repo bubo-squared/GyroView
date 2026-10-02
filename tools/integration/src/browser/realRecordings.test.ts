@@ -31,6 +31,7 @@ import {
 } from './realRecordingSupport';
 import {
   equirectangularRendering,
+  lockOf,
   motionOf,
   recordedSetupOf,
   type EquirectangularRendering,
@@ -225,12 +226,13 @@ describe('rendering the real recordings', () => {
     it(`turns the ${shared.sample.name} under lock by exactly the orientation the player integrated`, async (context) => {
       const opened = await shared.open(context);
       const { first } = await shared.momentAt(context, MOMENT);
-      const { orientations, imuFrame } = motionOf(opened);
+      const { orientations, mounting, imuFrame } = motionOf(opened);
       expect(imuFrame.isVerified).toBe(true);
       const { canvas, renderer } = panoramaOf(opened);
       const sink = new StabilizingFrameSink({
         sink: renderer,
         orientations,
+        mounting,
         frameTimes: undefined,
       });
       const rendered = new Map<StabilizationMode, Uint8ClampedArray>();
@@ -257,14 +259,10 @@ describe('rendering the real recordings', () => {
   it('keeps the world of the sailing recording stiller under lock than unstabilized', async (context) => {
     const opened = await sailing.open(context);
     const { first, later } = await sailing.momentAt(context, STILLNESS_MOMENT);
-    const { orientations } = motionOf(opened);
     const { canvas, renderer } = panoramaOf(opened);
     const renderable = { canvas, renderer, first, later };
-    const lock = stabilizerFor('lock');
     const unstabilized = worldMovement(renderable, () => IDENTITY_MATRIX3);
-    const locked = worldMovement(renderable, (pair) =>
-      lock.nextRotation(orientations.orientationAt(pair.timestamp), pair.timestamp),
-    );
+    const locked = worldMovement(renderable, (pair) => lockOf(opened, pair));
     expect(locked).toBeLessThan(unstabilized * MAX_LOCKED_MOVEMENT);
   });
 });

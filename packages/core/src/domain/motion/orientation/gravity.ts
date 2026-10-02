@@ -35,7 +35,7 @@ const MAX_RESTING_G = 1.1;
  * while the camera accelerates. The accelerometer measures the reaction to gravity, hence the
  * sign flip.
  */
-function measuredGravity(accelerationInBody: Vector3): Vector3 | undefined {
+export function measuredGravity(accelerationInBody: Vector3): Vector3 | undefined {
   const magnitude = magnitudeOf(accelerationInBody);
   const isResting = magnitude >= MIN_RESTING_G && magnitude <= MAX_RESTING_G;
   return isResting ? scaleVector(accelerationInBody, -1 / magnitude) : undefined;

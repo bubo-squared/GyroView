@@ -77,8 +77,10 @@ const QUATERNION_COMPONENTS = 4;
 const MAX_STEP_SECONDS = 0.05;
 
 /**
- * The camera's orientation over the whole recording, body frame to world frame, one quaternion
- * per gyro sample. World: y down along gravity, z along the body's forward axis at the start.
+ * The camera's orientation over the whole recording, from the frame its IMU frame reads into (the
+ * body, or the upright frame of its mounting, as the player integrates it) to the world, one
+ * quaternion per gyro sample. World: y down along gravity, z along that frame's forward axis at
+ * the start.
  */
 export class OrientationTrack {
   private constructor(

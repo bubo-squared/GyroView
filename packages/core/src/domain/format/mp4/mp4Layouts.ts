@@ -199,3 +199,17 @@ export const AUDIO_SAMPLE_ENTRY_BOXES_OFFSET = 28;
 export const AVC_LENGTH_SIZE_OFFSET = 4;
 export const HEVC_LENGTH_SIZE_OFFSET = 21;
 export const LENGTH_SIZE_MINUS_ONE_MASK = 0b11;
+
+/**
+ * HEVCDecoderConfigurationRecord, `hvcC` (ISO/IEC 14496-15 §8.3.3.1): after its version byte,
+ * the stream's general profile, tier and level, in the layout of the SPS's own; after the fixed
+ * fields, a count of parameter-set arrays. Each array is a byte whose low six bits are the NAL
+ * unit type, a u16 count, then each NAL unit after its u16 length.
+ */
+export const HEVC_PROFILE_TIER_LEVEL_OFFSET = 1;
+export const HEVC_ARRAY_COUNT_OFFSET = 22;
+export const HEVC_ARRAYS_OFFSET = 23;
+export const HEVC_ARRAY_NAL_UNIT_TYPE_MASK = 0b11_1111;
+export const HEVC_ARRAY_NAL_UNIT_COUNT_OFFSET = 1;
+export const HEVC_ARRAY_NAL_UNITS_OFFSET = 3;
+export const HEVC_NAL_UNIT_LENGTH_SIZE = 2;

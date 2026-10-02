@@ -39,6 +39,7 @@ export type {
   WindowCrop,
 } from './domain/format/info/RecordingInfo';
 export { detectLensLayout, type LayoutHints } from './domain/format/layout/detectLensLayout';
+export { hevcCodecStringOf } from './domain/format/mp4/hevcCodecString';
 export {
   FULL_FRAME,
   LEFT_HALF,

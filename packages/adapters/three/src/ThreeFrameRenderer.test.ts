@@ -673,7 +673,7 @@ describe('ThreeFrameRenderer', () => {
     ).toBeGreaterThan(BRIGHT);
   });
 
-  it('draws a change of view when its schedule says, and a presented pair at once, leaving the schedule nothing to draw', () => {
+  it('draws a change of view when its schedule says', () => {
     const schedule = new HeldDraws();
     const renderer = open(undefined, SIZE, schedule);
     renderer.setViewMode('normal');
@@ -682,9 +682,26 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelAt(renderer, CENTRE).r).toBeGreaterThan(BRIGHT);
     schedule.drawPending();
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
-    renderer.setFraming(framingOf(DEFAULT_VIEW));
+  });
+
+  it('draws a presented pair at once, with the changes before it, leaving its schedule nothing to draw', () => {
+    const schedule = new HeldDraws();
+    const renderer = open(undefined, SIZE, schedule);
+    renderer.setViewMode('normal');
     presentRedAndBlue(renderer);
-    expect(pixelAt(renderer, CENTRE).r).toBeGreaterThan(BRIGHT);
+    renderer.setFraming(framingOf({ ...DEFAULT_VIEW, yaw: degrees(180) }));
+    presentRedAndBlue(renderer);
+    expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
+    expect(schedule.isPending).toBe(false);
+  });
+
+  it('gives up the draw its schedule holds when disposed', () => {
+    const schedule = new HeldDraws();
+    const renderer = open(undefined, SIZE, schedule);
+    renderer.setViewMode('normal');
+    presentRedAndBlue(renderer);
+    renderer.setFraming(framingOf({ ...DEFAULT_VIEW, yaw: degrees(180) }));
+    renderer.dispose();
     expect(schedule.isPending).toBe(false);
   });
 

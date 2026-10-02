@@ -1,5 +1,5 @@
 import { MediaSourceAudioClock } from '@gyroview/adapter-mse-audio';
-import { AnimationFrameDraws, ThreeFrameRenderer } from '@gyroview/adapter-three';
+import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   buildStitchingSetup,
   GainMatchingFrameSink,
@@ -17,6 +17,7 @@ import {
   type StitchingSetup,
 } from '@gyroview/core';
 
+import { AnimationFrameDraws } from './AnimationFrameDraws';
 import { Disposables } from './Disposables';
 import type { OpenedRecording } from './OpenedRecording';
 import type { Pipeline, PipelineParts } from './ports';

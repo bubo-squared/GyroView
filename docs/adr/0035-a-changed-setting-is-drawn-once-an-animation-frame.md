@@ -4,11 +4,11 @@ Status: accepted (2026-10-02)
 
 ## Context
 
-The renderer drew the stitch again at every change of its settings: each view change of a drag,
-a pinch or a wheel turn, each lens gain gain matching applied, each quality or view mode. A frame
-of the recording is drawn when it is presented, inside the player's animation frame, so a view
-change in the same frame drew the whole stitch a second time, and the screen showed one of the
-two.
+The renderer drew the stitch again at every change of its settings: each step of a drag, a
+pinch or a wheel turn, each lens gain that gain matching applied, each quality or view mode. A
+frame of the recording is drawn when it is presented, inside the player's animation frame, so a
+view change in the same frame drew the whole stitch a second time, and the screen showed one of
+the two.
 
 Measured on the developer machine with the X5 sailing recording (8K30) in the normal view, a
 1280 by 720 page at two device pixels per CSS pixel:
@@ -26,13 +26,24 @@ frames of the recording. Gain matching drew one extra stitch every half second w
 
 ## Decision
 
-- The renderer draws a changed setting when its `DrawSchedule` says: `DRAW_AT_ONCE`, the
-  default, or `AnimationFrameDraws`, once at the next animation frame however many changes come
-  before it. The player's pipeline uses the second.
+- The renderer draws a changed setting when its `DrawSchedule` says. The adapter offers
+  `DRAW_AT_ONCE`, its default; the player's composition gives each renderer an
+  `AnimationFrameDraws`, which draws once at the next animation frame however many changes come
+  before it, on the same `FrameScheduler` the player's `FrameLoop` ticks on.
 - A presented pair is drawn at once and cancels the draw the schedule holds, so a frame that
   presents draws once. A new drawing buffer size is drawn at once as well: resizing clears the
-  canvas, which would otherwise stay blank until the next frame.
+  canvas, which would otherwise stay blank until the next frame. Disposing gives up the draw
+  held.
 - The tests and the lab renderer keep `DRAW_AT_ONCE`: they read the canvas right after a change.
+
+## Alternatives considered
+
+- Coalescing in the player's gesture handling: it would leave the gains, the quality and the
+  view mode drawing at once, and every page driving the player's view API would need it too.
+- Drawing the changed settings from the player's `FrameLoop` tick, after the session's: one
+  callback a frame instead of two, but the renderer would have to say whether it holds a change,
+  the session's presentation would still draw at once, and the tick, which knows the session,
+  would have to know the renderer as well.
 
 ## Consequences
 
@@ -41,4 +52,9 @@ frames of the recording. Gain matching drew one extra stitch every half second w
 - A change shows at the next animation frame rather than at the event. The screen shows nothing
   sooner either way: Chromium dispatches the events of a frame before its animation frames run,
   and WebKit's events between frames reach the screen at the next one.
-- `ThreeFrameRendererOptions` holds the context's options and the draw schedule.
+- A frame that presents draws once because the schedule's callback runs after the `FrameLoop`'s,
+  which was requested a frame earlier: the changes made by events and by gain matching's
+  read-back come after it. A setting changed inside the tick after the presentation, as a
+  future animated view might, would draw once more in the next frame.
+- `ThreeFrameRendererOptions` holds the context's options and the draw schedule; a schedule
+  serves one renderer.

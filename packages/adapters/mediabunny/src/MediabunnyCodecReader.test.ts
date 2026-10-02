@@ -124,6 +124,15 @@ describe('MediabunnyCodecReader', () => {
     ]);
   });
 
+  it("leaves an encrypted HEVC track mediabunny's codec string: its sample entry names the protection", async () => {
+    const encrypted = {
+      getCodec: (): Promise<'hevc'> => Promise.resolve('hevc'),
+      getInternalCodecId: (): Promise<string> => Promise.resolve('encv'),
+    };
+    const config = { codec: 'hvc1.1.6.L30.90', description: new Uint8Array(23) };
+    expect(await codecStringOf(encrypted, config)).toBe('hvc1.1.6.L30.90');
+  });
+
   it("reads a 10-bit HLG track's colour from its SPS, as the X6's tracks carry no colr box", async () => {
     const bytes = fixtureBytes('hevc-main10-hlg-dual-track-64px-10fps-3s.mp4');
     const { video } = await new MediabunnyCodecReader().read(await movieBytesOf(bytes));

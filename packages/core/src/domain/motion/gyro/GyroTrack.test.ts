@@ -18,6 +18,10 @@ describe('GyroTrack', () => {
     });
   });
 
+  it('exposes the angular velocity of a sample alone', () => {
+    expect(track.angularVelocityAt(0)).toEqual([1, 2, 3]);
+  });
+
   it('exposes a read-only view of its capture times', () => {
     expect([...track.captureTimes]).toEqual([1000, 2000, 3000]);
   });
@@ -45,6 +49,9 @@ describe('GyroTrack', () => {
     expect(captureError(() => track.sampleAt(3))).toMatchObject({ code: 'index-out-of-range' });
     expect(captureError(() => track.sampleAt(-1))).toMatchObject({ code: 'index-out-of-range' });
     expect(captureError(() => track.sampleAt(0.5))).toMatchObject({ code: 'index-out-of-range' });
+    expect(captureError(() => track.angularVelocityAt(-1))).toMatchObject({
+      code: 'index-out-of-range',
+    });
   });
 
   it('rejects arrays that disagree on the sample count', () => {

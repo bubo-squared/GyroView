@@ -60,16 +60,23 @@ export class GyroTrack {
   }
 
   public sampleAt(index: number): GyroSample {
-    ensureIndexInRange(index, this.length, 'gyro sample');
-    const base = index * VECTOR3_COMPONENTS;
     return {
       captureTime: microseconds(this.captureTimeStore[index] ?? 0),
-      acceleration: this.vectorAt(this.accelerationStore, base),
-      angularVelocity: this.vectorAt(this.angularVelocityStore, base),
+      acceleration: this.vectorAt(this.accelerationStore, index),
+      angularVelocity: this.angularVelocityAt(index),
     };
   }
 
-  private vectorAt(store: Float32Array, base: number): Vector3 {
+  /**
+   * A sample's angular velocity alone, for the loops over every sample that need nothing else.
+   */
+  public angularVelocityAt(index: number): Vector3 {
+    return this.vectorAt(this.angularVelocityStore, index);
+  }
+
+  private vectorAt(store: Float32Array, index: number): Vector3 {
+    ensureIndexInRange(index, this.length, 'gyro sample');
+    const base = index * VECTOR3_COMPONENTS;
     return [store[base] ?? NaN, store[base + 1] ?? NaN, store[base + 2] ?? NaN];
   }
 }

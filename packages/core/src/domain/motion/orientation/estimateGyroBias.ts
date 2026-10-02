@@ -39,9 +39,7 @@ const FALLBACK_INTERVAL = secondsToMicroseconds(seconds(1));
 export function stillestWindow(gyro: GyroTrack, frame: ImuFrame, length: Seconds): SampleWindow {
   const interval = microsecondsToSeconds(gyro.meanSampleInterval ?? FALLBACK_INTERVAL);
   const size = Math.max(1, Math.min(gyro.length, Math.round(length / interval)));
-  const magnitudes = Float64Array.from({ length: gyro.length }, (_unused, index) =>
-    magnitudeOf(toBodyFrame(frame, gyro.sampleAt(index).angularVelocity)),
-  );
+  const magnitudes = rateMagnitudesOf(gyro, frame);
   let windowSum = 0;
   for (let index = 0; index < size; index += 1) windowSum += magnitudes[index] ?? 0;
   let best = { start: 0, sum: windowSum };
@@ -50,6 +48,17 @@ export function stillestWindow(gyro: GyroTrack, frame: ImuFrame, length: Seconds
     if (windowSum < best.sum) best = { start, sum: windowSum };
   }
   return { start: best.start, end: best.start + size };
+}
+
+/**
+ * How fast the body turns at each sample, in radians per second.
+ */
+function rateMagnitudesOf(gyro: GyroTrack, frame: ImuFrame): Float64Array {
+  const magnitudes = new Float64Array(gyro.length);
+  for (let index = 0; index < gyro.length; index += 1) {
+    magnitudes[index] = magnitudeOf(toBodyFrame(frame, gyro.angularVelocityAt(index)));
+  }
+  return magnitudes;
 }
 
 /**

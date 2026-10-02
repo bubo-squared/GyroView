@@ -62,7 +62,8 @@ export function conjugateQuaternion(q: Quaternion): Quaternion {
 
 export function normalizeQuaternion(q: Quaternion): Quaternion {
   const [x, y, z, w] = q;
-  const length = Math.hypot(x, y, z, w);
+  // eslint-disable-next-line unicorn/prefer-modern-math-apis -- Math.hypot is slow (magnitudeOf)
+  const length = Math.sqrt(x * x + y * y + z * z + w * w);
   return length === 0 ? IDENTITY_QUATERNION : [x / length, y / length, z / length, w / length];
 }
 

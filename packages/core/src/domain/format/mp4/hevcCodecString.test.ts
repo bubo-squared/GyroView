@@ -86,4 +86,17 @@ describe('hevcCodecStringOf', () => {
     const configuration = configurationOf(BLANK, [[VPS, PARAMETER_SET]]);
     expect(hevcCodecStringOf('hev1', configuration)).toBe('hev1.0.0.L0');
   });
+
+  it.each([
+    [
+      'an array announces more than the configuration holds',
+      configurationOf(BLANK, [[SPS, SPS_OF_MAIN_LEVEL_6_1]]).slice(0, -4),
+    ],
+    [
+      'its SPS ends before the profile, tier and level',
+      configurationOf(BLANK, [[SPS, SPS_OF_MAIN_LEVEL_6_1.slice(0, 8)]]),
+    ],
+  ])('keeps a blank header where %s', (_case, configuration) => {
+    expect(hevcCodecStringOf('hvc1', configuration)).toBe('hvc1.0.0.L0');
+  });
 });

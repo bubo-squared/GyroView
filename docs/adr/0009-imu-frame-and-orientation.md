@@ -1,7 +1,7 @@
 # ADR 0009: IMU frame, orientation integration and stabilization modes
 
-Status: accepted (2026-09-20), verified on the X5 office and sailing recordings; the X6 and the
-X4 Air on one recording each
+Status: accepted (2026-09-20), verified on the X5 office and sailing recordings; the X6, the
+X4 Air and the Antigravity A1 on one recording each
 
 ## Context
 
@@ -60,7 +60,7 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
 
 ## Consequences
 
-Cameras without a measured frame (all but the X5, the X6 and the X4 Air) stabilize with an
+Cameras without a measured frame (all but the X5, the X6, the X4 Air and the A1) stabilize with an
 unverified frame until a recording is measured; the player must surface `ImuFrame.isVerified`
 as a warning and offer `off`. A new camera is measured by adding its recording to the ranking
 and running `pnpm measure`; every test run keeps a cheaper guard, that lock keeps the sailing
@@ -102,3 +102,16 @@ table) confirms it, as the office and krnjaca recordings confirmed the X5's.
 From here on the model is matched by its whole name: the X4 Air's extends the X4's, and a name
 that extends a measured one ("Insta360 X5 Pro") belongs to another camera, unmeasured until it
 is ranked.
+
+## On the Antigravity A1 (2026-10-03)
+
+One A1 recording (a drone, its lenses one up and one down; a local sample, ADR 0031), ranked at
+nine moments of its 43 seconds, most in flight: `-z,-x,y` keeps the world stillest, 9.1 against
+15.3 unstabilized and 12.9 for the runner-up, alike in Chromium and WebKit. Gravity lies along
+the IMU's y, which this frame puts along lens 0's axis, lens 0 facing up; the three frames ranked
+first all do, and the drone's tilts in flight told them apart. The X5's arrangement ranks fourth:
+the A1's IMU sits otherwise. `A1_IMU_FRAME` is the winner, measured. With it the gyro's timing
+agrees with the frames' (ADR 0034): 0.1 ms off, with a standard error of 2.4 ms over 16 moments,
+though the recording's exposure record falls short of its video and the frames are timed by the
+track; the far field sways 0.035 degrees rms under lock, as the X6's does. The drone's picture
+stands upright in every mode by its mounting (ADR 0038).

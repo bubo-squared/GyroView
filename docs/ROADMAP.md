@@ -42,7 +42,8 @@ than at every sample (ADR 0036); opening reads and integrates the gyro in two th
 time; the bundle leaves out mediabunny's demuxers of other formats.
 
 **Stabilization.** Gyro and accelerometer integrated into the camera's orientation, sampled at
-each frame's mid-exposure; lock, horizon and follow modes, or off.
+each frame's mid-exposure; lock, horizon and follow modes, or off, each drawn upright as the
+camera was mounted, on its side or with its lens axis vertical (ADR 0038).
 
 **Embedding.** `<gyro-view>` as an element (`gyro-view.js`) with attributes, properties,
 events and controls; `embed.html` in an iframe driven by `embed.js` over a validated,
@@ -65,8 +66,10 @@ in Chromium and WebKit.
 One Insta360 X4 Air recording (a local sample, ADR 0031): the X4 Air's IMU frame (ADR 0009) and
 the gyro's timing against its frames (ADR 0034), in Chromium and WebKit.
 
-One Antigravity A1 recording (a local sample, ADR 0031): it decodes, its `hvcC` header left
-blank (ADR 0037), and stitches; its IMU frame is not measured yet, so stabilization warns.
+One Antigravity A1 recording (a drone, a local sample, ADR 0031): it decodes, its `hvcC` header
+left blank (ADR 0037); its IMU frame (ADR 0009) and the gyro's timing against its frames (ADR
+0034); its lenses stand vertical, and every mode draws it upright, centred where Insta360 Studio
+centres it (ADR 0038), in Chromium and WebKit.
 
 ## Waiting on something only a user can supply
 
@@ -102,6 +105,10 @@ blank (ADR 0037), and stitches; its IMU frame is not measured yet, so stabilizat
 - The X4 Air's IMU frame rests on one clip held upright, gravity along one IMU axis: only its
   tilt and roll told the frame from the three other quarter turns about that axis. Provisional
   until a recording held another way confirms it (ADR 0009).
+- The A1's IMU frame and forward rest on one 43-second flight (ADR 0009, ADR 0038). In flight a
+  drone's accelerometer measures its thrust rather than gravity, and the gravity pull leans the
+  horizon by under a degree towards it: the A1's horizon stays within 2.5 degrees of Studio's,
+  within 1.9 without the pull, and the X5's alignments to Studio need up to 2.2.
 - HDR is shown as SDR: HLG through Insta360 Studio's curve, fitted to its pixels; PQ is drawn
   as recorded, with a warning. The 10 bits reach the shader as 8.
 - The X6's 8K at 50 fps in 10 bits decodes at twice its frame rate on an M4 Pro (123 pairs a

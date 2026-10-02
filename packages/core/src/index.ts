@@ -62,9 +62,8 @@ export {
   type SignedAxis,
 } from './domain/motion/imu/ImuFrame';
 export {
-  mountingOf,
-  uprightImuFrame,
-  UPRIGHT_MOUNTING,
+  rotationIntoBody,
+  type MountedMotion,
   type Mounting,
 } from './domain/motion/mounting/Mounting';
 export {

@@ -13,7 +13,9 @@ export type SignedAxis = 'x' | 'y' | 'z' | '-x' | '-y' | '-z';
 export interface ImuFrame {
   readonly name: string;
   /**
-   * Turns IMU-frame vectors (acceleration, angular velocity) into body-frame vectors.
+   * Turns IMU-frame vectors (acceleration, angular velocity) into body-frame vectors; for the
+   * frame `uprightImuFrame` returns, into the mounting's upright frame, which stands for the body
+   * while the orientation is integrated.
    */
   readonly toBody: Matrix3;
   /**

@@ -3,8 +3,8 @@ import {
   buildStitchingSetup,
   degreesToRadians,
   HALF_TURN,
-  multiplyMatrices,
   QUARTER_TURN,
+  rotationIntoBody,
   stabilizerFor,
   type CalibrationSet,
   type FramePair,
@@ -60,7 +60,7 @@ export function motionOf(opened: OpenedRecording): MotionSetup {
 export function lockAt(opened: OpenedRecording, time: Seconds): Matrix3 {
   const { orientations, mounting } = motionOf(opened);
   const lock = stabilizerFor('lock').nextRotation(orientations.orientationAt(time), time);
-  return multiplyMatrices(mounting.toBody, lock);
+  return rotationIntoBody(mounting, lock);
 }
 
 /**

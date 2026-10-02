@@ -179,8 +179,7 @@ function sinkOver(renderer: ThreeFrameRenderer, opened: OpenedRecording): SinkCh
   if (!opened.motion) return { sink: renderer, stabilizing: undefined };
   const stabilizing = new StabilizingFrameSink<VideoFrame>({
     sink: renderer,
-    orientations: opened.motion.orientations,
-    mounting: opened.motion.mounting,
+    motion: opened.motion,
     frameTimes: opened.frameTimes,
   });
   return { sink: stabilizing, stabilizing };

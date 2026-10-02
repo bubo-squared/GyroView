@@ -1,7 +1,11 @@
 import type { Recording } from './Recording';
 import type { ParsedGyroRecord } from '../../domain/format/records/gyro/parseGyroRecord';
 import { imuFrameFor, type ImuFrame } from '../../domain/motion/imu/ImuFrame';
-import { mountingOf, uprightImuFrame, type Mounting } from '../../domain/motion/mounting/Mounting';
+import {
+  mountingOf,
+  uprightImuFrame,
+  type MountedMotion,
+} from '../../domain/motion/mounting/Mounting';
 import { OrientationTrack } from '../../domain/motion/orientation/OrientationTrack';
 import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
 
@@ -10,9 +14,7 @@ import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
  * recording, and the IMU frame it was integrated with (reported so embedders know when it is a
  * guess).
  */
-export interface MotionSetup {
-  readonly orientations: OrientationTrack;
-  readonly mounting: Mounting;
+export interface MotionSetup extends MountedMotion {
   readonly imuFrame: ImuFrame;
 }
 

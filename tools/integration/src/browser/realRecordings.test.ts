@@ -226,15 +226,10 @@ describe('rendering the real recordings', () => {
     it(`turns the ${shared.sample.name} under lock by exactly the orientation the player integrated`, async (context) => {
       const opened = await shared.open(context);
       const { first } = await shared.momentAt(context, MOMENT);
-      const { orientations, mounting, imuFrame } = motionOf(opened);
-      expect(imuFrame.isVerified).toBe(true);
+      const motion = motionOf(opened);
+      expect(motion.imuFrame.isVerified).toBe(true);
       const { canvas, renderer } = panoramaOf(opened);
-      const sink = new StabilizingFrameSink({
-        sink: renderer,
-        orientations,
-        mounting,
-        frameTimes: undefined,
-      });
+      const sink = new StabilizingFrameSink({ sink: renderer, motion, frameTimes: undefined });
       const rendered = new Map<StabilizationMode, Uint8ClampedArray>();
       for (const mode of COMPARED_MODES) {
         sink.setStabilizer(stabilizerFor(mode));
@@ -251,7 +246,7 @@ describe('rendering the real recordings', () => {
         lock: rendered.get('lock') ?? new Uint8ClampedArray(),
         size: PANORAMA_SIZE,
       };
-      const orientation = orientations.orientationAt(first.timestamp);
+      const orientation = motion.orientations.orientationAt(first.timestamp);
       expect(rigidRotationError(renders, orientation)).toBeLessThan(MAX_RIGID_ROTATION_ERROR);
     });
   }

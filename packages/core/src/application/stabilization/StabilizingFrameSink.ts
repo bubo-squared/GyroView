@@ -1,11 +1,9 @@
-import type { Mounting } from '../../domain/motion/mounting/Mounting';
-import type { OrientationTrack } from '../../domain/motion/orientation/OrientationTrack';
+import { rotationIntoBody, type MountedMotion } from '../../domain/motion/mounting/Mounting';
 import type { Stabilizer } from '../../domain/motion/stabilization/Stabilizer';
 import { OffStabilization } from '../../domain/motion/stabilization/stabilizers';
 import type { FrameTimes } from '../../domain/motion/timing/FrameTimes';
 import type { FrameSink, Presentation } from '../../ports/FrameSink';
 import type { PictureRenderer } from '../../ports/PictureRenderer';
-import { multiplyMatrices } from '../../shared/math/Matrix3';
 import type { Seconds } from '../../shared/units/time';
 
 export interface StabilizingParts<Handle> {
@@ -14,14 +12,11 @@ export interface StabilizingParts<Handle> {
    */
   readonly sink: Pick<PictureRenderer<Handle>, 'present' | 'setStabilization'>;
   /**
-   * The orientation of the camera's upright frame, which the stabilizer turns the picture by.
+   * The orientation of the camera's upright frame, which the stabilizer turns the picture by, and
+   * the mounting that turns the stabilizer's rotation from that frame into the body the lenses are
+   * posed in.
    */
-  readonly orientations: OrientationTrack;
-  /**
-   * How the camera stood, which turns the stabilizer's rotation from the upright frame into the
-   * body the lenses are posed in.
-   */
-  readonly mounting: Mounting;
+  readonly motion: MountedMotion;
   /**
    * Gives each frame its mid-exposure time; without it the frame's track timestamp stands in.
    */
@@ -43,9 +38,9 @@ export class StabilizingFrameSink<Handle = unknown> implements FrameSink<Handle>
 
   public present(presentation: Presentation<Handle>): void {
     const time = this.exposureTimeOf(presentation);
-    const orientation = this.parts.orientations.orientationAt(time);
-    const rotation = this.stabilizer.nextRotation(orientation, time);
-    this.parts.sink.setStabilization(multiplyMatrices(this.parts.mounting.toBody, rotation));
+    const { orientations, mounting } = this.parts.motion;
+    const rotation = this.stabilizer.nextRotation(orientations.orientationAt(time), time);
+    this.parts.sink.setStabilization(rotationIntoBody(mounting, rotation));
     this.parts.sink.present(presentation);
   }
 

@@ -19,6 +19,11 @@ beforeAll(() => {
   defineGyroView();
 });
 
+/**
+ * What a seek and a start, a pause or an end announce, as a media element does.
+ */
+const TRANSPORT_EVENTS = ['play', 'pause', 'ended', 'seeking', 'seeked'] as const;
+
 interface Bridge {
   readonly element: GyroViewElement;
   readonly host: EmbedHost;
@@ -99,9 +104,13 @@ describe('the embed bridge over a message channel', () => {
   });
 
   it('plays, pauses and seeks over the channel and forwards the transport events', async () => {
-    const { handle } = bridge();
+    const { handle, element } = bridge();
+    const fired: string[] = [];
     const heard: string[] = [];
-    for (const name of ['play', 'pause', 'seeking', 'seeked'] as const) {
+    for (const name of TRANSPORT_EVENTS) {
+      element.addEventListener(name, () => {
+        fired.push(name);
+      });
       handle.events.on(name, () => {
         heard.push(name);
       });
@@ -114,7 +123,11 @@ describe('the embed bridge over a message channel', () => {
     const state = await handle.getState();
     expect(state.currentTime).toBe(2);
     expect(state.isPaused).toBe(true);
-    expect(heard).toEqual(['play', 'pause', 'seeking', 'seeked']);
+    // A slow runner may play the 3-second recording to its end before the pause arrives, which
+    // then pauses nothing; whatever the element fired, the page hears, in order.
+    expect(heard).toEqual(fired);
+    expect(heard[0]).toBe('play');
+    expect(heard.slice(-2)).toEqual(['seeking', 'seeked']);
   });
 
   it('unloads the frame on a load of a blank source', async () => {

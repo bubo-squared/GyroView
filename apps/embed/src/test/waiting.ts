@@ -6,6 +6,10 @@ import { waitFor as waitForPlayer } from '@gyroview/player/testing';
  */
 const FRAME_WAIT_MS = 20_000;
 
-export function waitFor(isSatisfied: () => boolean, what: string): Promise<void> {
-  return waitForPlayer(isSatisfied, what, FRAME_WAIT_MS);
+export function waitFor(
+  isSatisfied: () => boolean,
+  what: string,
+  timeoutMs = FRAME_WAIT_MS,
+): Promise<void> {
+  return waitForPlayer(isSatisfied, what, timeoutMs);
 }

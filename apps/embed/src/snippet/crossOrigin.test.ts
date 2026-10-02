@@ -12,8 +12,14 @@ import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-tr
  */
 const OTHER_HOST = 'gyro-view-embed.test';
 const OTHER_ORIGIN = `https://${OTHER_HOST}`;
+/**
+ * The frame's page is the development page: some 350 modules, each request routed through the
+ * browser command. About 6 s on CI, and more than 20 s on a runner the parallel suite loads.
+ */
+const FRAME_LOAD_MS = 60_000;
+const TEST_TIMEOUT_MS = 90_000;
 
-describe('embedding across origins', () => {
+describe('embedding across origins', { timeout: TEST_TIMEOUT_MS }, () => {
   const embedded: Embedded[] = [];
   const containers: HTMLElement[] = [];
 
@@ -38,13 +44,13 @@ describe('embedding across origins', () => {
     );
     embedded.push(item);
     const events: string[] = [];
-    for (const name of ['ready', 'play', 'pause'] as const) {
+    for (const name of ['ready', 'play', 'pause', 'ended'] as const) {
       item.handle.events.on(name, () => {
         events.push(name);
       });
     }
 
-    await waitFor(() => events.includes('ready'), 'the frame to become ready');
+    await waitFor(() => events.includes('ready'), 'the frame to become ready', FRAME_LOAD_MS);
     expect(item.handle.state.metadata?.model).toBe('Insta360 X5');
     await item.handle.play();
     await waitFor(() => item.handle.state.status === 'playing', 'playback in the frame');
@@ -53,6 +59,8 @@ describe('embedding across origins', () => {
     const state = await item.handle.getState();
     expect(state.isPaused).toBe(true);
     expect(state.view.yaw).toBe(45);
-    expect(events).toEqual(['ready', 'play', 'pause']);
+    // A slow runner may play the 3-second recording to its end before the pause arrives.
+    const stop = events.includes('ended') ? 'ended' : 'pause';
+    expect(events).toEqual(['ready', 'play', stop]);
   });
 });

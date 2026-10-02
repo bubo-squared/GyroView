@@ -3,6 +3,21 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## 0.4.2 (2026-10-02)
+
+What a page may notice:
+
+- Dragging, pinching or turning the wheel over a playing recording draws the picture once per
+  animation frame: in Safari, a fast mouse no longer slows the recording down. A change of the
+  view, the view mode, the quality or the exposure matching shows at the next animation frame
+  rather than at the call (ADR 0035).
+- Opening a recording keeps the page busy for less time: its gyro is read and integrated in two
+  thirds of the time.
+- Playing takes less of the page's main thread: the download plans what to fetch every few
+  mebibytes rather than at every frame (ADR 0036).
+- A bundle that includes the package is smaller: mediabunny's demuxers for formats other than
+  MP4 and QuickTime are left out. The standalone module is about 40 KB smaller compressed.
+
 ## 0.4.1 (2026-10-01)
 
 What a page may notice:

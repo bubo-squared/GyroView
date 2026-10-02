@@ -21,6 +21,11 @@ export interface LocalSampleEntry {
    * The moments the IMU frame ranking measures stillness at (ADR 0009).
    */
   readonly imuRankingTimes: readonly number[];
+  /**
+   * How the camera stood, by the name of the mounting the player reads from its gravity
+   * (ADR 0038).
+   */
+  readonly mounting?: string;
   readonly studio?: LocalStudioClip;
   /**
    * Words of the recording that must never enter the repository, such as its file name and
@@ -82,6 +87,7 @@ function entryOf(fields: Fields): LocalSampleEntry {
     codedSize: numberOf(fields, 'codedSize'),
     renderMoment: numberOf(fields, 'renderMoment'),
     imuRankingTimes: numbersOf(fields, 'imuRankingTimes'),
+    ...(fields['mounting'] !== undefined && { mounting: stringOf(fields, 'mounting') }),
     ...(studio !== undefined && { studio: studioOf(objectOf(studio, 'studio')) }),
     privateTokens: stringsOf(fields, 'privateTokens'),
   };

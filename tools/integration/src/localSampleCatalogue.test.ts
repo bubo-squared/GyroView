@@ -20,8 +20,11 @@ const ENTRY = {
 const STUDIO = { start: 0.5, frameTimes: [1, 2], comparedTimes: [2], steadinessStart: 1.5 };
 
 describe('parseLocalCatalogue', () => {
-  it('reads an entry field by field, its Studio clip only when it has one', () => {
+  it('reads an entry field by field, its mounting and Studio clip only when it has them', () => {
     expect(parseLocalCatalogue({ samples: [ENTRY] })).toEqual([ENTRY]);
+    expect(parseLocalCatalogue({ samples: [{ ...ENTRY, mounting: 'upright' }] })).toEqual([
+      { ...ENTRY, mounting: 'upright' },
+    ]);
     expect(parseLocalCatalogue({ samples: [{ ...ENTRY, studio: STUDIO }] })).toEqual([
       { ...ENTRY, studio: STUDIO },
     ]);
@@ -45,6 +48,9 @@ describe('parseLocalCatalogue', () => {
     );
     expect(() => parseLocalCatalogue({ samples: [{ ...ENTRY, imuRankingTimes: 1 }] })).toThrow(
       'imuRankingTimes is no list',
+    );
+    expect(() => parseLocalCatalogue({ samples: [{ ...ENTRY, mounting: 1 }] })).toThrow(
+      'mounting is no string',
     );
     expect(() => parseLocalCatalogue({ samples: [{ ...ENTRY, privateTokens: [1] }] })).toThrow(
       'privateTokens is no list',

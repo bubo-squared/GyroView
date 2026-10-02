@@ -96,15 +96,27 @@ describe('Transfers', () => {
     ]);
   });
 
-  it('brings a range within one it streams, partly come or not, until it ends or is given up', async () => {
+  it('brings a range within one it streams, whether some of it has come or none', async () => {
     const { link, transfers } = setup();
     transfers.start(ByteRange.of(0, 300));
     link.advance();
     await settle();
     expect(transfers.isBringing(ByteRange.of(50, 100))).toBe(true);
+    expect(transfers.isBringing(ByteRange.of(150, 100))).toBe(true);
     expect(transfers.isBringing(ByteRange.of(250, 100))).toBe(false);
+  });
+
+  it('brings nothing of a range once it ended or was given up', async () => {
+    const { link, transfers } = setup();
+    transfers.start(ByteRange.of(0, 100));
+    transfers.start(ByteRange.of(500, 500));
+    link.advance(3);
+    await settle();
+    expect(transfers.states).toHaveLength(1);
+    expect(transfers.isBringing(ByteRange.of(0, 100))).toBe(false);
+    expect(transfers.isBringing(ByteRange.of(800, 100))).toBe(true);
     transfers.cancel(transfers.states[0]?.id ?? -1);
-    expect(transfers.isBringing(ByteRange.of(50, 100))).toBe(false);
+    expect(transfers.isBringing(ByteRange.of(800, 100))).toBe(false);
   });
 
   it('gives a range up at once, keeping what came', async () => {

@@ -153,10 +153,11 @@ Use cases that orchestrate the domain through ports.
 - `recording/readSampleTable` finds the movie box and reads it once, into the file's sample table
   and the movie bytes (`ftyp` and `moov`) a codec reader tells the codecs from.
 - `download/FileDownload` downloads one file while it plays, the only reader of its bytes then
-  (ADR 0029): its `SampleCursor`s say where each reader stands, it plans once a turn whenever
+  (ADR 0029): its `SampleCursor`s say where each reader stands; it plans once a turn whenever
   a reader opens, closes or waits for bytes no transfer brings, once the readers have moved on
-  by the policy's replan bytes (ADR 0036), or a range comes whole, and carries the plan out through its `Transfers` (the
-  ranges streaming, each into its block) and its `BlockStore`. `DownloadedVideoTrack` and
+  by the policy's replan bytes (ADR 0036), when a range comes whole or fails, and when reading
+  ahead starts, and carries the plan out through its `Transfers` (the ranges streaming, each
+  into its block) and its `BlockStore`. `DownloadedVideoTrack` and
   `DownloadedAudioSamples` read a track through it; `startFileDownload` joins a file's tracks to
   their codecs by track id; `SourceByteStream` streams any random-access source a range at a
   time. A download is also a `MediaBuffer`, and `RecordingBuffer` is one over a recording's
@@ -259,7 +260,8 @@ One package per external technology; none imports another.
   clock; `SourceBufferFeeder` keeps a window buffered and evicts behind the playhead.
 - **`three`**: `ThreeFrameRenderer`, one fullscreen pass per frame with the program of the
   picture the view mode asks for (`pictureMaterials`); a changed setting is drawn when its
-  `DrawSchedule` says, at once or once an animation frame (ADR 0035). The stitch (`stitch.frag.glsl` with the
+  `DrawSchedule` says, at once (`DRAW_AT_ONCE`, the tests' and the lab's) or as the composition
+  schedules it (ADR 0035). The stitch (`stitch.frag.glsl` with the
   `rectilinearRays` or `equirectangularRays` chunk) turns every pixel of the picture's area into
   a ray, applies the view and stabilization rotations, projects through each lens model and
   blends across the feather band; `rawLenses.frag.glsl` copies each lens's frame region into its
@@ -291,7 +293,9 @@ The composition root and the user-facing element, in three layers.
   `ResourceLocator` for each input, so the other lens file is looked for with the main file's
   credentials (ADR 0027), a deadline factory), so it is tested against fakes; `browserPorts`
   supplies the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
-  the renderer, the stabilizing and gain-matching sinks, the session. The player receives it as a
+  the renderer, which draws a changed setting once at the next animation frame
+  (`AnimationFrameDraws` over the `FrameScheduler` the player's `FrameLoop` ticks on, ADR 0035),
+  the stabilizing and gain-matching sinks, the session. The player receives it as a
   `PipelineFactory` and drives the `Pipeline` contract in `composition/ports`, never the
   adapters or the sinks: it sets the stabilization mode and gain matching as commands, which
   the pipeline routes to its sinks and shows at once; `createBrowserPlayer` joins the browser's ports and `buildPipeline` into a `Player`,

@@ -193,6 +193,15 @@ describe('FileDownload', () => {
     expect(context.link.requests.length).toBeGreaterThan(requestsAtRest);
   });
 
+  it('hands out every sample however far its readers move on unplanned: a reader that waits asks for a plan', async () => {
+    const context = setup({ ...POLICY, replanBytes: Number.MAX_SAFE_INTEGER });
+    const readers = openReaders(context.download, 0);
+    await play({ ...context, readers }, 0, 3);
+    context.download.startReadingAhead();
+    await play({ ...context, readers }, 3, 1300);
+    expect(readers.handedOutBytes).toBe(RECORDING.fileSize);
+  });
+
   it('fetches about each byte it hands out once, playing the recording through', async () => {
     const context = setup();
     const readers = openReaders(context.download, 0);

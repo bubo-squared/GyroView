@@ -38,8 +38,8 @@ export interface DownloadPolicy {
   readonly refillBytes: number;
   /**
    * Readers moving on through bytes that have come change the plan by little: it is made again
-   * once they have taken this many bytes since the last, and at once whenever one waits, opens
-   * or closes, so a top-up comes at most this late.
+   * once they have taken this many bytes since the last, and at once whenever one opens, closes
+   * or waits for bytes no transfer brings (ADR 0036).
    */
   readonly replanBytes: number;
   /**
@@ -64,8 +64,10 @@ const REQUESTS_IN_FLIGHT = 2;
 const BRIDGED_GAP_MEBIBYTES = 1;
 const REFILL_FRACTION = 0.25;
 /**
- * Planning walks every sample in the window, a few thousand on a fast recording: made for each
- * sample read, it took more of a slow phone's main thread than drawing the frames.
+ * Planning walks every sample in the window, a few thousand on a fast recording; made for each
+ * sample read, it took more of the main thread than drawing the frames (ADR 0036). Sixteen plans
+ * a refill keep a top-up within a sixteenth of a refill of falling due, and make about a dozen
+ * plans a second on the X5's recordings where there were 170.
  */
 const REPLANS_PER_REFILL = 16;
 /**
@@ -86,6 +88,7 @@ export function downloadPolicyFor(
     Math.round(AHEAD_SECONDS * bytesPerSecond),
     (MOST_AHEAD_MEBIBYTES * MEBIBYTE) / fileCount,
   );
+  const refillBytes = Math.round(aheadBytes * REFILL_FRACTION);
   return {
     aheadSeconds: seconds(AHEAD_SECONDS),
     aheadBytes,
@@ -97,8 +100,8 @@ export function downloadPolicyFor(
     requestSize: REQUEST_MEBIBYTES * MEBIBYTE,
     requestsInFlight: REQUESTS_IN_FLIGHT,
     bridgedGap: BRIDGED_GAP_MEBIBYTES * MEBIBYTE,
-    refillBytes: Math.round(aheadBytes * REFILL_FRACTION),
-    replanBytes: Math.round((aheadBytes * REFILL_FRACTION) / REPLANS_PER_REFILL),
+    refillBytes,
+    replanBytes: Math.round(refillBytes / REPLANS_PER_REFILL),
     resumeSeconds: seconds(RESUME_SECONDS),
   };
 }

@@ -62,7 +62,8 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
 
 Cameras without a measured frame (all but the X5, the X6, the X4 Air and the A1) stabilize with an
 unverified frame until a recording is measured; the player must surface `ImuFrame.isVerified`
-as a warning and offer `off`. A new camera is measured by adding its recording to the ranking
+as a warning and offer `off`, which draws such a camera's body as recorded: a guessed frame reads
+no mounting (ADR 0038). A new camera is measured by adding its recording to the ranking
 and running `pnpm measure`; every test run keeps a cheaper guard, that lock keeps the sailing
 recording's world stiller than no stabilization. The residual motion in lock mode on the sailing
 recording comes from the boat and people moving and from the accelerometer sensing the boat's

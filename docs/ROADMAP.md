@@ -43,7 +43,8 @@ time; the bundle leaves out mediabunny's demuxers of other formats.
 
 **Stabilization.** Gyro and accelerometer integrated into the camera's orientation, sampled at
 each frame's mid-exposure; lock, horizon and follow modes, or off, each drawn upright as the
-camera was mounted, on its side or with its lens axis vertical (ADR 0038).
+camera was mounted, on its side or with its lens axis vertical, where its IMU frame is measured
+(ADR 0038).
 
 **Embedding.** `<gyro-view>` as an element (`gyro-view.js`) with attributes, properties,
 events and controls; `embed.html` in an iframe driven by `embed.js` over a validated,

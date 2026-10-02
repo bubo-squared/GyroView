@@ -23,9 +23,10 @@ export const DEFAULT_STABILIZATION_MODE: StabilizationMode = 'lock';
  */
 export interface Stabilizer {
   /**
-   * The view-to-body rotation for the next presented frame, captured with the body at
-   * `orientation` (body to world) at `videoTime`. A stateful mode moves its filter to that frame,
-   * so it is asked once per presented frame.
+   * The rotation from the view into the camera's upright frame for the next presented frame,
+   * captured with that frame at `orientation` (upright frame to world) at `videoTime`; the
+   * mounting carries it on into the body (ADR 0038). A stateful mode moves its filter to that
+   * frame, so it is asked once per presented frame.
    */
   nextRotation(orientation: Quaternion, videoTime: Seconds): Matrix3;
 }

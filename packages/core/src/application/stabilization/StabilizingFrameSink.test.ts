@@ -2,9 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import { StabilizingFrameSink } from './StabilizingFrameSink';
 import { ALIGNED_IMU_FRAME } from '../../domain/motion/imu/ImuFrame';
-import { UPRIGHT_MOUNTING, type Mounting } from '../../domain/motion/mounting/Mounting';
+import {
+  mountingOf,
+  uprightImuFrame,
+  UPRIGHT_MOUNTING,
+  type Mounting,
+} from '../../domain/motion/mounting/Mounting';
 import { OrientationTrack } from '../../domain/motion/orientation/OrientationTrack';
-import { LockStabilization } from '../../domain/motion/stabilization/stabilizers';
+import {
+  HorizonStabilization,
+  LockStabilization,
+} from '../../domain/motion/stabilization/stabilizers';
 import { FrameTimes } from '../../domain/motion/timing/FrameTimes';
 import type { Presentation } from '../../ports/FrameSink';
 import type { PictureRenderer } from '../../ports/PictureRenderer';
@@ -25,6 +33,7 @@ import {
 
 const FORWARD: Vector3 = [0, 0, 1];
 const DOWN: Vector3 = [0, 1, 0];
+const STILL: Vector3 = [0, 0, 0];
 /**
  * A drone's camera, lens 0 up: the upright frame's down is the body's minus z.
  */
@@ -58,6 +67,24 @@ const orientations = OrientationTrack.integrate({
   frame: ALIGNED_IMU_FRAME,
 });
 
+/**
+ * A camera on its right side, gravity along the body's x, that rests for a second and then
+ * pitches an eighth of a turn in the next about its upright frame's lateral axis, the body's
+ * minus y.
+ */
+const PITCH = Math.PI / 4;
+const PITCH_START = 1;
+const PITCH_END = 2;
+const pitchingOnItsSide = syntheticGyroTrack(3, 200, (time) => {
+  const progress = Math.min(Math.max(time - PITCH_START, 0), PITCH_END - PITCH_START);
+  const pitch = (PITCH * progress) / (PITCH_END - PITCH_START);
+  const isPitching = time >= PITCH_START && time < PITCH_END;
+  return {
+    acceleration: [-Math.cos(pitch), 0, Math.sin(pitch)],
+    angularVelocity: isPitching ? [0, -PITCH / (PITCH_END - PITCH_START), 0] : STILL,
+  };
+});
+
 function presentationAt(timestamp: number): Presentation<string> {
   return { pair: { timestamp: seconds(timestamp), frames: [] }, mediaTime: seconds(timestamp) };
 }
@@ -83,8 +110,7 @@ describe('StabilizingFrameSink', () => {
     const inner = new RecordingSink();
     const sink = new StabilizingFrameSink({
       sink: inner,
-      orientations,
-      mounting: UPRIGHT_MOUNTING,
+      motion: { orientations, mounting: UPRIGHT_MOUNTING },
       frameTimes: undefined,
     });
     sink.present(presentationAt(1));
@@ -96,8 +122,7 @@ describe('StabilizingFrameSink', () => {
     const inner = new RecordingSink();
     const sink = new StabilizingFrameSink({
       sink: inner,
-      orientations,
-      mounting: UPRIGHT_MOUNTING,
+      motion: { orientations, mounting: UPRIGHT_MOUNTING },
       frameTimes: undefined,
     });
     sink.setStabilizer(new LockStabilization());
@@ -111,8 +136,7 @@ describe('StabilizingFrameSink', () => {
     const inner = new RecordingSink();
     const sink = new StabilizingFrameSink({
       sink: inner,
-      orientations,
-      mounting: LENS_0_UP,
+      motion: { orientations, mounting: LENS_0_UP },
       frameTimes: undefined,
     });
     sink.present(presentationAt(1));
@@ -124,13 +148,37 @@ describe('StabilizingFrameSink', () => {
     expect(transformVector(inner.rotations[1] ?? IDENTITY_MATRIX3, FORWARD)[0]).toBeCloseTo(-1, 2);
   });
 
+  it('keeps the horizon facing where a camera on its side faces while it pitches', () => {
+    const measured = { ...ALIGNED_IMU_FRAME, isVerified: true };
+    const mounting = mountingOf(pitchingOnItsSide, measured);
+    const inner = new RecordingSink();
+    const sink = new StabilizingFrameSink({
+      sink: inner,
+      motion: {
+        orientations: OrientationTrack.integrate({
+          gyro: pitchingOnItsSide,
+          clock: SYNTHETIC_CLOCK,
+          frame: uprightImuFrame(measured, mounting),
+        }),
+        mounting,
+      },
+      frameTimes: undefined,
+    });
+    sink.setStabilizer(new HorizonStabilization());
+    sink.present(presentationAt(2.5));
+    const viewForward = forwardThrough(inner);
+    expect(mounting.name).toBe('on its right side');
+    // The pitch about the body's y has not become a heading turning the view toward it.
+    expect(viewForward[1]).toBeCloseTo(0, 2);
+    expect(viewForward[2]).toBeCloseTo(Math.cos(PITCH), 2);
+  });
+
   it('falls back to the pair timestamp when the frame times hold no frames', () => {
     const inner = new RecordingSink();
     const frameTimes = frameTimesAt([], 0);
     const sink = new StabilizingFrameSink({
       sink: inner,
-      orientations,
-      mounting: UPRIGHT_MOUNTING,
+      motion: { orientations, mounting: UPRIGHT_MOUNTING },
       frameTimes,
     });
     sink.setStabilizer(new LockStabilization());
@@ -144,8 +192,7 @@ describe('StabilizingFrameSink', () => {
     const frameTimes = frameTimesAt([0, 3, 6], 2);
     const sink = new StabilizingFrameSink({
       sink: inner,
-      orientations,
-      mounting: UPRIGHT_MOUNTING,
+      motion: { orientations, mounting: UPRIGHT_MOUNTING },
       frameTimes,
     });
     sink.setStabilizer(new LockStabilization());

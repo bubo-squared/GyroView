@@ -3,7 +3,7 @@
 What the player does today, what is verified on real material, what is waiting on something
 external, and what a next step could be. Dated so a reader can tell how current it is.
 
-## Done (as of 2026-10-01)
+## Done (as of 2026-10-02)
 
 **Playback of raw recordings.** Opens `.insv` files over HTTP byte ranges or from local
 files; reads the Insta360 trailer (indexed or bare, `inst`-wrapped or not), the protobuf info
@@ -34,6 +34,12 @@ once zoomed (ADR 0018).
 each drawn pixel's footprint through a mip chain, which halves the aliasing and shimmer of the
 panorama at `balanced` at no measurable cost on a laptop, and the drawing buffer's pixel ratio
 is capped per quality. Kept across loads (ADR 0024).
+
+**Weaker devices.** Profiled with Chromium's CPU throttling, GPU timer queries and WebKit: a
+changed view, gain or quality is drawn once an animation frame (ADR 0035), so a drag in WebKit
+no longer starves the frames of the recording; the download plans every few mebibytes rather
+than at every sample (ADR 0036); opening reads and integrates the gyro in two thirds of the
+time; the bundle leaves out mediabunny's demuxers of other formats.
 
 **Stabilization.** Gyro and accelerometer integrated into the camera's orientation, sampled at
 each frame's mid-exposure; lock, horizon and follow modes, or off.
@@ -99,6 +105,11 @@ the gyro's timing against its frames (ADR 0034), in Chromium and WebKit.
   second in Chromium, 98 in WebKit), counting the decoders alone; drawing, 50 fps on a 60 Hz
   display, Windows' GPUs and an iPhone's memory (a 10-bit frame is twice an X5's) are still to
   be checked. A machine with half that decoder falls behind and waits.
+- Opening a recording integrates its whole gyro record on the main thread before the first
+  frame: 70 ms for the 4.4-minute X5 office recording on an M4 Pro, a long task of half a second
+  under six times CPU throttling, and longer the longer the recording.
+- A device whose decoders cannot keep up with both lens tracks waits for them (`buffering`)
+  rather than dropping frames: the 8K and 5.7K60 modes need a decoder of 8K30 class.
 - Recordings split into several `_NNN` segment files play one segment at a time.
 - Playback speed is 1x: another speed needs the decoders to keep up with it, which an 8K
   recording's barely do at 1x, and the sound to follow at that rate.
@@ -129,6 +140,16 @@ In rough order of value:
 6. `.insp` photos through the same stitcher.
 7. The decode pipeline in a worker, if main-thread scheduling ever shows in profiles (it did
    not on an M4 Pro).
+8. For decoders that fall behind, decoding the base temporal layer alone: the X5's 5.7K60 and
+   the X4 Air's recordings mark every other frame a sub-layer non-reference picture (HEVC
+   `TSA_N`, temporal id 1), which nothing else refers to, so skipping them halves the decode
+   load at half the frame rate. The 8K recordings and the X6's mark every frame a reference.
+9. The gyro integrated after the first frame, in slices between frames: the raw lenses, the
+   default view, need no orientation, and the stitched views could wait for it.
+10. A quality that follows the device: `fast` when frames are presented late while decoded ones
+    wait, which only the GPU explains. Both lens frames are uploaded whole at every frame (two
+    3840-pixel squares at 8K, about 120 MB of texels), which a phone's memory bandwidth feels
+    first.
 
 ## History
 

@@ -21,9 +21,13 @@ export interface CursorHost {
   bytesOf(range: ByteRange): Uint8Array | undefined;
   failureOf(range: ByteRange): Error | undefined;
   /**
-   * The cursor moved on, began waiting or closed: what to read may have changed.
+   * The cursor handed out a sample of `length` bytes and moved on to the next.
    */
-  changed(): void;
+  movedOn(length: number): void;
+  /**
+   * The cursor waits for the bytes of its next sample, `range`.
+   */
+  waiting(range: ByteRange): void;
   closed(cursor: SampleCursor): void;
 }
 
@@ -81,7 +85,7 @@ export class SampleCursor {
     const bytes = this.host.bytesOf(range);
     if (bytes) return Promise.resolve(this.take(bytes));
     const failure = this.host.failureOf(range);
-    return failure === undefined ? this.waitForBytes() : Promise.reject(failure);
+    return failure === undefined ? this.waitForBytes(range) : Promise.reject(failure);
   }
 
   /**
@@ -113,17 +117,17 @@ export class SampleCursor {
     this.host.closed(this);
   }
 
-  private waitForBytes(): Promise<CursorSample | undefined> {
+  private waitForBytes(range: ByteRange): Promise<CursorSample | undefined> {
     return new Promise((resolve, reject) => {
       this.waiter = { resolve, reject };
-      this.host.changed();
+      this.host.waiting(range);
     });
   }
 
   private take(bytes: Uint8Array): CursorSample {
     const sample = this.next;
     this.next += 1;
-    this.host.changed();
+    this.host.movedOn(bytes.byteLength);
     return { sample, bytes };
   }
 }

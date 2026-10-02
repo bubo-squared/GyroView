@@ -40,6 +40,10 @@ describe('downloadPolicyFor', () => {
     expect(policy.refillBytes).toBe(32 * MEBIBYTE);
   });
 
+  it('plans again once its readers have taken a sixteenth of a refill', () => {
+    expect(downloadPolicyFor(X5_OFFICE, 1).replanBytes).toBe(2 * MEBIBYTE);
+  });
+
   it('takes a reader up to 2 s behind the picture for one that follows it', () => {
     expect(downloadPolicyFor(X5_OFFICE, 1).keepBehindSeconds).toBe(2);
   });

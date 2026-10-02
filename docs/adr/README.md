@@ -39,3 +39,4 @@ new record takes the next number and a line here.
 - [ADR 0033](0033-hdr-is-shown-as-sdr-converted-after-sampling.md): HDR is shown as SDR BT.709, converted in the shader right after a lens is sampled
 - [ADR 0034](0034-a-frame-is-timed-half-way-through-its-shutter.md): A frame's gyro time is half way through its shutter, with nothing added for the readout
 - [ADR 0035](0035-a-changed-setting-is-drawn-once-an-animation-frame.md): A changed setting is drawn once an animation frame
+- [ADR 0036](0036-the-download-plans-again-every-few-mebibytes-read.md): The download plans again every few mebibytes its readers take

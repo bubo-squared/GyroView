@@ -96,6 +96,17 @@ describe('Transfers', () => {
     ]);
   });
 
+  it('brings a range within one it streams, partly come or not, until it ends or is given up', async () => {
+    const { link, transfers } = setup();
+    transfers.start(ByteRange.of(0, 300));
+    link.advance();
+    await settle();
+    expect(transfers.isBringing(ByteRange.of(50, 100))).toBe(true);
+    expect(transfers.isBringing(ByteRange.of(250, 100))).toBe(false);
+    transfers.cancel(transfers.states[0]?.id ?? -1);
+    expect(transfers.isBringing(ByteRange.of(50, 100))).toBe(false);
+  });
+
   it('gives a range up at once, keeping what came', async () => {
     const { link, store, transfers, heard } = setup();
     transfers.start(ByteRange.of(0, 500));

@@ -33,6 +33,7 @@ const POLICY: DownloadPolicy = {
   requestsInFlight: 2,
   bridgedGap: 2 ** 20,
   refillBytes: 25 * SLOT,
+  replanBytes: 2 * SLOT,
   resumeSeconds: seconds(1),
 };
 /**
@@ -175,6 +176,21 @@ describe('FileDownload', () => {
     );
     expect(context.link.deliveredBytes).toBeLessThanOrEqual(POLICY.aheadBytes + 2 * SLOT);
     expect(context.link.requests).toHaveLength(requestsAtRest);
+  });
+
+  it('plans again as its readers move on through what has come once they have taken the replan bytes', async () => {
+    const context = setup({ ...POLICY, replanBytes: 40 * SLOT }, FAST_NETWORK);
+    const readers = openReaders(context.download, 0);
+    context.download.startReadingAhead();
+    await idle(context.link, 20);
+    const requestsAtRest = context.link.requests.length;
+    // More than a refill taken, fewer bytes than the replan: no plan yet, so no top-up.
+    await readers.takeDueBy(30 / FRAME_RATE);
+    await idle(context.link, 5);
+    expect(context.link.requests).toHaveLength(requestsAtRest);
+    await readers.takeDueBy(45 / FRAME_RATE);
+    await idle(context.link, 5);
+    expect(context.link.requests.length).toBeGreaterThan(requestsAtRest);
   });
 
   it('fetches about each byte it hands out once, playing the recording through', async () => {

@@ -52,6 +52,16 @@ export class Transfers {
     }));
   }
 
+  /**
+   * Whether every byte of `range` has come or is coming in one range still streaming.
+   */
+  public isBringing(range: ByteRange): boolean {
+    for (const transfer of this.running.values()) {
+      if (transfer.block.range.contains(range)) return true;
+    }
+    return false;
+  }
+
   public start(range: ByteRange): void {
     const transfer: Transfer = {
       id: this.nextId,

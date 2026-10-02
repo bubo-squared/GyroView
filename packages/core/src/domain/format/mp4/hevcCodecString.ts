@@ -8,6 +8,7 @@ import {
   HEVC_PROFILE_TIER_LEVEL_OFFSET,
 } from './mp4Layouts';
 import { ByteReader } from '../../../shared/binary/ByteReader';
+import { hasErrorCode } from '../../../shared/errors/GyroViewError';
 
 /**
  * The general part of profile_tier_level (ITU-T H.265 §7.3.3), as an SPS carries it and an HEVC
@@ -80,9 +81,22 @@ export function hevcCodecStringOf(sampleEntryType: string, configuration: Uint8A
 
 function declaredProfileTierLevelOf(configuration: Uint8Array): ProfileTierLevel {
   const header = profileTierLevelAt(new ByteReader(configuration), HEVC_PROFILE_TIER_LEVEL_OFFSET);
-  if (header.profile !== NO_PROFILE) return header;
-  const sps = spsIn(configuration);
-  return sps === undefined ? header : spsProfileTierLevelOf(sps);
+  return header.profile === NO_PROFILE ? (spsProfileTierLevelIn(configuration) ?? header) : header;
+}
+
+/**
+ * The profile, tier and level of the first SPS the configuration carries; undefined where it
+ * carries none, or where its parameter sets run past its end. The header's blank string then
+ * stands, which browsers refuse as a codec they do not support.
+ */
+function spsProfileTierLevelIn(configuration: Uint8Array): ProfileTierLevel | undefined {
+  try {
+    const sps = spsIn(configuration);
+    return sps === undefined ? undefined : spsProfileTierLevelOf(sps);
+  } catch (error) {
+    if (hasErrorCode(error, 'binary-out-of-bounds')) return undefined;
+    throw error;
+  }
 }
 
 function profileTierLevelAt(reader: ByteReader, offset: number): ProfileTierLevel {

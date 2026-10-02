@@ -4,16 +4,16 @@ const UINT8_SIZE = 1;
 const UINT16_SIZE = 2;
 const UINT32_SIZE = 4;
 const UINT64_SIZE = 8;
-/**
- * The safe integer range as big integers, made once: a gyro record reads a stamp per sample.
- */
-const MIN_SAFE_BIGINT = BigInt(Number.MIN_SAFE_INTEGER);
-const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 const INT32_SIZE = 4;
 const INT64_SIZE = 8;
 const FLOAT64_SIZE = 8;
 const IS_LITTLE_ENDIAN = true;
 const IS_BIG_ENDIAN = false;
+/**
+ * The safe integer range as big integers, made once: a gyro record reads a stamp per sample.
+ */
+const MIN_SAFE_BIGINT = BigInt(Number.MIN_SAFE_INTEGER);
+const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 
 /**
  * Bounds-checked reads over a byte array: little-endian for Insta360's records, big-endian for

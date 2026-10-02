@@ -62,7 +62,9 @@ export function conjugateQuaternion(q: Quaternion): Quaternion {
 
 export function normalizeQuaternion(q: Quaternion): Quaternion {
   const [x, y, z, w] = q;
-  // eslint-disable-next-line unicorn/prefer-modern-math-apis -- Math.hypot is slow (magnitudeOf)
+  // Not Math.hypot, as magnitudeOf says; spelled out, as a helper taking the quaternion apart
+  // again cost the gyro integration a tenth of its time.
+  // eslint-disable-next-line unicorn/prefer-modern-math-apis -- see above
   const length = Math.sqrt(x * x + y * y + z * z + w * w);
   return length === 0 ? IDENTITY_QUATERNION : [x / length, y / length, z / length, w / length];
 }

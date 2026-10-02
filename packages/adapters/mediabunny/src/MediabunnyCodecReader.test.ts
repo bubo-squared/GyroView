@@ -14,7 +14,7 @@ import {
 import { ALL_FORMATS, BufferSource, Input, type InputVideoTrack } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
 
-import { videoConfigurationOf } from './decoderConfigurations';
+import { codecStringOf, videoConfigurationOf } from './decoderConfigurations';
 import { MediabunnyCodecReader } from './MediabunnyCodecReader';
 import { trackColourOf } from './trackColour';
 
@@ -45,7 +45,7 @@ async function codecOf(track: InputVideoTrack, trackIndex: number): Promise<Vide
     trackIndex,
     codedWidth: await track.getCodedWidth(),
     codedHeight: await track.getCodedHeight(),
-    codec: config.codec,
+    codec: await codecStringOf(track, config),
     colour: trackColourOf(config.colorSpace),
   };
   return {
@@ -58,6 +58,20 @@ async function codecOf(track: InputVideoTrack, trackIndex: number): Promise<Vide
 async function movieBytesOf(bytes: Uint8Array): Promise<Uint8Array> {
   const { movieBytes } = await readSampleTable(new InMemoryRandomAccessSource(bytes));
   return movieBytes;
+}
+
+/**
+ * The movie with the profile, tier and level of every HEVC configuration zeroed: the twelve bytes
+ * after the version byte that follows the box type, which the fixtures spell nowhere else.
+ */
+function withBlankHevcHeaders(movieBytes: Uint8Array): Uint8Array {
+  const blanked = Uint8Array.from(movieBytes);
+  const type = new TextEncoder().encode('hvcC');
+  for (let index = 0; index < blanked.length; index += 1) {
+    const isConfiguration = type.every((byte, offset) => blanked[index + offset] === byte);
+    if (isConfiguration) blanked.fill(0, index + 5, index + 17);
+  }
+  return blanked;
 }
 
 /**
@@ -90,6 +104,25 @@ describe('MediabunnyCodecReader', () => {
       }
     },
   );
+
+  it('names an HEVC track after its sample entry, as ISO/IEC 14496-15 E.3 does', async () => {
+    const bytes = fixtureBytes('hevc-b-frames-dual-track-64px-10fps-3s.mp4');
+    const { video } = await new MediabunnyCodecReader().read(await movieBytesOf(bytes));
+    expect(video.map((codec) => codec.description.codec)).toEqual([
+      'hvc1.1.6.L30.90',
+      'hvc1.1.6.L30.90',
+    ]);
+  });
+
+  it("names an HEVC track by its SPS where its configuration's header is blank, as the Antigravity A1 leaves it", async () => {
+    const bytes = fixtureBytes('hevc-b-frames-dual-track-64px-10fps-3s.mp4');
+    const movieBytes = withBlankHevcHeaders(await movieBytesOf(bytes));
+    const { video } = await new MediabunnyCodecReader().read(movieBytes);
+    expect(video.map((codec) => codec.configuration.codec)).toEqual([
+      'hvc1.1.6.L30.90',
+      'hvc1.1.6.L30.90',
+    ]);
+  });
 
   it("reads a 10-bit HLG track's colour from its SPS, as the X6's tracks carry no colr box", async () => {
     const bytes = fixtureBytes('hevc-main10-hlg-dual-track-64px-10fps-3s.mp4');

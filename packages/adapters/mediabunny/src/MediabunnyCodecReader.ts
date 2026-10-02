@@ -15,7 +15,7 @@ import {
   type InputVideoTrack,
 } from 'mediabunny';
 
-import { audioConfigurationOf, videoConfigurationOf } from './decoderConfigurations';
+import { audioConfigurationOf, codecStringOf, videoConfigurationOf } from './decoderConfigurations';
 import { trackColourOf } from './trackColour';
 
 /**
@@ -68,7 +68,7 @@ async function videoCodecOf(track: InputVideoTrack, trackIndex: number): Promise
     trackIndex,
     codedWidth,
     codedHeight,
-    codec: config.codec,
+    codec: await codecStringOf(track, config),
     colour: trackColourOf(config.colorSpace),
   };
   return {

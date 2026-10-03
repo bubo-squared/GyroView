@@ -128,7 +128,8 @@ export const X3_IMU_FRAME = measuredImuFrame('X3', QUARTER_TURN_ABOUT_LATERAL);
  * Assumed for the ONE RS until a recording that turns is ranked (ADR 0009). On one tripod
  * recording of the 1-inch 360 edition, standing upright, gravity lies along the IMU's x, so the
  * body's down is the IMU's x; of the four arrangements that agree, the levelling ranking puts
- * this quarter turn about the lens axis first in both browsers, by too little to call it measured.
+ * this quarter turn about the lens axis first in both browsers, by too little to decide it. The
+ * model name covers the 360 lens module too, assumed alike.
  */
 export const ONE_RS_IMU_FRAME = assumedImuFrame('ONE RS (unverified)', ['-y', 'x', 'z']);
 
@@ -146,7 +147,8 @@ export interface ImuFrameHints {
 
 /**
  * Keyed by the whole model name: a name that extends a measured one ("X4 Air" of "X4", an "X5
- * Pro") is another camera, unmeasured until a recording of it is ranked.
+ * Pro") is another camera, unmeasured until a recording of it is ranked. Every frame is measured
+ * but the ONE RS's, assumed and reported as such.
  */
 const IMU_FRAMES_BY_MODEL: ReadonlyMap<string, ImuFrame> = new Map([
   ['Antigravity A1', A1_IMU_FRAME],

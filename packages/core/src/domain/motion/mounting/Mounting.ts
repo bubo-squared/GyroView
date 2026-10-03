@@ -33,7 +33,8 @@ import type { OrientationTrack } from '../orientation/OrientationTrack';
  * upright frame, whose y is down along the recording's gravity. Lens 0 stays the upright frame's
  * forward when gravity lies across its axis; a camera whose lens axis is the vertical, as a
  * drone's is, faces the body's minus x, where Insta360 Studio centres the Antigravity A1's
- * footage (ADR 0038).
+ * footage (ADR 0038). Named in the body frame, not by how the camera looks: an X camera held
+ * upright on a stick holds its body's x down and stands "on its right side".
  */
 export interface Mounting {
   readonly name: string;

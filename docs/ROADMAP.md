@@ -126,9 +126,12 @@ upright, the rest of its IMU frame assumed (ADR 0009).
 - HDR is shown as SDR: HLG through Insta360 Studio's curve, fitted to its pixels; PQ is drawn
   as recorded, with a warning. The 10 bits reach the shader as 8.
 - The X6's 8K at 50 fps in 10 bits decodes at twice its frame rate on an M4 Pro (123 pairs a
-  second in Chromium, 98 in WebKit), counting the decoders alone; drawing, 50 fps on a 60 Hz
-  display, Windows' GPUs and an iPhone's memory (a 10-bit frame is twice an X5's) are still to
-  be checked. A machine with half that decoder falls behind and waits.
+  second in Chromium, 98 in WebKit), counting the decoders alone. Drawn, headless on the same
+  machine, it reaches the screen at 49.6 pairs a second in Chromium and 48 in WebKit, skipping
+  at most one pair in seven seconds, the GPU about 11 ms a pair in Chromium
+  (`measure/framePacing.test.ts`). A real display (`GYROVIEW_HEADED=1`), Windows' GPUs and an
+  iPhone's memory (a 10-bit frame is twice an X5's) are still to be checked. A machine with half
+  that decoder falls behind and waits.
 - Opening a recording integrates its whole gyro record on the main thread before the first
   frame: 70 ms for the 4.4-minute X5 office recording on an M4 Pro, a long task of half a second
   under six times CPU throttling, and longer the longer the recording.

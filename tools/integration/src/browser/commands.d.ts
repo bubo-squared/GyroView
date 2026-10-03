@@ -23,6 +23,18 @@ declare module 'vitest/browser' {
      * Writes a data URL to `.artifacts/<name>` in the repository and returns the path.
      */
     saveArtifact: (name: string, dataUrl: string) => Promise<string>;
+    /**
+     * Chromium only: traces the browser's frame pipeline until {@link stopFrameTrace}.
+     */
+    startFrameTrace: () => Promise<void>;
+    /**
+     * Writes the trace to `.artifacts/<name>` and returns its `PipelineReporter` events.
+     */
+    stopFrameTrace: (
+      name: string,
+    ) => Promise<
+      { name: string; ph: string; ts: number; dur?: number; args?: Record<string, unknown> }[]
+    >;
   }
 }
 

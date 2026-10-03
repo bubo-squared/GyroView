@@ -46,7 +46,7 @@ export const KRNJACA_8K_30: SampleRecording = {
 };
 
 /**
- * An X3 recording split into its two lens files, H.264, on a tripod and on its side; the player
+ * An X3 recording split into its two lens files, H.264, upright on a tripod; the player
  * finds the other lens's file beside this one.
  */
 export const X3_5K7_30: SampleRecording = {

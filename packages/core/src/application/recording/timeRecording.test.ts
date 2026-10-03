@@ -134,11 +134,11 @@ describe('timeRecording', () => {
   });
 
   it('still stabilizes an unknown camera but warns that its IMU frame is a guess', async () => {
-    const info = minimalInfoRecord({ model: 'Insta360 X3', firstFrameTimestamp: 1_000_000 });
+    const info = minimalInfoRecord({ model: 'Insta360 X4', firstFrameTimestamp: 1_000_000 });
     const timing = await timeRecording(await officeRecording({ info }), trackOf(10));
     expect(timing.motion?.imuFrame.isVerified).toBe(false);
     expect(timing.warnings).toContain(
-      'the IMU frame of Insta360 X3 has not been verified on a recording; stabilization may misbehave',
+      'the IMU frame of Insta360 X4 has not been verified on a recording; stabilization may misbehave',
     );
   });
 

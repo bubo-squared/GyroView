@@ -118,6 +118,13 @@ export const X4_AIR_IMU_FRAME = measuredImuFrame('X4 Air', QUARTER_TURN_ABOUT_LA
 export const A1_IMU_FRAME = measuredImuFrame('A1', ['-z', '-x', 'y']);
 
 /**
+ * Measured on one X3 recording (ADR 0009): the X5's arrangement again. The camera stood still on
+ * its side, so the levelling ranking decided it rather than the stillness ranking: it alone of
+ * the four that put gravity on the body's axis stands the picture as level as Studio's.
+ */
+export const X3_IMU_FRAME = measuredImuFrame('X3', QUARTER_TURN_ABOUT_LATERAL);
+
+/**
  * Until a recording proves otherwise, the IMU is assumed aligned with the body.
  */
 export const ALIGNED_IMU_FRAME = assumedImuFrame('aligned (unverified)', ['x', 'y', 'z']);
@@ -135,6 +142,7 @@ export interface ImuFrameHints {
  */
 const IMU_FRAMES_BY_MODEL: ReadonlyMap<string, ImuFrame> = new Map([
   ['Antigravity A1', A1_IMU_FRAME],
+  ['Insta360 X3', X3_IMU_FRAME],
   ['Insta360 X4 Air', X4_AIR_IMU_FRAME],
   ['Insta360 X5', X5_IMU_FRAME],
   ['Insta360 X6', X6_IMU_FRAME],

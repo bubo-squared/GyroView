@@ -10,6 +10,7 @@ import {
   seconds,
   stabilizerFor,
   StabilizingFrameSink,
+  UPRIGHT_MOUNTING,
   WallClock,
   type DecodePipelineOptions,
   type FrameSink,
@@ -176,7 +177,11 @@ interface SinkChoice {
 }
 
 function sinkOver(renderer: ThreeFrameRenderer, opened: OpenedRecording): SinkChoice {
-  if (!opened.motion) return { sink: renderer, stabilizing: undefined };
+  if (!opened.motion) {
+    // Without a gyro the body is drawn as recorded, facing where an upright camera faces.
+    renderer.setStabilization(UPRIGHT_MOUNTING.toBody);
+    return { sink: renderer, stabilizing: undefined };
+  }
   const stabilizing = new StabilizingFrameSink<VideoFrame>({
     sink: renderer,
     motion: opened.motion,

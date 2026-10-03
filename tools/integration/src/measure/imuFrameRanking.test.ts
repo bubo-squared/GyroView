@@ -1,14 +1,10 @@
 import type { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
-  isProperRotation,
   IDENTITY_MATRIX3,
-  assumedImuFrame,
   imuFrameFor,
   stabilizerFor,
   OrientationTrack,
-  type BodyAxes,
   type ImuFrame,
-  type SignedAxis,
 } from '@gyroview/core';
 import type { OpenedRecording } from '@gyroview/player/composition';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -20,28 +16,16 @@ import { LOCAL_SAMPLES } from '../browser/localSamples';
 import { KRNJACA_8K_30, OFFICE_5K7_60, SAILING_8K_30 } from '../browser/sampleUrls';
 import { closeMoment, decodeMoment } from '../browser/SharedSample';
 import { worldMovement } from '../browser/worldMovement';
+import { allImuFrames, rankedNameOf } from './support/imuFrames';
 
 /**
  * Small panoramas: 24 candidates render each moment twice, and the ranking needs no detail.
  */
 const RANKING_SIZE = { width: 384, height: 192 };
-const AXES: readonly SignedAxis[] = ['x', 'y', 'z', '-x', '-y', '-z'];
 
 interface Ranked {
   readonly name: string;
   readonly stillness: number;
-}
-
-/**
- * Every proper rotation that permutes and flips axes: the 24 ways an IMU can sit in a camera.
- */
-function allImuFrames(): readonly ImuFrame[] {
-  return AXES.flatMap((x) => AXES.flatMap((y) => AXES.flatMap((z) => properFrameOf(x, y, z))));
-}
-
-function properFrameOf(x: SignedAxis, y: SignedAxis, z: SignedAxis): ImuFrame[] {
-  const axes: BodyAxes = [x, y, z];
-  return isProperRotation(axes) ? [assumedImuFrame(axes.join(','), axes)] : [];
 }
 
 interface Candidate {
@@ -85,11 +69,6 @@ async function measureStillness(parts: MeasurementParts): Promise<Measured> {
     .map(({ frame, total }) => ({ name: frame.name, stillness: total / parts.times.length }))
     .toSorted((left, right) => left.stillness - right.stillness);
   return { unstabilized: unstabilized / parts.times.length, ranking };
-}
-
-function nameOf(frame: ImuFrame): string | undefined {
-  return allImuFrames().find((candidate) => candidate.toBody.join(',') === frame.toBody.join(','))
-    ?.name;
 }
 
 /**
@@ -139,7 +118,7 @@ describe('IMU frame ranking by world stillness under lock stabilization', () => 
       // A camera whose frame is still assumed has nothing to hold the ranking to: the saved
       // ranking says what to measure it as.
       const configured = imuFrameFor(recording.info);
-      if (configured.isVerified) expect(measured.ranking[0]?.name).toBe(nameOf(configured));
+      if (configured.isVerified) expect(measured.ranking[0]?.name).toBe(rankedNameOf(configured));
       expect(measured.ranking[0]?.stillness).toBeLessThan(measured.unstabilized);
     });
   }

@@ -44,7 +44,7 @@ time; the bundle leaves out mediabunny's demuxers of other formats.
 **Stabilization.** Gyro and accelerometer integrated into the camera's orientation, sampled at
 each frame's mid-exposure; lock, horizon and follow modes, or off, each drawn upright as the
 camera was mounted, on its side or with its lens axis vertical, where its IMU frame is measured
-(ADR 0038).
+(ADR 0038), and opening where Insta360 Studio centres the recording (ADR 0039).
 
 **Embedding.** `<gyro-view>` as an element (`gyro-view.js`) with attributes, properties,
 events and controls; `embed.html` in an iframe driven by `embed.js` over a validated,
@@ -123,9 +123,6 @@ upright, the rest of its IMU frame assumed (ADR 0009).
 - The ONE RS's horizon stands at least 2.3 degrees from Studio's on its one recording, under
   every IMU frame, and not for its calibration strings, whose lens poses agree within 0.15
   degrees; its IMU frame is assumed past its down (ADR 0009).
-- GyroView opens facing lens 0; Insta360 Studio's exports of the X3, the X5, the X6 and the ONE
-  RS open facing the other lens, a half turn away. The A1 opens where Studio centres it (ADR
-  0038).
 - HDR is shown as SDR: HLG through Insta360 Studio's curve, fitted to its pixels; PQ is drawn
   as recorded, with a warning. The 10 bits reach the shader as 8.
 - The X6's 8K at 50 fps in 10 bits decodes at twice its frame rate on an M4 Pro (123 pairs a

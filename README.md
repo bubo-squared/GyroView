@@ -63,21 +63,21 @@ a CDN or your own host; the site build's `gyro-view.js` registers the element th
 
 Attributes:
 
-| Attribute                   | Values                                    | What it does                                                                                                          |
-| --------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `src`                       | URL                                       | The recording; a relative URL resolves against the page.                                                              |
-| `src2`                      | URL                                       | The other lens's file of a split-file recording; found by itself when it sits beside `src` under the camera's name.   |
-| `crossorigin`               | `anonymous`, `use-credentials`            | As on a video element: `use-credentials` fetches the recording with the visitor's cookies (see "Serving recordings"). |
-| `autoplay`                  | boolean                                   | Starts once ready; a refusal is an `autoplay-blocked` warning.                                                        |
-| `muted`, `loop`, `controls` | boolean                                   | As on a video element; `controls` shows the bar.                                                                      |
-| `poster`                    | URL                                       | Shown until the first picture.                                                                                        |
-| `preload`                   | `auto`, `none`                            | `none` keeps the decoders idle until play; otherwise the first frame shows at once.                                   |
-| `gain-match`                | `on`, `off`                               | `off` leaves the lenses' exposure as recorded.                                                                        |
-| `stabilization`             | `off`, `lock`, `horizon`, `follow`        | How the gyro steadies the picture.                                                                                    |
-| `view-mode`                 | `raw-lenses`, `equirectangular`, `normal` | What the picture shows (below); the raw lenses until set.                                                             |
-| `quality`                   | `fast`, `balanced`, `high`                | How finely the lens images are read and how many device pixels are drawn (below); `balanced` until set.               |
-| `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees.                                                               |
-| `yaw`, `pitch`              | degrees                                   | Where the normal view looks: yaw positive to the right, pitch positive up.                                            |
+| Attribute                   | Values                                    | What it does                                                                                                              |
+| --------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `src`                       | URL                                       | The recording; a relative URL resolves against the page.                                                                  |
+| `src2`                      | URL                                       | The other lens's file of a split-file recording; found by itself when it sits beside `src` under the camera's name.       |
+| `crossorigin`               | `anonymous`, `use-credentials`            | As on a video element: `use-credentials` fetches the recording with the visitor's cookies (see "Serving recordings").     |
+| `autoplay`                  | boolean                                   | Starts once ready; a refusal is an `autoplay-blocked` warning.                                                            |
+| `muted`, `loop`, `controls` | boolean                                   | As on a video element; `controls` shows the bar.                                                                          |
+| `poster`                    | URL                                       | Shown until the first picture.                                                                                            |
+| `preload`                   | `auto`, `none`                            | `none` keeps the decoders idle until play; otherwise the first frame shows at once.                                       |
+| `gain-match`                | `on`, `off`                               | `off` leaves the lenses' exposure as recorded.                                                                            |
+| `stabilization`             | `off`, `lock`, `horizon`, `follow`        | How the gyro steadies the picture.                                                                                        |
+| `view-mode`                 | `raw-lenses`, `equirectangular`, `normal` | What the picture shows (below); the raw lenses until set.                                                                 |
+| `quality`                   | `fast`, `balanced`, `high`                | How finely the lens images are read and how many device pixels are drawn (below); `balanced` until set.                   |
+| `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees.                                                                   |
+| `yaw`, `pitch`              | degrees                                   | Where the normal view looks: yaw positive to the right, pitch positive up; 0 where Insta360 Studio centres the recording. |
 
 The element opens on `raw-lenses`, the decoded lens images side by side or stacked, whichever
 shows them larger, unstitched and as recorded; the camera records a square a little smaller

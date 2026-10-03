@@ -29,9 +29,11 @@ What a page may notice:
 - An Insta360 ONE RS recording stands upright under `lock` and `horizon`, which turned it on its
   side. Its IMU frame is assumed from one recording of a camera that never turned: `imuFrame` is
   `{ name: 'ONE RS (unverified)', isVerified: false }`, and the load still warns.
-- `lock` and `horizon` open facing lens 0, unless the camera's lens axis was vertical: then they
-  open a quarter turn from lens 0, where Insta360 Studio centres the A1, and a `yaw` set to face
-  a direction moves by as much (ADR 0038).
+- The view opens where Insta360 Studio centres the recording, in every mode: a half turn from
+  lens 0, where it opened, for a camera whose lens axis lies level, and a quarter turn from lens 0
+  for one whose lens axis is vertical, as the A1's (ADR 0038, ADR 0039). `yaw` 0 looks there: a
+  page that set `yaw` to face a direction faces the opposite one on a level camera until it adds
+  180 degrees. The equirectangular panorama is centred as Studio's export is.
 
 ## 0.4.2 (2026-10-02)
 

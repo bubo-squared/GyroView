@@ -5,6 +5,7 @@ import {
   ALIGNED_IMU_FRAME,
   assumedImuFrame,
   imuFrameFor,
+  ONE_RS_IMU_FRAME,
   toBodyFrame,
   X3_IMU_FRAME,
   X4_AIR_IMU_FRAME,
@@ -23,6 +24,11 @@ const SAILING_ON_A_POLE: Vector3 = [-0.955, -0.036, 0.294];
  * An invented reading of a drone standing level (ADR 0031): the specific force along IMU y.
  */
 const DRONE_STANDING_LEVEL: Vector3 = [0.05, 0.99, -0.1];
+/**
+ * An invented reading of a ONE RS standing upright on a tripod (ADR 0031): the specific force
+ * along IMU minus x.
+ */
+const ONE_RS_ON_A_TRIPOD: Vector3 = [-0.99, 0.03, 0.06];
 
 function expectVector(actual: Vector3, expected: Vector3, digits: number): void {
   for (const [index, value] of expected.entries()) {
@@ -42,6 +48,12 @@ describe('ImuFrame', () => {
 
   it("maps the A1's specific force standing level onto its lens axis, lens 0 facing up", () => {
     expectVector(toBodyFrame(A1_IMU_FRAME, DRONE_STANDING_LEVEL), [0.1, -0.05, 0.99], 9);
+  });
+
+  it("maps the ONE RS's specific force upright on a tripod to body -y, though its frame is unverified", () => {
+    expectVector(toBodyFrame(ONE_RS_IMU_FRAME, ONE_RS_ON_A_TRIPOD), [-0.03, -0.99, 0.06], 9);
+    expect(imuFrameFor({ model: 'Insta360 OneRS' })).toBe(ONE_RS_IMU_FRAME);
+    expect(ONE_RS_IMU_FRAME.isVerified).toBe(false);
   });
 
   it('builds a proper rotation from signed axes', () => {

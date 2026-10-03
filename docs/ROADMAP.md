@@ -72,10 +72,10 @@ left blank (ADR 0037); its IMU frame (ADR 0009) and the gyro's timing against it
 0034); its lenses stand vertical, and every mode draws it upright, centred where Insta360 Studio
 centres it (ADR 0038), in Chromium and WebKit.
 
-One Insta360 X3 recording (a 5.7K `_00_`/`_10_` pair on a tripod, a local sample, ADR 0031):
-the split-file layout, the `offset` calibration, its IMU frame by the levelling ranking against
-Studio's export (ADR 0009); the camera stood on its side and every mode draws it upright (ADR
-0038), its horizon within 0.2 degrees of Studio's, in Chromium and WebKit.
+One Insta360 X3 recording (a 5.7K `_00_`/`_10_` pair on a tripod): the split-file layout, the
+`offset` calibration, its IMU frame by the levelling ranking against Studio's export (ADR 0009);
+every mode draws it upright (ADR 0038), its horizon within 0.2 degrees of Studio's, in Chromium
+and WebKit.
 
 One Insta360 ONE RS 1-inch 360 recording (an H.264 `_00_`/`_10_` pair on a tripod, a local
 sample, ADR 0031): it plays and stitches; its IMU's down is measured and every mode draws it
@@ -120,8 +120,9 @@ upright, the rest of its IMU frame assumed (ADR 0009).
   drone's accelerometer measures its thrust rather than gravity, and the gravity pull leans the
   horizon by under a degree towards it: the A1's horizon stays within 2.5 degrees of Studio's,
   within 1.9 without the pull, and the X5's alignments to Studio need up to 2.2.
-- The ONE RS's horizon stands 2 to 2.5 degrees from Studio's on its one recording, under every
-  IMU frame, which no frame explains; its IMU frame is assumed past its down (ADR 0009).
+- The ONE RS's horizon stands at least 2.3 degrees from Studio's on its one recording, under
+  every IMU frame, and not for its calibration strings, whose lens poses agree within 0.15
+  degrees; its IMU frame is assumed past its down (ADR 0009).
 - GyroView opens facing lens 0; Insta360 Studio's exports of the X3, the X5, the X6 and the ONE
   RS open facing the other lens, a half turn away. The A1 opens where Studio centres it (ADR
   0038).

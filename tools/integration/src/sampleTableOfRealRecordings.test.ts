@@ -2,29 +2,42 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 import { FileRandomAccessSource } from '@gyroview/adapter-node';
-import { readSampleTable, seconds, type SampleTable, type TrackSampleTable } from '@gyroview/core';
+import {
+  readSampleTable,
+  RecordingFileName,
+  seconds,
+  type SampleTable,
+  type TrackSampleTable,
+} from '@gyroview/core';
 import { ALL_FORMATS, EncodedPacketSink, FilePathSource, Input, type InputTrack } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
 
-import {
-  KRNJACA_RECORDING,
-  OFFICE_RECORDING,
-  SAILING_RECORDING,
-  X3_BACK_RECORDING,
-  X3_FRONT_RECORDING,
-} from './samples';
+import { localSampleEntries, recordingPathOf } from './localCatalogueFile';
+import type { LocalSampleEntry } from './localSampleCatalogue';
+import { KRNJACA_RECORDING, OFFICE_RECORDING, SAILING_RECORDING } from './samples';
 
 /**
  * The core reads the recordings' sample tables itself; on every real recording at hand it must
  * agree with mediabunny, reading the file on its own, on every sample. The bytes are compared on
  * the first samples of each track: reading all of a 7 GB file twice would take minutes.
  */
+/**
+ * Every file of a local sample's recording: the recording, and the other lens's file beside it
+ * where the camera split the lenses into two.
+ */
+function recordingPathsOf(entry: LocalSampleEntry): readonly string[] {
+  const recording = recordingPathOf(entry);
+  const otherLens = RecordingFileName.parse(entry.recording)?.otherLensName();
+  return otherLens === undefined
+    ? [recording]
+    : [recording, path.join(path.dirname(recording), otherLens)];
+}
+
 const RECORDINGS = [
   OFFICE_RECORDING,
   SAILING_RECORDING,
   KRNJACA_RECORDING,
-  X3_FRONT_RECORDING,
-  X3_BACK_RECORDING,
+  ...localSampleEntries().flatMap((entry) => recordingPathsOf(entry)),
 ].filter((recording) => existsSync(recording));
 const SAMPLES_READ_WHOLE = 40;
 const KEYFRAME_PROBES = [0, 0.5, 30.02, 59.99, 100, 1e6];

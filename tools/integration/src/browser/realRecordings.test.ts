@@ -35,7 +35,8 @@ import {
   recordedSetupOf,
   type EquirectangularRendering,
 } from './rendering';
-import { KRNJACA_8K_30, OFFICE_5K7_60, OFFICE_PROXY, SAILING_8K_30, X3_5K7_30 } from './sampleUrls';
+import { LOCAL_SAMPLES } from './localSamples';
+import { KRNJACA_8K_30, OFFICE_5K7_60, OFFICE_PROXY, SAILING_8K_30 } from './sampleUrls';
 import { SharedSample } from './SharedSample';
 import { worldMovement } from './worldMovement';
 
@@ -76,10 +77,6 @@ const MAX_RIGID_ROTATION_ERROR = 20;
  */
 const STILLNESS_MOMENT = 135;
 /**
- * A moment of the X3 recording, a minute long.
- */
-const X3_MOMENT = 30;
-/**
  * The most the world may move under lock, as a fraction of its movement unstabilized. A wrong
  * IMU frame or rotation convention moves it about as much as leaving the picture alone (ADR 0009).
  */
@@ -93,7 +90,12 @@ const office = new SharedSample(OFFICE_5K7_60);
 const proxy = new SharedSample(OFFICE_PROXY);
 const sailing = new SharedSample(SAILING_8K_30);
 const krnjaca = new SharedSample(KRNJACA_8K_30);
-const x3 = new SharedSample(X3_5K7_30);
+/**
+ * The recordings only this machine has (ADR 0031), each at the moment the catalogue renders.
+ */
+const locals = LOCAL_SAMPLES.map(
+  (local) => [local.slug, new SharedSample(local), local.renderMoment] as const,
+);
 const cleanups: (() => void)[] = [];
 
 afterEach(() => {
@@ -101,7 +103,8 @@ afterEach(() => {
 });
 
 afterAll(() => {
-  for (const shared of [office, proxy, sailing, krnjaca, x3]) shared.dispose();
+  for (const shared of [office, proxy, sailing, krnjaca]) shared.dispose();
+  for (const [, shared] of locals) shared.dispose();
 });
 
 /**
@@ -228,13 +231,13 @@ describe('rendering the real recordings', () => {
     ['office', office, MOMENT],
     ['sailing', sailing, MOMENT],
     ['krnjaca', krnjaca, MOMENT],
-    ['x3', x3, X3_MOMENT],
+    ...locals,
   ] as const) {
     it(`turns the ${shared.sample.name} under lock by exactly the orientation the player integrated`, async (context) => {
       const opened = await shared.open(context);
       const { first } = await shared.momentAt(context, moment);
       const motion = motionOf(opened);
-      expect(motion.imuFrame.isVerified).toBe(true);
+      if (!motion.imuFrame.isVerified) context.skip('its IMU frame is assumed, not measured');
       const { canvas, renderer } = panoramaOf(opened);
       const sink = new StabilizingFrameSink({ sink: renderer, motion, frameTimes: undefined });
       const rendered = new Map<StabilizationMode, Uint8ClampedArray>();

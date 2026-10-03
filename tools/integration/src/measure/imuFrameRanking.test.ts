@@ -78,7 +78,9 @@ const RANKED_SAMPLES = [
   ['sailing', SAILING_8K_30, [20, 55, 85, 135, 170]],
   ['office', OFFICE_5K7_60, [3, 45, 120, 210, 240]],
   ['krnjaca', KRNJACA_8K_30, [20, 60, 100, 140, 180]],
-  ...LOCAL_SAMPLES.map((local) => [local.slug, local, local.imuRankingTimes] as const),
+  ...LOCAL_SAMPLES.filter((local) => local.imuRankingTimes.length > 0).map(
+    (local) => [local.slug, local, local.imuRankingTimes] as const,
+  ),
 ] as const;
 
 /**

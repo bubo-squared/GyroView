@@ -18,7 +18,8 @@ export interface LocalSampleEntry {
    */
   readonly renderMoment: number;
   /**
-   * The moments the IMU frame ranking measures stillness at (ADR 0009).
+   * The moments the IMU frame ranking measures stillness at (ADR 0009); none for a camera that
+   * stood still, whose frame the levelling ranking reads instead.
    */
   readonly imuRankingTimes: readonly number[];
   /**

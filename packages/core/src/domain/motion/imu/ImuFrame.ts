@@ -125,6 +125,14 @@ export const A1_IMU_FRAME = measuredImuFrame('A1', ['-z', '-x', 'y']);
 export const X3_IMU_FRAME = measuredImuFrame('X3', QUARTER_TURN_ABOUT_LATERAL);
 
 /**
+ * Assumed for the ONE RS until a recording that turns is ranked (ADR 0009). On one tripod
+ * recording of the 1-inch 360 edition, standing upright, gravity lies along the IMU's x, so the
+ * body's down is the IMU's x; of the four arrangements that agree, the levelling ranking puts
+ * this quarter turn about the lens axis first in both browsers, by too little to call it measured.
+ */
+export const ONE_RS_IMU_FRAME = assumedImuFrame('ONE RS (unverified)', ['-y', 'x', 'z']);
+
+/**
  * Until a recording proves otherwise, the IMU is assumed aligned with the body.
  */
 export const ALIGNED_IMU_FRAME = assumedImuFrame('aligned (unverified)', ['x', 'y', 'z']);
@@ -146,6 +154,7 @@ const IMU_FRAMES_BY_MODEL: ReadonlyMap<string, ImuFrame> = new Map([
   ['Insta360 X4 Air', X4_AIR_IMU_FRAME],
   ['Insta360 X5', X5_IMU_FRAME],
   ['Insta360 X6', X6_IMU_FRAME],
+  ['Insta360 OneRS', ONE_RS_IMU_FRAME],
 ]);
 
 /**

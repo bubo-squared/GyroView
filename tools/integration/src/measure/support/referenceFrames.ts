@@ -136,7 +136,7 @@ const STUDIO_OFFICE: ReferenceClip = {
 
 /**
  * `x3.mp4` beside the X3 recording: 5.7K at 30 fps, the whole clip, 60 s, of a camera on a
- * tripod: a frame every ten seconds suffices, the levelling ranking's one in the middle.
+ * tripod: a frame every ten seconds suffices, the levelling ranking's three in the middle.
  */
 const X3_FIRST_FRAME_SECONDS = 5;
 const X3_FRAME_SPACING_SECONDS = 10;
@@ -145,7 +145,12 @@ const X3_FRAME_TIMES = Array.from(
   { length: X3_FRAME_COUNT },
   (_, index) => X3_FIRST_FRAME_SECONDS + index * X3_FRAME_SPACING_SECONDS,
 );
-const X3_COMPARED_SECONDS = 25;
+const X3_FIRST_COMPARED_FRAME = 1;
+const X3_COMPARED_FRAME_COUNT = 3;
+const X3_COMPARED_TIMES = X3_FRAME_TIMES.slice(
+  X3_FIRST_COMPARED_FRAME,
+  X3_FIRST_COMPARED_FRAME + X3_COMPARED_FRAME_COUNT,
+);
 const X3_STEADINESS_START_SECONDS = 20;
 
 const STUDIO_X3: ReferenceClip = {
@@ -153,7 +158,7 @@ const STUDIO_X3: ReferenceClip = {
   sample: X3_5K7_30,
   start: seconds(0),
   frames: framesAt('x3', X3_FRAME_TIMES),
-  comparedTimes: [X3_COMPARED_SECONDS],
+  comparedTimes: X3_COMPARED_TIMES,
   steadinessStart: X3_STEADINESS_START_SECONDS,
   sdrFrames: [],
 };

@@ -116,26 +116,32 @@ async function mountingNameOf(file: string): Promise<string | undefined> {
 
 /**
  * How each recording's camera stood, which `off` and `follow` draw it by (ADR 0038): the
- * evidence the mounting was decided on.
+ * evidence the mounting was decided on. Named in the body frame of ADR 0008, whose down an X
+ * camera standing upright on a stick holds along its x.
  */
-const COMMITTED_MOUNTINGS = [
-  ['office', OFFICE_RECORDING, 'upright'],
-  ['krnjaca', KRNJACA_RECORDING, 'upright'],
-  ['sailing', SAILING_RECORDING, 'on its right side'],
-  ['X3', X3_FRONT_RECORDING, 'on its right side'],
-].filter(([, file]) => file !== undefined && existsSync(file));
+const COMMITTED_MOUNTINGS = (
+  [
+    ['office', OFFICE_RECORDING, 'upright'],
+    ['krnjaca', KRNJACA_RECORDING, 'upright'],
+    ['sailing', SAILING_RECORDING, 'on its right side'],
+    ['X3', X3_FRONT_RECORDING, 'on its right side'],
+  ] as const
+).filter(([, file]) => existsSync(file));
 
-describe('the mounting of the real recordings', () => {
-  it.skipIf(COMMITTED_MOUNTINGS.length === 0).each(COMMITTED_MOUNTINGS)(
+describe.skipIf(COMMITTED_MOUNTINGS.length === 0)('the mounting of the real recordings', () => {
+  it.each(COMMITTED_MOUNTINGS)(
     'stands the %s recording as its camera stood',
     async (_name, file, mounting) => {
       expect(await mountingNameOf(file)).toBe(mounting);
     },
     TIMEOUT_MS,
   );
+});
 
-  const locals = localSampleEntries().filter((entry) => entry.mounting !== undefined);
-  it.skipIf(locals.length === 0).each(locals.map((entry) => [entry.slug, entry] as const))(
+const LOCAL_MOUNTINGS = localSampleEntries().filter((entry) => entry.mounting !== undefined);
+
+describe.skipIf(LOCAL_MOUNTINGS.length === 0)('the mounting of the local recordings', () => {
+  it.each(LOCAL_MOUNTINGS.map((entry) => [entry.slug, entry] as const))(
     'stands the local recording %s as its camera stood',
     async (_slug, entry) => {
       expect(await mountingNameOf(recordingPathOf(entry))).toBe(entry.mounting);

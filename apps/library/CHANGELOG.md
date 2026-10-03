@@ -20,6 +20,13 @@ What a page may notice:
 - A recording whose camera stood on its side, upside down or with its lens axis vertical, and
   whose IMU frame is measured, stands upright in `off` and `follow`, as the camera was mounted
   (ADR 0038). Under `horizon`, such a camera's view keeps its heading while the camera pitches.
+- An Insta360 X3 recording is stabilized about the right axes: its IMU frame is measured
+  (ADR 0009). The `ready` event's `imuFrame` is `{ name: 'X3', isVerified: true }` where it was
+  the unverified aligned frame, the load no longer warns that it has not been verified, and an
+  X3 that stood on its side stands upright in `off` and `follow` too.
+- An Insta360 ONE RS recording stands upright under `lock` and `horizon`, which turned it on its
+  side. Its IMU frame is assumed from one recording of a camera that never turned: `imuFrame` is
+  `{ name: 'ONE RS (unverified)', isVerified: false }`, and the load still warns.
 - `lock` and `horizon` open facing lens 0, unless the camera's lens axis was vertical: then they
   open a quarter turn from lens 0, where Insta360 Studio centres the A1, and a `yaw` set to face
   a direction moves by as much (ADR 0038).

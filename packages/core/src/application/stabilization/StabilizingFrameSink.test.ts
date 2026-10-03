@@ -2,12 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { StabilizingFrameSink } from './StabilizingFrameSink';
 import { ALIGNED_IMU_FRAME } from '../../domain/motion/imu/ImuFrame';
-import {
-  mountingOf,
-  uprightImuFrame,
-  UPRIGHT_MOUNTING,
-  type Mounting,
-} from '../../domain/motion/mounting/Mounting';
+import { mountingOf, uprightImuFrame, type Mounting } from '../../domain/motion/mounting/Mounting';
 import { OrientationTrack } from '../../domain/motion/orientation/OrientationTrack';
 import {
   HorizonStabilization,
@@ -37,6 +32,11 @@ const STILL: Vector3 = [0, 0, 0];
 /**
  * A drone's camera, lens 0 up: the upright frame's down is the body's minus z.
  */
+/**
+ * A mounting that turns nothing, so the tests of timing and orientation read the stabilizer's
+ * rotation as it is.
+ */
+const UNTURNED: Mounting = { name: 'unturned', toBody: IDENTITY_MATRIX3 };
 const LENS_0_UP: Mounting = {
   name: 'with lens 0 up',
   toBody: rotationAboutX(radians(-Math.PI / 2)),
@@ -110,7 +110,7 @@ describe('StabilizingFrameSink', () => {
     const inner = new RecordingSink();
     const sink = new StabilizingFrameSink({
       sink: inner,
-      motion: { orientations, mounting: UPRIGHT_MOUNTING },
+      motion: { orientations, mounting: UNTURNED },
       frameTimes: undefined,
     });
     sink.present(presentationAt(1));
@@ -122,7 +122,7 @@ describe('StabilizingFrameSink', () => {
     const inner = new RecordingSink();
     const sink = new StabilizingFrameSink({
       sink: inner,
-      motion: { orientations, mounting: UPRIGHT_MOUNTING },
+      motion: { orientations, mounting: UNTURNED },
       frameTimes: undefined,
     });
     sink.setStabilizer(new LockStabilization());
@@ -170,7 +170,7 @@ describe('StabilizingFrameSink', () => {
     expect(mounting.name).toBe('on its right side');
     // The pitch about the body's y has not become a heading turning the view toward it.
     expect(viewForward[1]).toBeCloseTo(0, 2);
-    expect(viewForward[2]).toBeCloseTo(Math.cos(PITCH), 2);
+    expect(viewForward[2]).toBeCloseTo(-Math.cos(PITCH), 2);
   });
 
   it('falls back to the pair timestamp when the frame times hold no frames', () => {
@@ -178,7 +178,7 @@ describe('StabilizingFrameSink', () => {
     const frameTimes = frameTimesAt([], 0);
     const sink = new StabilizingFrameSink({
       sink: inner,
-      motion: { orientations, mounting: UPRIGHT_MOUNTING },
+      motion: { orientations, mounting: UNTURNED },
       frameTimes,
     });
     sink.setStabilizer(new LockStabilization());
@@ -192,7 +192,7 @@ describe('StabilizingFrameSink', () => {
     const frameTimes = frameTimesAt([0, 3, 6], 2);
     const sink = new StabilizingFrameSink({
       sink: inner,
-      motion: { orientations, mounting: UPRIGHT_MOUNTING },
+      motion: { orientations, mounting: UNTURNED },
       frameTimes,
     });
     sink.setStabilizer(new LockStabilization());

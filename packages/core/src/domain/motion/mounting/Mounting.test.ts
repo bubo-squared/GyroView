@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { mountingOf, rotationIntoBody, uprightImuFrame, UPRIGHT_MOUNTING } from './Mounting';
-import { IDENTITY_MATRIX3, rotationAboutY, transformVector } from '../../../shared/math/Matrix3';
+import { rotationAboutY, transformVector } from '../../../shared/math/Matrix3';
 import type { Vector3 } from '../../../shared/math/Vector3';
 import { degrees, degreesToRadians, radians } from '../../../shared/units/angle';
 import {
@@ -55,7 +55,7 @@ describe('mountingOf', () => {
   it("keeps a camera upright whose gravity lies along the body's down", () => {
     const mounting = mountingOf(restingWith([0.1, -0.99, 0]), MEASURED_ALIGNED);
     expect(mounting).toBe(UPRIGHT_MOUNTING);
-    expect(mounting).toEqual({ name: 'upright', toBody: IDENTITY_MATRIX3 });
+    expectVector(transformVector(mounting.toBody, DOWN), DOWN);
   });
 
   it.each([
@@ -73,13 +73,18 @@ describe('mountingOf', () => {
     },
   );
 
-  it.each([[[0, 1, 0]], [[-1, 0, 0]], [[1, 0, 0]]] as const)(
-    'keeps lens 0 forward when gravity lies across its axis (specific force %j)',
+  it.each([[[0, -1, 0]], [[0, 1, 0]], [[-1, 0, 0]], [[1, 0, 0]]] as const)(
+    'faces a half turn from lens 0, where Studio centres a camera whose lens axis lies level (specific force %j)',
     (specificForce) => {
       const mounting = mountingOf(restingWith(specificForce), MEASURED_ALIGNED);
-      expectVector(transformVector(mounting.toBody, FORWARD), FORWARD);
+      expectVector(transformVector(mounting.toBody, FORWARD), [0, 0, -1]);
     },
   );
+
+  it('faces a recording whose gravity cannot be read as an upright camera faces', () => {
+    expectVector(transformVector(UPRIGHT_MOUNTING.toBody, FORWARD), [0, 0, -1]);
+    expectVector(transformVector(UPRIGHT_MOUNTING.toBody, DOWN), DOWN);
+  });
 
   it("faces a camera whose lens axis is the vertical along the body's minus x, as Studio centres the A1", () => {
     const lensUp = mountingOf(restingWith([0, 0, 1]), MEASURED_ALIGNED);
@@ -141,7 +146,6 @@ describe('rotationIntoBody', () => {
     const mounting = mountingOf(restingWith([0, 1, 0]), MEASURED_ALIGNED);
     const yaw = rotationAboutY(radians(Math.PI / 2));
     const intoBody = rotationIntoBody(mounting, yaw);
-    expectVector(transformVector(intoBody, FORWARD), [-1, 0, 0]);
-    expect(rotationIntoBody(UPRIGHT_MOUNTING, yaw)).toEqual(yaw);
+    expectVector(transformVector(intoBody, FORWARD), [1, 0, 0]);
   });
 });

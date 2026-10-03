@@ -1,5 +1,4 @@
 import {
-  IDENTITY_MATRIX3,
   multiplyMatrices,
   rotationAboutX,
   rotationAboutY,
@@ -21,6 +20,7 @@ import {
   degreesToRadians,
   HALF_TURN,
   QUARTER_TURN,
+  radians,
   type Radians,
 } from '../../../shared/units/angle';
 import type { GyroTrack } from '../gyro/GyroTrack';
@@ -30,11 +30,11 @@ import type { OrientationTrack } from '../orientation/OrientationTrack';
 
 /**
  * How the camera stood through a recording: its body turned a quarter or half turn from the
- * upright frame, whose y is down along the recording's gravity. Lens 0 stays the upright frame's
- * forward when gravity lies across its axis; a camera whose lens axis is the vertical, as a
- * drone's is, faces the body's minus x, where Insta360 Studio centres the Antigravity A1's
- * footage (ADR 0038). Named in the body frame, not by how the camera looks: an X camera held
- * upright on a stick holds its body's x down and stands "on its right side".
+ * upright frame, whose y is down along the recording's gravity and whose forward is where
+ * Insta360 Studio centres the recording: a half turn from lens 0 for a camera whose lens axis
+ * lies level (ADR 0039), the body's minus x for one whose lens axis is the vertical, as a drone's
+ * is (ADR 0038). Named in the body frame, not by how the camera looks: an X camera held upright
+ * on a stick holds its body's x down and stands "on its right side".
  */
 export interface Mounting {
   readonly name: string;
@@ -57,7 +57,11 @@ const QUARTER_TURN_ANGLE = degreesToRadians(QUARTER_TURN);
 const MINUS_QUARTER_TURN_ANGLE = degreesToRadians(degrees(-QUARTER_TURN));
 const HALF_TURN_ANGLE = degreesToRadians(HALF_TURN);
 
-export const UPRIGHT_MOUNTING: Mounting = { name: 'upright', toBody: IDENTITY_MATRIX3 };
+/**
+ * Also how a recording stands whose gravity cannot be read: one without a gyro record, or whose
+ * IMU frame is a guess.
+ */
+export const UPRIGHT_MOUNTING: Mounting = { name: 'upright', toBody: lensLevel(radians(0)) };
 
 const DOWN: Vector3 = [0, 1, 0];
 const LENS_AXIS: Vector3 = [0, 0, 1];
@@ -68,9 +72,9 @@ const LENS_AXIS: Vector3 = [0, 0, 1];
  */
 const LENS_LEVEL_MOUNTINGS: readonly Mounting[] = [
   UPRIGHT_MOUNTING,
-  { name: 'upside down', toBody: rotationAboutZ(HALF_TURN_ANGLE) },
-  { name: 'on its right side', toBody: rotationAboutZ(MINUS_QUARTER_TURN_ANGLE) },
-  { name: 'on its left side', toBody: rotationAboutZ(QUARTER_TURN_ANGLE) },
+  { name: 'upside down', toBody: lensLevel(HALF_TURN_ANGLE) },
+  { name: 'on its right side', toBody: lensLevel(MINUS_QUARTER_TURN_ANGLE) },
+  { name: 'on its left side', toBody: lensLevel(QUARTER_TURN_ANGLE) },
 ];
 
 /**
@@ -84,11 +88,19 @@ const LENS_VERTICAL_MOUNTINGS: readonly Mounting[] = [
 /**
  * How near the lens axis gravity must lie for the camera to stand lens-vertical. A drone's lens
  * axis, or a camera's laid flat, lies within a few degrees of the vertical; a camera leaning
- * further on a stick keeps facing where lens 0 looks. The nearest of all six mountings would turn
- * the opening view a quarter or half turn between a lean of 44 and one of 46 degrees.
+ * further on a stick keeps facing along its lens axis. The nearest of all six mountings would
+ * turn the opening view a quarter or half turn between a lean of 44 and one of 46 degrees.
  */
 const LENS_VERTICAL_CONE_DEGREES = 30;
 const LENS_VERTICAL_CONE_COSINE = Math.cos(degreesToRadians(degrees(LENS_VERTICAL_CONE_DEGREES)));
+
+/**
+ * A half turn about the vertical faces the upright frame away from lens 0, then a turn about the
+ * lens axis stands the body as it stood.
+ */
+function lensLevel(roll: Radians): Matrix3 {
+  return multiplyMatrices(rotationAboutZ(roll), rotationAboutY(HALF_TURN_ANGLE));
+}
 
 /**
  * A quarter turn about the vertical faces the upright frame along the body's minus x, then a

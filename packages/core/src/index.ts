@@ -63,6 +63,7 @@ export {
 } from './domain/motion/imu/ImuFrame';
 export {
   rotationIntoBody,
+  UPRIGHT_MOUNTING,
   type MountedMotion,
   type Mounting,
 } from './domain/motion/mounting/Mounting';

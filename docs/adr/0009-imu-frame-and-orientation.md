@@ -25,8 +25,9 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
   camera accelerates then; the pull levels it within seconds).
 - **IMU frame** (`imuFrameFor`): chosen by the whole camera model name in the info record. On
   the X5 the IMU sits a quarter turn about the camera's lateral axis: body x = IMU x, body y =
-  IMU z, body z = -IMU y. The same frame fits recordings from firmware 1.7 and 1.11. Other
-  cameras get an unverified aligned default, reported as such.
+  IMU z, body z = -IMU y. The same frame fits recordings from firmware 1.7 and 1.11. A camera
+  without a measured frame gets an assumed one, reported as unverified: the ONE RS's, its down
+  measured, or else the aligned default.
 - **Modes** (`Stabilizer` strategies): `off`, `lock` (view fixed to the world), `horizon` (roll
   and pitch removed, heading follows the camera), `follow` (view low-passes the camera direction
   with a 1.5 s time constant, resetting on a seek). The renderer applies the resulting rotation
@@ -120,34 +121,54 @@ stands upright in every mode by its mounting (ADR 0038).
 
 ## On the X3 and the ONE RS: the levelling ranking (2026-10-03)
 
-One X3 recording and one ONE RS 1-inch 360 recording, each written as one file per lens and
-both local samples (ADR 0031), stood still on a tripod through their video. Every arrangement
-keeps a still camera's world still, so the stillness ranking cannot tell them apart: on the ONE
-RS all 24 tie at 3.1 against 4.0 unstabilized. Under the aligned guess, lock and horizon drew the
-ONE RS on its side: its gravity lies along the IMU's x, which the guess put on the body's x.
+One X3 recording, committed beside the X5's, and one ONE RS 1-inch 360 recording, a local sample
+(ADR 0031), each written as one file per lens, stood still on a tripod through their video. Under
+the aligned guess, lock and horizon drew the ONE RS on its side: its gravity lies along the IMU's
+x, which the guess put on the body's x.
+
+The stillness ranking cannot read a still camera's frame. No motion is compensated, and the 24
+arrangements fall into three groups of eight by where they put gravity, the signs within each
+making no difference. On the ONE RS the eight that put it on the body's x come first, at 3.1
+against 4.0 unstabilized, the aligned guess among them; the eight that put it on the body's y, the
+right down, come last, at 3.9 to 4.0. `worldMovement` weighs every pixel of the equirectangular
+picture alike, the poles beyond their share of the sphere, and a near-still picture turned onto its
+side moves less there. On a still camera the stillness ranking therefore prefers a wrong down; the
+frames it measured were told apart among arrangements that share a down, or by motion far larger
+than the bias.
 
 A still camera's frame is read instead from how level it stands the picture against Insta360
 Studio's export of the same recording (`measure/imuFrameLevelling.test.ts`). Studio levels by the
 same accelerometer, so under the camera's frame GyroView's horizon mode lies on Studio's. A frame
-that puts gravity on a wrong axis leaves a picture no small turn matches, its far field 1.6 to 3
-times as different as the best; one of the four that put gravity on the right axis but turn
-about it otherwise reads the small tilt the camera stood at into the wrong body axes, and leaves
-that tilt between the two pictures. The ranking takes the frames within a quarter of the best
-far-field difference, by the tilt they leave, over the clip's compared frames. Where the
-stillness ranking measured a frame, the levelling ranking puts it first, alone within that
-quarter: the X6's leaves 0.9 degrees of tilt and the next frame 1.7 times its difference, the
-A1's 1.4 degrees and the next twice its difference.
+that puts gravity on a wrong axis leaves a picture no small turn matches, its far field 1.6 to 10
+times as different as the best; one that puts gravity on the right axis but turns about it
+otherwise reads the small tilt the camera stood at into the wrong body axes, and leaves that tilt
+between the two pictures: a camera that stood tilted by an angle leaves the square root of two
+times it under a quarter turn about its down and twice it under a half turn. The ranking takes the
+frames within a quarter of the best far-field difference whose search met the picture inside its
+reach (six degrees of pitch and of roll), by the median tilt they leave over the clip's compared
+frames; on a still camera, the frame ranked first decides when it leaves less than half the tilt of
+the nearest wrong turn. Where the stillness ranking measured a frame, the levelling ranking puts it
+first, alone within that quarter: the X5's on the office and sailing recordings, 0.6 and 1.0
+degrees of tilt, the next frame 1.8 and 1.9 times its difference or more; the X6's, 0.9 degrees and
+1.7 times; the A1's, 1.4 degrees and twice. Those cameras move, and turned wrong, their motion
+leaves no other frame within the quarter: the tilt is checked on the still cameras against the
+accelerometer.
 
-- **The X3**: the X5's arrangement leaves no tilt, 0.0 degrees against 3.4 to 4.8 for the
-  aligned frame and the two others, alike in Chromium and WebKit; with it the X3's horizon lies
-  on Studio's within 0.2 degrees at all six frames compared. `X3_IMU_FRAME` is the X5's
-  arrangement, measured, as the X4 Air's and the X6's are. The camera stood on its side and now
-  draws upright in every mode (ADR 0038).
-- **The ONE RS**, standing upright: gravity along the IMU's x puts the body's down there. Of the
-  four quarter turns about it, `-y,x,z`, the IMU turned a quarter turn about the lens axis, leaves
-  the least tilt in both browsers, 2.4 and 2.5 degrees against 2.9 and 3.2 for the next. Every
-  arrangement leaves at least 2.4 degrees, which no frame explains, so the margin measures
-  nothing: `ONE_RS_IMU_FRAME` is that arrangement, assumed, and the load still warns. This
-  recording draws upright in every mode whichever of the four is right, since the camera never
-  turned; a ONE RS recording that turns will rank it. Gyroflow's table entry for the camera,
-  carried into the body frame through the X5's, names the one ranked third.
+- **The X3**, tilted by 2.5 degrees as it stood, so the quarter turns about its down should leave
+  3.5 degrees and the half turn 4.9: they leave 3.4 to 3.5 and 4.6 to 4.8, and the X5's arrangement
+  0.0 at each of three frames, alike in Chromium and WebKit, which decides it. With it the X3's
+  horizon lies on Studio's within 0.2 degrees at all six frames compared. `X3_IMU_FRAME` is the
+  X5's arrangement, measured, as the X4 Air's and the X6's are. The camera stood upright on its
+  tripod, which its body frame names "on its right side", and now draws upright in every mode (ADR
+  0038).
+- **The ONE RS**, tilted by 2.6 degrees, standing upright: gravity along the IMU's x puts the
+  body's down there. Of the four turns about it, `-y,x,z`, the IMU turned a quarter turn about the
+  lens axis, leaves the least tilt in both browsers, 2.3 and 2.4 degrees against 2.9 for the next,
+  and its half turn 4.8 and 5.4, near the 5.3 twice the tilt predicts. Every arrangement leaves at
+  least 2.3 degrees, more than half the 3.7 a wrong quarter turn would, so the ranking does not
+  decide: `ONE_RS_IMU_FRAME` is that arrangement, assumed, and the load still warns. The floor is
+  not the calibration strings, whose lens poses agree within 0.15 degrees between v1, v2 and v3.
+  This recording draws upright in every mode whichever of the four is right, since the camera never
+  turned; a ONE RS recording that turns will rank it. "Insta360 OneRS" names the 360 lens module
+  too, assumed alike. Gyroflow's table does not carry over: through the X5's arrangement, its
+  entries for the ONE RS and the X3 put their down on another axis than the one measured.

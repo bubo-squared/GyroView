@@ -8,9 +8,10 @@ the guessed frames and the cone added after review the same day
 The renderer draws the sphere in the body frame of ADR 0008 (y down, z along lens 0), and a
 stabilizer turns it from there. Lock and horizon level the picture from the gyro, but `off`
 draws the body as it is and `follow` low-passes the body's own orientation, so both are upright
-only when the camera stood with its body's down below it. Many recordings did not: on the X5
-sailing recording and on two of the three local samples the camera stood on its side (gravity
-along the body's x), and `off` and `follow` showed their world turned a quarter turn. The
+only when the camera stood with its body's down below it. Most X camera recordings do not: an X3,
+X4 Air, X5 or X6 held upright on a stick or a tripod holds its body frame a quarter turn from
+upright, gravity along the body's x, as on the X5 sailing recording and two of the three local
+samples, and `off` and `follow` showed their world turned a quarter turn. The
 Antigravity A1, a drone, carries its lenses one up and one down: its gravity lies along lens 0's
 axis, and in `off` its horizon ran top to bottom on every frame.
 
@@ -44,6 +45,9 @@ axis, and in `off` its horizon ran top to bottom on every frame.
     standing with its lens axis level, as for an upright one, and the body's minus x, a quarter
     turn from lens 0, for a lens-vertical one.
   - An upright camera's mounting is the identity: every mode draws it as it did, pixel for pixel.
+- **A mounting is named in the body frame**, not by how the camera looks: an X camera upright on
+  a stick stands "on its right side", and the X5 office recording, its camera held another way,
+  reads "upright".
 - **Lens 0 stays forward when gravity lies across its axis.** A camera whose lens axis is the
   vertical faces the body's minus x: Insta360 Studio centres the A1's footage there.
 
@@ -87,8 +91,9 @@ axis, and in `off` its horizon ran top to bottom on every frame.
 
 ## Consequences
 
-- Every recording whose camera stood on its side or on its lens axis, and whose IMU frame is
-  measured, draws `off` and `follow` upright; the others draw as before. Lock-mode measurements
+- Every recording whose body frame stood on its side, upside down or on its lens axis, and whose
+  IMU frame is measured, draws `off` and `follow` upright: for an X camera on a stick or a
+  tripod, that is its usual pose. The others draw as before. Lock-mode measurements
   made with the player's orientations go through the mounting too (`lockAt` in
   `tools/integration`).
 - Horizon holds its heading while such a camera pitches, and lock and horizon open facing the

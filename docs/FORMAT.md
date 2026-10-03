@@ -14,9 +14,11 @@ older firmware appends it bare, so a top-level box walk ends in non-box bytes. `
 X4/X5 (`hvc1`, 2880 or 3840 square, 8-bit full-range BT.709) and on the X6 (`hvc1`, 3840 square,
 HEVC Main 10, limited-range BT.2020 with HLG, the colour in the SPS alone without a `colr` box;
 50 fps at 8K) and on the Antigravity A1 (`hvc1`, 3840 square, 8-bit full-range BT.709, the `hvcC`
-header blank, and no sound track on the one recording seen); X3 and older, and the ONE RS 1-inch 360 edition (H.264, 3072 square at 24 fps on the one recording seen), write one file per lens (`_00_` back lens, `_10_` screen-side lens on the X3)
-at 5.7K and a single 2:1 packed frame below that (unverified: no sample). The LRV proxy is a
-1664x832 packed dual fisheye with the same trailer (2048x1024 8-bit HLG on the X6).
+header blank, and no sound track on the one recording seen); X3 and older write one file per
+lens (`_00_` back lens, `_10_` screen-side lens) at 5.7K and a single 2:1 packed frame below that
+(unverified: no sample), and so does the ONE RS 1-inch 360 edition, H.264 at 6K (3072 square,
+24 fps on the one recording seen). The LRV proxy is a 1664x832 packed dual fisheye with the same
+trailer (2048x1024 8-bit HLG on the X6).
 
 ## Movie box
 

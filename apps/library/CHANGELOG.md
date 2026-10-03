@@ -17,13 +17,15 @@ What a page may notice:
 - An HEVC recording's codec in the `ready` event's `tracks[].codec` begins with the track's
   sample entry type, `hvc1` on every camera seen, where it began with `hev1`; its profile, tier
   and level are unchanged (ADR 0037).
-- A recording whose camera stood on its side, upside down or with its lens axis vertical, and
-  whose IMU frame is measured, stands upright in `off` and `follow`, as the camera was mounted
-  (ADR 0038). Under `horizon`, such a camera's view keeps its heading while the camera pitches.
+- `off` and `follow` stand a recording upright as its camera stood, where its IMU frame is
+  measured (ADR 0038). An X3, X4 Air, X5 or X6 held upright on a stick or a tripod, its usual
+  pose, holds its body frame a quarter turn from upright, and these modes drew its recordings
+  turned a quarter turn; a camera upside down or with its lens axis vertical stands upright too.
+  Under `horizon`, such a camera's view keeps its heading while the camera pitches.
 - An Insta360 X3 recording is stabilized about the right axes: its IMU frame is measured
   (ADR 0009). The `ready` event's `imuFrame` is `{ name: 'X3', isVerified: true }` where it was
   the unverified aligned frame, the load no longer warns that it has not been verified, and an
-  X3 that stood on its side stands upright in `off` and `follow` too.
+  X3 on a stick or a tripod stands upright in `off` and `follow` too.
 - An Insta360 ONE RS recording stands upright under `lock` and `horizon`, which turned it on its
   side. Its IMU frame is assumed from one recording of a camera that never turned: `imuFrame` is
   `{ name: 'ONE RS (unverified)', isVerified: false }`, and the load still warns.

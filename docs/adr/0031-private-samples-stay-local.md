@@ -1,6 +1,6 @@
 # ADR 0031: A recording shared privately stays local; the tests learn it from a git-ignored catalogue
 
-Status: accepted (2026-09-30)
+Status: accepted (2026-09-30); every sample private from 2026-10-03
 
 ## Context
 
@@ -50,3 +50,12 @@ this one. Its info record alone holds the serial number and the unit's own calib
   samples without the symlinks.
 - A camera measured only on a private recording has its decisions recorded as aggregates, and
   marked provisional until a recording that can be shared confirms them.
+
+## Every sample is private (2026-10-03)
+
+The maintainers decided that every recording the project is given is treated as private,
+whoever recorded it: it is described in the catalogue alone, as above, and reported as
+aggregates. The X3 and ONE RS recordings measured since entered that way, and the X3's file
+name, spelled in `tools/integration` before, left it. The X5 recordings and their trailer
+slices, committed before the decision, stay as they are for now; their names and values are in
+the repository's history either way.

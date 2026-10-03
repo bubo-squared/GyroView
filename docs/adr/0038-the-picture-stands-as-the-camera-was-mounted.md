@@ -30,7 +30,8 @@ axis, and in `off` its horizon ran top to bottom on every frame.
 - **Lens-vertical only within 30 degrees of the lens axis.** Gravity within that cone of lens 0's
   axis stands the camera with lens 0 up or down; outside it, the nearest of the four mountings
   with the lens axis level wins. A drone's lens axis, or a camera's laid flat, lies within a few
-  degrees of the vertical; a camera leaning on a stick, even steeply, keeps lens 0 forward.
+  degrees of the vertical; a camera leaning on a stick, even steeply, keeps facing along its lens
+  axis.
 - **The orientation is integrated for the mounting's upright frame** (`uprightImuFrame`), so the
   opening levels and the world's forward at the start are the camera's as it stood. The
   stabilizers are unchanged; `StabilizingFrameSink` turns their rotation from the upright frame
@@ -43,8 +44,10 @@ axis, and in `off` its horizon ran top to bottom on every frame.
     alone.
   - Lock and horizon open facing the upright frame's forward: lens 0's direction for a camera
     standing with its lens axis level, as for an upright one, and the body's minus x, a quarter
-    turn from lens 0, for a lens-vertical one.
-  - An upright camera's mounting is the identity: every mode draws it as it did, pixel for pixel.
+    turn from lens 0, for a lens-vertical one. ADR 0039 turns the level camera's forward a half
+    turn, to where Insta360 Studio centres it.
+  - An upright camera's mounting is the identity: every mode draws it as it did, pixel for pixel,
+    until ADR 0039 turns its facing.
 - **A mounting is named in the body frame**, not by how the camera looks: an X camera upright on
   a stick stands "on its right side", and the X5 office recording, its camera held another way,
   reads "upright".

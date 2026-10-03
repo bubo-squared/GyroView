@@ -42,3 +42,4 @@ new record takes the next number and a line here.
 - [ADR 0036](0036-the-download-plans-again-every-few-mebibytes-read.md): The download plans again every few mebibytes its readers take
 - [ADR 0037](0037-an-hevc-codec-string-is-read-from-the-sps-where-the-header-is-blank.md): An HEVC track's codec string is the core's, read from the SPS where the configuration's header is blank
 - [ADR 0038](0038-the-picture-stands-as-the-camera-was-mounted.md): The picture stands as the camera was mounted, a quarter turn read from its gravity
+- [ADR 0039](0039-the-view-opens-where-studio-centres-the-recording.md): The view opens where Insta360 Studio centres the recording

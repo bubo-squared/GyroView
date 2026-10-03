@@ -15,7 +15,8 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
 
 - **Body frame** for motion is the stitching body frame of ADR 0008 (x right, y down, z along
   lens 0). **World frame**: y down along gravity, z the body's forward at the start of the
-  recording projected onto the horizontal plane.
+  recording projected onto the horizontal plane; since ADR 0038 and ADR 0039, the forward of
+  the mounting's upright frame, where Insta360 Studio centres the recording.
 - **Orientation** (`OrientationTrack`): the gyro is integrated with the rate measured at the
   start of each interval, bias-corrected from the stillest half second when that window's mean
   rate is below one degree per second (otherwise no bias is assumed: a camera that never rests

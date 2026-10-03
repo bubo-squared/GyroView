@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+
 import { MediabunnyCodecReader } from '@gyroview/adapter-mediabunny';
 import { FileRandomAccessSource } from '@gyroview/adapter-node';
 import {
@@ -18,7 +20,13 @@ import { openDownloadedSource } from '@gyroview/core/testing';
 import { describe, expect, it } from 'vitest';
 
 import { localSampleEntries, recordingPathOf } from './localCatalogueFile';
-import { hasSamples, KRNJACA_RECORDING, OFFICE_RECORDING, SAILING_RECORDING } from './samples';
+import {
+  hasSamples,
+  KRNJACA_RECORDING,
+  OFFICE_RECORDING,
+  SAILING_RECORDING,
+  X3_FRONT_RECORDING,
+} from './samples';
 
 const TIMEOUT_MS = 30_000;
 /**
@@ -110,12 +118,15 @@ async function mountingNameOf(file: string): Promise<string | undefined> {
  * How each recording's camera stood, which `off` and `follow` draw it by (ADR 0038): the
  * evidence the mounting was decided on.
  */
-describe.skipIf(!hasSamples())('the mounting of the real recordings', () => {
-  it.each([
-    ['office', OFFICE_RECORDING, 'upright'],
-    ['krnjaca', KRNJACA_RECORDING, 'upright'],
-    ['sailing', SAILING_RECORDING, 'on its right side'],
-  ])(
+const COMMITTED_MOUNTINGS = [
+  ['office', OFFICE_RECORDING, 'upright'],
+  ['krnjaca', KRNJACA_RECORDING, 'upright'],
+  ['sailing', SAILING_RECORDING, 'on its right side'],
+  ['X3', X3_FRONT_RECORDING, 'on its right side'],
+].filter(([, file]) => file !== undefined && existsSync(file));
+
+describe('the mounting of the real recordings', () => {
+  it.skipIf(COMMITTED_MOUNTINGS.length === 0).each(COMMITTED_MOUNTINGS)(
     'stands the %s recording as its camera stood',
     async (_name, file, mounting) => {
       expect(await mountingNameOf(file)).toBe(mounting);

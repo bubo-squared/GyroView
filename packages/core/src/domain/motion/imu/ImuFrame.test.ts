@@ -6,6 +6,7 @@ import {
   assumedImuFrame,
   imuFrameFor,
   toBodyFrame,
+  X3_IMU_FRAME,
   X4_AIR_IMU_FRAME,
   X5_IMU_FRAME,
   X6_IMU_FRAME,
@@ -70,7 +71,9 @@ describe('ImuFrame', () => {
     expect(A1_IMU_FRAME).toMatchObject({ toBody: [0, 0, -1, -1, 0, 0, 0, 1, 0], isVerified: true });
     expect(X4_AIR_IMU_FRAME).toMatchObject({ toBody: X5_IMU_FRAME.toBody, isVerified: true });
     expect(X6_IMU_FRAME).toMatchObject({ toBody: X5_IMU_FRAME.toBody, isVerified: true });
-    expect(imuFrameFor({ model: 'Insta360 X3' })).toBe(ALIGNED_IMU_FRAME);
+    expect(imuFrameFor({ model: 'Insta360 X3' })).toBe(X3_IMU_FRAME);
+    expect(X3_IMU_FRAME).toMatchObject({ toBody: X5_IMU_FRAME.toBody, isVerified: true });
+    expect(imuFrameFor({ model: 'Insta360 ONE X2' })).toBe(ALIGNED_IMU_FRAME);
     expect(imuFrameFor({ model: undefined }).isVerified).toBe(false);
   });
 

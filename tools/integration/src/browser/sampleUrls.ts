@@ -45,6 +45,20 @@ export const KRNJACA_8K_30: SampleRecording = {
   codedSize: 3840,
 };
 
+/**
+ * An X3 recording split into its two lens files, H.264, on a tripod and on its side; the player
+ * finds the other lens's file beside this one.
+ */
+export const X3_5K7_30: SampleRecording = {
+  name: 'X3 (5.7K30, split files)',
+  url: new URL(
+    '../../../../samples/insta360 x3 samples/VID_20231218_150323_00_022.insv',
+    import.meta.url,
+  ).href,
+  frameRate: 29.97,
+  codedSize: 2880,
+};
+
 export async function isServed(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, { method: 'HEAD' });

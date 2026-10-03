@@ -3,7 +3,7 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
-## Unreleased
+## 0.5.0 (2026-10-03)
 
 New:
 

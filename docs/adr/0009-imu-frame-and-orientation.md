@@ -121,10 +121,10 @@ stands upright in every mode by its mounting (ADR 0038).
 
 ## On the X3 and the ONE RS: the levelling ranking (2026-10-03)
 
-One X3 recording, committed beside the X5's, and one ONE RS 1-inch 360 recording, a local sample
-(ADR 0031), each written as one file per lens, stood still on a tripod through their video. Under
-the aligned guess, lock and horizon drew the ONE RS on its side: its gravity lies along the IMU's
-x, which the guess put on the body's x.
+One X3 recording and one ONE RS 1-inch 360 recording, both local samples (ADR 0031) and each
+written as one file per lens, stood still on a tripod through their video. Under the aligned guess,
+lock and horizon drew the ONE RS on its side: its gravity lies along the IMU's x, which the guess
+put on the body's x.
 
 The stillness ranking cannot read a still camera's frame. No motion is compensated, and the 24
 arrangements fall into three groups of eight by where they put gravity, the signs within each

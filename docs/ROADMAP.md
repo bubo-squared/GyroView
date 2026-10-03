@@ -72,10 +72,10 @@ left blank (ADR 0037); its IMU frame (ADR 0009) and the gyro's timing against it
 0034); its lenses stand vertical, and every mode draws it upright, centred where Insta360 Studio
 centres it (ADR 0038), in Chromium and WebKit.
 
-One Insta360 X3 recording (a 5.7K `_00_`/`_10_` pair on a tripod): the split-file layout, the
-`offset` calibration, its IMU frame by the levelling ranking against Studio's export (ADR 0009);
-every mode draws it upright (ADR 0038), its horizon within 0.2 degrees of Studio's, in Chromium
-and WebKit.
+One Insta360 X3 recording (a 5.7K `_00_`/`_10_` pair on a tripod, a local sample, ADR 0031): the
+split-file layout, the `offset` calibration, its IMU frame by the levelling ranking against
+Studio's export (ADR 0009); every mode draws it upright (ADR 0038), its horizon within 0.2 degrees
+of Studio's, in Chromium and WebKit.
 
 One Insta360 ONE RS 1-inch 360 recording (an H.264 `_00_`/`_10_` pair on a tripod, a local
 sample, ADR 0031): it plays and stitches; its IMU's down is measured and every mode draws it

@@ -79,6 +79,11 @@ const REFINEMENT_ROUNDS = 1;
  */
 const DESCENT_EXTENT_DEGREES = 2;
 const DESCENT_STEP_DEGREES = 0.2;
+/**
+ * How far a search from nothing can turn the pitch or the roll. A turn there is the search
+ * stopped at its reach, not a match: it says only that the pictures do not meet within it.
+ */
+const SEARCH_REACH_DEGREES = DESCENT_ROUNDS * DESCENT_EXTENT_DEGREES;
 
 export function rotationOf(turn: ViewTurn): Matrix3 {
   const yawed = rotationAboutY(degreesToRadians(turn.yaw));
@@ -169,6 +174,15 @@ interface Comparison {
 export function alignToReference(reference: GreyImage, rendering: LockedRendering): Alignment {
   const yaw = initialYaw(reference, renderUnder(rendering, NO_TURN));
   return descended({ reference, rendering }, withAxis(NO_TURN, 'yaw', yaw), DESCENT_ROUNDS);
+}
+
+/**
+ * Whether {@link alignToReference} stopped at its reach about the pitch or the roll, within half
+ * a step of it, where the steps' sum may land.
+ */
+export function isAtSearchReach(turn: ViewTurn): boolean {
+  const reached = SEARCH_REACH_DEGREES - DESCENT_STEP_DEGREES / 2;
+  return Math.abs(turn.pitch) >= reached || Math.abs(turn.roll) >= reached;
 }
 
 /**

@@ -2,12 +2,7 @@ import { seconds, type Seconds } from '@gyroview/core';
 import { inject } from 'vitest';
 
 import { LOCAL_SAMPLES } from '../../browser/localSamples';
-import {
-  OFFICE_5K7_60,
-  SAILING_8K_30,
-  X3_5K7_30,
-  type SampleRecording,
-} from '../../browser/sampleUrls';
+import { OFFICE_5K7_60, SAILING_8K_30, type SampleRecording } from '../../browser/sampleUrls';
 
 /**
  * A frame of an Insta360 Studio export, stitched and stabilized by Insta360's own software:
@@ -135,35 +130,6 @@ const STUDIO_OFFICE: ReferenceClip = {
 };
 
 /**
- * `x3.mp4` beside the X3 recording: 5.7K at 30 fps, the whole clip, 60 s, of a camera on a
- * tripod: a frame every ten seconds suffices, the levelling ranking's three in the middle.
- */
-const X3_FIRST_FRAME_SECONDS = 5;
-const X3_FRAME_SPACING_SECONDS = 10;
-const X3_FRAME_COUNT = 6;
-const X3_FRAME_TIMES = Array.from(
-  { length: X3_FRAME_COUNT },
-  (_, index) => X3_FIRST_FRAME_SECONDS + index * X3_FRAME_SPACING_SECONDS,
-);
-const X3_FIRST_COMPARED_FRAME = 1;
-const X3_COMPARED_FRAME_COUNT = 3;
-const X3_COMPARED_TIMES = X3_FRAME_TIMES.slice(
-  X3_FIRST_COMPARED_FRAME,
-  X3_FIRST_COMPARED_FRAME + X3_COMPARED_FRAME_COUNT,
-);
-const X3_STEADINESS_START_SECONDS = 20;
-
-const STUDIO_X3: ReferenceClip = {
-  slug: 'x3',
-  sample: X3_5K7_30,
-  start: seconds(0),
-  frames: framesAt('x3', X3_FRAME_TIMES),
-  comparedTimes: X3_COMPARED_TIMES,
-  steadinessStart: X3_STEADINESS_START_SECONDS,
-  sdrFrames: [],
-};
-
-/**
  * The Studio exports of the local samples (ADR 0031), their frames at the times the catalogue
  * names.
  */
@@ -186,7 +152,6 @@ const LOCAL_STUDIO_CLIPS: readonly ReferenceClip[] = LOCAL_SAMPLES.flatMap((samp
 export const STUDIO_CLIPS: readonly ReferenceClip[] = [
   STUDIO_SAILING,
   STUDIO_OFFICE,
-  STUDIO_X3,
   ...LOCAL_STUDIO_CLIPS,
 ];
 

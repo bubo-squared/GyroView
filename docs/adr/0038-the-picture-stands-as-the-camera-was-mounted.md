@@ -94,8 +94,8 @@ axis, and in `off` its horizon ran top to bottom on every frame.
 - Horizon holds its heading while such a camera pitches, and lock and horizon open facing the
   upright frame's forward: a page that set a `yaw` to face a direction may see it moved by a
   quarter or half turn on a lens-vertical recording.
-- A camera without a measured IMU frame (the X3, the X4, the ONE series) draws every mode as its
-  body stood; measuring its frame (ADR 0009) gives it its mounting too.
+- A camera without a measured IMU frame (the X4, the ONE series) draws every mode as its body
+  stood; measuring its frame (ADR 0009) gives it its mounting too, as it gave the X3's.
 - A camera turned over in the middle of a recording takes the mounting of the way it stood
   longest at rest.
 - The cone's 30 degrees is a judgement, not a measurement: a camera laid on a slope steeper than

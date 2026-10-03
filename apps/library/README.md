@@ -1,9 +1,9 @@
 # @bubo-squared/gyroview
 
-Play raw Insta360 `.insv` recordings (X3, X4, X5, X6) in the browser. `<gyro-view>` reads the
-camera's dual-fisheye file directly, over HTTP byte ranges or from a local file, decodes both
-lenses in hardware with WebCodecs, and stitches and gyro-stabilizes them on the GPU. No Insta360
-Studio export step.
+Play raw `.insv` recordings of Insta360 cameras (X3, X4, X5, X6, ONE RS) and the Antigravity A1
+in the browser. `<gyro-view>` reads the camera's dual-fisheye file directly, over HTTP byte
+ranges or from a local file, decodes both lenses in hardware with WebCodecs, and stitches and
+gyro-stabilizes them on the GPU. No Insta360 Studio export step.
 
 **Try it first:** [insv-player.com](https://insv-player.com/) plays `.insv` files with this
 package. Drop your own recording to check that your camera and browser work before you install.

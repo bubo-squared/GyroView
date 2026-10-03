@@ -2,7 +2,6 @@ import { readPixels } from '@gyroview/adapter-three/testing';
 import { waitFor } from '@gyroview/player/testing';
 import {
   DecodePipeline,
-  IDENTITY_MATRIX3,
   PlaybackSession,
   seconds,
   StabilizingFrameSink,
@@ -36,7 +35,7 @@ import {
   recordedSetupOf,
   type EquirectangularRendering,
 } from './rendering';
-import { KRNJACA_8K_30, OFFICE_5K7_60, OFFICE_PROXY, SAILING_8K_30 } from './sampleUrls';
+import { KRNJACA_8K_30, OFFICE_5K7_60, OFFICE_PROXY, SAILING_8K_30, X3_5K7_30 } from './sampleUrls';
 import { SharedSample } from './SharedSample';
 import { worldMovement } from './worldMovement';
 
@@ -71,9 +70,15 @@ const COMPARED_MODES: readonly StabilizationMode[] = ['off', 'lock'];
 const MAX_RIGID_ROTATION_ERROR = 20;
 /**
  * A moment of the sailing recording where the boat rolls: lock halves how much the world moves
- * between pairs half a second apart (16.6 against 33.7 unstabilized, in colour difference).
+ * between pairs half a second apart (13.6 against 28.1 under `off`, in colour difference). `off`
+ * is drawn as the player draws it, upright by the mounting: the movement weighs every pixel of
+ * the equirectangular picture alike, and a picture on its side would be measured otherwise.
  */
 const STILLNESS_MOMENT = 135;
+/**
+ * A moment of the X3 recording, a minute long.
+ */
+const X3_MOMENT = 30;
 /**
  * The most the world may move under lock, as a fraction of its movement unstabilized. A wrong
  * IMU frame or rotation convention moves it about as much as leaving the picture alone (ADR 0009).
@@ -88,6 +93,7 @@ const office = new SharedSample(OFFICE_5K7_60);
 const proxy = new SharedSample(OFFICE_PROXY);
 const sailing = new SharedSample(SAILING_8K_30);
 const krnjaca = new SharedSample(KRNJACA_8K_30);
+const x3 = new SharedSample(X3_5K7_30);
 const cleanups: (() => void)[] = [];
 
 afterEach(() => {
@@ -95,7 +101,7 @@ afterEach(() => {
 });
 
 afterAll(() => {
-  for (const shared of [office, proxy, sailing, krnjaca]) shared.dispose();
+  for (const shared of [office, proxy, sailing, krnjaca, x3]) shared.dispose();
 });
 
 /**
@@ -218,14 +224,15 @@ describe('rendering the real recordings', () => {
     });
   }
 
-  for (const [slug, shared] of [
-    ['office', office],
-    ['sailing', sailing],
-    ['krnjaca', krnjaca],
+  for (const [slug, shared, moment] of [
+    ['office', office, MOMENT],
+    ['sailing', sailing, MOMENT],
+    ['krnjaca', krnjaca, MOMENT],
+    ['x3', x3, X3_MOMENT],
   ] as const) {
     it(`turns the ${shared.sample.name} under lock by exactly the orientation the player integrated`, async (context) => {
       const opened = await shared.open(context);
-      const { first } = await shared.momentAt(context, MOMENT);
+      const { first } = await shared.momentAt(context, moment);
       const motion = motionOf(opened);
       expect(motion.imuFrame.isVerified).toBe(true);
       const { canvas, renderer } = panoramaOf(opened);
@@ -235,9 +242,9 @@ describe('rendering the real recordings', () => {
         sink.setStabilizer(stabilizerFor(mode));
         sink.present({ pair: first, mediaTime: first.timestamp });
         rendered.set(mode, readPixels(canvas));
-        await saveRender(`${slug}-${MOMENT}s-${mode}`, canvas);
+        await saveRender(`${slug}-${moment}s-${mode}`, canvas);
       }
-      await drawAndSaveRender(`${slug}-${MOMENT}s-horizon`, canvas, () => {
+      await drawAndSaveRender(`${slug}-${moment}s-horizon`, canvas, () => {
         sink.setStabilizer(stabilizerFor('horizon'));
         sink.present({ pair: first, mediaTime: first.timestamp });
       });
@@ -256,8 +263,9 @@ describe('rendering the real recordings', () => {
     const { first, later } = await sailing.momentAt(context, STILLNESS_MOMENT);
     const { canvas, renderer } = panoramaOf(opened);
     const renderable = { canvas, renderer, first, later };
-    const unstabilized = worldMovement(renderable, () => IDENTITY_MATRIX3);
+    const unstabilized = worldMovement(renderable, () => motionOf(opened).mounting.toBody);
     const locked = worldMovement(renderable, (pair) => lockOf(opened, pair));
+    await saveMeasurement(`sailing-${STILLNESS_MOMENT}s-stillness`, { unstabilized, locked });
     expect(locked).toBeLessThan(unstabilized * MAX_LOCKED_MOVEMENT);
   });
 });

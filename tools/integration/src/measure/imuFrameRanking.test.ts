@@ -85,7 +85,10 @@ const RANKED_SAMPLES = [
  * In lock mode the world must stand still, so the IMU frame whose orientation keeps consecutive
  * renders most alike is the frame the camera really has. This is the measurement ADR 0009 rests
  * on, and how a new camera's frame is found: add its recording here (or to the local catalogue)
- * and run `pnpm measure`.
+ * and run `pnpm measure`. It needs a camera that turns. The movement weighs every pixel of the
+ * equirectangular picture alike, its poles beyond their share of the sphere, so a near-still
+ * picture turned onto its side measures stiller: on a still camera the ranking prefers a frame
+ * with a wrong down, and the levelling ranking reads its frame instead.
  */
 describe('IMU frame ranking by world stillness under lock stabilization', () => {
   const cleanups: (() => void)[] = [];

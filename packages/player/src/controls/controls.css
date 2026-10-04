@@ -4,11 +4,13 @@
  * words, fills and tracks are the text colour at lower strengths, so a page that changes the text
  * colour changes them with it.
  *
- * Two things change the bar. A coarse pointer makes every target 44 pixels and leaves the
+ * Three things change the bar. A coarse pointer makes every target 44 pixels and leaves the
  * volume to the device's own buttons. A narrow player, whatever the pointer, gives up the volume
  * slider, shows the menus over the whole player, and past that gives up the time and then Reset
- * view (the widths below). Sizes are in rem like the page's text, so larger text moves the widths
- * with it.
+ * view (the widths below). The motion look toggle, shown only where the device reports its
+ * attitude, makes the bar one target wider, so each part gives way one target sooner, and the
+ * toggle itself on the narrowest players. Sizes are in rem like the page's text, so larger text
+ * moves the widths with it.
  */
 
 .big-play {
@@ -209,7 +211,8 @@ input[type='range']::-moz-range-thumb {
   display: inline-flex;
 }
 
-.setting[aria-expanded='true'] {
+.setting[aria-expanded='true'],
+.motion-look[aria-pressed='true'] {
   background: color-mix(in srgb, var(--gyro-view-text) 20%, transparent);
 }
 
@@ -417,6 +420,54 @@ input[type='range']::-moz-range-thumb {
     }
 
     .reset-view {
+      display: none;
+    }
+  }
+}
+
+/* With the motion look toggle each width moves out by one target and its gap; below the
+   narrowest bar that fits without it, the toggle gives way too. */
+@container (max-width: 26rem) {
+  .row:has(.motion-look:not([hidden])) .time {
+    display: none;
+  }
+}
+
+@container (max-width: 20rem) {
+  .controls:has(.motion-look:not([hidden])) {
+    padding-inline: 0.5rem;
+  }
+
+  .row:has(.motion-look:not([hidden])) .reset-view {
+    display: none;
+  }
+}
+
+@container (max-width: 16rem) {
+  .motion-look {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  @container (max-width: 29.5rem) {
+    .row:has(.motion-look:not([hidden])) .time {
+      display: none;
+    }
+  }
+
+  @container (max-width: 23.5rem) {
+    .controls:has(.motion-look:not([hidden])) {
+      padding-inline: 0.5rem;
+    }
+
+    .row:has(.motion-look:not([hidden])) .reset-view {
+      display: none;
+    }
+  }
+
+  @container (max-width: 19rem) {
+    .motion-look {
       display: none;
     }
   }

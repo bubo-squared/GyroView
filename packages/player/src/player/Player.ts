@@ -2,9 +2,7 @@ import type { GyroViewError } from '@gyroview/core';
 import {
   asGyroViewError,
   degrees,
-  hasErrorCode,
   isFlowing,
-  messageOf,
   Outbox,
   seconds,
   TypedEmitter,
@@ -16,17 +14,22 @@ import {
   type ViewMode,
 } from '@gyroview/core';
 
+import { AutomaticStarts } from './AutomaticStarts';
 import { cssSizeOf } from './DrawingBufferFit';
 import { ensureFinite, viewStateOf } from './ensureFinite';
 import { FrameLoop } from './FrameLoop';
 import { loadRecording, type LoadedRecording } from './loadRecording';
-import type { PlayerEvents, PlayerStatus } from './PlayerEvents';
+import { MotionLook } from './MotionLook';
+import type { MotionLookState, PlayerEvents, PlayerStatus } from './PlayerEvents';
 import type { LoadOptions, PlayerParts, ViewAngles } from './PlayerOptions';
 import { IDLE, loadingPhase, statusOf, type LoadingPhase, type PlayerPhase } from './PlayerPhase';
 import { PictureSettings } from './PictureSettings';
 import { PlayerSound } from './PlayerSound';
 import { PlayerView } from './PlayerView';
 import { SessionRelay } from './SessionRelay';
+import { anglesOf } from './viewAngles';
+
+import { NO_ATTITUDE_SENSOR } from '../composition/attitudeSensor';
 
 import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';
@@ -34,8 +37,8 @@ import type { PlayerSource } from '../PlayerSource';
 /**
  * The player without the element, which `createBrowserPlayer` gives: it plays one recording at a
  * time on the canvas and audio element it was handed, reports in media-element events, and keeps
- * its settings (view, view mode, stabilization, gain matching, sound, loop) from load to load.
- * `<gyro-view>` is a facade over it.
+ * its settings (view, view mode, motion look, stabilization, gain matching, sound, loop) from
+ * load to load. `<gyro-view>` is a facade over it.
  */
 export class Player {
   public readonly events = new TypedEmitter<PlayerEvents>();
@@ -46,6 +49,7 @@ export class Player {
   private readonly loop: FrameLoop;
   private phase: PlayerPhase = IDLE;
   private readonly viewing: PlayerView;
+  private readonly motion: MotionLook;
   private readonly picture = new PictureSettings(this.outbox);
   /**
    * A seek asked for before a recording was ready, where the next one starts.
@@ -58,10 +62,10 @@ export class Player {
       this.announceStatus();
     },
     onEnded: (): void => {
-      this.onEnded();
+      this.starts.ended();
     },
   });
-  private isLoopingValue = false;
+  private readonly starts = new AutomaticStarts(this.outbox, () => this.play());
   /**
    * Past `dispose`: a listener of the idle it announces must not load again.
    */
@@ -82,6 +86,12 @@ export class Player {
     this.sound = new PlayerSound(parts.host.audio, this.outbox);
     const { canvas } = parts.host;
     this.viewing = new PlayerView(this.outbox, () => cssSizeOf(canvas));
+    this.motion = new MotionLook({
+      sensor: parts.attitude ?? NO_ATTITUDE_SENSOR,
+      view: this.viewing,
+      events: this.outbox,
+      hasRecording: (): boolean => this.loaded !== undefined,
+    });
   }
 
   public get status(): PlayerStatus {
@@ -108,7 +118,7 @@ export class Player {
   }
 
   public get view(): ViewAngles {
-    return this.viewing.current;
+    return anglesOf(this.viewing.current);
   }
 
   public get viewMode(): ViewMode {
@@ -122,6 +132,14 @@ export class Player {
     return this.viewing.canPan;
   }
 
+  /**
+   * Whether turning the device turns the normal view: `unavailable` where the device reports no
+   * attitude or access was refused.
+   */
+  public get motionLook(): MotionLookState {
+    return this.motion.state;
+  }
+
   public get stabilization(): StabilizationMode {
     return this.picture.stabilization;
   }
@@ -131,7 +149,7 @@ export class Player {
   }
 
   public get isLooping(): boolean {
-    return this.isLoopingValue;
+    return this.starts.isLooping;
   }
 
   public get volume(): number {
@@ -264,6 +282,24 @@ export class Player {
 
   public setViewMode(mode: ViewMode): void {
     this.viewing.setMode(mode);
+    this.motion.reconsider();
+  }
+
+  /**
+   * Lets the device turn the normal view, as a window into the recording: its tilt and roll
+   * hold the pitch and keep the horizon level, drags turn the heading alone. Call it from a tap's
+   * handler: iOS asks the viewer for access there and refuses it anywhere else. Resolves with the
+   * state it ends in; a refusal is a warning, never a rejection.
+   */
+  public startMotionLook(): Promise<MotionLookState> {
+    return this.motion.start();
+  }
+
+  /**
+   * Gives the view back to the pointer, level, looking where it looked.
+   */
+  public stopMotionLook(): void {
+    this.motion.stop();
   }
 
   public setStabilization(mode: StabilizationMode): void {
@@ -278,7 +314,7 @@ export class Player {
   }
 
   public setLooping(isLooping: boolean): void {
-    this.isLoopingValue = isLooping;
+    this.starts.setLooping(isLooping);
   }
 
   /**
@@ -300,6 +336,7 @@ export class Player {
   public dispose(): void {
     this.isDisposed = true;
     this.unload();
+    this.motion.dispose();
     this.parts.host.audio.removeEventListener('ended', this.tick);
     this.sound.dispose();
     this.events.removeAll();
@@ -339,7 +376,7 @@ export class Player {
       if (options.preload !== false) loaded.pipeline.session.preload();
     });
     // A listener of `ready` may have loaded something else: whether that plays is its own call.
-    if (options.autoplay && this.loaded === loaded) await this.autoplay();
+    if (options.autoplay && this.loaded === loaded) await this.starts.autoplay();
   }
 
   private startAtPendingTime(loaded: LoadedRecording): void {
@@ -351,6 +388,7 @@ export class Player {
   private attach(loaded: LoadedRecording, controller: AbortController): void {
     this.phase = { kind: 'loaded', loaded, controller };
     this.viewing.attach(loaded.pipeline.renderer);
+    this.motion.reconsider();
     const { session } = loaded.pipeline;
     this.picture.attach(loaded.pipeline);
     this.relay.attach(session);
@@ -358,38 +396,6 @@ export class Player {
     this.announceStatus();
     for (const warning of loaded.warnings) this.outbox.emit('warning', warning);
     this.outbox.emit('ready', loaded.opened.metadata);
-  }
-
-  /**
-   * A refused start leaves the recording loaded and paused: a warning, never a failed load.
-   */
-  private async autoplay(): Promise<void> {
-    try {
-      await this.play();
-    } catch (error) {
-      this.outbox.emit(
-        'warning',
-        hasErrorCode(error, 'playback-blocked')
-          ? { code: 'autoplay-blocked', message: 'playback waits for a user gesture' }
-          : { code: 'playback-failed', message: `autoplay failed: ${messageOf(error)}` },
-      );
-    }
-  }
-
-  private onEnded(): void {
-    this.outbox.emit('ended', undefined);
-    if (this.isLoopingValue) void this.replay();
-  }
-
-  private async replay(): Promise<void> {
-    try {
-      await this.play();
-    } catch (error) {
-      this.outbox.emit('warning', {
-        code: 'playback-failed',
-        message: `the loop could not restart playback: ${messageOf(error)}`,
-      });
-    }
   }
 
   /**
@@ -402,6 +408,7 @@ export class Player {
     this.loop.stop();
     this.relay.detach();
     this.viewing.attach(undefined);
+    this.motion.reconsider();
     this.picture.attach(undefined);
     if (previous.kind !== 'loaded') return;
     previous.loaded.dispose();

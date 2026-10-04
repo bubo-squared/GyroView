@@ -6,12 +6,12 @@ import {
   type PictureQuality,
   type StabilizationMode,
   type ViewMode,
-  type ViewState,
 } from '@gyroview/core';
 
 import { pictureQualityOf, stabilizationModeOf, viewModeOf } from '../choices';
 import { ensureFinite } from '../player/ensureFinite';
 import type { Player } from '../player/Player';
+import type { ViewAngles } from '../player/PlayerOptions';
 
 interface Accessor {
   readonly get: () => unknown;
@@ -88,7 +88,7 @@ export function defineLiveSettings(element: HTMLElement, player: Player): void {
 }
 
 function viewAccessors(player: Player): Pick<Accessors, 'fov' | 'yaw' | 'pitch'> {
-  const angle = (key: keyof ViewState, property: string): Accessor => ({
+  const angle = (key: keyof ViewAngles, property: string): Accessor => ({
     get: (): unknown => player.view[key],
     set: unlessUnset((value) => {
       player.setView({ ...player.view, [key]: angleOf(value, property) });

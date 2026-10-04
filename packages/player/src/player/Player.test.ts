@@ -13,8 +13,10 @@ import type { PlayerStatus, PlayerWarning } from './PlayerEvents';
 import type { PlayerMetadata } from '../PlayerMetadata';
 import { browserPorts } from '../composition/browserPorts';
 import { buildPipeline } from '../composition/buildPipeline';
+import { NO_ATTITUDE_SENSOR, type AttitudeSensor } from '../composition/attitudeSensor';
 import type { Pipeline, PipelineFactory, RecordingPorts, SourceOpener } from '../composition/ports';
 import type { PlayerSource } from '../PlayerSource';
+import { FakeAttitudeSensor } from '../test/FakeAttitudeSensor';
 import { X5_RECORDING_URL, X5_RECORDING_WITH_AUDIO_URL } from '../test/recordings';
 import { settle, waitFor } from '../test/waiting';
 
@@ -35,14 +37,18 @@ interface Harness {
   readonly errors: GyroViewError[];
 }
 
-function harness(pipelines: PipelineFactory, ports: RecordingPorts = browserPorts()): Harness {
+function harness(
+  pipelines: PipelineFactory,
+  ports: RecordingPorts = browserPorts(),
+  attitude: AttitudeSensor = NO_ATTITUDE_SENSOR,
+): Harness {
   const canvas = document.createElement('canvas');
   canvas.style.width = `${CANVAS_WIDTH}px`;
   canvas.style.height = `${CANVAS_HEIGHT}px`;
   const audio = document.createElement('audio');
   audio.muted = true;
   document.body.append(canvas, audio);
-  const player = new Player({ host: { canvas, audio }, ports, pipelines });
+  const player = new Player({ host: { canvas, audio }, ports, pipelines, attitude });
   const statuses: PlayerStatus[] = [];
   const events: string[] = [];
   const frames: number[] = [];
@@ -621,5 +627,52 @@ describe('Player over the synthetic X5 recording', () => {
     player.unload();
     expect(player.status).toBe('idle');
     expect(player.metadata).toBeUndefined();
+  });
+});
+
+describe('Player motion look', () => {
+  it('hears the device only while a recording shows the normal view, and stops for good when disposed', async () => {
+    const sensor = new FakeAttitudeSensor();
+    const { player } = harness(buildPipeline, browserPorts(), sensor);
+    player.setViewMode('normal');
+    await expect(player.startMotionLook()).resolves.toBe('on');
+    expect(sensor.listenerCount).toBe(0);
+    await player.load(sourceOf(X5_RECORDING_URL));
+    expect(sensor.listenerCount).toBe(1);
+    sensor.report(0, [0, 20, 10]);
+    expect(player.view).toEqual({ yaw: 0, pitch: 20, fieldOfView: 90 });
+    player.setViewMode('equirectangular');
+    expect(sensor.listenerCount).toBe(0);
+    player.setViewMode('normal');
+    player.unload();
+    expect(sensor.listenerCount).toBe(0);
+    expect(player.motionLook).toBe('on');
+    await player.load(sourceOf(X5_RECORDING_URL));
+    expect(sensor.listenerCount).toBe(1);
+    player.dispose();
+    expect(sensor.listenerCount).toBe(0);
+  });
+
+  it("keeps the device's pitch when a page sets the view while the device holds it", async () => {
+    const sensor = new FakeAttitudeSensor();
+    const { player } = harness(buildPipeline, browserPorts(), sensor);
+    player.setViewMode('normal');
+    await player.startMotionLook();
+    await player.load(sourceOf(X5_RECORDING_URL));
+    sensor.report(0, [0, 20, 10]);
+    player.setView({ ...player.view, pitch: -45, fieldOfView: 60 });
+    player.lookAt(30, 80);
+    expect(player.view).toEqual({ yaw: 30, pitch: 20, fieldOfView: 60 });
+    player.stopMotionLook();
+    player.lookAt(30, 80);
+    expect(player.view.pitch).toBe(80);
+    player.dispose();
+  });
+
+  it('is unavailable without a sensor', async () => {
+    const { player } = harness(buildPipeline);
+    expect(player.motionLook).toBe('unavailable');
+    await expect(player.startMotionLook()).resolves.toBe('unavailable');
+    player.dispose();
   });
 });

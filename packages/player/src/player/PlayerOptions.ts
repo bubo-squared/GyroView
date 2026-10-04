@@ -1,3 +1,4 @@
+import type { AttitudeSensor } from '../composition/attitudeSensor';
 import type { PipelineFactory, PipelineHost, RecordingPorts } from '../composition/ports';
 
 export interface PlayerParts {
@@ -7,6 +8,10 @@ export interface PlayerParts {
    * Builds what plays each opened recording: `buildPipeline` in a browser.
    */
   readonly pipelines: PipelineFactory;
+  /**
+   * The device's attitude, for motion look; without it motion look stays unavailable.
+   */
+  readonly attitude?: AttitudeSensor;
 }
 
 /**
@@ -20,8 +25,9 @@ export interface ViewAngles {
 }
 
 /**
- * What concerns one load only. The settings (view, view mode, stabilization, gain matching,
- * sound, loop) belong to the player and carry over from load to load; set them on the player.
+ * What concerns one load only. The settings (view, view mode, motion look, stabilization, gain
+ * matching, sound, loop) belong to the player and carry over from load to load; set them on the
+ * player.
  */
 export interface LoadOptions {
   /**

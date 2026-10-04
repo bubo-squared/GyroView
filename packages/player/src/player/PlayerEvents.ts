@@ -16,6 +16,12 @@ import type { PlayerMetadata } from '../PlayerMetadata';
 export type PlayerStatus = 'idle' | 'loading' | PlayerState;
 
 /**
+ * Motion look as it stands: `unavailable` where the device reports no attitude or access was
+ * refused, `off`, or `on`, the device turning the normal view (ADR 0040).
+ */
+export type MotionLookState = 'unavailable' | 'off' | 'on';
+
+/**
  * The sound as it is now: volume from 0 to 1, and whether it is muted.
  */
 export interface SoundLevel {
@@ -33,6 +39,10 @@ export interface SoundLevel {
  * - `playback-failed`: a start (a press, autoplay, the loop) or the seek bar's preview failed.
  * - `ignored-attribute`: an attribute's value names nothing the element knows; the setting stays.
  * - `refused-property`: a property set before the element was defined was refused.
+ * - `motion-look-refused`: the viewer, or an iframe's `allow`, refused access to the device's
+ *   attitude; motion look is unavailable.
+ * - `motion-look-needs-gesture`: motion look was started outside a user gesture, where iOS does
+ *   not ask; it stays off.
  */
 export type WarningCode =
   | 'recording-degraded'
@@ -40,7 +50,9 @@ export type WarningCode =
   | 'autoplay-blocked'
   | 'playback-failed'
   | 'ignored-attribute'
-  | 'refused-property';
+  | 'refused-property'
+  | 'motion-look-refused'
+  | 'motion-look-needs-gesture';
 
 export interface PlayerWarning {
   readonly code: WarningCode;
@@ -76,6 +88,7 @@ export interface PlayerEvents {
   readonly frame: number;
   readonly viewchange: ViewAngles;
   readonly viewmodechange: ViewMode;
+  readonly motionlookchange: MotionLookState;
   readonly stabilizationchange: StabilizationMode;
   /**
    * The picture quality changed, to the one named.
@@ -109,6 +122,7 @@ export const PLAYER_EVENT_NAMES = keysOf<keyof PlayerEvents>({
   frame: true,
   viewchange: true,
   viewmodechange: true,
+  motionlookchange: true,
   stabilizationchange: true,
   qualitychange: true,
   volumechange: true,

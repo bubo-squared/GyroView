@@ -26,6 +26,7 @@ export type {
   KeyboardOptions,
   LoadOptions,
   MediaInput,
+  MotionLookState,
   PipelineHost,
   PlayerEvents,
   PlayerMetadata,

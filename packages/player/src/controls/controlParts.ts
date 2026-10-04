@@ -18,6 +18,7 @@ export interface ControlParts {
   readonly mute: HTMLButtonElement;
   readonly volume: HTMLInputElement;
   readonly resetView: HTMLButtonElement;
+  readonly motionLook: HTMLButtonElement;
   readonly stabilization: ChoiceMenuParts;
   readonly viewMode: ChoiceMenuParts;
   readonly fullscreen: HTMLButtonElement;
@@ -56,6 +57,7 @@ export function queryControlParts(root: ParentNode): ControlParts {
     mute: queryShadow(root, '.mute', HTMLButtonElement),
     volume: queryShadow(root, '.volume', HTMLInputElement),
     resetView: queryShadow(root, '.reset-view', HTMLButtonElement),
+    motionLook: queryShadow(root, '.motion-look', HTMLButtonElement),
     stabilization: queryChoiceMenu(root, ChoiceMenuName.Stabilization),
     viewMode: queryChoiceMenu(root, ChoiceMenuName.ViewMode),
     fullscreen: queryShadow(root, '.fullscreen', HTMLButtonElement),

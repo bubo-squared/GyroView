@@ -21,6 +21,10 @@ export interface GyroViewLabels {
   readonly mute: string;
   readonly volume: string;
   readonly resetView: string;
+  /**
+   * The toggle that lets the device's own turns turn the normal view.
+   */
+  readonly motionLook: string;
   readonly stabilization: string;
   readonly viewMode: string;
   readonly fullscreen: string;
@@ -141,6 +145,7 @@ export const DEFAULT_MESSAGES: GyroViewMessages = {
     mute: 'Mute',
     volume: 'Volume',
     resetView: 'Reset view',
+    motionLook: 'Look by moving the device',
     stabilization: 'Stabilization',
     viewMode: 'View',
     fullscreen: 'Fullscreen',

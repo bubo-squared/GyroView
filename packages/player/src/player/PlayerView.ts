@@ -1,13 +1,15 @@
 import {
-  clampView,
   DEFAULT_FRAMING,
   DEFAULT_VIEW_MODE,
+  followReading,
   isSameFraming,
-  isSameView,
   lookAt,
+  motionLookRulesFor,
   SCREEN_CENTRE,
   viewModeRulesFor,
+  withoutRoll,
   type Degrees,
+  type DeviceReading,
   type DragDelta,
   type Framing,
   type PictureRenderer,
@@ -21,6 +23,7 @@ import {
 } from '@gyroview/core';
 
 import type { PlayerEvents } from './PlayerEvents';
+import { anglesOf, isSameAngles } from './viewAngles';
 
 /**
  * The part of the renderer the view drives, and how many lenses it draws in the lens tiles.
@@ -34,15 +37,20 @@ const LENS_COUNT_BEFORE_A_LOAD = 2;
 
 /**
  * How the picture is framed and which view mode shows it: kept across loads, drawn by whichever
- * renderer is attached, and the normal view announced when it changes. The viewer's gestures go
- * through the mode's rules on the viewport as it is now; a host setting the view directly is
- * obeyed as it is.
+ * renderer is attached, and the normal view's angles announced when they change. The viewer's
+ * gestures and a host setting the view go through the mode's rules on the viewport as it is
+ * now; while the device holds the view (motion look, ADR 0040), through the rules it follows
+ * then.
  */
 export class PlayerView {
   private framing: Framing = DEFAULT_FRAMING;
   private mode: ViewMode = DEFAULT_VIEW_MODE;
   private surface: ViewSurface | undefined;
   private lensCount = LENS_COUNT_BEFORE_A_LOAD;
+  /**
+   * The device reading the held view follows from; none while the device does not hold it.
+   */
+  private previous: DeviceReading | undefined;
 
   public constructor(
     private readonly events: EventSink<PlayerEvents>,
@@ -65,6 +73,13 @@ export class PlayerView {
   }
 
   /**
+   * Whether the device may turn the view in the current mode.
+   */
+  public get followsDevice(): boolean {
+    return motionLookRulesFor(this.mode) !== undefined;
+  }
+
+  /**
    * The renderer of the loaded recording, or nothing between loads. A new renderer draws the
    * framing as it is now, however it changed while the recording was loading; the lens tiles are
    * measured by the lenses it draws from then on.
@@ -77,7 +92,7 @@ export class PlayerView {
   }
 
   public set(view: ViewState): void {
-    this.frame({ ...this.framing, view: clampView(view) });
+    this.frame(this.rules().place(this.framing, view));
   }
 
   public setMode(mode: ViewMode): void {
@@ -88,7 +103,26 @@ export class PlayerView {
   }
 
   public lookAt(yaw: Degrees, pitch: Degrees): void {
-    this.frame({ ...this.framing, view: lookAt(this.framing.view, yaw, pitch) });
+    this.frame(this.rules().place(this.framing, lookAt(this.framing.view, yaw, pitch)));
+  }
+
+  /**
+   * Turns the view as the device turned: from its first reading on, the device holds the view.
+   */
+  public followDevice(reading: DeviceReading): void {
+    const hold = followReading(this.framing.view, this.previous, reading);
+    if (!hold) return;
+    this.previous = hold.reading;
+    this.frame({ ...this.framing, view: hold.view });
+  }
+
+  /**
+   * The device no longer holds the view: it stays where it looks, level again.
+   */
+  public letGo(): void {
+    if (!this.previous) return;
+    this.previous = undefined;
+    this.frame({ ...this.framing, view: withoutRoll(this.framing.view) });
   }
 
   public pan(delta: DragDelta): void {
@@ -113,12 +147,15 @@ export class PlayerView {
     this.frame(this.rules().reset(this.framing));
   }
 
+  /**
+   * Draws any change; announces one of the angles a page sees, not a roll alone.
+   */
   private frame(next: Framing): void {
     if (isSameFraming(next, this.framing)) return;
-    const hasViewChanged = !isSameView(next.view, this.framing.view);
+    const haveAnglesChanged = !isSameAngles(next.view, this.framing.view);
     this.framing = next;
     this.surface?.setFraming(next);
-    if (hasViewChanged) this.events.emit('viewchange', next.view);
+    if (haveAnglesChanged) this.events.emit('viewchange', anglesOf(next.view));
   }
 
   private context(): ViewContext {
@@ -126,6 +163,7 @@ export class PlayerView {
   }
 
   private rules(): ViewModeRules {
-    return viewModeRulesFor(this.mode);
+    const held = this.previous === undefined ? undefined : motionLookRulesFor(this.mode);
+    return held ?? viewModeRulesFor(this.mode);
   }
 }

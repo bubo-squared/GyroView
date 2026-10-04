@@ -26,7 +26,7 @@ describe('GyroView.embed', () => {
 
     const frame = container.querySelector('iframe');
     expect(frame).toBe(embedded.iframe);
-    expect(frame?.allow).toBe('fullscreen; autoplay');
+    expect(frame?.allow).toBe('fullscreen; autoplay; accelerometer; gyroscope; magnetometer');
     expect(frame?.title).toBe('Sailing');
     const url = new URL(frame?.src ?? '');
     expect(`${url.origin}${url.pathname}`).toBe(EMBED_PAGE);

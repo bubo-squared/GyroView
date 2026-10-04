@@ -15,7 +15,12 @@ export const SQUARE: ViewContext = { viewport: { width: 900, height: 900 }, lens
  */
 export const WIDE: ViewContext = { viewport: { width: 1600, height: 900 }, lensCount: 2 };
 
-export const TILTED: ViewState = { yaw: degrees(90), pitch: degrees(30), fieldOfView: degrees(60) };
+export const TILTED: ViewState = {
+  yaw: degrees(90),
+  pitch: degrees(30),
+  roll: degrees(0),
+  fieldOfView: degrees(60),
+};
 
 export const ZOOMED_IN = { scale: 2, centre: { x: 0.4, y: 0.6 } };
 

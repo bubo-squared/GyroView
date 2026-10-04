@@ -1,4 +1,4 @@
-import { withView, type Framing } from './Framing';
+import { withPlacedView, withView, type Framing } from './Framing';
 import {
   clampMagnification,
   FITTED,
@@ -112,6 +112,7 @@ export const PANORAMA_VIEW: ViewModeRules = {
     ...withView(framing, lookAt(framing.view, degrees(0), framing.view.pitch)),
     panorama: FITTED,
   }),
+  place: withPlacedView,
   picture: (framing, context) => {
     const { fitted, panorama } = shownPanorama(framing, context);
     return {

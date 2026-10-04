@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Framing } from './Framing';
+import { degrees } from '../../shared/units/angle';
 import { DEFAULT_VIEW_MODE, VIEW_MODES, type ViewMode } from './ViewMode';
-import { viewModeRulesFor } from './viewModes';
+import { motionLookRulesFor, viewModeRulesFor } from './viewModes';
+import { MOTION_LOOK_VIEW } from './motionLookView';
+import { DEFAULT_VIEW } from './ViewState';
 import { EVERYTHING_MOVED, SQUARE, turnOf } from '../../../test/support/viewFixtures';
 
 /**
@@ -52,5 +55,18 @@ describe('view modes', () => {
     ]) {
       expect(framing.view).toMatchObject({ pitch, fieldOfView });
     }
+  });
+
+  it.each(VIEW_MODES)("takes a page's view as given in %s, and leaves the rest", (mode) => {
+    const placed = viewModeRulesFor(mode).place(EVERYTHING_MOVED, {
+      ...DEFAULT_VIEW,
+      yaw: degrees(270),
+    });
+    expect(placed).toEqual({ ...EVERYTHING_MOVED, view: { ...DEFAULT_VIEW, yaw: -90 } });
+  });
+
+  it('lets the device turn the normal view alone', () => {
+    expect(VIEW_MODES.filter((mode) => motionLookRulesFor(mode))).toEqual(['normal']);
+    expect(motionLookRulesFor('normal')).toBe(MOTION_LOOK_VIEW);
   });
 });

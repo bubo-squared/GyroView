@@ -1,5 +1,6 @@
+import { clamp } from './clamp';
 import type { Vector3 } from './Vector3';
-import type { Radians } from '../units/angle';
+import { radians, type Radians } from '../units/angle';
 
 /**
  * A 3x3 matrix in row-major order: `[m00, m01, m02, m10, m11, m12, m20, m21, m22]`. Rotations
@@ -78,4 +79,14 @@ export function determinantOf(m: Matrix3): number {
   return (
     m00 * (m11 * m22 - m12 * m21) - m01 * (m10 * m22 - m12 * m20) + m02 * (m10 * m21 - m11 * m20)
   );
+}
+
+/**
+ * How far rotation `b` turns from rotation `a`: the angle of `aᵀ b`, from its trace
+ * (`1 + 2 cos θ`), which is the sum of the two matrices' entrywise products; clamped against
+ * rounding.
+ */
+export function angleBetweenRotations(a: Matrix3, b: Matrix3): Radians {
+  const trace = a.reduce((sum, entry, index) => sum + entry * (b[index] ?? 0), 0);
+  return radians(Math.acos(clamp((trace - 1) / 2, -1, 1)));
 }

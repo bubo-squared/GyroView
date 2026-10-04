@@ -1,5 +1,5 @@
 import { FITTED, isSameMagnification, type Magnification } from './magnification';
-import { DEFAULT_VIEW, isSameView, type ViewState } from './ViewState';
+import { clampView, DEFAULT_VIEW, isSameView, type ViewState } from './ViewState';
 
 /**
  * Everything that frames the picture, in every view mode: where the normal view looks, whose yaw
@@ -30,6 +30,13 @@ export function isSameFraming(a: Framing, b: Framing): boolean {
  */
 export function withView(framing: Framing, view: ViewState): Framing {
   return { ...framing, view };
+}
+
+/**
+ * The framing with a page's view taken as it is given, within the sphere.
+ */
+export function withPlacedView(framing: Framing, view: ViewState): Framing {
+  return withView(framing, clampView(view));
 }
 
 /**

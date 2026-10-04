@@ -2,6 +2,7 @@ import type { Framing } from './Framing';
 import type { Picture } from './Picture';
 import type { DragDelta, ViewportSize } from './screenLayout';
 import type { TurnRequest, ZoomRequest } from './viewGestures';
+import type { ViewState } from './ViewState';
 
 /**
  * What the player shows: `raw-lenses` is each lens's decoded image on its own, unstitched, and
@@ -54,5 +55,10 @@ export interface ViewModeRules {
    * The framing this mode starts with, the other modes' parts left as they are.
    */
   reset(framing: Framing): Framing;
+  /**
+   * The framing once a page sets the view (`setView`, `lookAt`, the view attributes): taken as
+   * given, unless the device holds the view (ADR 0040).
+   */
+  place(framing: Framing, view: ViewState): Framing;
   picture(framing: Framing, context: ViewContext): Picture;
 }

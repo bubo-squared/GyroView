@@ -11,7 +11,12 @@ const VIEWPORT_WIDTH = 900;
 const ASPECT = 16 / 9;
 
 function viewOf(yaw: number, pitch: number, fieldOfView: number): ViewState {
-  return { yaw: degrees(yaw), pitch: degrees(pitch), fieldOfView: degrees(fieldOfView) };
+  return {
+    yaw: degrees(yaw),
+    pitch: degrees(pitch),
+    roll: degrees(0),
+    fieldOfView: degrees(fieldOfView),
+  };
 }
 
 /**
@@ -78,6 +83,14 @@ describe('view gestures', () => {
     expect(zoomed.yaw).toBe(0);
     expect(zoomed.pitch).toBe(60);
     expect(zoomed.fieldOfView).toBeCloseTo(99, 9);
+  });
+
+  it('keeps the roll the device gave the view through every gesture', () => {
+    const rolled = { ...viewOf(20, 10, 90), roll: degrees(25) };
+    expect(panView(rolled, { x: 90, y: 90 }, VIEWPORT_WIDTH).roll).toBe(25);
+    expect(zoomViewAt(rolled, { steps: 1, focus: SCREEN_CENTRE }, ASPECT).roll).toBe(25);
+    expect(zoomViewAt(rolled, { steps: 1, focus: { x: 0.8, y: 0.3 } }, ASPECT).roll).toBe(25);
+    expect(lookAt(rolled, degrees(5), degrees(5)).roll).toBe(25);
   });
 
   it('looks at a direction with the same clamping as every change', () => {

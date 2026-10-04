@@ -61,6 +61,7 @@ export function stateOf(element: GyroViewElement): EmbedState {
     volume: element.volume,
     isMuted: element.muted,
     view: element.view,
+    motionLook: element.motionLook,
     stabilization: element.stabilization,
     viewMode: element.viewMode,
     quality: element.quality,

@@ -50,7 +50,7 @@ import { Wording } from '../controls/Wording';
 import { ViewGestures } from '../controls/ViewGestures';
 import { ensureFinite } from '../player/ensureFinite';
 import type { Player } from '../player/Player';
-import type { PlayerStatus, PlayerWarning } from '../player/PlayerEvents';
+import type { MotionLookState, PlayerStatus, PlayerWarning } from '../player/PlayerEvents';
 import type { ViewAngles } from '../player/PlayerOptions';
 import type { PlayerMetadata } from '../PlayerMetadata';
 /**
@@ -189,6 +189,14 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   }
 
   /**
+   * Whether turning the device turns the normal view: `on`, `off`, or `unavailable` where the
+   * device reports no attitude or access was refused.
+   */
+  public get motionLook(): MotionLookState {
+    return this.player.motionLook;
+  }
+
+  /**
    * Every word the element shows or says to assistive technology. Setting it replaces any of
    * them, table by table (`labels`, `stabilizationModes`, `viewModes`, `errors`); the others keep
    * their English defaults, and `null` brings them all back.
@@ -296,6 +304,22 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
    */
   public zoom(steps: number, focus?: ScreenPoint): void {
     this.player.zoom(steps, focus);
+  }
+
+  /**
+   * Lets the device turn the normal view, as a window into the recording. Call it from a tap's
+   * handler: iOS asks the viewer for access there and refuses it anywhere else. Resolves with the
+   * state it ends in (`motionLook`); a refusal is a `warning`, never a rejection.
+   */
+  public startMotionLook(): Promise<MotionLookState> {
+    return this.player.startMotionLook();
+  }
+
+  /**
+   * Gives the view back to the pointer, level, looking where it looked.
+   */
+  public stopMotionLook(): void {
+    this.player.stopMotionLook();
   }
 
   /**

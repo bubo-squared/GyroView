@@ -1,5 +1,5 @@
 import type { PictureQuality, StabilizationMode, ViewMode } from '@gyroview/core';
-import type { PlayerMetadata, PlayerStatus, ViewAngles } from '@gyroview/player';
+import type { MotionLookState, PlayerMetadata, PlayerStatus, ViewAngles } from '@gyroview/player';
 
 /**
  * The player's state as the embedding page sees it: a snapshot the host answers `getState`
@@ -14,6 +14,11 @@ export interface EmbedState {
   readonly isMuted: boolean;
   readonly view: ViewAngles;
   readonly viewMode: ViewMode;
+  /**
+   * Whether turning the device turns the view; only the frame's own button turns it on, since a
+   * tap on the embedding page does not reach a cross-origin frame (ADR 0040).
+   */
+  readonly motionLook: MotionLookState;
   readonly stabilization: StabilizationMode;
   readonly quality: PictureQuality;
   readonly metadata: PlayerMetadata | undefined;

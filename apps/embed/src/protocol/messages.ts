@@ -94,6 +94,7 @@ const FORWARDED: Readonly<Record<ForwardedEventName, true>> = {
   seeked: true,
   viewchange: true,
   viewmodechange: true,
+  motionlookchange: true,
   stabilizationchange: true,
   qualitychange: true,
   volumechange: true,

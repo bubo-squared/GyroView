@@ -13,7 +13,7 @@ export function ensureFinite(value: unknown, name: string): asserts value is num
 }
 
 /**
- * A view from the page, each angle checked and read as degrees.
+ * A view from the page, each angle checked and read as degrees, level.
  */
 export function viewStateOf(view: ViewAngles): ViewState {
   ensureFinite(view.yaw, 'yaw');
@@ -22,6 +22,7 @@ export function viewStateOf(view: ViewAngles): ViewState {
   return {
     yaw: degrees(view.yaw),
     pitch: degrees(view.pitch),
+    roll: degrees(0),
     fieldOfView: degrees(view.fieldOfView),
   };
 }

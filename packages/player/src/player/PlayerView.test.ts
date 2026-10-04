@@ -2,7 +2,9 @@ import {
   DEFAULT_FRAMING,
   DEFAULT_VIEW,
   degrees,
+  milliseconds,
   TypedEmitter,
+  type DeviceReading,
   type Framing,
   type ViewMode,
   type ViewportSize,
@@ -60,6 +62,19 @@ function recordedView(lensCount = 2): Recorded {
   return { view, surface, drawn, views, modes, canvas };
 }
 
+/**
+ * The device looking at yaw, pitch and roll, in degrees, read at `at` milliseconds.
+ */
+function readingAt(
+  at: number,
+  [yaw, pitch, roll]: readonly [number, number, number],
+): DeviceReading {
+  return {
+    look: { yaw: degrees(yaw), pitch: degrees(pitch), roll: degrees(roll) },
+    at: milliseconds(at),
+  };
+}
+
 function framingOf(view: ViewState): Framing {
   return { ...DEFAULT_FRAMING, view };
 }
@@ -92,7 +107,8 @@ describe('PlayerView', () => {
     const expected = { ...DEFAULT_VIEW, yaw: -170, fieldOfView: 120 };
     expect(view.current).toEqual(expected);
     expect(drawn).toEqual([{ ...DEFAULT_FRAMING, view: expected }]);
-    expect(views).toEqual([expected]);
+    expect(views).toEqual([{ yaw: -170, pitch: 0, fieldOfView: 120 }]);
+    expect(Object.keys(views[0] ?? {})).toEqual(['yaw', 'pitch', 'fieldOfView']);
   });
 
   it('looks, turns, zooms and resets through the same change', () => {
@@ -202,5 +218,49 @@ describe('PlayerView', () => {
     view.lookAt(degrees(10), degrees(0));
     expect(drawn).toEqual([]);
     expect(views).toHaveLength(1);
+  });
+
+  it('lets the device turn the normal view alone', () => {
+    const { view } = recordedView();
+    expect(view.followsDevice).toBe(true);
+    view.setMode('equirectangular');
+    expect(view.followsDevice).toBe(false);
+    view.setMode('raw-lenses');
+    expect(view.followsDevice).toBe(false);
+  });
+
+  it('follows the device from its first reading, keeping the yaw, the roll drawn but not announced', () => {
+    const { view, drawn, views } = recordedView();
+    view.lookAt(degrees(30), degrees(0));
+    view.followDevice(readingAt(0, [-100, 20, 10]));
+    view.followDevice(readingAt(16, [-90, 20, 12]));
+    expect(view.current).toEqual({ ...DEFAULT_VIEW, yaw: 40, pitch: 20, roll: 12 });
+    expect(drawn.at(-1)).toEqual(framingOf(view.current));
+    view.followDevice(readingAt(32, [-90, 20, 14]));
+    expect(views.map((angles) => angles.yaw)).toEqual([30, 30, 40]);
+  });
+
+  it('turns the heading alone while the device holds the view, a page setting yaw and zoom only', () => {
+    const { view } = recordedView();
+    view.followDevice(readingAt(0, [0, 20, 10]));
+    view.pan({ x: 90, y: 300 });
+    expect(view.current).toMatchObject({ yaw: -9, pitch: 20, roll: 10 });
+    view.set({ ...DEFAULT_VIEW, yaw: degrees(50), pitch: degrees(-40), fieldOfView: degrees(60) });
+    expect(view.current).toEqual({ yaw: 50, pitch: 20, roll: 10, fieldOfView: 60 });
+    view.lookAt(degrees(5), degrees(-60));
+    expect(view.current).toMatchObject({ yaw: 5, pitch: 20, roll: 10 });
+    view.zoom(1, { x: 0.9, y: 0.1 });
+    expect(view.current).toMatchObject({ yaw: 5, pitch: 20, roll: 10 });
+  });
+
+  it('lets go level, looking where it looked, and gives the gestures back to the pointer', () => {
+    const { view } = recordedView();
+    view.followDevice(readingAt(0, [0, 20, 10]));
+    view.letGo();
+    expect(view.current).toEqual({ ...DEFAULT_VIEW, pitch: 20 });
+    view.pan({ x: 0, y: 90 });
+    expect(view.current.pitch).toBeCloseTo(29, 9);
+    view.followDevice(readingAt(16, [80, 20, 0]));
+    expect(view.current.yaw).toBe(0);
   });
 });

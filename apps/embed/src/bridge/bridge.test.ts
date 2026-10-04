@@ -138,6 +138,17 @@ describe('the embed bridge over a message channel', () => {
     await waitFor(() => handle.state.status === 'idle', 'the unload');
   });
 
+  it('mirrors motion look as the frame announces it', async () => {
+    const { handle } = bridge({ 'view-mode': 'normal' });
+    await handle.getState();
+    expect(handle.state.motionLook).toBe('unavailable');
+    globalThis.dispatchEvent(
+      Object.assign(new Event('deviceorientation'), { alpha: 0, beta: 90, gamma: 0 }),
+    );
+    await waitFor(() => handle.state.motionLook === 'off', 'motion look offered');
+    await expect(handle.getState()).resolves.toMatchObject({ motionLook: 'off' });
+  });
+
   it('changes the view, view mode, stabilization, quality and loop over the channel, reading choices as the element does', async () => {
     const { handle, element } = bridge();
     await handle.lookAt(30, 10);
@@ -294,7 +305,9 @@ describe('an embed handle whose frame loads anew', () => {
     await waitFor(() => received.length === 2, 'the command asked again');
     expect(received[1]).toEqual(received[0]);
     expect(received[1]).toMatchObject({ id: 1, oldestUnanswered: 1 });
-    expect(handle.state).toEqual(reloadedState);
+    expect(handle.state).toMatchObject(reloadedState);
+    // An older frame says nothing of motion look, which keeps its default.
+    expect(handle.state.motionLook).toBe('unavailable');
     hostSide.send({ protocol: PROTOCOL, kind: 'result', id: 1, isOk: true, value: undefined });
     await pausing;
     handle.destroy();

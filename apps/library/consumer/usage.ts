@@ -15,6 +15,7 @@ import {
   VIEW_MODES,
   type GyroViewErrorCategory,
   type GyroViewErrorCode,
+  type MotionLookState,
   type PictureQuality,
   type PlayerMetadata,
   type PlayerStatus,
@@ -40,6 +41,14 @@ element.addEventListener('qualitychange', (event) => {
   return quality;
 });
 element.loadFiles({ main: new File([], 'VID_20260814_132640_00_013.insv') });
+element.addEventListener('motionlookchange', (event) => {
+  const motion: MotionLookState = event.detail;
+  return motion;
+});
+document.querySelector('button')?.addEventListener('click', () => {
+  if (element.motionLook === 'on') element.stopMotionLook();
+  else void element.startMotionLook();
+});
 
 const found = document.querySelector('gyro-view');
 found?.lookAt(90, 0);

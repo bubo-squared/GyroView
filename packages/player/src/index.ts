@@ -14,6 +14,7 @@ export { inspectRecording, type InspectOptions } from './inspectRecording';
 export { Player } from './player/Player';
 export type { LoadOptions, PlayerParts, ViewAngles } from './player/PlayerOptions';
 export type {
+  MotionLookState,
   PlayerEvents,
   PlayerStatus,
   PlayerWarning,

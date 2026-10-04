@@ -5,6 +5,8 @@
  * plays with. Published as `@gyroview/player/composition`; pages use `createBrowserPlayer` and
  * the element instead.
  */
+export { NO_ATTITUDE_SENSOR, type AttitudeSensor } from './attitudeSensor';
+export { BrowserAttitudeSensor, type AttitudeSource } from './BrowserAttitudeSensor';
 export { browserPorts } from './browserPorts';
 export { buildPipeline, DECODE_PIPELINE_OPTIONS, PAIR_QUEUE_CAPACITY } from './buildPipeline';
 export { openRecording } from './openRecording';

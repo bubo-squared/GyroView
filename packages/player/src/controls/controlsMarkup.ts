@@ -107,6 +107,7 @@ export function controlsMarkup(): string {
       <span class="time"><span class="elapsed">0:00</span> <span class="total">/ 0:00</span></span>
       <span class="spacer"></span>
       ${pictureMenusMarkup()}
+      <button class="icon-button motion-look" type="button" aria-pressed="false" data-label="motionLook" hidden>${ICONS.motionLook}</button>
       <button class="icon-button reset-view" type="button" data-label="resetView">${ICONS.resetView}</button>
       <button class="icon-button fullscreen" type="button" data-label="fullscreen">${ICONS.fullscreen}</button>
     </div>

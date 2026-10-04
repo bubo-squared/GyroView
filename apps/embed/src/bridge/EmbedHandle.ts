@@ -38,8 +38,13 @@ const INITIAL_STATE: EmbedState = {
   isPaused: true,
   volume: 1,
   isMuted: false,
-  view: DEFAULT_VIEW,
+  view: {
+    yaw: DEFAULT_VIEW.yaw,
+    pitch: DEFAULT_VIEW.pitch,
+    fieldOfView: DEFAULT_VIEW.fieldOfView,
+  },
   viewMode: DEFAULT_VIEW_MODE,
+  motionLook: 'unavailable',
   stabilization: DEFAULT_STABILIZATION_MODE,
   quality: DEFAULT_PICTURE_QUALITY,
   metadata: undefined,
@@ -206,8 +211,10 @@ export class EmbedHandle {
     switch (message.kind) {
       case 'hello': {
         // Trusted as the state it claims to be, as event details are (ADR 0010); an older frame
-        // sends none, and the mirror keeps the defaults.
-        if (message.state !== undefined) this.stateValue = message.state as EmbedState;
+        // sends none, or one without the newer fields, which keep their defaults.
+        if (message.state !== undefined) {
+          this.stateValue = { ...INITIAL_STATE, ...(message.state as Partial<EmbedState>) };
+        }
         this.isConnected = true;
         for (const id of this.pending.keys()) this.send(id);
         break;
@@ -291,8 +298,8 @@ function withTime(state: EmbedState, currentTime: number): EmbedState {
 }
 
 /**
- * How each event moves the mirror: status, time, view, view mode, stabilization and sound follow
- * their events, the metadata arrives with `ready` and leaves with the next load.
+ * How each event moves the mirror: status, time, view, view mode, motion look, stabilization and
+ * sound follow their events, the metadata arrives with `ready` and leaves with the next load.
  */
 const STATE_UPDATERS: StateUpdaters = {
   statuschange: withStatus,
@@ -302,6 +309,7 @@ const STATE_UPDATERS: StateUpdaters = {
   ready: (state, metadata) => ({ ...state, metadata, duration: metadata.duration }),
   viewchange: (state, view) => ({ ...state, view }),
   viewmodechange: (state, viewMode) => ({ ...state, viewMode }),
+  motionlookchange: (state, motionLook) => ({ ...state, motionLook }),
   volumechange: (state, sound) => ({ ...state, volume: sound.volume, isMuted: sound.isMuted }),
   stabilizationchange: (state, stabilization) => ({ ...state, stabilization }),
   qualitychange: (state, quality) => ({ ...state, quality }),

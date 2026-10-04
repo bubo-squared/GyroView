@@ -1,4 +1,4 @@
-import { withLenses, type Framing } from './Framing';
+import { withLenses, withPlacedView, type Framing } from './Framing';
 import {
   clampMagnification,
   FITTED,
@@ -73,5 +73,6 @@ export const LENS_TILES_VIEW: ViewModeRules = {
   zoom: (framing, zoom, context) =>
     withLenses(framing, magnifyAt(fittedTiles(context).bounds, framing.lenses, zoom)),
   reset: (framing) => withLenses(framing, FITTED),
+  place: withPlacedView,
   picture: (framing, context) => ({ kind: 'lens-tiles', tiles: magnifiedTiles(framing, context) }),
 };

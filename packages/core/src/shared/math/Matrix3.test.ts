@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  angleBetweenRotations,
   determinantOf,
   IDENTITY_MATRIX3,
   multiplyMatrices,
@@ -27,6 +28,17 @@ function expectVector(actual: Vector3, expected: Vector3): void {
 }
 
 describe('Matrix3', () => {
+  it('measures the angle one rotation turns from another, small ones included', () => {
+    const tilted = rotationAboutX(radians(0.4));
+    const further = multiplyMatrices(tilted, rotationAboutY(radians(0.3)));
+    expect(angleBetweenRotations(tilted, further)).toBeCloseTo(0.3, 12);
+    expect(angleBetweenRotations(tilted, tilted)).toBe(0);
+    const tiny = multiplyMatrices(tilted, rotationAboutZ(radians(2e-4)));
+    expect(angleBetweenRotations(tilted, tiny)).toBeCloseTo(2e-4, 10);
+    const halfTurn = rotationAboutY(radians(Math.PI));
+    expect(angleBetweenRotations(IDENTITY_MATRIX3, halfTurn)).toBeCloseTo(Math.PI, 9);
+  });
+
   it('undoes a rotation by its transpose', () => {
     const turned = multiplyMatrices(rotationAboutZ(QUARTER_TURN), rotationAboutX(QUARTER_TURN));
     expectVector(transformVector(transposeMatrix(turned), transformVector(turned, SKEW)), SKEW);

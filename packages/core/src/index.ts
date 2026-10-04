@@ -110,7 +110,14 @@ export {
   type ViewMode,
   type ViewModeRules,
 } from './domain/view/ViewMode';
-export { viewModeRulesFor } from './domain/view/viewModes';
+export { motionLookRulesFor, viewModeRulesFor } from './domain/view/viewModes';
+export { screenLookOf, type DeviceAttitude, type ScreenLook } from './domain/view/screenLook';
+export {
+  followReading,
+  withoutRoll,
+  type DeviceHold,
+  type DeviceReading,
+} from './domain/view/motionLookView';
 export { DEFAULT_FRAMING, isSameFraming, type Framing } from './domain/view/Framing';
 export { aspectOfArea, planeHalfExtentOf } from './domain/view/rectilinear';
 export { MAX_MAGNIFICATION, type Magnification } from './domain/view/magnification';

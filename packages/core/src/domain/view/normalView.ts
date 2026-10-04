@@ -1,4 +1,5 @@
-import { withView } from './Framing';
+import { withPlacedView, withView, type Framing } from './Framing';
+import type { Picture } from './Picture';
 import { aspectOf, WHOLE_SCREEN } from './screenLayout';
 import { lookAt, panView, zoomViewAt } from './viewGestures';
 import type { ViewModeRules } from './ViewMode';
@@ -24,10 +25,18 @@ export const NORMAL_VIEW: ViewModeRules = {
   zoom: (framing, zoom, { viewport }) =>
     withView(framing, zoomViewAt(framing.view, zoom, aspectOf(viewport))),
   reset: (framing) => withView(framing, DEFAULT_VIEW),
-  picture: ({ view }) => ({
+  place: withPlacedView,
+  picture: rectilinearPicture,
+};
+
+/**
+ * The view's rectilinear picture over the whole viewport, turned by its whole rotation.
+ */
+export function rectilinearPicture({ view }: Framing): Picture {
+  return {
     kind: 'rectilinear',
     rotation: viewRotation(view),
     fieldOfView: view.fieldOfView,
     area: WHOLE_SCREEN,
-  }),
-};
+  };
+}

@@ -3,7 +3,7 @@
 What the player does today, what is verified on real material, what is waiting on something
 external, and what a next step could be. Dated so a reader can tell how current it is.
 
-## Done (as of 2026-10-02)
+## Done (as of 2026-10-05)
 
 **Playback of raw recordings.** Opens `.insv` files over HTTP byte ranges or from local
 files; reads the Insta360 trailer (indexed or bare, `inst`-wrapped or not), the protobuf info
@@ -46,6 +46,12 @@ each frame's mid-exposure; lock, horizon and follow modes, or off, each drawn up
 camera was mounted, on its side or with its lens axis vertical, where its IMU frame is measured
 (ADR 0038), and opening where Insta360 Studio centres the recording (ADR 0039).
 
+**Motion look.** On a phone or tablet, a toggle in the normal view lets the device turn it as a
+window into the recording: its whole attitude, roll included, so the horizon stays level with the
+real one; drags then turn the heading alone, and a zoom narrows about the centre (ADR 0040).
+Tested with emulated sensors and synthetic events in Chromium and WebKit; a real phone is still
+to come (below).
+
 **Embedding.** `<gyro-view>` as an element (`gyro-view.js`) with attributes, properties,
 events and controls; `embed.html` in an iframe driven by `embed.js` over a validated,
 origin-checked message protocol; a developer page.
@@ -82,6 +88,13 @@ sample, ADR 0031): it plays and stitches; its IMU's down is measured and every m
 upright, the rest of its IMU frame assumed (ADR 0009).
 
 ## Waiting on something only a user can supply
+
+- **An iPhone and an Android phone for motion look** (ADR 0040), over HTTPS: the permission prompt
+  at the first press and a refusal, portrait and landscape, a level horizon when rolling, a steady
+  picture looking straight up and down, the iframe embed (a tap outside the frame with motion look
+  on: Chromium may pause an unfocused cross-origin frame's sensors), whether a phone at rest stops
+  redrawing, and the frames shown a second after three to five minutes with motion look on, for
+  an 8K30 and a 5.7K60 recording (heat).
 
 - **An X4 recording and a packed sub-5.7K file**: to verify the packed layout, the `offset_v2`
   calibration path, the X4's IMU frame and the calibration's pose reading (ADR 0025) on real
@@ -156,7 +169,9 @@ upright, the rest of its IMU frame assumed (ADR 0009).
 
 In rough order of value:
 
-1. Device-orientation look-around on phones (turn the phone to look).
+1. A field of view that follows the shape of the player: it is horizontal, so a phone in portrait
+   at the default 90 degrees across shows about 130 degrees from top to bottom, which a window held
+   up makes more noticeable.
 2. The lens model's radius measured per recording at the seam, where far content's disparity
    must be zero (ADR 0023, ADR 0026): one measurement over a few frames at load, no reference
    needed; and a choice between the equidistant and the Mei shapes from a second reference.

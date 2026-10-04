@@ -1,9 +1,11 @@
 import { PlaybackAttribute, SourceAttribute, ViewAttribute } from '@gyroview/player/attributes';
 
 /**
- * What an iframe of `embed.html` must be allowed: to fill the screen and to start playback.
+ * What an iframe of `embed.html` must be allowed: to fill the screen, to start playback, and to
+ * read the device's attitude for motion look (Chromium asks for the accelerometer and the
+ * gyroscope in a cross-origin frame, WebKit for the magnetometer as well; ADR 0040).
  */
-export const FRAME_PERMISSIONS = 'fullscreen; autoplay';
+export const FRAME_PERMISSIONS = 'fullscreen; autoplay; accelerometer; gyroscope; magnetometer';
 
 /**
  * What an embedding page may ask of the player, one option per `<gyro-view>` attribute, carried

@@ -131,7 +131,8 @@ size and duration give.
 **`playback`**: `PlayerStateMachine` with the exhaustive transition table
 (`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`).
 
-**`view`**: `ViewState` (yaw, pitch, field of view) with clamping and the view rotation;
+**`view`**: `ViewState` (yaw, pitch, the roll only motion look gives, field of view) with
+clamping and the view rotation;
 `Framing`, the view with the `Magnification` of the panorama and of the lens tiles;
 `ViewMode` and its `ViewModeRules` strategy, one module per mode (`normalView`, `panoramaView`,
 `lensTilesView`, looked up by `viewModes`): how drags, arrow keys and zooms toward a point change
@@ -140,7 +141,12 @@ draws: rectilinear, equirectangular or lens tiles (ADRs 0015 and 0018); `screenL
 letterboxing and the screen's measures; `magnification` for enlarging and moving a flat picture
 within its edges; `rectilinear` for the rays of the normal view's picture, shared with the
 renderer; and the pure drag/zoom/look-at gestures, among them the normal view's zoom toward a
-point.
+point. Motion look (ADR 0040): `screenLook` turns the browser's device attitude into the yaw,
+pitch and roll of a screen held up as a window, the one place that knows the DeviceOrientation
+convention; `motionLookView` follows the device's readings (`followReading`: the heading the
+view's own, a gap starting anew, an unseen turn not drawn) and is `MOTION_LOOK_VIEW`, the normal
+view's rules while the device holds it, which `motionLookRulesFor` gives for the modes the device
+turns. Every mode's rules also say how a page's view is placed (`place`).
 
 ### Application: `core/src/application`
 
@@ -303,13 +309,18 @@ The composition root and the user-facing element, in three layers.
   blob through the same sources into the core's `RecordingInspection`, without playing it. Dependency rules keep the adapters
   inside the composition and the composition below the player, and the player below the
   element and the controls.
+- **`composition`, the attitude sensor**: `AttitudeSensor` is the player's port for the device's
+  attitude; `BrowserAttitudeSensor` reads `deviceorientation` events, its page-wide probe telling
+  whether the device reports them, and asks iOS for access within the tap (ADR 0040).
 - **`player`**: `Player`, the headless facade over one loaded recording. Its methods take plain
   seconds and degrees, as a page gives them; the core's unit types start inside it. It loads, unloads,
   relays the session's states as media-element events (`SessionRelay`, `transportEventsFor`),
   ticks the session
   from a `FrameLoop`, keeps the canvas sized (`DrawingBufferFit`, whose ratio cap the quality sets), and owns the settings (view and view
-  mode in `PlayerView`, stabilization, gain matching and quality in `PictureSettings`, sound in
-  `PlayerSound`, loop) across loads (ADR 0016). It and its parts announce through one `Outbox`,
+  mode in `PlayerView`, which also keeps the device's hold on the view, motion look in
+  `MotionLook`, which hears the sensor only while it turns something, stabilization, gain
+  matching and quality in `PictureSettings`, sound in `PlayerSound`, autoplay and loop in
+  `AutomaticStarts`) across loads (ADR 0016). It and its parts announce through one `Outbox`,
   so a change is heard once it is whole (ADR 0021). Its
   life with a recording is one `PlayerPhase`. The element drives it; the embed bridge drives the element.
 - **`element`** and **`controls`**: `GyroViewElement` is `<gyro-view>`: attributes parsed by
@@ -325,7 +336,7 @@ The composition root and the user-facing element, in three layers.
   every label, menu choice and failure text it names, from `messages` (English defaults, the
   page's own through the element's `messages` property). `bindControlsBar` binds `TransportButtons`, the view buttons (Reset view,
   Fullscreen), `SeekBar` (key-frame
-  scrubbing), `SoundControls` and `PictureMenus` (the view mode and stabilization menus, each a
+  scrubbing), `SoundControls`, `MotionLookButton` (the motion look toggle) and `PictureMenus` (the view mode and stabilization menus, each a
   `ChoiceMenu` behind a button that shows the icon of the choice in effect; stabilization is offered
   only for a recording with a gyro in a stitched view mode). How much the bar shows follows the
   player's width and the pointer (ADR 0028). The bar's markup and styles come from `controlsMarkup` and
@@ -340,7 +351,7 @@ The composition root and the user-facing element, in three layers.
   and, when embedded, bridges to the embedding page.
 - `protocol/` is the versioned `postMessage` vocabulary (`hello`, `command`, `result`, `event`),
   validated on receipt, with the origin rules. `frame/EmbedHost` runs commands on the element
-  and forwards its events; `bridge/EmbedHandle` is the embedding page's side, the player API as
+  and forwards its events, `viewchange` at most once a frame (`OncePerFrame`); `bridge/EmbedHandle` is the embedding page's side, the player API as
   promises with a state mirror; both talk through an `Endpoint` (a window pair in production, a
   `MessagePort` in tests). What `embed.js` bundles (`snippet/`, `protocol/`, `bridge/`) never
   imports the player's code or the frame side (dependency-cruiser). ADR 0010.

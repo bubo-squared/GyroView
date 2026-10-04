@@ -19,6 +19,8 @@ Nothing is uploaded, and there is nothing to install or embed.
   exposure matching between the lenses; a normal view to look around in, the whole sphere as
   an equirectangular panorama, or the two lens images raw, side by side or stacked.
 - Stabilizes from the gyro: lock, horizon or follow, sampled at each frame's mid-exposure.
+- On a phone or tablet, motion look turns the normal view as the device turns: the screen is a
+  window into the recording, its horizon level with the real one.
 - Ships as the npm package `@bubo-squared/gyroview`, as an element (`gyro-view.js`) and as an
   iframe (`embed.html` plus `embed.js`) with the same API and events.
 
@@ -101,21 +103,22 @@ effect, and `crossOrigin` reads `null` while its attribute is absent, as a video
 
 Methods and properties:
 
-| Member                                        | What it does                                                                                    |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `load()`                                      | Resolves once the recording is ready; an element out of the page loads once connected.          |
-| `loadFiles({ main, second })`                 | Plays local files in place of `src`, until `src` or `src2` change.                              |
-| `play()`, `pause()`, `stop()`                 | As a video's; `play()` waits for a load in progress.                                            |
-| `seek(seconds)`, `currentTime`                | Seeks exactly.                                                                                  |
-| `scrub(seconds)`                              | Seeks to the key frame at or before the time: quick to show while a seek bar is dragged.        |
-| `duration`, `paused`, `status`, `metadata`    | What is loaded and where playback is.                                                           |
-| `view`, `lookAt(yaw, pitch)`, `resetView()`   | Where the normal view looks.                                                                    |
-| `zoom(steps, focus?)`                         | Zooms toward a point of the picture given as fractions of its size, or about the centre.        |
-| `setViewMode(mode)`, `setStabilization(mode)` | As the attributes; an unknown mode is refused.                                                  |
-| `setQuality(quality)`                         | As the attribute; an unknown quality is refused.                                                |
-| `volume`                                      | 0 to 1, where the platform lets a page set it.                                                  |
-| `messages`                                    | Every word the element shows (below).                                                           |
-| `toggleFullscreen()`                          | Fills the screen through the Fullscreen API, or pins the element over the page where it cannot. |
+| Member                                                | What it does                                                                                    |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `load()`                                              | Resolves once the recording is ready; an element out of the page loads once connected.          |
+| `loadFiles({ main, second })`                         | Plays local files in place of `src`, until `src` or `src2` change.                              |
+| `play()`, `pause()`, `stop()`                         | As a video's; `play()` waits for a load in progress.                                            |
+| `seek(seconds)`, `currentTime`                        | Seeks exactly.                                                                                  |
+| `scrub(seconds)`                                      | Seeks to the key frame at or before the time: quick to show while a seek bar is dragged.        |
+| `duration`, `paused`, `status`, `metadata`            | What is loaded and where playback is.                                                           |
+| `view`, `lookAt(yaw, pitch)`, `resetView()`           | Where the normal view looks.                                                                    |
+| `motionLook`, `startMotionLook()`, `stopMotionLook()` | Motion look (below): `on`, `off` or `unavailable`; start it from a tap's handler.               |
+| `zoom(steps, focus?)`                                 | Zooms toward a point of the picture given as fractions of its size, or about the centre.        |
+| `setViewMode(mode)`, `setStabilization(mode)`         | As the attributes; an unknown mode is refused.                                                  |
+| `setQuality(quality)`                                 | As the attribute; an unknown quality is refused.                                                |
+| `volume`                                              | 0 to 1, where the platform lets a page set it.                                                  |
+| `messages`                                            | Every word the element shows (below).                                                           |
+| `toggleFullscreen()`                                  | Fills the screen through the Fullscreen API, or pins the element over the page where it cannot. |
 
 Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewElementEventMap`:
 
@@ -128,6 +131,7 @@ Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewEle
 | `seeking`, `seeked`                                   | seconds                   | Around a seek.                                                                                                       |
 | `frame`                                               | seconds                   | Right after each picture is drawn.                                                                                   |
 | `viewchange`, `viewmodechange`, `stabilizationchange` | the view, mode or setting | Whatever changed it.                                                                                                 |
+| `motionlookchange`                                    | the motion look state     | Turned on or off, or found available or not.                                                                         |
 | `qualitychange`                                       | the quality               | Whatever changed it.                                                                                                 |
 | `volumechange`                                        | `{ volume, isMuted }`     | Whatever changed it.                                                                                                 |
 | `warning`                                             | `{ code, message }`       | Something the player worked around (below).                                                                          |
@@ -136,16 +140,32 @@ Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewEle
 A `warning`'s code says what the player worked around: `recording-degraded` for missing or
 damaged data such as no gyro or an unverified IMU frame, `no-sound` for a silent clock,
 `autoplay-blocked`, `playback-failed` for a refused start, a seek bar position it could not
-show or a loop that could not restart, `ignored-attribute` for a value it does not know, and
-`refused-property` for a property set before the element was defined.
+show or a loop that could not restart, `ignored-attribute` for a value it does not know,
+`refused-property` for a property set before the element was defined, `motion-look-refused` when
+the viewer or an iframe's `allow` refused the device's attitude (motion look is then
+unavailable), and `motion-look-needs-gesture` when motion look was started outside a tap.
 
 Controls: over the bottom of the picture, a seek bar above play, mute with a volume slider, the
 time, the Stabilization and View buttons (each showing the icon of the choice in effect and
-opening a menu of the choices, each with its icon and a line describing it), Reset view and
-Fullscreen. They fit the player's own width, not the page's: a narrower player gives up the
-volume slider and shows its menus over the whole player, then gives up the time and Reset view in
-turn. On touch every target is 44 pixels and the volume is left to the device. Stabilization is
-offered only for a recording with a gyro, in the two stitched view modes.
+opening a menu of the choices, each with its icon and a line describing it), the motion look
+toggle, Reset view and Fullscreen. They fit the player's own width, not the page's: a narrower
+player gives up the volume slider and shows its menus over the whole player, then gives up the
+time, Reset view and the motion look toggle in turn. On touch every target is 44 pixels and the
+volume is left to the device. Stabilization is offered only for a recording with a gyro, in the
+two stitched view modes; the motion look toggle only in the normal view, on a device that reports
+its attitude.
+
+Motion look: on a phone or tablet the toggle lets the device turn the normal view, as a window
+into the recording held up to look through: turning it turns the view, tilting it looks up and
+down, and rolling it keeps the horizon level with the real one (the recording's own horizon is
+level where stabilization levels it, in `lock` and `horizon`). While it is on, a sideways drag or
+the Left and Right arrows turn the heading, the pitch stays the device's, a pinch zooms about the
+centre, and Reset view looks ahead at the default zoom; a page's `lookAt` or `yaw` sets the
+heading, its `pitch` is left to the device. iOS asks the viewer for access at the first press,
+and only during a press: a page with its own button calls `startMotionLook()` from its click
+handler. It needs a secure context, as the player does, and inside an iframe the `allow` below.
+`viewchange` fires as the device turns, while the roll it gives the view stays inside the
+player.
 
 Keyboard: space or K play/pause, J and L seek, S stops, arrows look around (Shift + arrows
 seek), plus and minus zoom, 0 resets the view, M mutes, F fills the screen, Escape closes an
@@ -210,11 +230,13 @@ the capture phase: `container.addEventListener('error', listener, true)`.
 </script>
 ```
 
-`GyroView.embed` puts an `<iframe allow="fullscreen; autoplay">` pointing at `embed.html`
+`GyroView.embed` puts an `<iframe allow="fullscreen; autoplay; accelerometer; gyroscope; magnetometer">` pointing at `embed.html`
 in the container and returns the same API as the element, as promises over `postMessage`
 (`play`, `pause`, `stop`, `seek`, `scrub`, `lookAt`, `resetView`, `zoom`, `setViewMode`,
 `setStabilization`, `setVolume`, `setMuted`, `setLoop`, `load`, `getState`), the player's events
-but `frame` on `handle.events`, and a `state` mirror. The frame talks only to the page that embedded it and
+but `frame` on `handle.events` (`viewchange` at most once a frame), and a `state` mirror, `motionLook` included; motion
+look starts only from the frame's own toggle, since a tap on the page does not reach the frame.
+The frame talks only to the page that embedded it and
 the page only to the frame. Moving the container reloads the iframe, as the browser does with any
 iframe: it starts again from the embed options, and commands it had not answered are asked again.
 Without the snippet, an iframe of

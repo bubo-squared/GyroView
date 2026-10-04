@@ -99,8 +99,10 @@ all.
 
 ## Embedding
 
-The iframe needs `allow="fullscreen; autoplay"` to fill the screen and to start muted
-playback; `GyroView.embed` sets it. The frame trusts one embedding origin: the one the snippet
+The iframe needs `allow="fullscreen; autoplay; accelerometer; gyroscope; magnetometer"` to fill
+the screen, to start muted playback and to read the device's attitude for motion look (Chromium
+asks for the first two sensors in a cross-origin frame, WebKit for all three); `GyroView.embed`
+sets it. A page's own `Permissions-Policy` header must not refuse those sensors either. The frame trusts one embedding origin: the one the snippet
 puts in the URL (`origin=`), or the referrer's. Frames opened directly play standalone.
 
 The frame fetches the recordings itself, so their host must allow the frame's origin (see

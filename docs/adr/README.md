@@ -43,3 +43,4 @@ new record takes the next number and a line here.
 - [ADR 0037](0037-an-hevc-codec-string-is-read-from-the-sps-where-the-header-is-blank.md): An HEVC track's codec string is the core's, read from the SPS where the configuration's header is blank
 - [ADR 0038](0038-the-picture-stands-as-the-camera-was-mounted.md): The picture stands as the camera was mounted, a quarter turn read from its gravity
 - [ADR 0039](0039-the-view-opens-where-studio-centres-the-recording.md): The view opens where Insta360 Studio centres the recording
+- [ADR 0040](0040-the-phone-is-a-window-into-the-normal-view.md): The phone is a window into the normal view: motion look turns it by the device's whole attitude

@@ -3,6 +3,26 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+New:
+
+- Motion look: on a phone or tablet, a toggle in the normal view lets the device turn the view, the
+  screen a window into the recording with its horizon level with the real one (ADR 0040). The
+  element and the player have `motionLook` (`on`, `off` or `unavailable`), `startMotionLook()`,
+  which iOS honours only from a tap's handler, and `stopMotionLook()`; `motionlookchange` reports
+  it, and the warnings `motion-look-refused` and `motion-look-needs-gesture` say why it did not
+  start.
+
+What a page may notice:
+
+- `PlayerEvents`, `GyroViewElementEventMap` and `WarningCode` have the new event and codes; a
+  record keyed on every event or code needs them.
+- `view` and `viewchange` give a fresh object of `yaw`, `pitch` and `fieldOfView` each time.
+- The iframe the snippet creates allows `accelerometer; gyroscope; magnetometer`; a hand-written
+  iframe needs them for motion look. Over the bridge, `viewchange` comes at most once every 16 ms,
+  the latest, and always before the result of the command that caused it.
+
 ## 0.5.0 (2026-10-03)
 
 New:

@@ -22,7 +22,46 @@ Changed (ADR 0042, the player keeps a media element's promises):
 - `load()` with `autoplay` resolves once the recording is ready; autoplay starts it then, a
   refusal still a warning.
 
+Changed:
+
+- Chrome and Edge 111 are the oldest that play: the player sorts with `toSorted` (Chrome 110)
+  and colours its controls with `color-mix()` (Chrome 111). The README said 107. Safari stays
+  16.4 on a Mac and 17.1 on an iPhone or iPad.
+- `Player.events` and the iframe handle's `events` are for listening only: their types no longer
+  offer `emit` or `removeAll`, which let a page forge an event or silence every listener.
+- `Player.togglePlayback()` pauses, or starts and reports a refused start as a `warning`;
+  `attachViewGestures` and `attachKeyboard` take it in place of `isPaused`, `pause`, `play` and
+  `events`.
+- `el.messages` is read-only; a page changes the words through the `messages` setter. The
+  defaults could be changed in place for every player on the page.
+- `ignored-attribute` and `refused-property` arrive a microtask after the element is defined or
+  connected, so a listener added right after `define()` hears them.
+- The iframe handle's `error` event is a `GyroViewError` with its `category`, as its rejected
+  promises were. A frame that loads and never answers fails the commands that wait on it with
+  the new `usage` code `embed-unreachable`, after 10 seconds, instead of leaving them waiting; a
+  command a frame of an earlier build does not know rejects with `invalid-argument`.
+- `window.GyroView` from `embed.js` offers `embed` alone; `EmbedHandle` is a type.
+- The hosted `gyro-view.js` is the package's `standalone.js`, the whole API with it. The
+  standalone file, `gyro-view.js` and the embed page carry Three.js's and mediabunny's license
+  notices, about 1 kB more compressed. `embed.js` is smaller, about 11 kB.
+
 Fixed:
+
+- A new recording, a failed one or a removed `src` no longer shows the last recording's final
+  frame under the spinner, the error or nothing at all.
+- The Fullscreen button says whether the player fills the screen (`aria-pressed`, and an icon
+  to leave), in the browser's fullscreen and in the pinned fill alike. The Escape that leaves
+  it goes no further, so a dialog around the player stays open. A `popover` attribute the page
+  set on the element stays when the player leaves fullscreen.
+- A removed element gives up its WebGL context at once, rather than holding it until garbage
+  collection, where pages that create a player per preview could run into the browser's limit
+  of contexts. A context the browser took away between recordings, as an iPhone may in a tab
+  left in the background, gets a fresh canvas at the next load; every later load failed with
+  `render-unavailable`.
+- At a fractional pixel ratio (125 or 150 percent) the canvas takes its own device pixels in
+  Chromium, so the picture is no longer softened by a pixel's rounding.
+- F without a Fullscreen API (iPhone with a keyboard) does nothing rather than throwing, and a
+  refused fullscreen is no unhandled rejection.
 
 - Split recordings (two files, older cameras): the file that carries the trailer is lens 0, so
   files renamed, or served from URLs that hide `_00_` and `_10_`, are no longer stitched with

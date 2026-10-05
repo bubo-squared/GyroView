@@ -81,8 +81,9 @@ start`; slot k describes record type k, so the index holds as many slots as its 
   needs; zero slots are empty). Most records sit at file offsets aligned to 128 KiB with zero padding
   between them (the info record and the small record 0x0a do not), so they cannot be walked
   contiguously.
-- Contiguous layout (older firmware, unverified): no index; walk headers backwards from EOF-78
-  until the payload start.
+- Contiguous layout (older firmware; verified on the ONE R trailer of the insta360py fixture,
+  `test/fixtures/thirdparty/insta360py`): no index; walk headers backwards from EOF-78 until the
+  payload start.
 
 Record ids seen or documented: 1 info, 2 thumbnail, 3 gyro, 4 exposure, 5 thumbnail extended,
 6 per-frame timestamps, 7 GPS, 0x09 0x0a 0x0b 0x0c 0x16 0x1b 0x1c 0x1d (X5, purpose unknown),

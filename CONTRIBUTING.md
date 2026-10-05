@@ -157,9 +157,14 @@ describes the components layer by layer:
 a version tag is pushed:
 
 1. Set the new version in `apps/library/package.json` (semantic versioning, 0.x while the API
-   settles) and commit it.
-2. Tag that commit `v<version>` and push the tag (`git push origin v<version>`). The workflow
-   checks that the tag names the version, runs `pnpm verify` and publishes with provenance.
+   settles), turn the changelog's `## Unreleased` into `## <version> (<date>)`, and merge both
+   into main.
+2. Tag main's commit `v<version>` and push the tag (`git push origin v<version>`). A first job
+   checks that the tag names the version, that main holds the tagged commit and that the
+   changelog has a heading for the version, then runs `pnpm verify` and packs the package; it
+   has no right to publish, though every dev dependency runs in it. Once it passes, a second
+   job waits for the `npm` environment's approval and publishes that tarball with provenance,
+   installing nothing.
 
 Once, for the first version: npm trusts a workflow only for a package that already exists.
 

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { boxesIn } from './movieBoxes';
 import { sampleTimingOf } from './sampleTiming';
-import { trackBoxesOf } from './trackHeaders';
-import { encodeBox } from '../../../testing/encodeBox';
+import { trackBoxesOf, type TrackBoxes } from './trackHeaders';
+import { encodeBox, encodeFullBox } from '../../../testing/encodeBox';
 import {
   buildMp4File,
   type FixtureEdit,
@@ -47,20 +47,49 @@ function withOffsets(offsets: readonly number[], version: 'version-0' | 'version
   });
 }
 
-function timingOf(
-  fixture: FixtureTrack,
-  headerVersion: 0 | 1 = 0,
-): ReturnType<typeof sampleTimingOf> {
+function trackBoxesFor(fixture: FixtureTrack, headerVersion: 0 | 1 = 0): TrackBoxes {
   const file = buildMp4File([fixture], { movieTimescale: MOVIE_TIMESCALE, headerVersion });
   const [movie] = boxesIn(file.bytes.subarray(file.movieBox.offset, file.movieBox.end));
   const trak = boxesIn(movie?.body ?? new Uint8Array()).find((box) => box.type === 'trak');
   if (!trak) throw new Error('no track');
-  return sampleTimingOf(trackBoxesOf(trak), {
+  return trackBoxesOf(trak);
+}
+
+function timingOf(
+  fixture: FixtureTrack,
+  headerVersion: 0 | 1 = 0,
+): ReturnType<typeof sampleTimingOf> {
+  return sampleTimingOf(trackBoxesFor(fixture, headerVersion), {
     media: TIMESCALE,
     movie: MOVIE_TIMESCALE,
     sampleCount: fixture.samples.length,
   });
 }
+
+/**
+ * The fixture's boxes with `table` in its sample table, in place of one of its type.
+ */
+function withTable(fixture: FixtureTrack, table: Uint8Array): TrackBoxes {
+  const boxes = trackBoxesFor(fixture);
+  const [replacement] = boxesIn(table);
+  if (!replacement) throw new Error('no table');
+  const others = boxes.sampleTable.filter((box) => box.type !== replacement.type);
+  return { ...boxes, sampleTable: [...others, replacement] };
+}
+
+/**
+ * A table box of one run: `count` samples of `value`.
+ */
+function oneRun(type: 'stts' | 'ctts', count: number, value: number): Uint8Array {
+  const payload = new Uint8Array(12);
+  const view = new DataView(payload.buffer);
+  view.setUint32(0, 1);
+  view.setUint32(4, count);
+  view.setUint32(8, value);
+  return encodeFullBox(type, { version: 0 }, payload);
+}
+
+const MOST_A_COUNT_SAYS = 0xff_ff_ff_ff;
 
 function withEdits(edits: readonly FixtureEdit[]): ReturnType<typeof sampleTimingOf> {
   return timingOf(track({ edits }));
@@ -133,14 +162,27 @@ describe('sampleTimingOf', () => {
   });
 
   it('refuses a time-to-sample table that counts other samples than the sizes do', () => {
-    const file = buildMp4File([track()], { movieTimescale: MOVIE_TIMESCALE });
-    const [movie] = boxesIn(file.bytes.subarray(file.movieBox.offset, file.movieBox.end));
-    const trak = boxesIn(movie?.body ?? new Uint8Array()).find((box) => box.type === 'trak');
-    if (!trak) throw new Error('no track');
     const timescales = { media: TIMESCALE, movie: MOVIE_TIMESCALE, sampleCount: 7 };
-    expect(captureError(() => sampleTimingOf(trackBoxesOf(trak), timescales))).toMatchObject({
+    expect(captureError(() => sampleTimingOf(trackBoxesFor(track()), timescales))).toMatchObject({
       code: 'unsupported-container',
       message: expect.stringContaining('times 6 samples of a track that has 7') as string,
     });
+  });
+
+  it('refuses a run counting more samples than the track has before allocating them', () => {
+    const boxes = withTable(track(), oneRun('stts', MOST_A_COUNT_SAYS, DELTA));
+    const timescales = { media: TIMESCALE, movie: MOVIE_TIMESCALE, sampleCount: 6 };
+    expect(captureError(() => sampleTimingOf(boxes, timescales))).toMatchObject({
+      code: 'unsupported-container',
+      message: expect.stringContaining(`times ${MOST_A_COUNT_SAYS} samples`) as string,
+    });
+  });
+
+  it('reads composition offsets for the samples of the track alone, however far a run reaches', () => {
+    const boxes = withTable(track(), oneRun('ctts', MOST_A_COUNT_SAYS, DELTA));
+    const timescales = { media: TIMESCALE, movie: MOVIE_TIMESCALE, sampleCount: 6 };
+    const timing = sampleTimingOf(boxes, timescales);
+    expect(timing.timestamps).toHaveLength(6);
+    expect(timing.timestamps[0]).toBe(DELTA / TIMESCALE);
   });
 });

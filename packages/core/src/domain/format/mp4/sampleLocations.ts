@@ -27,6 +27,13 @@ export interface SampleLocations {
 const FIRST_CHUNK_NUMBER = 1;
 
 /**
+ * More samples than a day of video at a hundred frames a second, far beyond any file a camera
+ * writes: a size table counting more is damaged or hostile, and is refused before columns that
+ * long are allocated. A table that shares one size states its count in four bytes alone.
+ */
+const MOST_SAMPLES_OF_A_TRACK = 8_640_000;
+
+/**
  * The sample locations a sample table's boxes describe: the sizes of `stsz`, laid out one after
  * another in the chunks `stsc` fills, which start where `stco` or `co64` says.
  */
@@ -45,6 +52,9 @@ function sampleSizesOf(box: Mp4Box): Float64Array {
   const { content } = fullBoxOf(box);
   const shared = content.uint32BeAt(SAMPLE_SIZE_SHARED_OFFSET);
   const count = content.uint32BeAt(SAMPLE_SIZE_COUNT_OFFSET);
+  if (count > MOST_SAMPLES_OF_A_TRACK) {
+    throw unreadableMovie(`counts ${count} samples in one track, more than any recording holds`);
+  }
   if (shared !== SAMPLE_SIZE_OF_EACH) return new Float64Array(count).fill(shared);
   if (SAMPLE_SIZE_ENTRIES_OFFSET + count * SAMPLE_SIZE_ENTRY_SIZE > content.length) {
     throw unreadableMovie(`lists ${count} sample sizes that do not fit in its box`);

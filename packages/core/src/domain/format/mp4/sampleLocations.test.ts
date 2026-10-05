@@ -92,6 +92,18 @@ describe('sampleLocationsOf', () => {
     });
   });
 
+  it('refuses a shared size for more samples than any recording holds, before allocating them', () => {
+    const sizes = encodeFullBox(
+      'stsz',
+      { version: 0 },
+      Uint8Array.of(0, 0, 0, 1, 0xff, 0xff, 0xff, 0xff),
+    );
+    expect(captureError(() => sampleLocationsOf(boxesIn(sizes)))).toMatchObject({
+      code: 'unsupported-container',
+      message: expect.stringContaining('more than any recording holds') as string,
+    });
+  });
+
   it('refuses a table without chunk offsets', () => {
     const placement: ChunkPlacement = { offsets: [0], sampleCounts: [1], offsetSize: '32-bit' };
     const boxes = sampleTableBoxes(trackOfSizes([5]), placement).filter(

@@ -150,7 +150,8 @@ time, the Stabilization and View buttons (each showing the icon of the choice in
 opening a menu of the choices, each with its icon and a line describing it), the motion look
 toggle, Reset view and Fullscreen. They fit the player's own width, not the page's: a narrower
 player gives up the volume slider and shows its menus over the whole player, then gives up the
-time, Reset view and the motion look toggle in turn. On touch every target is 44 pixels and the
+time and Reset view in turn, and, while the motion look toggle shows, the Stabilization menu
+rather than the toggle. On touch every target is 44 pixels and the
 volume is left to the device. Stabilization is offered only for a recording with a gyro, in the
 two stitched view modes; the motion look toggle only in the normal view, on a device that reports
 its attitude.
@@ -234,7 +235,7 @@ the capture phase: `container.addEventListener('error', listener, true)`.
 in the container and returns the same API as the element, as promises over `postMessage`
 (`play`, `pause`, `stop`, `seek`, `scrub`, `lookAt`, `resetView`, `zoom`, `setViewMode`,
 `setStabilization`, `setVolume`, `setMuted`, `setLoop`, `load`, `getState`), the player's events
-but `frame` on `handle.events` (`viewchange` at most once a frame), and a `state` mirror, `motionLook` included; motion
+but `frame` on `handle.events`, and a `state` mirror, `motionLook` included; motion
 look starts only from the frame's own toggle, since a tap on the page does not reach the frame.
 The frame talks only to the page that embedded it and
 the page only to the frame. Moving the container reloads the iframe, as the browser does with any

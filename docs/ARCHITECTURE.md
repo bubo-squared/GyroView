@@ -176,7 +176,11 @@ Use cases that orchestrate the domain through ports.
   boxes and the records' places for the inspector, which playing never needs. The result,
   `Recording`, hands out the large gyro and exposure records on demand, read by the format's
   `TrailerRecords`. `locateOtherLensFile` looks for the other lens's file of a split-file pair.
-  `inspectRecording` condenses a file into a `RecordingInspection`, plain data for a report or a
+  `readRecordingFiles` reads the files a page gives as one recording, following the data: its
+  metadata from the file that carries the trailer, every file's sample table and codecs, the
+  other lens file of a lone half (before its tracks are read when the info record says the
+  recording is split, once they fall short otherwise), then `detectLensLayout` and the
+  calibration, which it requires. `inspectRecording` condenses a file into a `RecordingInspection`, plain data for a report or a
   page: its boxes and records, the info record, the calibration and summaries of the gyro and
   exposure records.
 - `playback/DecodePipeline` runs one lockstep decode of all frame sources from a time: one
@@ -291,11 +295,10 @@ One package per external technology; none imports another.
 
 The composition root and the user-facing element, in three layers.
 
-- **`composition`**: `openRecording` is the use case that opens what a `PlayerSource` names,
-  following the data: `readInputs` reads the trailer, and every input's sample table and codecs,
-  then `detectLensLayout` (fetching the other lens file of a lone split file when the server has
-  it: before reading its tracks when the info record says the recording is split, after they
-  fall short otherwise), calibration required, one download a file (ADR 0029), the decode probe
+- **`composition`**: `openRecording` is the use case that opens what a `PlayerSource` names:
+  `readInputs` opens every input through the ports and hands them to the core's
+  `readRecordingFiles`, with a lookup of the other lens file beside a lone URL; then one
+  download a file (ADR 0029), the decode probe
   through them (an undecodable recording is an error; nothing plays in its place, ADR 0017),
   then the core's `timeRecording`. The downloads read only what the picture waits for until the
   pipeline's session first flows, then read ahead.

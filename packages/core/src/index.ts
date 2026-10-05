@@ -20,6 +20,14 @@ export { timeRecording, type RecordingTiming } from './application/recording/tim
 export type { MotionSetup } from './application/recording/motionOf';
 export { locateOtherLensFile } from './application/recording/locateOtherLensFile';
 export { readSampleTable, type ReadSampleTable } from './application/recording/readSampleTable';
+export {
+  readRecordingFiles,
+  type FileContents,
+  type FileReading,
+  type ReadFile,
+  type RecordingFile,
+  type RecordingFiles,
+} from './application/recording/readRecordingFiles';
 
 // Ports and the values they exchange
 export type { RandomAccessSource } from './ports/RandomAccessSource';

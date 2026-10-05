@@ -238,7 +238,7 @@ export class EmbedHandle {
    * checked, so the payload is trusted to be that event's (ADR 0010).
    */
   private onEvent(message: EventMessage): void {
-    const detail = message.detail as EmbedEvents[ForwardedEventName];
+    const detail = detailOf(message);
     this.stateValue = stateAfter(this.stateValue, message.name, detail);
     this.events.emit(message.name, detail);
   }
@@ -250,6 +250,16 @@ export class EmbedHandle {
     if (result.isOk) pending.resolve(result.value);
     else pending.reject(errorFrom(result.error));
   }
+}
+
+/**
+ * An error crosses the channel as its code and message; the page hears it as the player's, so a
+ * page choosing a fallback by its category can (ADR 0030).
+ */
+function detailOf(message: EventMessage): EmbedEvents[ForwardedEventName] {
+  return message.name === 'error'
+    ? errorFrom(message.detail as SerializedError)
+    : (message.detail as EmbedEvents[ForwardedEventName]);
 }
 
 function errorFrom(error: SerializedError): GyroViewError {

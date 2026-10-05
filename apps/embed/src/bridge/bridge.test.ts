@@ -1,3 +1,4 @@
+import { GyroViewError } from '@gyroview/core';
 import { defineGyroView, type GyroViewElement } from '@gyroview/player';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
@@ -220,7 +221,7 @@ describe('the embed bridge over a message channel', () => {
     expect(element.view.yaw).toBe(0);
   });
 
-  it('forwards errors as plain data and fails pending commands when destroyed', async () => {
+  it('forwards errors as GyroView errors, category included, and fails pending commands when destroyed', async () => {
     const { handle } = bridge();
     const failure = new Promise<unknown>((resolve) => {
       handle.events.on('error', resolve);
@@ -229,8 +230,11 @@ describe('the embed bridge over a message channel', () => {
       code: 'source-unreadable',
       category: 'source',
     });
-    expect(await failure).toEqual({
+    const heard = await failure;
+    expect(heard).toBeInstanceOf(GyroViewError);
+    expect(heard).toMatchObject({
       code: 'source-unreadable',
+      category: 'source',
       message: expect.stringContaining('.missing') as string,
     });
     expect(handle.state.status).toBe('error');

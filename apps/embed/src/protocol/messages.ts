@@ -105,13 +105,10 @@ const FORWARDED: Readonly<Record<ForwardedEventName, true>> = {
 export const FORWARDED_EVENT_NAMES = keysOf(FORWARDED);
 
 /**
- * Events as the embedding page hears them: the player's, with errors as plain data.
+ * Events as the embedding page hears them: the player's, the error rebuilt from the code and
+ * message that cross the channel, with its category.
  */
-export type EmbedEvents = {
-  readonly [Name in ForwardedEventName]: Name extends 'error'
-    ? SerializedError
-    : PlayerEvents[Name];
-};
+export type EmbedEvents = Pick<PlayerEvents, ForwardedEventName>;
 
 export interface EventMessage {
   readonly protocol: typeof PROTOCOL;

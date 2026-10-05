@@ -419,7 +419,8 @@ half second the gain-match pass measures the seam and adjusts the lens gains.
 **Embedding.** `GyroView.embed` builds the frame URL from the options and this page's origin,
 creates the iframe and an `EmbedHandle` listening only to the frame; the frame's `EmbedHost`
 says `hello` with the element's state, which the handle's mirror starts from, then runs
-validated commands on its element and forwards the element's events as plain data.
+validated commands on its element and forwards the element's events as plain data; the handle
+rebuilds an error from its code and message, so the page hears it with its category.
 
 ## Rules that keep it this way
 

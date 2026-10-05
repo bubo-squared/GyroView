@@ -36,7 +36,10 @@ keeps the recording as it was.
 
 One small extra render and an asynchronous read-back every half second while playing;
 measurements are skipped while one is in flight and a failed read-back (a lost context) is
-ignored until the next measurement, half a second of media later. Blown-out or black overlap bands leave the gains at one. The
+ignored until the next measurement, half a second of media later. Black channels keep unit gain;
+directions either lens shows blown out are left out of the means, and a band with nothing left to
+compare is not measured, the gains staying as they were (since 2026-10-05: before, only black
+was guarded, and flare in one lens's overlap re-exposed the other lens's whole hemisphere). The
 renderer's `setLensGains` also silences a lens for inspection: a gain of zero leaves the blend
 altogether, so the other lens fills the feather band alone and a lens-only render shows that lens
 as it is; the matcher overwrites the gains while it runs.

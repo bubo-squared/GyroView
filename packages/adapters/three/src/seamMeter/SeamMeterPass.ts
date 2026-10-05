@@ -57,7 +57,8 @@ export class SeamMeterPass implements SeamMeter {
   }
 
   /**
-   * Mean colour (0..1) each lens shows along the seam, or undefined when a lens images none of it.
+   * Mean colour (0..1) each lens shows along the seam where they can be compared, or undefined
+   * when they cannot be anywhere.
    */
   public async measure(): Promise<readonly Vector3[] | undefined> {
     try {

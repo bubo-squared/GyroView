@@ -3,6 +3,65 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+Changed (ADR 0042, the player keeps a media element's promises):
+
+- `seeked` comes once the first picture at the new position is drawn, as a video's does, rather
+  than the moment the seek was asked for; meanwhile the status is `seeking`, which pages could
+  not see before. A seek made while playing goes on playing after that picture, so `playing`
+  follows `seeked`. The spinner shows only once a seek or a wait has lasted 0.3 seconds.
+- At its natural end a recording fires `timeupdate`, `pause`, then `ended`; a page driving its
+  own play button from `play` and `pause` now sees it stop. With `loop`, the recording goes back
+  to the start without `ended`, `play`, `pause` or a buffering status at each turn.
+- `play()` resolves once playback runs. It rejects with the new `usage` codes `no-source` when
+  nothing is loaded or loading, and `play-interrupted` when a newer load, `unload()` or the
+  element's removal replaces the load it waited for; out of the document it waits for the
+  connection and the load that starts. A `play()` made while buffering after a seek resolves
+  once the clock runs.
+- `load()` with `autoplay` resolves once the recording is ready; autoplay starts it then, a
+  refusal still a warning.
+
+Fixed:
+
+- Split recordings (two files, older cameras): the file that carries the trailer is lens 0, so
+  files renamed, or served from URLs that hide `_00_` and `_10_`, are no longer stitched with
+  the lenses swapped. Names only break a tie.
+- Gain matching keeps the exposure of the lens the view opens facing, as ADR 0012 intends; since
+  0.5.0 (ADR 0039) it kept the lens behind the viewer and re-exposed the view in front. It also
+  compares the lenses only where neither is blown out, so flare in one lens no longer brightens
+  the other's whole hemisphere.
+- On a portrait screen the normal view spans at most 120 degrees from top to bottom; it spanned
+  up to 150, its edges stretched. `fov` still gives the field across.
+- A zoom toward the pointer keeps that point under the pointer in a rolled view (motion look).
+- A read-ahead range that failed during a short network outage is asked for again once
+  playback needs it, instead of failing playback later with `source-unreadable`.
+- Audio the browser evicts at the playhead, as a managed media source may, is fetched again, and
+  a full sound buffer makes room, instead of freezing the picture or failing.
+- Lens tracks whose frames never pair fail with `unsupported-layout` instead of playing to the
+  end over a still picture.
+- A scrub or seek to a key frame shows it at once; WebCodecs' whole-microsecond timestamps had
+  it waiting for the next frame.
+- A seek or scrub closes the previous decoders at once, instead of keeping them open beside the
+  new ones for a moment at every step of a drag.
+- A canvas whose WebGL context the browser took away fails the next load with
+  `render-unavailable` (the browser's side) instead of `invariant-violation`, and a frame larger
+  than the GPU's largest texture is refused with it instead of being shrunk on the CPU at every
+  upload.
+- After a lost context comes back, every shader is compiled at once, so switching view modes
+  stays instant.
+- The letterbox bars around a fitted picture are cleared, not stitched and painted black.
+- An HLG recording's colours past white are read as white, not brighter.
+- Damaged or hostile files fail with the recording's own codes (ADR 0030) instead of hanging,
+  exhausting memory or blaming the player: sample tables counting billions of samples, a
+  timescale of zero, a malformed sync sample table, a picture track without a decoder
+  configuration (`unsupported-container`, was `codec-unsupported`).
+- A metadata track the player does not play, an info field it only reports, or a calibration
+  string that parses but fits no camera no longer keeps a recording from opening; the next
+  calibration string is used.
+- Gyro slots a camera never wrote no longer add a "damaged gyro samples" warning to `ready`.
+- An HEVC sample with an empty NAL unit is no longer mistaken for a delta frame.
+
 ## 0.6.1 (2026-10-05)
 
 Fixed:

@@ -83,7 +83,7 @@ and the radial scale they are drawn at; each lens has a `LensModel` strategy (`M
 its parameters for the shader. The Mei model's distortion is `MeiDistortion`, families of terms
 by order evaluated by `distortMei`, and `scaledProjection` applies a radial scale to any model's
 parameters. `lensPose` gives the body-to-lens rotation from the calibration's yaw, pitch and
-roll (ADR 0008, ADR 0025). `gainMatch` holds the exposure-matching model (ADR 0012).
+roll (ADR 0008, ADR 0025).
 
 **`colour`: how a track's texels reach the display.** `TrackColour` is a video track's colour as
 its bitstream names it. `DisplayConversion` is the data of one way of showing a track's texels
@@ -91,7 +91,8 @@ on the SDR BT.709 canvas, chosen per frame source by `displayConversionsOf` thro
 every transfer: as recorded for SDR, HLG to SDR BT.709 for HLG (ADR 0033). `exposureSignalOf`
 and `shownOf` are its two stages around the exposure gain, the references the shader is held
 to; `matrixCorrectionOf` brings R′G′B′ a platform derived through another matrix back to the
-track's.
+track's. `gainMatch` holds the exposure-matching model, which scales the exposure signals of the
+lenses onto one another (ADR 0012).
 
 **`motion`: time and orientation.** `CaptureClock` relates the camera's microsecond clock to
 video time. `FrameTimes` and the frame time sources (exposure record, track

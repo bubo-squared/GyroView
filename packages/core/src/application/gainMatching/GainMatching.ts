@@ -1,4 +1,4 @@
-import { GainMatcher } from '../../domain/optics/gainMatch';
+import { GainMatcher } from '../../domain/colour/gainMatch';
 import type { SeamMeter } from '../../ports/SeamMeter';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { reportLater } from '../../shared/errors/reportLater';

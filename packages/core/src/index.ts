@@ -95,7 +95,7 @@ export {
 } from './domain/optics/LensCalibration';
 export type { LensModel, LensModelKind, LensProjectionParameters } from './domain/optics/LensModel';
 export { lensRotation, mirroredRoll } from './domain/optics/lensPose';
-export { DEFAULT_MAX_GAIN, gainsMatching } from './domain/optics/gainMatch';
+export { DEFAULT_MAX_GAIN, gainsMatching } from './domain/colour/gainMatch';
 export { clampView, DEFAULT_VIEW, isSameView, type ViewState } from './domain/view/ViewState';
 export {
   DEFAULT_PICTURE_QUALITY,

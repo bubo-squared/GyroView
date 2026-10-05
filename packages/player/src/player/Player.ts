@@ -15,7 +15,6 @@ import {
   type ViewMode,
 } from '@gyroview/core';
 
-import { cssSizeOf } from './DrawingBufferFit';
 import { ensureFinite, viewStateOf } from './ensureFinite';
 import { FrameLoop } from './FrameLoop';
 import { loadRecording, type LoadedRecording } from './loadRecording';
@@ -39,6 +38,7 @@ import { StatusAnnouncer } from './StatusAnnouncer';
 import { anglesOf } from './viewAngles';
 
 import { NO_ATTITUDE_SENSOR } from '../composition/attitudeSensor';
+import { cssSizeOf } from '../composition/DrawingBufferFit';
 
 import type { PlayerMetadata } from '../PlayerMetadata';
 import type { PlayerSource } from '../PlayerSource';

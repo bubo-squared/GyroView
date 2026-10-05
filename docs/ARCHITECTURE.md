@@ -313,7 +313,8 @@ The composition root and the user-facing element, in three layers.
   supplies the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
   the renderer, which draws a changed setting once at the next animation frame
   (`AnimationFrameDraws` over the `FrameScheduler` the player's `FrameLoop` ticks on, ADR 0035),
-  the stabilizing and gain-matching sinks, the session. The player receives it as a
+  its drawing buffer kept to the canvas's size (`DrawingBufferFit`, whose pixel ratio cap the
+  quality sets), the stabilizing and gain-matching sinks, the session. The player receives it as a
   `PipelineFactory` and drives the `Pipeline` contract in `composition/ports`, never the
   adapters or the sinks: it sets the stabilization mode and gain matching as commands, which
   the pipeline routes to its sinks and shows at once; `createBrowserPlayer` joins the browser's ports and `buildPipeline` into a `Player`,
@@ -328,7 +329,7 @@ The composition root and the user-facing element, in three layers.
   seconds and degrees, as a page gives them; the core's unit types start inside it. It loads, unloads,
   relays the session's states as media-element events (`SessionRelay`, `transportEventsFor`),
   ticks the session
-  from a `FrameLoop`, keeps the canvas sized (`DrawingBufferFit`, whose ratio cap the quality sets), and owns the settings (view and view
+  from a `FrameLoop`, and owns the settings (view and view
   mode in `PlayerView`, which also keeps the device's hold on the view, motion look in
   `MotionLook`, which hears the sensor only while it turns something, stabilization, gain
   matching and quality in `PictureSettings`, sound in `PlayerSound`, the starts nobody awaits,

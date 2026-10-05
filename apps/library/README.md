@@ -216,13 +216,14 @@ loads a recording only for the player in view, removing `src` from the others.
   decode fails with the `codec-unsupported` error.
 
 The supported browsers, with the oldest versions that have what the player uses (WebCodecs,
-WebGL 2, container queries, and on iPhone `ManagedMediaSource` for the sound):
+WebGL 2, container queries, `color-mix()`, the ES2023 array methods, and on iPhone
+`ManagedMediaSource` for the sound):
 
-| Browser               | From | Notes                                                             |
-| --------------------- | ---- | ----------------------------------------------------------------- |
-| Chrome, Edge desktop  | 107  | HEVC is decoded in hardware from this version on (Linux: VA-API). |
-| Safari on macOS       | 16.4 |                                                                   |
-| Safari on iPhone/iPad | 17.1 | 16.4 to 17.0 play without sound, with a `warning` event.          |
+| Browser               | From | Notes                                                                                    |
+| --------------------- | ---- | ---------------------------------------------------------------------------------------- |
+| Chrome, Edge desktop  | 111  | The controls' colours need 111; HEVC is decoded in hardware from 107 on (Linux: VA-API). |
+| Safari on macOS       | 16.4 |                                                                                          |
+| Safari on iPhone/iPad | 17.1 | 16.4 to 17.0 play without sound, with a `warning` event.                                 |
 
 Firefox and Chrome on Android are untested: they play what their decoders accept.
 

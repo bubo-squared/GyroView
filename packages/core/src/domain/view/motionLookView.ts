@@ -93,7 +93,7 @@ export const MOTION_LOOK_VIEW: ViewModeRules = {
   isStabilized: true,
   canPan: () => true,
   pan: (framing, delta, { viewport }) =>
-    withView(framing, panView(framing.view, { x: delta.x, y: 0 }, viewport.width)),
+    withView(framing, panView(framing.view, { x: delta.x, y: 0 }, viewport)),
   turn: (framing, turn) => {
     const { view } = framing;
     return withView(framing, lookAt(view, degrees(view.yaw + turn.yaw), view.pitch));

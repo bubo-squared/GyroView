@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { aspectOfArea, directionAt, planeHalfExtentOf, rayThroughPicture } from './rectilinear';
+import {
+  aspectOfArea,
+  directionAt,
+  planeHalfExtentOf,
+  rayThroughPicture,
+  shownFieldOfView,
+} from './rectilinear';
 import { DEFAULT_VIEW } from './ViewState';
-import type { Vector3 } from '../../shared/math/Vector3';
-import { degrees } from '../../shared/units/angle';
+import { dotProduct, type Vector3 } from '../../shared/math/Vector3';
+import { degrees, radians, radiansToDegrees, type Degrees } from '../../shared/units/angle';
+
+const PORTRAIT_ASPECT = 390 / 844;
+
+/**
+ * The angle a rectilinear picture spans from top to bottom.
+ */
+function heightSpanOf(fieldOfView: Degrees, pictureAspect: number): Degrees {
+  const halfHeight = planeHalfExtentOf(fieldOfView) / pictureAspect;
+  return radiansToDegrees(radians(2 * Math.atan(halfHeight)));
+}
 
 function normalised([x, y, z]: Vector3): Vector3 {
   const length = Math.hypot(x, y, z);
@@ -31,6 +47,27 @@ describe('rectilinear pictures', () => {
 
   it('take the aspect of an area from the viewport it lies in', () => {
     expect(aspectOfArea({ x: 0, y: 0.25, width: 1, height: 0.5 }, 1)).toBe(2);
+  });
+
+  it("show the view's field of view across a picture at least as wide as tall", () => {
+    expect(shownFieldOfView(degrees(120), 16 / 9)).toBe(120);
+    expect(shownFieldOfView(degrees(90), 1)).toBe(90);
+  });
+
+  it('narrow it across a taller picture, so that its height spans no more than the widest field', () => {
+    const shown = shownFieldOfView(degrees(90), PORTRAIT_ASPECT);
+    expect(shown).toBeLessThan(90);
+    expect(heightSpanOf(shown, PORTRAIT_ASPECT)).toBeCloseTo(120, 9);
+  });
+
+  it('leave a field narrow enough for a taller picture as it is', () => {
+    expect(shownFieldOfView(degrees(50), PORTRAIT_ASPECT)).toBe(50);
+  });
+
+  it('look through the top of a taller picture no more than half the widest field up', () => {
+    const top = directionAt(DEFAULT_VIEW, { x: 0.5, y: 0 }, PORTRAIT_ASPECT);
+    const upward = radians(Math.acos(dotProduct(top, [0, 0, 1])));
+    expect(radiansToDegrees(upward)).toBeCloseTo(60, 9);
   });
 
   it('turn the ray into the camera body by the view', () => {

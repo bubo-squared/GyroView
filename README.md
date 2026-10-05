@@ -78,7 +78,7 @@ Attributes:
 | `stabilization`             | `off`, `lock`, `horizon`, `follow`        | How the gyro steadies the picture.                                                                                        |
 | `view-mode`                 | `raw-lenses`, `equirectangular`, `normal` | What the picture shows (below); the raw lenses until set.                                                                 |
 | `quality`                   | `fast`, `balanced`, `high`                | How finely the lens images are read and how many device pixels are drawn (below); `balanced` until set.                   |
-| `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees.                                                                   |
+| `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees; a taller player spans 120 top to bottom at most.                  |
 | `yaw`, `pitch`              | degrees                                   | Where the normal view looks: yaw positive to the right, pitch positive up; 0 where Insta360 Studio centres the recording. |
 
 The element opens on `raw-lenses`, the decoded lens images side by side or stacked, whichever

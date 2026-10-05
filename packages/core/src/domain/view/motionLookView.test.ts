@@ -150,7 +150,7 @@ describe('the normal view while the device holds it', () => {
       expect(framing.panorama).toEqual(EVERYTHING_MOVED.panorama);
       expect(framing.lenses).toEqual(EVERYTHING_MOVED.lenses);
     }
-    expect(MOTION_LOOK_VIEW.picture(held, SQUARE)).toEqual(rectilinearPicture(held));
+    expect(MOTION_LOOK_VIEW.picture(held, SQUARE)).toEqual(rectilinearPicture(held, SQUARE));
     expect(MOTION_LOOK_VIEW.isStabilized).toBe(true);
   });
 });

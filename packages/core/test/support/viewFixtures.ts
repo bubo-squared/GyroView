@@ -15,6 +15,11 @@ export const SQUARE: ViewContext = { viewport: { width: 900, height: 900 }, lens
  */
 export const WIDE: ViewContext = { viewport: { width: 1600, height: 900 }, lensCount: 2 };
 
+/**
+ * A phone held upright, 390 by 844 CSS pixels: taller than wide.
+ */
+export const PORTRAIT: ViewContext = { viewport: { width: 390, height: 844 }, lensCount: 2 };
+
 export const TILTED: ViewState = {
   yaw: degrees(90),
   pitch: degrees(30),

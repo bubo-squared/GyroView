@@ -66,4 +66,7 @@ popover's default border and padding, as they override the page's sizing.
   popover, after a move into such a dialog and through a resize of the viewport inside one, as
   a phone's turn makes; it removes a pinned element, removes one while the Fullscreen API's
   refusal is on its way, and pins one where the browser has no popovers. Each runs in Chromium
-  and WebKit; neither is iOS Safari, which a run on an iPhone is to confirm.
+  and WebKit.
+- On an iPhone (iOS 26, WebKit), a page with such a dialog had 0.6.0's pinned player fill the
+  dialog, the page around it, and this one fill the viewport exactly, upright and turned on its
+  side, in the top layer, and go back into the dialog on leaving.

@@ -1,5 +1,6 @@
 import { IDENTITY_MATRIX3, transformVector, type Matrix3 } from '../../shared/math/Matrix3';
-import type { Vector3 } from '../../shared/math/Vector3';
+import { clamp } from '../../shared/math/clamp';
+import { dotProduct, type Vector3 } from '../../shared/math/Vector3';
 import type {
   ColourPrimaries,
   MatrixCoefficients,
@@ -223,7 +224,7 @@ export function exposureSignalOf(conversion: DisplayConversion, texel: Vector3):
       return texel;
     }
     case 'hlg-to-sdr-bt709': {
-      const scene = mapRgb(texel, (channel) => hlgInverseOetf(Math.max(channel, 0)));
+      const scene = mapRgb(texel, (channel) => hlgInverseOetf(clamp(channel, 0, 1)));
       const light = transformVector(conversion.gamut, scene);
       return mapRgb(light, (channel) => Math.max(channel, 0) ** (1 / conversion.tone.exponent));
     }
@@ -267,10 +268,6 @@ function rolledOff(luminance: number, tone: ToneCurve): number {
   return over <= 0
     ? luminance
     : tone.kneeStart + over / (1 + over / (tone.ceiling - tone.kneeStart));
-}
-
-function dotProduct(left: Vector3, right: Vector3): number {
-  return left[0] * right[0] + left[1] * right[1] + left[2] * right[2];
 }
 
 function mapRgb([red, green, blue]: Vector3, map: (channel: number) => number): Vector3 {

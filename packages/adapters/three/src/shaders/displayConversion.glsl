@@ -53,8 +53,9 @@ bool isHlg(int i) {
 vec3 exposureSignalOf(int i, vec3 texel) {
   vec3 recorded = uLensMatrixCorrection[i] * texel;
   if (!isHlg(i)) return recorded;
-  // A corrected texel may fall just below black, which the square segment would make light.
-  recorded = max(recorded, 0.0);
+  // A corrected texel may fall just outside the signal: below black, which the square segment
+  // would make light, or past white, which the log segment would make brighter than HLG encodes.
+  recorded = clamp(recorded, 0.0, 1.0);
   vec3 scene = vec3(
     hlgInverseOetf(recorded.r),
     hlgInverseOetf(recorded.g),

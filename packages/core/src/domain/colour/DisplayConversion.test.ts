@@ -179,6 +179,13 @@ describe('exposureSignalOf', () => {
     expect(shownOf(AS_RECORDED, [0.2, 0.4, 0.6])).toEqual([0.2, 0.4, 0.6]);
   });
 
+  it('reads an HLG signal past white as white, the most light the signal encodes', () => {
+    // A matrix correction can lift a saturated channel a little past one.
+    expect(exposureSignalOf(HLG_TO_SDR_BT709, [0, 0, 1.02])).toEqual(
+      exposureSignalOf(HLG_TO_SDR_BT709, [0, 0, 1]),
+    );
+  });
+
   it('matches two HLG lenses a stop apart with one gain, in the shadows and the highlights', () => {
     for (const light of [0.02, 0.4]) {
       const brighter = exposureSignalOf(HLG_TO_SDR_BT709, grey(hlgOetf(light)));

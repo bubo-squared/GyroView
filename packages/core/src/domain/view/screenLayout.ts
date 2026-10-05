@@ -1,4 +1,5 @@
 import { ensureInvariant } from '../../shared/errors/GyroViewError';
+import { clamp } from '../../shared/math/clamp';
 import type { Rectangle, Size } from '../../shared/math/Rectangle';
 
 /**
@@ -117,6 +118,17 @@ export function boundsOf(rectangles: readonly ScreenRectangle[]): ScreenRectangl
   const top = Math.min(...rectangles.map((rectangle) => rectangle.y));
   const right = Math.max(...rectangles.map((rectangle) => rectangle.x + rectangle.width));
   const bottom = Math.max(...rectangles.map((rectangle) => rectangle.y + rectangle.height));
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+/**
+ * The part of a rectangle inside the viewport; none, at its nearest edge, for one wholly outside.
+ */
+export function clippedToScreen(rectangle: ScreenRectangle): ScreenRectangle {
+  const left = clamp(rectangle.x, 0, 1);
+  const top = clamp(rectangle.y, 0, 1);
+  const right = clamp(rectangle.x + rectangle.width, left, 1);
+  const bottom = clamp(rectangle.y + rectangle.height, top, 1);
   return { x: left, y: top, width: right - left, height: bottom - top };
 }
 

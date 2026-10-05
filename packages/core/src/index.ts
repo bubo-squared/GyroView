@@ -122,12 +122,13 @@ export {
 export { DEFAULT_FRAMING, isSameFraming, type Framing } from './domain/view/Framing';
 export { aspectOfArea, planeHalfExtentOf } from './domain/view/rectilinear';
 export { MAX_MAGNIFICATION, type Magnification } from './domain/view/magnification';
-export type {
-  EquirectangularPicture,
-  LensTilesPicture,
-  Picture,
-  PictureKind,
-  RectilinearPicture,
+export {
+  shownAreaOf,
+  type EquirectangularPicture,
+  type LensTilesPicture,
+  type Picture,
+  type PictureKind,
+  type RectilinearPicture,
 } from './domain/view/Picture';
 export {
   aspectOf,

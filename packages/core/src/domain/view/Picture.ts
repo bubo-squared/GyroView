@@ -1,4 +1,4 @@
-import type { ScreenRectangle } from './screenLayout';
+import { boundsOf, clippedToScreen, type ScreenRectangle } from './screenLayout';
 import type { Matrix3 } from '../../shared/math/Matrix3';
 import type { Degrees } from '../../shared/units/angle';
 
@@ -39,4 +39,13 @@ export interface EquirectangularPicture {
 export interface LensTilesPicture {
   readonly kind: 'lens-tiles';
   readonly tiles: readonly ScreenRectangle[];
+}
+
+/**
+ * The part of the viewport a picture draws on, within the viewport: a magnified panorama or lens
+ * tiles may reach past its edges, and a letterboxed picture leaves the bars out.
+ */
+export function shownAreaOf(picture: Picture): ScreenRectangle {
+  const area = picture.kind === 'lens-tiles' ? boundsOf(picture.tiles) : picture.area;
+  return clippedToScreen(area);
 }

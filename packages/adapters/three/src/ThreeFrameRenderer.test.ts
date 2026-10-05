@@ -422,6 +422,20 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelAt(renderer, { column: 32, row: 18 }, size).r).toBeGreaterThan(BRIGHT);
   });
 
+  it('clears the bars a letterboxed panorama leaves, whatever was drawn there before', () => {
+    const size = { width: 64, height: 36 };
+    const renderer = open(undefined, size);
+    renderer.setViewMode('normal');
+    presentRedAndBlue(renderer);
+    expect(pixelAt(renderer, { column: 32, row: 0 }, size).r).toBeGreaterThan(BRIGHT);
+    renderer.setViewMode('equirectangular');
+    for (const row of [0, 1, 34, 35]) {
+      const bar = pixelAt(renderer, { column: 32, row }, size);
+      expect(bar.r + bar.g + bar.b).toBe(0);
+    }
+    expect(pixelAt(renderer, { column: 32, row: 18 }, size).r).toBeGreaterThan(BRIGHT);
+  });
+
   it('fills the letterbox bars with a magnified panorama', () => {
     const size = { width: 64, height: 36 };
     const renderer = open(undefined, size);

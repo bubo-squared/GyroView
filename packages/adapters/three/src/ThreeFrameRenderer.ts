@@ -11,6 +11,7 @@ import {
   type SeamMeter,
   type StitchingSetup,
   type Vector3 as CoreVector3,
+  shownAreaOf,
   viewModeRulesFor,
   type ViewMode,
   type ViewportSize,
@@ -26,6 +27,7 @@ import {
   type ThreeFrameRendererOptions,
 } from './rendererParts';
 import { SAMPLING_STRATEGIES } from './samplingStrategies';
+import { scissorBoxOf } from './scissorBox';
 import { SeamMeterPass } from './seamMeter/SeamMeterPass';
 import {
   applyLensGain,
@@ -241,9 +243,19 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     this.draw();
   }
 
+  /**
+   * Clears the whole canvas, then draws the pass within the picture's scissor box only: the bars
+   * of a panorama on a phone held upright are three quarters of it, and the stitch is the most
+   * expensive pass. Fragments of a quad the box cuts still run as helpers, so the footprints'
+   * derivatives stay defined (ADR 0024).
+   */
   private readonly draw = (): void => {
     if (!this.hasFrames) return;
-    this.parts.renderer.render(this.parts.scene, this.parts.camera);
+    const { renderer } = this.parts;
+    renderer.setScissorTest(false);
+    renderer.clear();
+    renderer.setScissorTest(true);
+    renderer.render(this.parts.scene, this.parts.camera);
   };
 
   /**
@@ -258,5 +270,6 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
     });
     this.parts.pass.material = this.parts.materials[picture.kind];
     applyPicture(this.parts.uniforms, picture, aspectOf(viewport));
+    this.parts.renderer.setScissor(scissorBoxOf(shownAreaOf(picture), viewport));
   }
 }

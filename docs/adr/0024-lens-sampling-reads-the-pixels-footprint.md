@@ -77,3 +77,12 @@ quality recompiles nothing and re-uploads only the frames standing on screen.
 - Defines per quality: a recompile per switch, and three programs per picture to prove.
 - Rendering the panorama once at the source's resolution and scaling it down: an intermediate
   target the size of the source per frame, more GPU time than the chain saves.
+
+## Since 2026-10-05: the pass is drawn within the picture's box
+
+The renderer clears the canvas and draws each picture within a scissor box around its area, a
+pixel wider on each side, rather than shading the bars black: a panorama on a phone held upright
+covers about a quarter of the screen, and the stitch, eight taps a lens in `high`, is the most
+expensive pass. The footprints stay defined: a scissor cuts fragments, not quads, so a quad on
+the box's edge still runs its outside fragments as helpers for the derivatives, and the pixels
+around the area are still drawn and decided by the shader as before.

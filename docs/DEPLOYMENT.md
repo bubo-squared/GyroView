@@ -10,7 +10,6 @@ must do; `pnpm --filter @gyroview/embed build` produces the files in `apps/embed
 | `gyro-view.js`            | The `<gyro-view>` element as one ES module, for pages that use it directly.   |
 | `embed.html` + `assets/*` | The iframe target; configured by query parameters, driven over `postMessage`. |
 | `embed.js`                | The snippet exposing `GyroView.embed` for pages that embed the iframe.        |
-| `index.html` + `assets/*` | The developer page; leave it out of a production deployment.                  |
 
 The bundles are plain files: any static host, object store or CDN serves them. Serve them
 with long cache lifetimes under a versioned path; `embed.html` should be revalidated so it

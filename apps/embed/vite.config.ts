@@ -45,8 +45,9 @@ const https = phoneHttps();
 const isServingSamples = https === undefined || process.env['GYROVIEW_DEV_SHARE_SAMPLES'] === '1';
 
 /**
- * The pages: the developer page and the embed target. The two script bundles have their own
- * configurations (`vite.snippet.config.ts`, `vite.component.config.ts`).
+ * The pages: the developer page, served in development only, and the embed target, the one page
+ * the build produces. The two script bundles have their own configurations
+ * (`vite.snippet.config.ts`, `vite.component.config.ts`).
  */
 export default defineConfig({
   root: APP_ROOT,
@@ -63,10 +64,7 @@ export default defineConfig({
     // The player chunk carries Three.js and mediabunny: about 1 MB, 260 kB compressed.
     chunkSizeWarningLimit: 1400,
     rollupOptions: {
-      input: {
-        index: path.join(APP_ROOT, 'index.html'),
-        embed: path.join(APP_ROOT, 'embed.html'),
-      },
+      input: { embed: path.join(APP_ROOT, 'embed.html') },
     },
   },
 });

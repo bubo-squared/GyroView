@@ -19,6 +19,7 @@ import type { WebGLRenderer } from 'three';
 
 import { applyTextureFilters, ensureUploadable } from './lensTextures';
 import {
+  compileAgain,
   openRendererParts,
   PLAYER_PICTURES,
   type RendererParts,
@@ -223,9 +224,11 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   /**
    * Three.js builds its state anew on a restored context but draws nothing: a paused picture
    * (iOS drops the context of a tab in the background) comes back only through a redraw, which
-   * uploads the frames on screen again.
+   * uploads the frames on screen again. Three's own listener, added when its renderer was made,
+   * has rebuilt its state by now.
    */
   private readonly onContextRestored = (): void => {
+    compileAgain(this.parts);
     this.redraw();
   };
 

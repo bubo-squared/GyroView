@@ -82,6 +82,11 @@ const GRADIENT_TOLERANCE = 2 / 255;
 const OFFICE_MEI =
   '2_2.000000_4296.660_4295.450_2689.890_2681.940_-0.002_0.377_90.524_0.000000_0.000000_0.000000_0.18113680_2.16784811_-3.49636626_-0.00016818_-0.00010206_10752_5376_113_2.000000_4281.830_4282.190_8082.100_2679.470_0.289_0.043_89.987_-0.000907_-0.000055_-0.032061_0.18382449_2.06260586_-3.21479726_0.00075291_0.00063732_10752_5376_113_197632';
 
+/**
+ * The programs a renderer compiles when it opens: the three pictures' and the seam meter's.
+ */
+const RENDERER_PROGRAMS = 4;
+
 const NO_DISTORTION: MeiDistortion = { radial: [], tangential: [], thinPrism: [] };
 
 /**
@@ -747,6 +752,31 @@ describe('ThreeFrameRenderer', () => {
     await restored;
     // The pair on screen stays open until the next one comes: a paused picture redraws from it.
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
+  });
+
+  it('compiles its programs again once a lost context is restored, not at the next draw', async () => {
+    const schedule = new HeldDraws();
+    const renderer = open(undefined, SIZE, schedule);
+    presentRedAndBlue(renderer);
+    const canvas = canvases.at(-1);
+    const gl = canvas?.getContext('webgl2');
+    const loser = gl?.getExtension('WEBGL_lose_context');
+    if (!canvas || !gl || !loser) throw new Error('WEBGL_lose_context is unavailable');
+    const lost = eventOnce(canvas, 'webglcontextlost');
+    loser.loseContext();
+    await lost;
+    await afterNextTask();
+    let linked = 0;
+    const linkProgram = gl.linkProgram.bind(gl);
+    gl.linkProgram = (program: WebGLProgram): void => {
+      linked += 1;
+      linkProgram(program);
+    };
+    const restored = eventOnce(canvas, 'webglcontextrestored');
+    loser.restoreContext();
+    await restored;
+    expect(schedule.isPending).toBe(true);
+    expect(linked).toBe(RENDERER_PROGRAMS);
   });
 
   it('takes the seam meters still in use with it when disposed; they measure nothing after', async () => {

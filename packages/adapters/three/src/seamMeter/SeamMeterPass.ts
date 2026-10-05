@@ -49,11 +49,18 @@ export class SeamMeterPass implements SeamMeter {
     this.material = createPassMaterial(uniforms, programOf(SEAM_ANALYSIS));
     this.scene.add(new Mesh(this.geometry, this.material));
     try {
-      compileAndProve(renderer, this.scene, this.camera);
+      this.prove();
     } catch (error) {
       this.dispose();
       throw error;
     }
+  }
+
+  /**
+   * Compiles and proves the meter's program now, rather than at its first measurement.
+   */
+  public prove(): void {
+    compileAndProve(this.renderer, this.scene, this.camera);
   }
 
   /**

@@ -150,6 +150,16 @@ export function openRendererParts(
 }
 
 /**
+ * Compiles and proves the parts' programs again, as at opening: three builds every program anew
+ * on a restored context, at its first use otherwise, which would compile on screen in the frame
+ * that draws it and at each first change of view mode.
+ */
+export function compileAgain(parts: RendererParts): void {
+  compilePictureMaterials(parts.renderer, parts.pass.geometry, parts.materials);
+  parts.seamProof.prove();
+}
+
+/**
  * The shader has room for `MAX_LENSES` lenses from `LENS_TEXTURES` decoded frames; a layout
  * beyond either would be drawn wrong without a word, so it is refused.
  */

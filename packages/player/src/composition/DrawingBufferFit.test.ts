@@ -1,22 +1,30 @@
 import type { ViewportSize } from '@gyroview/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { DrawingBufferFit, drawingBufferSizeFor } from './DrawingBufferFit';
+import { DrawingBufferFit, drawingBufferSizeFor, type CanvasMeasure } from './DrawingBufferFit';
+
+function measured(
+  css: ViewportSize,
+  devicePixelRatio: number,
+  devicePixels?: ViewportSize,
+): CanvasMeasure {
+  return devicePixels ? { css, devicePixelRatio, devicePixels } : { css, devicePixelRatio };
+}
 
 describe('drawingBufferSizeFor', () => {
   it('scales the CSS size by the device pixel ratio', () => {
-    expect(drawingBufferSizeFor({ width: 300, height: 150 }, 1.5)).toEqual({
+    expect(drawingBufferSizeFor(measured({ width: 300, height: 150 }, 1.5))).toEqual({
       width: 450,
       height: 225,
     });
   });
 
   it('caps the ratio at two in the balanced quality and never goes below one', () => {
-    expect(drawingBufferSizeFor({ width: 100, height: 50 }, 3)).toEqual({
+    expect(drawingBufferSizeFor(measured({ width: 100, height: 50 }, 3))).toEqual({
       width: 200,
       height: 100,
     });
-    expect(drawingBufferSizeFor({ width: 100, height: 50 }, 0.5)).toEqual({
+    expect(drawingBufferSizeFor(measured({ width: 100, height: 50 }, 0.5))).toEqual({
       width: 100,
       height: 50,
     });
@@ -24,13 +32,39 @@ describe('drawingBufferSizeFor', () => {
 
   it('draws one device pixel per CSS pixel in the fast quality and follows a phone screen in the high one', () => {
     const css = { width: 100, height: 50 };
-    expect(drawingBufferSizeFor(css, 2, 'fast')).toEqual({ width: 100, height: 50 });
-    expect(drawingBufferSizeFor(css, 3, 'high')).toEqual({ width: 300, height: 150 });
-    expect(drawingBufferSizeFor(css, 4, 'high')).toEqual({ width: 300, height: 150 });
+    expect(drawingBufferSizeFor(measured(css, 2), 'fast')).toEqual({ width: 100, height: 50 });
+    expect(drawingBufferSizeFor(measured(css, 3), 'high')).toEqual({ width: 300, height: 150 });
+    expect(drawingBufferSizeFor(measured(css, 4), 'high')).toEqual({ width: 300, height: 150 });
   });
 
   it('keeps at least one pixel each way for a collapsed element', () => {
-    expect(drawingBufferSizeFor({ width: 0, height: 0 }, 2)).toEqual({ width: 1, height: 1 });
+    expect(drawingBufferSizeFor(measured({ width: 0, height: 0 }, 2))).toEqual({
+      width: 1,
+      height: 1,
+    });
+  });
+
+  it("takes the box's own device pixels at a fractional ratio, where rounding the CSS size misses one", () => {
+    const css = { width: 301, height: 151 };
+    expect(drawingBufferSizeFor(measured(css, 1.25))).toEqual({ width: 376, height: 189 });
+    expect(drawingBufferSizeFor(measured(css, 1.25, { width: 377, height: 189 }))).toEqual({
+      width: 377,
+      height: 189,
+    });
+  });
+
+  it('keeps to the CSS size where the device pixels are not the ones drawn', () => {
+    const css = { width: 100, height: 50 };
+    // Capped by the quality: the buffer has fewer pixels than the screen.
+    expect(drawingBufferSizeFor(measured(css, 3, { width: 300, height: 150 }))).toEqual({
+      width: 200,
+      height: 100,
+    });
+    // A transform the device pixels of the box leave out, or a count from another ratio.
+    expect(drawingBufferSizeFor(measured(css, 2, { width: 100, height: 50 }))).toEqual({
+      width: 200,
+      height: 100,
+    });
   });
 });
 

@@ -1,43 +1,42 @@
-import { isFlowing, type PlayerState } from '../../domain/playback/PlayerState';
-
 /**
- * A scrub's place in line: the seek it began after and its own number among the scrubs.
+ * A scrub's place in line: the request it was, counted among every seek and scrub.
  */
-export interface ScrubTicket {
-  readonly seek: number;
-  readonly scrub: number;
-}
+export type ScrubTicket = number;
 
 /**
- * The seeks of a session in order, and whether the latest resumes playing. A scrub lands only if
- * no seek or scrub came after it while it looked up its key frame.
+ * The seeks of a session in order: whether the latest is still to show its first picture, and
+ * whether a scrub is still the latest request once it has looked up its key frame. A scrub lands
+ * only if no seek or scrub came after it meanwhile.
  */
 export class SeekOrder {
-  private generation = 0;
-  private scrubs = 0;
-  private isFromFlowing = false;
+  private requests = 0;
+  private isPictureDue = false;
 
   /**
-   * Whether the seek under way resumes playing once its frames are ready.
+   * The latest seek has not drawn its first picture yet (ADR 0042).
    */
-  public get resumesPlaying(): boolean {
-    return this.isFromFlowing;
+  public get isUnderWay(): boolean {
+    return this.isPictureDue;
+  }
+
+  public begin(): void {
+    this.requests += 1;
+    this.isPictureDue = true;
   }
 
   /**
-   * A new seek, begun from `state`.
+   * The seek under way is done, or will draw nothing (playback failed or stopped).
    */
-  public begin(state: PlayerState): void {
-    this.isFromFlowing = isFlowing(state);
-    this.generation += 1;
+  public finish(): void {
+    this.isPictureDue = false;
   }
 
   public claimScrub(): ScrubTicket {
-    this.scrubs += 1;
-    return { seek: this.generation, scrub: this.scrubs };
+    this.requests += 1;
+    return this.requests;
   }
 
   public isScrubCurrent(ticket: ScrubTicket): boolean {
-    return ticket.seek === this.generation && ticket.scrub === this.scrubs;
+    return ticket === this.requests;
   }
 }

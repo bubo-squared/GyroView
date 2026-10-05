@@ -8,7 +8,7 @@ import { SessionLifecycle, type PlaybackSessionEvents } from './SessionLifecycle
 import { DecodeRun, type DecodeRunParts } from './DecodeRun';
 import { keyframeTimeAt } from './keyframeTimeAt';
 import { PictureOnScreen } from './PictureOnScreen';
-import type { PlayerState } from '../../domain/playback/PlayerState';
+import { isFlowing, type PlayerState } from '../../domain/playback/PlayerState';
 import type { FrameSink } from '../../ports/FrameSink';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
 import { asGyroViewError } from '../../shared/errors/GyroViewError';
@@ -74,6 +74,14 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   /**
+   * A seek waits for its first picture: it is done once that is drawn, and a playing session
+   * resumes only then (ADR 0042).
+   */
+  public get isSeeking(): boolean {
+    return this.seeks.isUnderWay;
+  }
+
+  /**
    * Starts or resumes, resolving once the clock runs. A paused session keeps its pipeline and
    * the pairs it prefetched; a fresh one starts decoding anew, and an ended one or one paused at
    * the end starts over from the beginning, and waits in `buffering` for the first pairs.
@@ -117,18 +125,20 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   /**
-   * Jumps to a time. A playing session resumes through `buffering` once the frames there have
-   * been decoded; a paused one shows the target frame and stays paused.
+   * Jumps to a time. A playing session resumes through `buffering` once the frame there has been
+   * drawn and the next ones decoded; a paused one shows the target frame and stays paused. The
+   * seek is `seeked` once its first picture is drawn.
    */
   public seek(time: Seconds): void {
     if (this.lifecycle.isOneOf('disposed', 'error')) return;
     this.lifecycle.change(() => {
       const target = seconds(clamp(time, 0, this.parts.duration));
-      this.seeks.begin(this.lifecycle.current);
+      const wasFlowing = isFlowing(this.lifecycle.current);
+      this.seeks.begin();
       this.moveClockTo(target);
       this.startRun(target);
       this.lifecycle.moveTo('seeking');
-      if (this.seeks.resumesPlaying) this.buffering.enter('priming');
+      if (wasFlowing) this.buffering.enter('priming');
       else this.lifecycle.moveTo('paused');
       this.timeUpdates.announce(target);
     });
@@ -205,6 +215,7 @@ export class PlaybackSession<Handle = unknown> {
       this.abortRun();
       this.screen.clear();
       this.parts.clock.pause();
+      this.seeks.finish();
       this.lifecycle.moveTo('disposed');
       this.buffering.settleStart();
     });
@@ -336,17 +347,41 @@ export class PlaybackSession<Handle = unknown> {
     );
   }
 
+  /**
+   * Ready to move: the frames are decoded, and a seek's picture is on screen.
+   */
   private isPrimed(): boolean {
-    return this.run?.isPrimedAt(this.parts.clock.currentTime) === true;
+    const isDecoded = this.run?.isPrimedAt(this.parts.clock.currentTime) === true;
+    return isDecoded && !this.seeks.isUnderWay;
   }
 
   /**
-   * Called as pairs arrive and when a run ends: the moment `buffering` has what it waits for.
+   * Called as pairs arrive and when a run ends: the moment a seek can show its picture and
+   * `buffering` has what it waits for.
    */
   private resumeIfPrimed(): void {
-    if (this.buffering.isOverAt(this.run, this.parts.clock.currentTime)) {
-      void this.starts.resume();
-    }
+    this.lifecycle.change(() => {
+      if (this.seeks.isUnderWay) this.showSeekPicture();
+      if (this.seeks.isUnderWay) return;
+      if (this.buffering.isOverAt(this.run, this.parts.clock.currentTime)) {
+        void this.starts.resume();
+      }
+    });
+  }
+
+  /**
+   * Draws a seek's first picture as soon as it is decoded, not at the next tick, which a hidden
+   * tab or an offscreen frame never gets: the sound resumes there too. A seek whose decode ended
+   * without a picture is done all the same, or playback would wait for ever.
+   */
+  private showSeekPicture(): void {
+    this.presentDue(this.parts.clock.currentTime);
+    if (this.seeks.isUnderWay && this.run?.isDrained === true) this.finishSeek();
+  }
+
+  private finishSeek(): void {
+    this.seeks.finish();
+    this.lifecycle.announce('seeked', this.parts.clock.currentTime);
   }
 
   /**
@@ -360,7 +395,9 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   private present(pair: FramePair<Handle>, mediaTime: Seconds): void {
-    if (this.screen.show(pair, mediaTime)) this.lifecycle.announce('present', mediaTime);
+    if (!this.screen.show(pair, mediaTime)) return;
+    this.lifecycle.announce('present', mediaTime);
+    if (this.seeks.isUnderWay) this.finishSeek();
   }
 
   /**
@@ -397,6 +434,7 @@ export class PlaybackSession<Handle = unknown> {
     this.lifecycle.change(() => {
       this.parts.clock.pause();
       this.abortRun();
+      this.seeks.finish();
       this.lifecycle.moveTo('error');
       this.buffering.settleStart();
       this.lifecycle.announce('error', asGyroViewError(error, 'decode', 'playback failed'));

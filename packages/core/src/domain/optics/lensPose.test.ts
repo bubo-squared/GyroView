@@ -25,7 +25,7 @@ function rotationOf(pose: Pose): Matrix3 {
   const lens: LensCalibration = {
     lensIndex: pose.lensIndex,
     model: new EquidistantModel({
-      edgeRadius: 500,
+      radius: 500,
       radiusAngle: HALF_FIELD_OF_VIEW,
       principalPoint: { x: 500, y: 500 },
     }),

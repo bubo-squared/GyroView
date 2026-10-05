@@ -7,9 +7,10 @@ import { HALF_FIELD_OF_VIEW } from './opticsConstants';
 
 export interface EquidistantParameters {
   /**
-   * The radius, in canvas pixels, of the direction `radiusAngle` from the axis.
+   * The radius, in canvas pixels, of the direction `radiusAngle` from the axis: not the field
+   * edge's on the legacy string (ADR 0023).
    */
-  readonly edgeRadius: number;
+  readonly radius: number;
   readonly radiusAngle: Radians;
   readonly principalPoint: PixelPoint;
 }
@@ -44,6 +45,6 @@ export class EquidistantModel implements LensModel {
   }
 
   private get pixelsPerRadian(): number {
-    return this.parameters.edgeRadius / this.parameters.radiusAngle;
+    return this.parameters.radius / this.parameters.radiusAngle;
   }
 }

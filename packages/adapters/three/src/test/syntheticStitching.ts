@@ -32,7 +32,7 @@ export function syntheticCalibration(): CalibrationSet {
   return backToBack(
     (principalPoint) =>
       new EquidistantModel({
-        edgeRadius: HALF_SQUARE,
+        radius: HALF_SQUARE,
         radiusAngle: degreesToRadians(degrees(EDGE_DEGREES)),
         principalPoint,
       }),

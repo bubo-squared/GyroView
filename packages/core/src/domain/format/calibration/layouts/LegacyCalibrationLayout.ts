@@ -35,7 +35,7 @@ export const LEGACY_CALIBRATION_LAYOUT: CalibrationStringLayout = {
     return {
       lensIndex,
       model: new EquidistantModel({
-        edgeRadius: block(V1Token.EdgeRadius),
+        radius: block(V1Token.EdgeRadius),
         radiusAngle: LEGACY_RADIUS_ANGLE,
         principalPoint: { x: block(V1Token.CenterX), y: block(V1Token.CenterY) },
       }),

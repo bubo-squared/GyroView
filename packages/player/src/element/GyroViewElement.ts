@@ -431,7 +431,14 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     this.player.togglePlayback();
   };
 
+  /**
+   * Queued, as a media element queues its events: an attribute in the markup is read as the
+   * element is defined, and a property before it, both before a page's script after the
+   * definition adds its listener.
+   */
   private readonly warn = (warning: PlayerWarning): void => {
-    this.dispatchEvent(new CustomEvent('warning', { detail: warning, composed: true }));
+    queueMicrotask(() => {
+      this.dispatchEvent(new CustomEvent('warning', { detail: warning, composed: true }));
+    });
   };
 }

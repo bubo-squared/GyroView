@@ -291,6 +291,7 @@ describe('<gyro-view>', () => {
     customElements.define('gyro-view-refused-late', class extends GyroViewElement {});
     const upgraded = element as GyroViewElement;
     elements.push(upgraded);
+    await settle();
     expect(warnings).toEqual([
       {
         code: 'refused-property',
@@ -299,6 +300,20 @@ describe('<gyro-view>', () => {
     ]);
     expect(upgraded.muted).toBe(true);
     await nextEvent(upgraded, 'ready');
+  });
+
+  it('warns of an attribute it ignores at its upgrade to a listener added once it is defined', async () => {
+    const element = document.createElement('gyro-view-misspelt');
+    element.setAttribute('view-mode', 'normall');
+    document.body.append(element);
+    customElements.define('gyro-view-misspelt', class extends GyroViewElement {});
+    elements.push(element as GyroViewElement);
+    const warnings: PlayerWarning[] = [];
+    element.addEventListener('warning', (event) => {
+      warnings.push((event as CustomEvent<PlayerWarning>).detail);
+    });
+    await settle();
+    expect(warnings.map((warning) => warning.code)).toEqual(['ignored-attribute']);
   });
 
   it('refuses a time that is not a finite number, even while a load waits', () => {
@@ -773,13 +788,14 @@ describe('<gyro-view>', () => {
     expect(element.stabilization).toBe('lock');
   });
 
-  it('warns of a view attribute it cannot read, as it warns of an unknown choice', () => {
+  it('warns of a view attribute it cannot read, as it warns of an unknown choice', async () => {
     const element = create({ controls: '' });
     const warnings: PlayerWarning[] = [];
     element.addEventListener('warning', (event) => {
       warnings.push(event.detail);
     });
     element.setAttribute('fov', 'wide');
+    await settle();
     expect(warnings).toEqual([
       { code: 'ignored-attribute', message: 'ignoring fov="wide"; expected a number of degrees' },
     ]);

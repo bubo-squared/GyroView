@@ -103,22 +103,22 @@ effect, and `crossOrigin` reads `null` while its attribute is absent, as a video
 
 Methods and properties:
 
-| Member                                                | What it does                                                                                    |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `load()`                                              | Resolves once the recording is ready; an element out of the page loads once connected.          |
-| `loadFiles({ main, second })`                         | Plays local files in place of `src`, until `src` or `src2` change.                              |
-| `play()`, `pause()`, `stop()`                         | As a video's; `play()` waits for a load in progress.                                            |
-| `seek(seconds)`, `currentTime`                        | Seeks exactly.                                                                                  |
-| `scrub(seconds)`                                      | Seeks to the key frame at or before the time: quick to show while a seek bar is dragged.        |
-| `duration`, `paused`, `status`, `metadata`            | What is loaded and where playback is.                                                           |
-| `view`, `lookAt(yaw, pitch)`, `resetView()`           | Where the normal view looks.                                                                    |
-| `motionLook`, `startMotionLook()`, `stopMotionLook()` | Motion look (below): `on`, `off` or `unavailable`; start it from a tap's handler.               |
-| `zoom(steps, focus?)`                                 | Zooms toward a point of the picture given as fractions of its size, or about the centre.        |
-| `setViewMode(mode)`, `setStabilization(mode)`         | As the attributes; an unknown mode is refused.                                                  |
-| `setQuality(quality)`                                 | As the attribute; an unknown quality is refused.                                                |
-| `volume`                                              | 0 to 1, where the platform lets a page set it.                                                  |
-| `messages`                                            | Every word the element shows (below).                                                           |
-| `toggleFullscreen()`                                  | Fills the screen through the Fullscreen API, or pins the element over the page where it cannot. |
+| Member                                                | What it does                                                                                                      |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `load()`                                              | Resolves once the recording is ready; an element out of the page loads once connected.                            |
+| `loadFiles({ main, second })`                         | Plays local files in place of `src`, until `src` or `src2` change.                                                |
+| `play()`, `pause()`, `stop()`                         | As a video's; `play()` waits for a load in progress.                                                              |
+| `seek(seconds)`, `currentTime`                        | Seeks exactly.                                                                                                    |
+| `scrub(seconds)`                                      | Seeks to the key frame at or before the time: quick to show while a seek bar is dragged.                          |
+| `duration`, `paused`, `status`, `metadata`            | What is loaded and where playback is.                                                                             |
+| `view`, `lookAt(yaw, pitch)`, `resetView()`           | Where the normal view looks.                                                                                      |
+| `motionLook`, `startMotionLook()`, `stopMotionLook()` | Motion look (below): `on`, `off` or `unavailable`; start it from a tap's handler.                                 |
+| `zoom(steps, focus?)`                                 | Zooms toward a point of the picture given as fractions of its size, or about the centre.                          |
+| `setViewMode(mode)`, `setStabilization(mode)`         | As the attributes; an unknown mode is refused.                                                                    |
+| `setQuality(quality)`                                 | As the attribute; an unknown quality is refused.                                                                  |
+| `volume`                                              | 0 to 1, where the platform lets a page set it.                                                                    |
+| `messages`                                            | Every word the element shows (below).                                                                             |
+| `toggleFullscreen()`                                  | Fills the screen through the Fullscreen API or, where it cannot, pins the element over the page in the top layer. |
 
 Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewElementEventMap`:
 
@@ -192,9 +192,10 @@ volume, their handles, the checked choice and the focus ring), `--gyro-view-cont
 writes its state on itself for a page's selectors, and a page never sets these: `data-status`
 (the status, as in `gyro-view[data-status='error']`), `data-has-frame` once a picture is drawn,
 `data-idle` while the controls have faded, `data-fill` while it is pinned over the page in
-place of fullscreen. Under `prefers-reduced-motion` the spinner turns slower and the controls
-do not fade; under `prefers-reduced-transparency`, and where the browser has no backdrop blur,
-the menus are opaque; forced colours keep the sliders and the menus' edges visible.
+place of fullscreen, with `popover="manual"` beside it where the browser has popovers. Under
+`prefers-reduced-motion` the spinner turns slower and the controls do not fade; under
+`prefers-reduced-transparency`, and where the browser has no backdrop blur, the menus are
+opaque; forced colours keep the sliders and the menus' edges visible.
 
 Words: every label, menu choice and failure message is in English until the page gives its own
 through `messages`, table by table, and `null` brings the defaults back. The tables are

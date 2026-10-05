@@ -109,6 +109,7 @@ const ERRORS: Readonly<Record<GyroViewErrorCode, string>> = {
   cors: UNREACHABLE,
   decode: FAILED,
   'embed-destroyed': FAILED,
+  'embed-unreachable': FAILED,
   'index-out-of-range': FAILED,
   'invalid-argument': FAILED,
   'invalid-byte-range': UNREACHABLE,

@@ -88,3 +88,10 @@ requires and the duration of the shortest file. It was composition code, tested 
 browser and never mutated, while the format rules it applies are the core's. `openRecording`
 keeps what only the composition root has: the ports that open the inputs, the downloads, the
 decode probe and the timing.
+
+The embed protocol answers where it was silent. The frame says hello while its page loads, so a
+frame whose `load` event passes without one for ten seconds will not answer: the handle fails
+what waits on it, and what comes after, with `embed-unreachable` until a hello arrives
+(`HelloWatch`). The frame answers a well-formed command whose name it does not know, from a
+snippet of a later build than the frame, with `invalid-argument`, where it dropped it as
+malformed and the page's promise never settled.

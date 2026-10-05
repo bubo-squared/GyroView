@@ -131,7 +131,7 @@ the `error` event (and as the rejection of `load()`); the rest arrive where they
 `playback-blocked`, `no-source` and `play-interrupted` reject `play()`, and the first becomes a
 `warning` event when autoplay or a tap meets it; `invalid-argument` is thrown by the call that
 got the value, or rejects its promise when it returns one (`scrub()`, every embed handle
-method); `embed-destroyed` rejects the embed handle's promises.
+method); `embed-destroyed` and `embed-unreachable` reject the embed handle's promises.
 
 | Code                    | Meaning and what to do                                                       |
 | ----------------------- | ---------------------------------------------------------------------------- |
@@ -162,6 +162,10 @@ method); `embed-destroyed` rejects the embed handle's promises.
 |                         | could not be drawn during playback (a GPU that gave up).                     |
 | `invalid-argument`      | A property, method or embed command got a value it does not accept.          |
 | `embed-destroyed`       | A command reached an embed handle after `destroy()`.                         |
+| `embed-unreachable`     | The iframe loaded but never answered: `embed.html` is not at `embedPageUrl`, |
+|                         | its host refuses to be framed (`X-Frame-Options`, `frame-ancestors`), or the |
+|                         | page has no origin (`origin=null`). Commands reject ten seconds after the    |
+|                         | iframe's `load` event, and at once after that, until the frame answers.      |
 | `no-source`             | `play()` with no recording loaded or loading.                                |
 | `play-interrupted`      | A newer `src`, an unload or the element's removal came before `play()` could |
 |                         | start the recording it waited for, as a video's `play()` rejects.            |

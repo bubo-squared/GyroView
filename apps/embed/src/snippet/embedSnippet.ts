@@ -57,15 +57,7 @@ export function embed(
   const frameUrl = embedUrlFor(embedPageUrl, withAbsoluteUrls(options, pageUrl), location.origin);
   const iframe = createFrame(frameUrl, settings);
   attachFrame(container, iframe);
-  const frameOrigin = new URL(embedPageUrl).origin;
-  const handle = new EmbedHandle(
-    windowEndpoint({
-      peer: () => iframe.contentWindow,
-      peerOrigin: frameOrigin,
-      listenOn: globalThis as Window & typeof globalThis,
-    }),
-    () => document.baseURI,
-  );
+  const handle = handleOf(iframe, new URL(embedPageUrl).origin);
   return {
     iframe,
     handle,
@@ -74,6 +66,25 @@ export function embed(
       iframe.remove();
     },
   };
+}
+
+/**
+ * The API over `iframe`, talking only to `frameOrigin`, and told each time the frame loads so it
+ * knows when the frame's hello is due.
+ */
+function handleOf(iframe: HTMLIFrameElement, frameOrigin: string): EmbedHandle {
+  const handle = new EmbedHandle(
+    windowEndpoint({
+      peer: () => iframe.contentWindow,
+      peerOrigin: frameOrigin,
+      listenOn: globalThis as Window & typeof globalThis,
+    }),
+    () => document.baseURI,
+  );
+  iframe.addEventListener('load', () => {
+    handle.frameLoaded();
+  });
+  return handle;
 }
 
 /**

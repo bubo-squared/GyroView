@@ -10,6 +10,7 @@ import {
   commandMessage,
   eventMessage,
   helloMessage,
+  okResult,
   PROTOCOL,
   type ProtocolMessage,
 } from '../protocol/messages';
@@ -19,6 +20,11 @@ import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-tr
 beforeAll(() => {
   defineGyroView();
 });
+
+/**
+ * A hello deadline a test can wait out.
+ */
+const SHORT_HELLO_DEADLINE_MS = 50;
 
 /**
  * What a seek and a start, a pause or an end announce, as a media element does.
@@ -245,6 +251,25 @@ describe('the embed bridge over a message channel', () => {
     await expect(handle.play()).rejects.toMatchObject({ code: 'embed-destroyed' });
   });
 
+  it('answers a command it does not know, as a frame of an earlier build than the page', async () => {
+    const { element } = bridge();
+    const channel = new MessageChannel();
+    const host = new EmbedHost(element, portEndpoint(channel.port1));
+    const pageSide = portEndpoint(channel.port2);
+    const received: ProtocolMessage[] = [];
+    pageSide.receive((message) => {
+      received.push(message);
+    });
+    pageSide.send({ protocol: PROTOCOL, kind: 'command', id: 7, name: 'teleport', parameters: [] });
+    await waitFor(() => received.some((message) => message.kind === 'result'), 'the answer');
+    expect(received.find((message) => message.kind === 'result')).toMatchObject({
+      id: 7,
+      isOk: false,
+      error: { code: 'invalid-argument', message: expect.stringContaining('teleport') as string },
+    });
+    host.dispose();
+  });
+
   it('queues commands until the frame says hello, even an older frame that sends no state', async () => {
     const channel = new MessageChannel();
     const handle = new EmbedHandle(portEndpoint(channel.port2), () => location.href);
@@ -289,6 +314,55 @@ describe('the embed bridge over a message channel', () => {
     expect(received[0]).toMatchObject({ name: 'pause', id: 2, oldestUnanswered: 2 });
     handle.destroy();
     await expect(pausing).rejects.toMatchObject({ code: 'embed-destroyed' });
+  });
+});
+
+describe('an embed handle whose frame never answers', () => {
+  it('fails what waits, and what comes after, once the frame has loaded and said nothing', async () => {
+    const channel = new MessageChannel();
+    const handle = new EmbedHandle(
+      portEndpoint(channel.port2),
+      () => location.href,
+      SHORT_HELLO_DEADLINE_MS,
+    );
+    const pausing = handle.pause();
+    handle.frameLoaded();
+    await expect(pausing).rejects.toMatchObject({ code: 'embed-unreachable', category: 'usage' });
+    await expect(handle.play()).rejects.toMatchObject({ code: 'embed-unreachable' });
+
+    const received: ProtocolMessage[] = [];
+    const hostSide = portEndpoint(channel.port1);
+    hostSide.receive((message) => {
+      received.push(message);
+    });
+    hostSide.send(helloMessage({ status: 'ready' }));
+    await waitFor(() => handle.state.status === 'ready', 'the late hello');
+    expect(received).toEqual([]);
+    const playing = handle.play();
+    await waitFor(() => received.length === 1, 'a command once it spoke');
+    expect(received[0]).toMatchObject({ kind: 'command', name: 'play' });
+    handle.destroy();
+    await expect(playing).rejects.toMatchObject({ code: 'embed-destroyed' });
+  });
+
+  it('waits on a frame that said hello before its load event', async () => {
+    const channel = new MessageChannel();
+    const handle = new EmbedHandle(
+      portEndpoint(channel.port2),
+      () => location.href,
+      SHORT_HELLO_DEADLINE_MS,
+    );
+    const hostSide = portEndpoint(channel.port1);
+    hostSide.send(helloMessage({ status: 'ready' }));
+    await waitFor(() => handle.state.status === 'ready', 'the hello');
+    handle.frameLoaded();
+    await new Promise((resolve) => setTimeout(resolve, SHORT_HELLO_DEADLINE_MS * 3));
+    const pausing = handle.pause();
+    hostSide.receive((message) => {
+      if (message.kind === 'command') hostSide.send(okResult(message.id, undefined));
+    });
+    await expect(pausing).resolves.toBeUndefined();
+    handle.destroy();
   });
 });
 

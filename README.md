@@ -239,7 +239,10 @@ in the container and returns the same API as the element, as promises over `post
 but `frame` on `handle.events`, and a `state` mirror, `motionLook` included; motion
 look starts only from the frame's own toggle, since a tap on the page does not reach the frame.
 The frame talks only to the page that embedded it and
-the page only to the frame. Moving the container reloads the iframe, as the browser does with any
+the page only to the frame. A frame that loads but never answers (a wrong `embedPageUrl`, a host
+that refuses to be framed) fails the handle's promises with `embed-unreachable` ten seconds
+later, and a command the frame does not know, from a snippet newer than the frame, with
+`invalid-argument`. Moving the container reloads the iframe, as the browser does with any
 iframe: it starts again from the embed options, and commands it had not answered are asked again.
 Without the snippet, an iframe of
 `embed.html?src=...&stabilization=lock&muted=1` plays on its own; every attribute above is a
@@ -294,7 +297,8 @@ whose side the failure is on:
 - `source`: the recording's bytes could not be read as the player reads them. `cors`,
   `range-unsupported`, `source-unreadable`, `source-changed`, `source-truncated`.
 - `usage`: the page called the API with something it does not accept. `invalid-argument`,
-  `embed-destroyed`, and as `play()`'s rejection, as a video's `play()` rejects: `no-source`
+  `embed-destroyed`, `embed-unreachable` (the iframe loaded but never answered), and as
+  `play()`'s rejection, as a video's `play()` rejects: `no-source`
   (nothing to play) and `play-interrupted` (a newer `src` or the element's removal came first).
 - `internal`: a failure the player did not expect, worth an issue. `invariant-violation`,
   `index-out-of-range`.

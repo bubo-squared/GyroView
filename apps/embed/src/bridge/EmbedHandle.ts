@@ -13,6 +13,7 @@ import type { PlayerStatus } from '@gyroview/player';
 
 import { withAbsoluteUrls } from './embedUrl';
 import type { Endpoint } from './Endpoint';
+import { HELLO_DEADLINE_MS, HelloWatch } from './HelloWatch';
 import type { EmbedState, LoadRequest } from './EmbedState';
 import {
   commandMessage,
@@ -55,7 +56,9 @@ const INITIAL_STATE: EmbedState = {
  * player's events, and a state mirror kept current from them. Commands sent before the frame
  * first says hello wait for it. A frame that says hello again has loaded anew (moved within its
  * page, or reloaded), from its URL's options: what the old document left unanswered is asked
- * again, and the frame runs a command it may have had already only once.
+ * again, and the frame runs a command it may have had already only once. A frame that loads and
+ * says nothing fails what waits on it, and what comes after, with `embed-unreachable`, until it
+ * speaks.
  */
 export class EmbedHandle {
   public readonly events = new TypedEmitter<EmbedEvents>();
@@ -65,9 +68,11 @@ export class EmbedHandle {
   private readonly pending = new Map<number, PendingCommand>();
   private readonly stopReceiving: () => void;
   private stateValue: EmbedState = INITIAL_STATE;
+  private readonly helloWatch: HelloWatch;
   private nextId = 1;
   private isConnected = false;
   private isDestroyed = false;
+  private unreachable: GyroViewError | undefined;
 
   /**
    * `pageUrl` gives the embedding page's base URL when a load is asked for, against which its
@@ -76,7 +81,11 @@ export class EmbedHandle {
   public constructor(
     private readonly endpoint: Endpoint,
     private readonly pageUrl: () => string,
+    helloDeadlineMs = HELLO_DEADLINE_MS,
   ) {
+    this.helloWatch = new HelloWatch(helloDeadlineMs, () => {
+      this.giveUp();
+    });
     this.stopReceiving = endpoint.receive((message) => {
       this.onMessage(message);
     });
@@ -159,10 +168,18 @@ export class EmbedHandle {
   }
 
   /**
+   * The frame's document finished loading (its `load` event): its hello is due.
+   */
+  public frameLoaded(): void {
+    if (!this.isDestroyed) this.helloWatch.loaded();
+  }
+
+  /**
    * Fails every command still waiting and stops listening; the caller removes the frame.
    */
   public destroy(): void {
     this.isDestroyed = true;
+    this.helloWatch.cancel();
     this.stopReceiving();
     for (const { reject } of this.pending.values()) {
       reject(new GyroViewError('embed-destroyed', 'the embed was destroyed'));
@@ -175,6 +192,7 @@ export class EmbedHandle {
     if (this.isDestroyed) {
       return Promise.reject(new GyroViewError('embed-destroyed', 'the embed was destroyed'));
     }
+    if (this.unreachable) return Promise.reject(this.unreachable);
     const id = this.nextId;
     this.nextId += 1;
     const oldestUnanswered = this.pending.keys().next().value ?? id;
@@ -216,6 +234,8 @@ export class EmbedHandle {
           this.stateValue = { ...INITIAL_STATE, ...(message.state as Partial<EmbedState>) };
         }
         this.isConnected = true;
+        this.unreachable = undefined;
+        this.helloWatch.heard();
         for (const id of this.pending.keys()) this.send(id);
         break;
       }
@@ -241,6 +261,19 @@ export class EmbedHandle {
     const detail = detailOf(message);
     this.stateValue = stateAfter(this.stateValue, message.name, detail);
     this.events.emit(message.name, detail);
+  }
+
+  /**
+   * The frame loaded and never said hello: nothing sent to it will be answered.
+   */
+  private giveUp(): void {
+    this.unreachable = new GyroViewError(
+      'embed-unreachable',
+      'the embed frame loaded but never answered: check embedPageUrl, that its host lets other ' +
+        'sites frame it (X-Frame-Options, frame-ancestors), and that this page has an origin',
+    );
+    for (const { reject } of this.pending.values()) reject(this.unreachable);
+    this.pending.clear();
   }
 
   private settle(result: ResultMessage): void {

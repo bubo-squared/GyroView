@@ -258,7 +258,7 @@ module.exports = {
       severity: 'error',
       from: { path: '^apps/embed/src/(snippet|protocol|bridge)/', pathNot: '\\.test\\.ts$' },
       to: {
-        path: '^apps/embed/src/(frame/|pages/|component\\.ts$)',
+        path: '^apps/embed/src/(frame/|pages/)',
         dependencyTypesNot: ['type-only'],
       },
     },

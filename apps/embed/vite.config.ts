@@ -46,8 +46,8 @@ const isServingSamples = https === undefined || process.env['GYROVIEW_DEV_SHARE_
 
 /**
  * The pages: the developer page, served in development only, and the embed target, the one page
- * the build produces. The two script bundles have their own configurations
- * (`vite.snippet.config.ts`, `vite.component.config.ts`).
+ * the build produces. `embed.js` has its own configuration (`vite.snippet.config.ts`), and
+ * `gyro-view.js` is the npm package's standalone file, copied after the build.
  */
 export default defineConfig({
   root: APP_ROOT,

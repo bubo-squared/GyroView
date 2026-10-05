@@ -63,6 +63,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/player
     devDependencies:
+      '@bubo-squared/gyroview':
+        specifier: workspace:*
+        version: link:../library
       '@types/node':
         specifier: 26.6.1
         version: 26.6.1

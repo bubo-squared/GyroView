@@ -28,7 +28,7 @@ run in headless Chromium and WebKit through Playwright; `pnpm --filter
 
 ```sh
 pnpm --filter @gyroview/embed dev               # developer page at http://localhost:5180 with the local samples
-pnpm --filter @gyroview/embed build             # static site, embed.js and gyro-view.js in apps/embed/dist
+pnpm --filter @gyroview/embed... build          # the npm package, then the static site in apps/embed/dist
 pnpm --filter @bubo-squared/gyroview build      # the npm package in apps/library/dist
 pnpm inspect <file.insv>                        # what inspectRecording reads, for a file on disk
 pnpm fixtures:build                             # regenerate the synthetic recordings in test/fixtures
@@ -139,7 +139,7 @@ describes the components layer by layer:
 - `packages/player`: the composition root (`openRecording`, `buildPipeline`), the headless
   `Player` and the `<gyro-view>` element with its controls and gestures.
 - `apps/embed`: the static site: embed page, `embed.js` snippet with the postMessage bridge,
-  `gyro-view.js` bundle, developer page. Apps import the player, never the adapters.
+  the npm package's standalone file as `gyro-view.js`, developer page. Apps import the player, never the adapters.
 - `apps/library`: the npm package `@bubo-squared/gyroview` (ADR 0020); its public API is
   `src/index.ts`.
 - `tools/*`: developer CLIs (`insv-inspect`), the fixture builder (`fixtures`) and the

@@ -47,7 +47,7 @@ import '@bubo-squared/gyroview/define'; // registers <gyro-view>
 ```
 
 Without a bundler, load the package's standalone file (Three.js and mediabunny inside) from
-a CDN or your own host; the site build's `gyro-view.js` registers the element the same way:
+a CDN or your own host; the site build's `gyro-view.js` is that file under another name:
 
 ```html
 <script

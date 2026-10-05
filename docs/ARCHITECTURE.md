@@ -365,7 +365,8 @@ The composition root and the user-facing element, in three layers.
   imports the player's code or the frame side (dependency-cruiser). ADR 0010.
 - `snippet/embedSnippet` builds `embed.js`: `GyroView.embed(container, options, settings?)`
   creates the iframe and returns `{ iframe, handle, destroy }`; `settings.embedPageUrl` names
-  `embed.html` where the script cannot tell (inlined). `component.ts` builds `gyro-view.js`, the element as one module.
+  `embed.html` where the script cannot tell (inlined). The site's `gyro-view.js` is the npm
+  package's `standalone.js`, copied after the build, so there is one script-tag player.
 - `index.html` (`pages/developmentPage`) is the developer page; `dev/samplesPlugin` lists the
   local sample recordings for it.
 

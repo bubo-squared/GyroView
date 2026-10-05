@@ -7,7 +7,8 @@ must do; `pnpm --filter @gyroview/embed build` produces the files in `apps/embed
 
 | File                      | Purpose                                                                       |
 | ------------------------- | ----------------------------------------------------------------------------- |
-| `gyro-view.js`            | The `<gyro-view>` element as one ES module, for pages that use it directly.   |
+| `gyro-view.js`            | The npm package's standalone file: the element and the package's API, with    |
+|                           | Three.js and mediabunny inside, as one ES module for pages without a bundler. |
 | `embed.html` + `assets/*` | The iframe target; configured by query parameters, driven over `postMessage`. |
 | `embed.js`                | The snippet exposing `GyroView.embed` for pages that embed the iframe.        |
 

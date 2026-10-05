@@ -83,6 +83,13 @@ canvas {
   touch-action: none;
 }
 
+/* A canvas keeps the last picture drawn on it: until the recording loading now draws one, the
+   previous recording's would show under the spinner or the error. Transparent rather than
+   hidden, so a tap on it still starts a recording that is ready but has drawn nothing yet. */
+:host(:not([data-has-frame])) canvas {
+  opacity: 0;
+}
+
 .poster {
   position: absolute;
   inset: 0;

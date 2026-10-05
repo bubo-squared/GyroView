@@ -838,6 +838,21 @@ describe('<gyro-view>', () => {
     await waitFor(() => element.status === 'idle', 'unloading');
   });
 
+  it('shows nothing of the last recording while the next one loads or after it fails', async () => {
+    const element = await createReady();
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    await element.play();
+    await waitFor(() => element.dataset['hasFrame'] !== undefined, 'a frame on screen');
+    expect(getComputedStyle(canvas).opacity).toBe('1');
+
+    const failed = nextEvent(element, 'error');
+    element.src = `${X5_RECORDING_URL}.missing`;
+    await settle();
+    expect(getComputedStyle(canvas).opacity).toBe('0');
+    await failed;
+    expect(getComputedStyle(canvas).opacity).toBe('0');
+  });
+
   it('reports a src that is no URL as an error, like any source it cannot read', async () => {
     const element = create({ controls: '' });
     const failed = nextEvent<{ code: string }>(element, 'error');

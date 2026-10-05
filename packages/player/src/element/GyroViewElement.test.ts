@@ -1241,6 +1241,25 @@ describe('<gyro-view>', () => {
     await waitFor(() => !isFillingTheScreen(element), 'leaving fullscreen');
   });
 
+  it('keeps the Escape that leaves the pinned fill from a dialog around it', async () => {
+    const dialog = centredClippingDialog();
+    const element = create({ controls: '' });
+    dialog.append(element);
+    refuseFullscreen(element);
+    await element.toggleFullscreen();
+    const heard: string[] = [];
+    dialog.addEventListener('keydown', (event) => {
+      heard.push(event.key);
+    });
+
+    const escape = pressKey(element, 'Escape');
+
+    expect(escape.defaultPrevented).toBe(true);
+    expect(heard).toEqual([]);
+    await waitFor(() => !isFillingTheScreen(element), 'leaving the fill');
+    dialog.remove();
+  });
+
   it('leaves the fullscreen it entered from its button when it sits inside another component', async () => {
     const host = document.createElement('div');
     document.body.append(host);

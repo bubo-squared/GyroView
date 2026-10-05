@@ -140,6 +140,9 @@ export function bindKeyboard(element: HTMLElement, host: KeyboardHost): () => vo
     'keydown',
     (event) => {
       if (event.key === 'Escape' && host.isFullscreen()) {
+        // Kept: the same press would also close a dialog the player sits in.
+        event.preventDefault();
+        event.stopPropagation();
         host.exitFullscreen();
         return;
       }

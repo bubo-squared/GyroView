@@ -26,8 +26,10 @@ export interface DeviceHold {
 }
 
 /**
- * Readings further apart than this are not one movement: iOS and Android count the device's yaw
- * from a new zero when the sensor starts again, and a hidden page hears no readings at all.
+ * Consecutive readings further apart than this are not one movement: iOS and Android count the
+ * device's yaw from a new zero when the sensor starts again, and a hidden page hears no readings
+ * at all. A main thread held up for longer, by a seek or a decoder starting, loses the turn made
+ * meanwhile.
  */
 const READING_GAP_MS = 500;
 const READING_GAP = milliseconds(READING_GAP_MS);
@@ -45,19 +47,23 @@ const UNSEEN_TURN = degreesToRadians(degrees(UNSEEN_TURN_DEGREES));
  * turned since the reading it continues, so a drag, Reset view or a page's yaw move the heading
  * and the device carries on from there; after a gap, and at the first reading, the yaw stays.
  * The pitch and roll are the device's, level with the real horizon. A turn too small to see
- * leaves the hold as it is, so a slow drift still lands, in full, once it shows.
+ * leaves the view as it is and keeps counting from the look last shown, at the new reading's
+ * time: a phone at rest draws nothing, and a slow drift lands in full once it shows.
  */
 export function followReading(
   view: ViewState,
   previous: DeviceReading | undefined,
   reading: DeviceReading,
-): DeviceHold | undefined {
+): DeviceHold {
   const { pitch, roll } = reading.look;
-  if (!isOneMovement(previous, reading))
+  if (!isOneMovement(previous, reading)) {
     return { view: clampView({ ...view, pitch, roll }), reading };
+  }
   const yaw = degrees(view.yaw + wrapHalfTurn(degrees(reading.look.yaw - previous.look.yaw)));
   const turned = clampView({ ...view, yaw, pitch, roll });
-  return isUnseenTurn(view, turned) ? undefined : { view: turned, reading };
+  return isUnseenTurn(view, turned)
+    ? { view, reading: { look: previous.look, at: reading.at } }
+    : { view: turned, reading };
 }
 
 function isOneMovement(

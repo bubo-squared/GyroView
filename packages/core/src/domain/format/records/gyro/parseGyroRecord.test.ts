@@ -195,13 +195,14 @@ describe('parseGyroRecord with the raw X5 layout', () => {
     ).toEqual([0, 1, 3, 4]);
   });
 
-  it('leaves out samples left all zero at the start, as the slots a camera never wrote', () => {
+  it('leaves out samples left all zero at the start, as the slots a camera never wrote, as no damage', () => {
     const samples = [
       ...[0, 1, 2].map(() => new Uint8Array(RAW_SAMPLE_SIZE)),
       ...[10, 20, 30, 40].map((ms) => encodeRawReading(ms * 1000, [0, 1, 0], 0)),
     ];
-    const { track, damagedSamples } = read(new Uint8Array(samples.flatMap((s) => [...s])), RAW_X5);
-    expect(damagedSamples).toBe(3);
+    const payload = new Uint8Array(samples.flatMap((s) => [...s]));
+    const { track, damagedSamples, unwrittenSamples } = read(payload, RAW_X5);
+    expect([damagedSamples, unwrittenSamples]).toEqual([0, 3]);
     expect([...track.captureTimes]).toEqual([10_000, 20_000, 30_000, 40_000]);
   });
 

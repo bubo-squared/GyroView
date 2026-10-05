@@ -9,6 +9,7 @@ const GYRO: GyroSummary = {
   samples: 261_872,
   strayBytes: 1,
   damagedSamples: 0,
+  unwrittenSamples: 0,
   mendedStamps: 0,
   spanSeconds: 262.232013,
   meanIntervalUs: 1001.3,
@@ -137,5 +138,10 @@ describe('renderInspection', () => {
     const damaged = renderInspection({ ...inspection, gyro, exposure: { damaged: true } });
     expect(damaged).toContain('1 stray byte(s), 3 damaged sample(s) left out, 2 stamp(s) mended');
     expect(damaged).toContain('Exposure: damaged, left out');
+  });
+
+  it('says how many slots the camera never wrote, apart from damage', () => {
+    const gyro = { ...GYRO, strayBytes: 0, unwrittenSamples: 4 };
+    expect(renderInspection({ ...inspection, gyro })).toContain('g, 4 unwritten slot(s) left out');
   });
 });

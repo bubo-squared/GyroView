@@ -81,7 +81,7 @@ function summarizeCalibration(recording: Recording): CalibrationSummary | undefi
 }
 
 function summarizeGyro(gyro: ParsedGyroRecord): GyroSummary {
-  const { track, layout, strayBytes, damagedSamples, mendedStamps } = gyro;
+  const { track, layout, strayBytes, damagedSamples, unwrittenSamples, mendedStamps } = gyro;
   const leading = Math.min(GRAVITY_SAMPLE_COUNT, track.length);
   let magnitudeSum = 0;
   for (let index = 0; index < leading; index += 1)
@@ -94,6 +94,7 @@ function summarizeGyro(gyro: ParsedGyroRecord): GyroSummary {
     samples: track.length,
     strayBytes,
     damagedSamples,
+    unwrittenSamples,
     mendedStamps,
     spanSeconds: microsecondsToSeconds(microseconds(span)),
     meanIntervalUs: track.meanSampleInterval,

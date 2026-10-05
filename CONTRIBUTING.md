@@ -73,8 +73,13 @@ secure contexts, with a certificate the phone trusts. With [mkcert](https://gith
 ```sh
 mkcert -install                                   # a local certificate authority, once
 mkcert -cert-file dev-cert.pem -key-file dev-key.pem "$(scutil --get LocalHostName).local" localhost
-GYROVIEW_DEV_CERT=dev-cert.pem GYROVIEW_DEV_KEY=dev-key.pem pnpm --filter @gyroview/embed dev
+GYROVIEW_DEV_CERT=dev-cert.pem GYROVIEW_DEV_KEY=dev-key.pem GYROVIEW_DEV_SHARE_SAMPLES=1 pnpm --filter @gyroview/embed dev
 ```
+
+With the certificate the server listens on every network interface, so anyone on the same
+network can open it. It lists and streams the samples only with `GYROVIEW_DEV_SHARE_SAMPLES=1`,
+since every sample is private (ADR 0031): without it, the samples and their catalogue are
+answered as missing. Share them only on a network you trust, and stop the server after.
 
 Keep the two files outside the repository, and give the dev command their full paths. On an
 iPhone, install the authority's `rootCA.pem` (in the folder `mkcert -CAROOT` prints, sent over

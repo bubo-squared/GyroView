@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
 import { samplesPlugin } from './dev/samplesPlugin.ts';
+import { samplesWithheld } from './dev/samplesWithheld.ts';
 
 const APP_ROOT = fileURLToPath(new URL('.', import.meta.url));
 const REPOSITORY_ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -37,6 +38,13 @@ function phoneHttps(): { readonly cert: Buffer; readonly key: Buffer } | undefin
 const https = phoneHttps();
 
 /**
+ * Whether the server lists and streams the local samples. Every sample is private (ADR 0031): a
+ * server opened to the network for a phone serves them only when `GYROVIEW_DEV_SHARE_SAMPLES=1`
+ * asks it to, since anyone on the same network could read them too.
+ */
+const isServingSamples = https === undefined || process.env['GYROVIEW_DEV_SHARE_SAMPLES'] === '1';
+
+/**
  * The pages: the developer page and the embed target. The two script bundles have their own
  * configurations (`vite.snippet.config.ts`, `vite.component.config.ts`).
  */
@@ -45,9 +53,9 @@ export default defineConfig({
   // Pages that find their scripts next to themselves, so the site works under any path, as
   // DEPLOYMENT has it: a versioned folder on a CDN, beside embed.js.
   base: './',
-  plugins: [samplesPlugin(SAMPLES_ROOT)],
+  plugins: [isServingSamples ? samplesPlugin(SAMPLES_ROOT) : samplesWithheld(SAMPLES_ROOT)],
   server: {
-    fs: { allow: [REPOSITORY_ROOT, ...sampleTargets()] },
+    fs: { allow: [REPOSITORY_ROOT, ...(isServingSamples ? sampleTargets() : [])] },
     ...(https && { https, host: true }),
   },
   build: {

@@ -3,6 +3,7 @@ import { ClockWatch, isAtEndOfMedia, isStoppedFromOutside } from './ClockWatch';
 import { SeekOrder } from './SeekOrder';
 import { TimeUpdates } from './TimeUpdates';
 import { Buffering } from './Buffering';
+import { ClockStart } from './ClockStart';
 import { SessionLifecycle, type PlaybackSessionEvents } from './SessionLifecycle';
 import { DecodeRun, type DecodeRunParts } from './DecodeRun';
 import { keyframeTimeAt } from './keyframeTimeAt';
@@ -50,10 +51,17 @@ export class PlaybackSession<Handle = unknown> {
   private readonly buffering = new Buffering(this.lifecycle);
   private readonly clockWatch = new ClockWatch();
   private readonly seeks = new SeekOrder();
+  private readonly starts: ClockStart;
 
   public constructor(private readonly parts: PlaybackSessionParts<Handle>) {
     this.screen = new PictureOnScreen(parts.sink, (error) => {
       this.fail(error);
+    });
+    this.starts = new ClockStart({
+      clock: parts.clock,
+      lifecycle: this.lifecycle,
+      clockWatch: this.clockWatch,
+      buffering: this.buffering,
     });
   }
 
@@ -211,9 +219,7 @@ export class PlaybackSession<Handle = unknown> {
     if (this.isAtTheEnd()) this.seek(seconds(0));
     if (!this.lifecycle.canMoveTo('buffering')) return undefined;
     if (!this.run) this.startRun(this.parts.clock.currentTime);
-    if (!this.isPrimed()) return this.startOncePrimed();
-    this.enterPlaying();
-    return this.startClockOnceHeard();
+    return this.isPrimed() ? this.starts.begin() : this.startOncePrimed();
   }
 
   /**
@@ -223,24 +229,6 @@ export class PlaybackSession<Handle = unknown> {
   private startOncePrimed(): Promise<void> {
     this.parts.clock.pause();
     return this.buffering.enterForStart();
-  }
-
-  /**
-   * Starts the clock once `playing` has been heard, unless a listener paused on it: an audio
-   * element told to pause while it starts refuses the start.
-   */
-  private async startClockOnceHeard(): Promise<void> {
-    await Promise.resolve();
-    if (this.lifecycle.is('playing')) await this.startClock();
-  }
-
-  /**
-   * Playing from the clock's time now: ticks that never come from here on are missed ticks
-   * too, as when playback starts in a hidden tab or an offscreen frame.
-   */
-  private enterPlaying(): void {
-    this.clockWatch.playingFrom(this.parts.clock.currentTime);
-    this.lifecycle.moveTo('playing');
   }
 
   private presentDue(now: Seconds): void {
@@ -356,30 +344,8 @@ export class PlaybackSession<Handle = unknown> {
    * Called as pairs arrive and when a run ends: the moment `buffering` has what it waits for.
    */
   private resumeIfPrimed(): void {
-    if (this.buffering.isOverAt(this.run, this.parts.clock.currentTime)) void this.resume();
-  }
-
-  /**
-   * Leaves `buffering` for `playing` and starts the clock; a refusal (only possible before the
-   * first start) lands `paused` and is reported to the waiting `play`.
-   */
-  private async resume(): Promise<void> {
-    const attempt = this.buffering.takeStart();
-    this.enterPlaying();
-    try {
-      await this.startClockOnceHeard();
-      attempt?.resolve();
-    } catch (error) {
-      attempt?.reject(error);
-    }
-  }
-
-  private async startClock(): Promise<void> {
-    try {
-      await this.parts.clock.start();
-    } catch (error) {
-      if (this.lifecycle.is('playing')) this.lifecycle.moveTo('paused');
-      throw error;
+    if (this.buffering.isOverAt(this.run, this.parts.clock.currentTime)) {
+      void this.starts.resume();
     }
   }
 

@@ -3,11 +3,12 @@ import { RecordHeader } from './RecordHeader';
 import { Trailer } from './Trailer';
 import { TrailerFooter } from './TrailerFooter';
 import type { TrailerLayout } from './TrailerLayout';
-import { RECORD_HEADER_SIZE, TRAILER_FOOTER_SIZE } from '../constants';
+import type { RecordLocation } from './RecordLocation';
+import { KNOWN_TRAILER_VERSION, RECORD_HEADER_SIZE, TRAILER_FOOTER_SIZE } from '../constants';
 import type { RandomAccessSource } from '../../../ports/RandomAccessSource';
 import { ByteRange } from '../../../shared/binary/ByteRange';
 import { ByteReader } from '../../../shared/binary/ByteReader';
-import { GyroViewError } from '../../../shared/errors/GyroViewError';
+import { GyroViewError, hasErrorCode, messageOf } from '../../../shared/errors/GyroViewError';
 
 const TAIL_SIZE = RECORD_HEADER_SIZE + TRAILER_FOOTER_SIZE;
 
@@ -24,7 +25,28 @@ export async function readTrailer(source: RandomAccessSource, fileSize: number):
     );
   }
   const layout = parseLayout(await source.read(ByteRange.lastOf(fileSize, TAIL_SIZE)), fileSize);
-  return new Trailer(layout.footer, layout.payloadStart, await locateRecords(source, layout));
+  return new Trailer(layout.footer, layout.payloadStart, await recordsOf(source, layout));
+}
+
+/**
+ * The records the trailer lists. A footer of another version than every camera seen writes is
+ * read as theirs; when that fails, the failure names the version, its likelier cause.
+ */
+async function recordsOf(
+  source: RandomAccessSource,
+  layout: TrailerLayout,
+): Promise<readonly RecordLocation[]> {
+  try {
+    return await locateRecords(source, layout);
+  } catch (error) {
+    const { version } = layout.footer;
+    if (version === KNOWN_TRAILER_VERSION || !hasErrorCode(error, 'invalid-trailer')) throw error;
+    throw new GyroViewError(
+      'invalid-trailer',
+      `${messageOf(error)} (the footer declares version ${version}, cameras seen write ${KNOWN_TRAILER_VERSION})`,
+      { cause: error },
+    );
+  }
 }
 
 function parseLayout(tail: Uint8Array, fileSize: number): TrailerLayout {

@@ -5,6 +5,7 @@ import { readTrailer as readTrailerWithSize } from './readTrailer';
 import type { RandomAccessSource } from '../../../ports/RandomAccessSource';
 import {
   FOOTER_TRAILER_SIZE_OFFSET,
+  FOOTER_VERSION_OFFSET,
   INDEX_SLOT_OFFSET_OFFSET,
   INDEX_SLOT_SIZE,
   InfoRecordFormat,
@@ -45,6 +46,12 @@ function syntheticRecords(): TrailerFixtureBuilder {
 function footerSizeFieldOffset(fileSize: number): number {
   return fileSize - TRAILER_FOOTER_SIZE + FOOTER_TRAILER_SIZE_OFFSET;
 }
+
+function footerVersionOffset(fileSize: number): number {
+  return fileSize - TRAILER_FOOTER_SIZE + FOOTER_VERSION_OFFSET;
+}
+
+const UNSEEN_VERSION = 4;
 
 describe('readTrailer with the real X5 layout', () => {
   it.each(['office', 'sailing'] as const)(
@@ -194,6 +201,29 @@ describe('readTrailer with synthetic layouts', () => {
     const expectedError = {
       code: 'invalid-trailer',
       message: expect.stringContaining('not contiguous') as string,
+    };
+    await expect(readTrailer(new InMemoryRandomAccessSource(file.bytes))).rejects.toMatchObject(
+      expectedError,
+    );
+  });
+
+  it('reads a footer of an unseen version as the cameras seen write theirs', async () => {
+    const file = syntheticRecords().buildContiguous();
+    const view = new DataView(file.bytes.buffer, file.bytes.byteOffset);
+    view.setUint32(footerVersionOffset(file.bytes.byteLength), UNSEEN_VERSION, true);
+    const trailer = await readTrailer(new InMemoryRandomAccessSource(file.bytes));
+    expect(trailer.footer.version).toBe(UNSEEN_VERSION);
+    expect(trailer.locationOf(RecordType.Gyro)?.payload.length).toBe(GYRO_PAYLOAD.byteLength);
+  });
+
+  it('names an unseen footer version when its trailer cannot be read', async () => {
+    const file = syntheticRecords().buildContiguous();
+    const view = new DataView(file.bytes.buffer, file.bytes.byteOffset);
+    view.setUint32(footerSizeFieldOffset(file.bytes.byteLength), 200, true);
+    view.setUint32(footerVersionOffset(file.bytes.byteLength), UNSEEN_VERSION, true);
+    const expectedError = {
+      code: 'invalid-trailer',
+      message: expect.stringContaining(`declares version ${UNSEEN_VERSION}`) as string,
     };
     await expect(readTrailer(new InMemoryRandomAccessSource(file.bytes))).rejects.toMatchObject(
       expectedError,

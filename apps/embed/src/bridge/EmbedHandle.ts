@@ -8,6 +8,7 @@ import {
   isGyroViewErrorCode,
   messageOf,
   TypedEmitter,
+  type Listenable,
 } from '@gyroview/core';
 import type { PlayerStatus } from '@gyroview/player';
 
@@ -61,7 +62,11 @@ const INITIAL_STATE: EmbedState = {
  * speaks.
  */
 export class EmbedHandle {
-  public readonly events = new TypedEmitter<EmbedEvents>();
+  /**
+   * The frame's events, to listen to: only the handle emits what the frame says.
+   */
+  public readonly events: Listenable<EmbedEvents>;
+  private readonly emitter = new TypedEmitter<EmbedEvents>();
   /**
    * Every command not answered yet, in the order sent.
    */
@@ -83,6 +88,7 @@ export class EmbedHandle {
     private readonly pageUrl: () => string,
     helloDeadlineMs = HELLO_DEADLINE_MS,
   ) {
+    this.events = this.emitter;
     this.helloWatch = new HelloWatch(helloDeadlineMs, () => {
       this.giveUp();
     });
@@ -185,7 +191,7 @@ export class EmbedHandle {
       reject(new GyroViewError('embed-destroyed', 'the embed was destroyed'));
     }
     this.pending.clear();
-    this.events.removeAll();
+    this.emitter.removeAll();
   }
 
   private command<Value = void>(name: CommandName, ...parameters: unknown[]): Promise<Value> {
@@ -260,7 +266,7 @@ export class EmbedHandle {
   private onEvent(message: EventMessage): void {
     const detail = detailOf(message);
     this.stateValue = stateAfter(this.stateValue, message.name, detail);
-    this.events.emit(message.name, detail);
+    this.emitter.emit(message.name, detail);
   }
 
   /**

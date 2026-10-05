@@ -65,6 +65,17 @@ describe('the embed bridge over a message channel', () => {
     }
   });
 
+  it("gives the page no way to emit or silence the handle's events, at compile time", () => {
+    const { handle } = bridge();
+    const reachForEmitting = (): unknown[] => [
+      // @ts-expect-error -- a page listens to the frame; only the handle emits what it says
+      handle.events.emit,
+      // @ts-expect-error -- nor does a page take the other listeners away
+      handle.events.removeAll,
+    ];
+    expect(reachForEmitting).toBeTypeOf('function');
+  });
+
   it('refuses a command the channel cannot carry, before the hello, and still sends the rest', async () => {
     const { handle } = bridge();
     const uncloneable = handle.load({

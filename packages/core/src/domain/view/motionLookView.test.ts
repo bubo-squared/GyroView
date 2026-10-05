@@ -39,8 +39,8 @@ function followed(
   view: ViewState,
   previous: DeviceReading | undefined,
   reading: DeviceReading,
-): ViewState | undefined {
-  return followReading(view, previous, reading)?.view;
+): ViewState {
+  return followReading(view, previous, reading).view;
 }
 
 describe('a view held by the device', () => {
@@ -61,25 +61,41 @@ describe('a view held by the device', () => {
   it('keeps its yaw after a gap in the readings, where the device may count from a new zero', () => {
     const previous = readingAt(2000, [0, 0, 0]);
     expect(followed(HELD, previous, readingAt(2501, [90, 10, 5]))).toEqual(HELD);
-    expect(followed(HELD, previous, readingAt(2500, [90, 10, 5]))?.yaw).toBe(130);
+    expect(followed(HELD, previous, readingAt(2500, [90, 10, 5])).yaw).toBe(130);
   });
 
-  it('skips a turn too small to see, so a phone at rest draws nothing', () => {
+  it('leaves the view as it is for a turn too small to see, so a phone at rest draws nothing', () => {
     const previous = readingAt(0, [0, 10, 5]);
-    expect(followReading(HELD, previous, readingAt(16, [0.004, 10.004, 5]))).toBeUndefined();
+    const unseen = followReading(HELD, previous, readingAt(16, [0.004, 10.004, 5]));
+    expect(unseen.view).toBe(HELD);
+    expect(unseen.reading).toEqual({ look: previous.look, at: 16 });
   });
 
-  it('still lands a slow drift once it shows, counted from the last reading it followed', () => {
-    const previous = readingAt(0, [0, 10, 5]);
-    expect(followReading(HELD, previous, readingAt(16, [0.005, 10, 5]))).toBeUndefined();
-    const shown = followReading(HELD, previous, readingAt(32, [0.02, 10, 5]));
-    expect(shown?.view.yaw).toBeCloseTo(40.02, 9);
-    expect(shown?.reading.at).toBe(32);
+  it('lands a slow drift in full once it shows, counted from the look last shown', () => {
+    let hold = { view: HELD, reading: readingAt(0, [0, 10, 5]) };
+    for (const [at, yaw] of [
+      [16, 0.005],
+      [32, 0.009],
+      [48, 0.02],
+    ] as const) {
+      hold = followReading(hold.view, hold.reading, readingAt(at, [yaw, 10, 5]));
+    }
+    expect(hold.view.yaw).toBeCloseTo(40.02, 9);
+  });
+
+  it('rests longer than the gap without losing the turn that follows', () => {
+    let hold = { view: HELD, reading: readingAt(0, [0, 10, 5]) };
+    for (let at = 16; at <= 1600; at += 16) {
+      hold = followReading(hold.view, hold.reading, readingAt(at, [0.001, 10, 5]));
+    }
+    expect(hold.view).toBe(HELD);
+    hold = followReading(hold.view, hold.reading, readingAt(1616, [3, 10, 5]));
+    expect(hold.view.yaw).toBeCloseTo(43, 9);
   });
 
   it('follows the first reading even when it changes nothing visible', () => {
     const resting = { ...HELD, roll: degrees(0) };
-    expect(followReading(resting, undefined, readingAt(0, [0, 10, 0]))?.view).toEqual(resting);
+    expect(followReading(resting, undefined, readingAt(0, [0, 10, 0])).view).toEqual(resting);
   });
 
   it('lets go of the roll alone', () => {

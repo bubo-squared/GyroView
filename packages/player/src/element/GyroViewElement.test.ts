@@ -15,6 +15,18 @@ import { nextEvent, settle, waitFor } from '../test/waiting';
  */
 const WIDE_PAGE = { width: 1280, height: 720 };
 
+/**
+ * A phone's viewport held upright, and turned on its side.
+ */
+const PHONE_UPRIGHT = { width: 390, height: 844 };
+const PHONE_ON_ITS_SIDE = { width: 844, height: 390 };
+
+/**
+ * How far a drawing buffer's proportions may be from the viewport's: its sides are rounded to
+ * whole device pixels.
+ */
+const VIEWPORT_PROPORTION_TOLERANCE = 0.01;
+
 beforeAll(() => {
   defineGyroView();
 });
@@ -106,6 +118,48 @@ function requestedUrl(input: RequestInfo | URL): string {
  */
 function isFillingTheScreen(element: GyroViewElement): boolean {
   return document.fullscreenElement === element || element.dataset['fill'] !== undefined;
+}
+
+/**
+ * Makes the Fullscreen API refuse the element, so that it pins itself over the page instead.
+ */
+function refuseFullscreen(element: GyroViewElement): void {
+  element.requestFullscreen = (): Promise<void> => Promise.reject(new Error('refused'));
+}
+
+/**
+ * A dialog centred by a transform and clipping its content, as a page's modal often is: a fixed
+ * position inside it is the dialog's, not the viewport's.
+ */
+function centredClippingDialog(): HTMLElement {
+  const dialog = document.createElement('div');
+  dialog.style.cssText =
+    'position: fixed; top: 50%; left: 50%; translate: -50% -50%; width: 320px; height: 240px; overflow: hidden';
+  document.body.append(dialog);
+  return dialog;
+}
+
+function boundsOf(element: Element): { x: number; y: number; width: number; height: number } {
+  const { x, y, width, height } = element.getBoundingClientRect();
+  return { x, y, width, height };
+}
+
+function viewportBounds(): { x: number; y: number; width: number; height: number } {
+  const viewport = document.documentElement;
+  return { x: 0, y: 0, width: viewport.clientWidth, height: viewport.clientHeight };
+}
+
+function isCoveringTheViewport(element: Element): boolean {
+  return JSON.stringify(boundsOf(element)) === JSON.stringify(viewportBounds());
+}
+
+/**
+ * Whether the canvas draws with at least a device pixel per CSS pixel of the viewport, in the
+ * viewport's proportions.
+ */
+function isDrawingAtTheViewportsSize(canvas: HTMLCanvasElement): boolean {
+  const proportionsDiffer = Math.abs(canvas.width / canvas.height - innerWidth / innerHeight);
+  return canvas.width >= innerWidth && proportionsDiffer < VIEWPORT_PROPORTION_TOLERANCE;
 }
 
 /**
@@ -947,17 +1001,135 @@ describe('<gyro-view>', () => {
   it('pins itself over the whole viewport where fullscreen is refused, whatever size the page gave it', async () => {
     const element = create({
       controls: '',
-      style: 'width: 300px; margin: 24px 8px; max-height: 100px',
+      style:
+        'width: 300px; margin: 24px 8px; max-height: 100px; border-radius: 14px; translate: 10px 10px; scale: 0.5',
     });
-    element.requestFullscreen = (): Promise<void> => Promise.reject(new Error('refused'));
+    refuseFullscreen(element);
     await element.toggleFullscreen();
     expect(element.dataset['fill']).toBe('');
-    const { width, height } = element.getBoundingClientRect();
-    const viewport = document.documentElement;
-    expect({ width, height }).toEqual({
-      width: viewport.clientWidth,
-      height: viewport.clientHeight,
-    });
+    expect(boundsOf(element)).toEqual(viewportBounds());
+    expect(getComputedStyle(element).borderTopLeftRadius).toBe('0px');
+  });
+
+  it('pins itself over the whole viewport from inside a dialog that a transform centres and that clips it', async () => {
+    const dialog = centredClippingDialog();
+    const element = create({ controls: '' });
+    try {
+      dialog.append(element);
+      refuseFullscreen(element);
+      await element.toggleFullscreen();
+      expect(boundsOf(element)).toEqual(viewportBounds());
+      // A corner well outside the dialog, where its overflow would clip the element.
+      expect(document.elementFromPoint(2, 2)).toBe(element);
+    } finally {
+      dialog.remove();
+    }
+  });
+
+  it("stays above the page's own layers while pinned", async () => {
+    const element = create({ controls: '' });
+    const cover = document.createElement('div');
+    cover.style.cssText = 'position: fixed; inset: 0; z-index: 2147483647';
+    document.body.append(cover);
+    try {
+      refuseFullscreen(element);
+      await element.toggleFullscreen();
+      expect(document.elementFromPoint(innerWidth / 2, innerHeight / 2)).toBe(element);
+    } finally {
+      cover.remove();
+    }
+  });
+
+  it('keeps its own colours and font while pinned, whatever the page gives every popover', async () => {
+    const pageStyles = document.createElement('style');
+    pageStyles.textContent = '[popover] { background: white; color: black; font-family: serif }';
+    document.head.append(pageStyles);
+    const element = create({ controls: '' });
+    try {
+      refuseFullscreen(element);
+      await element.toggleFullscreen();
+      const style = getComputedStyle(element);
+      expect(style.backgroundColor).toBe('rgb(0, 0, 0)');
+      expect(style.color).toBe('rgb(255, 255, 255)');
+      expect(style.fontFamily).not.toBe('serif');
+    } finally {
+      pageStyles.remove();
+    }
+  });
+
+  it('pins itself in place where the browser has no popovers', async () => {
+    const showPopover = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'showPopover');
+    Reflect.deleteProperty(HTMLElement.prototype, 'showPopover');
+    try {
+      const element = create({ controls: '' });
+      refuseFullscreen(element);
+      await element.toggleFullscreen();
+      expect(element.dataset['fill']).toBe('');
+      expect(element.hasAttribute('popover')).toBe(false);
+      expect(boundsOf(element)).toEqual(viewportBounds());
+    } finally {
+      if (showPopover) Object.defineProperty(HTMLElement.prototype, 'showPopover', showPopover);
+    }
+  });
+
+  it('stays pinned over the whole viewport when the page moves it into a dialog', async () => {
+    const element = create({ controls: '' });
+    const dialog = centredClippingDialog();
+    try {
+      refuseFullscreen(element);
+      await element.toggleFullscreen();
+      dialog.append(element);
+      expect(boundsOf(element)).toEqual(viewportBounds());
+    } finally {
+      dialog.remove();
+    }
+  });
+
+  it("leaves the pinned fill when the page removes it, as from the browser's fullscreen", async () => {
+    const element = create({ controls: '' });
+    refuseFullscreen(element);
+    await element.toggleFullscreen();
+    element.remove();
+    await waitFor(
+      () => element.dataset['fill'] === undefined,
+      'the removed element leaving the fill',
+    );
+    document.body.append(element);
+    expect(element.hasAttribute('popover')).toBe(false);
+    expect(boundsOf(element)).not.toEqual(viewportBounds());
+  });
+
+  it('goes back to its place on the page when it leaves the pinned fill', async () => {
+    const element = create({ controls: '', style: 'width: 300px; height: 150px; margin: 8px' });
+    const placed = boundsOf(element);
+    refuseFullscreen(element);
+    await element.toggleFullscreen();
+    await element.toggleFullscreen();
+    expect(element.hasAttribute('popover')).toBe(false);
+    expect(boundsOf(element)).toEqual(placed);
+  });
+
+  it('follows a viewport resize while pinned from inside a dialog, drawing at its new size', async () => {
+    const { width, height } = viewportBounds();
+    await page.viewport(PHONE_UPRIGHT.width, PHONE_UPRIGHT.height);
+    const dialog = centredClippingDialog();
+    try {
+      const element = await createReady();
+      dialog.append(element);
+      refuseFullscreen(element);
+      await element.toggleFullscreen();
+      // As a phone turning on its side resizes it.
+      await page.viewport(PHONE_ON_ITS_SIDE.width, PHONE_ON_ITS_SIDE.height);
+      await waitFor(
+        () => isCoveringTheViewport(element),
+        'the pinned player following the viewport',
+      );
+      const canvas = control(element, 'canvas', HTMLCanvasElement);
+      await waitFor(() => isDrawingAtTheViewportsSize(canvas), 'the drawing buffer following it');
+    } finally {
+      dialog.remove();
+      await page.viewport(width, height);
+    }
   });
 
   it('fills the screen one way or another and leaves on Escape', async () => {

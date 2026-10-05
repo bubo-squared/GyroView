@@ -31,6 +31,10 @@
  * Pinned over the page where the Fullscreen API is refused (iPhone Safari). Like the browser's
  * own fullscreen rules it overrides the size, margins and place the page gave the element, and
  * the insets size it to the visible viewport, where 100vh would reach under Safari's toolbars.
+ * It keeps no corners or border of the page's, which would show the page behind it, and zero
+ * border and padding override a popover's defaults, which the pinned element is (ADR 0041). A
+ * page's styles for every popover would outrank the host's colours and font, so the fill holds
+ * them too. The z-index matters only where the browser has no popovers.
  */
 :host([data-fill]) {
   position: fixed !important;
@@ -43,8 +47,17 @@
   max-width: none !important;
   max-height: none !important;
   margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   transform: none !important;
+  translate: none !important;
+  rotate: none !important;
+  scale: none !important;
   aspect-ratio: auto !important;
+  background: #000 !important;
+  color: var(--gyro-view-text) !important;
+  font-family: var(--gyro-view-font) !important;
   z-index: 2147483000 !important;
 }
 

@@ -218,11 +218,13 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     this.dataset['status'] = this.player.status;
     this.idle.start();
     this.loads.connected();
+    this.fullscreen.connected();
   }
 
   public disconnectedCallback(): void {
     this.idle.stop();
     void this.loads.disconnected();
+    void this.fullscreen.disconnected();
   }
 
   public attributeChangedCallback(

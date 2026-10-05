@@ -1,6 +1,8 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
+import { Deferred } from '@gyroview/core';
+
 import { defineGyroView } from './defineGyroView';
 import { GyroViewElement } from './GyroViewElement';
 import { queryShadow } from '../controls/controlParts';
@@ -1045,21 +1047,23 @@ describe('<gyro-view>', () => {
     pageStyles.textContent = '[popover] { background: white; color: black; font-family: serif }';
     document.head.append(pageStyles);
     const element = create({ controls: '' });
+    const ownFont = getComputedStyle(element).fontFamily;
     try {
       refuseFullscreen(element);
       await element.toggleFullscreen();
+      expect(element.matches(':popover-open')).toBe(true);
       const style = getComputedStyle(element);
       expect(style.backgroundColor).toBe('rgb(0, 0, 0)');
       expect(style.color).toBe('rgb(255, 255, 255)');
-      expect(style.fontFamily).not.toBe('serif');
+      expect(style.fontFamily).toBe(ownFont);
     } finally {
       pageStyles.remove();
     }
   });
 
-  it('pins itself in place where the browser has no popovers', async () => {
-    const showPopover = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'showPopover');
-    Reflect.deleteProperty(HTMLElement.prototype, 'showPopover');
+  it('pins itself in place where the browser has no popovers of its own', async () => {
+    // A polyfill's showPopover stays; the selector is what the browser lacks.
+    const supports = vi.spyOn(CSS, 'supports').mockReturnValue(false);
     try {
       const element = create({ controls: '' });
       refuseFullscreen(element);
@@ -1068,7 +1072,7 @@ describe('<gyro-view>', () => {
       expect(element.hasAttribute('popover')).toBe(false);
       expect(boundsOf(element)).toEqual(viewportBounds());
     } finally {
-      if (showPopover) Object.defineProperty(HTMLElement.prototype, 'showPopover', showPopover);
+      supports.mockRestore();
     }
   });
 
@@ -1079,6 +1083,10 @@ describe('<gyro-view>', () => {
       refuseFullscreen(element);
       await element.toggleFullscreen();
       dialog.append(element);
+      // Past the microtask that tells a move from a removal.
+      await settle();
+      expect(element.dataset['fill']).toBe('');
+      expect(element.matches(':popover-open')).toBe(true);
       expect(boundsOf(element)).toEqual(viewportBounds());
     } finally {
       dialog.remove();
@@ -1097,6 +1105,20 @@ describe('<gyro-view>', () => {
     document.body.append(element);
     expect(element.hasAttribute('popover')).toBe(false);
     expect(boundsOf(element)).not.toEqual(viewportBounds());
+  });
+
+  it('stays out of the pinned fill when the page removes it while the browser refuses fullscreen', async () => {
+    const element = create({ controls: '' });
+    const refusal = new Deferred<void>();
+    element.requestFullscreen = (): Promise<void> => refusal.promise;
+    const toggled = element.toggleFullscreen();
+    element.remove();
+    await settle();
+    refusal.reject(new Error('refused'));
+    await toggled;
+    document.body.append(element);
+    expect(element.dataset['fill']).toBeUndefined();
+    expect(element.hasAttribute('popover')).toBe(false);
   });
 
   it('goes back to its place on the page when it leaves the pinned fill', async () => {

@@ -42,15 +42,6 @@ export class FullscreenToggle {
   }
 
   /**
-   * An element the page removes leaves the fill, as the browser's fullscreen element does; one
-   * it moves is back in the document by the next microtask and stays pinned.
-   */
-  public async disconnected(): Promise<void> {
-    await Promise.resolve();
-    if (!this.element.isConnected) await this.exit();
-  }
-
-  /**
    * Asked of the element itself: `document.fullscreenElement` names the outermost shadow host
    * instead when the player sits inside another component.
    */
@@ -67,6 +58,8 @@ export class FullscreenToggle {
         // The browser declined (no gesture, an iframe without the permission): pin instead.
       }
     }
+    // Removed while the browser answered: a removal leaves the fill, so there is none to enter.
+    if (!this.element.isConnected) return;
     this.element.setAttribute(FILL_ATTRIBUTE, '');
     this.raiseToTopLayer();
   }
@@ -84,8 +77,9 @@ export class FullscreenToggle {
 }
 
 /**
- * Safari has popovers from 17; before it, `:popover-open` is not even a selector it parses.
+ * The browser's own popovers, the method and the selector both: Safari has them from 17, and
+ * before it does not even parse `:popover-open`, which a polyfill's `showPopover` cannot change.
  */
 function hasPopovers(): boolean {
-  return 'showPopover' in HTMLElement.prototype;
+  return 'showPopover' in HTMLElement.prototype && CSS.supports('selector(:popover-open)');
 }

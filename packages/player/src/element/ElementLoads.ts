@@ -17,8 +17,8 @@ export interface LoadingElement extends HTMLElement {
  * When `<gyro-view>` loads, and what. Attribute changes are read together a microtask after they
  * arrive, so a `src` set with its `src2` loads once; files handed in replace the attributes until
  * `src` or `src2` change. Only a connected element loads: one out of the document owes its load
- * to the next connection, and lets its recording go a microtask after a removal unless it was
- * only moved. A seek asked for while a load waits starts the new recording there.
+ * to the next connection, and a removed one lets its recording go. A seek asked for while a load
+ * waits starts the new recording there.
  */
 export class ElementLoads {
   private scheduled: Promise<void> | undefined;
@@ -46,12 +46,9 @@ export class ElementLoads {
   }
 
   /**
-   * A move within the document disconnects and connects again at once: only an element still out
-   * of it a microtask later lets its recording go.
+   * The element left the document rather than moving within it: its recording goes.
    */
-  public async disconnected(): Promise<void> {
-    await Promise.resolve();
-    if (this.element.isConnected) return;
+  public removed(): void {
     this.player.unload();
     this.isOwed = true;
   }

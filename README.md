@@ -242,8 +242,9 @@ The frame talks only to the page that embedded it and
 the page only to the frame. A frame that loads but never answers (a wrong `embedPageUrl`, a host
 that refuses to be framed) fails the handle's promises with `embed-unreachable` ten seconds
 later, and a command the frame does not know, from a snippet newer than the frame, with
-`invalid-argument`. Moving the container reloads the iframe, as the browser does with any
-iframe: it starts again from the embed options, and commands it had not answered are asked again.
+`invalid-argument`. On an iPhone, which has no fullscreen for an element, the Fullscreen button
+inside the iframe fills only the iframe for now; the element form fills the screen. Moving the
+container reloads the iframe, as the browser does with any iframe: it starts again from the embed options, and commands it had not answered are asked again.
 Without the snippet, an iframe of
 `embed.html?src=...&stabilization=lock&muted=1` plays on its own; every attribute above is a
 query parameter (`controls=0` hides the controls; the snippet's `viewMode` option is the

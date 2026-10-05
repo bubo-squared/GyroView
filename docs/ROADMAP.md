@@ -169,6 +169,10 @@ upright, the rest of its IMU frame assumed (ADR 0009).
 - The download's budget (128 MiB ahead, 32 MiB behind, shared by a pair's files) is a
   desktop's; an iPhone's memory under several players is still to be measured.
 - The iframe embed speaks English: the element's `messages` do not cross the embed protocol.
+- On an iPhone, the Fullscreen button of the iframe form fills only the iframe: Safari has no
+  fullscreen for an element there, and the player's pinned fill (ADR 0041) can cover only its
+  own document, which is the frame. The element form fills the screen. Covering the screen from
+  the iframe would need the snippet to pin the iframe itself, told over the embed protocol.
 - Firefox and Android are best effort: Firefox has WebCodecs only on desktop, Android
   decoders vary.
 - HEVC on Linux decodes only where the browser reaches the GPU through VA-API (Intel or AMD);

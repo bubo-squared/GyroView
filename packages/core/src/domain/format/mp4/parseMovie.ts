@@ -5,7 +5,7 @@ import { SYNC_SAMPLE } from './mp4Layouts';
 import { readTableColumns } from './readTable';
 import { sampleLocationsOf } from './sampleLocations';
 import { sampleTimingOf } from './sampleTiming';
-import { movieTimescaleOf, trackBoxesOf, trackHeadersOf, type TrackBoxes } from './trackHeaders';
+import { movieTimescaleOf, trackBoxesOf, trackHandlerOf, trackHeadersOf } from './trackHeaders';
 import { SampleTable } from '../../container/SampleTable';
 import { TrackSampleTable, type TrackKind } from '../../container/TrackSampleTable';
 
@@ -37,14 +37,15 @@ export function parseMovie(movieBox: Uint8Array): SampleTable {
   const movieTimescale = movieTimescaleOf(children);
   const tracks = children
     .filter((box) => box.type === Mp4BoxType.Track)
-    .flatMap((box) => playedTrackOf(trackBoxesOf(box), movieTimescale));
+    .flatMap((box) => playedTrackOf(box, movieTimescale));
   return new SampleTable(tracks);
 }
 
-function playedTrackOf(boxes: TrackBoxes, movieTimescale: number): TrackSampleTable[] {
-  const headers = trackHeadersOf(boxes);
-  const kind = KIND_OF_HANDLER[headers.handlerType];
+function playedTrackOf(trackBox: Mp4Box, movieTimescale: number): TrackSampleTable[] {
+  const kind = KIND_OF_HANDLER[trackHandlerOf(trackBox)];
   if (!kind) return [];
+  const boxes = trackBoxesOf(trackBox);
+  const headers = trackHeadersOf(boxes);
   const locations = sampleLocationsOf(boxes.sampleTable);
   const timing = sampleTimingOf(boxes, {
     media: headers.mediaTimescale,

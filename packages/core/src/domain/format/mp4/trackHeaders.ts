@@ -60,6 +60,15 @@ export function movieTimescaleOf(movie: readonly Mp4Box[]): number {
   );
 }
 
+/**
+ * What a track's samples are (`vide`, `soun`, ...), read from its media before anything below it
+ * is walked: a track the player does not play may be malformed further down without harm.
+ */
+export function trackHandlerOf(trackBox: Mp4Box): string {
+  const track = boxesIn(trackBox.body);
+  return handlerTypeOf(boxesIn(requiredBox(track, Mp4BoxType.Media).body));
+}
+
 export function trackBoxesOf(trackBox: Mp4Box): TrackBoxes {
   const track = boxesIn(trackBox.body);
   const media = boxesIn(requiredBox(track, Mp4BoxType.Media).body);

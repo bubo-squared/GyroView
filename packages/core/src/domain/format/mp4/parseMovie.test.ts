@@ -124,6 +124,13 @@ describe('parseMovie', () => {
     expect(withTimecode.tracks.map((track) => track.trackId)).toEqual([1]);
   });
 
+  it('leaves out a track that is neither picture nor sound however malformed its sample table', () => {
+    const malformedTimecode = { ...TIMECODE, sampleEntry: new Uint8Array() };
+    const file = buildMp4File([lens(1), malformedTimecode]);
+    const withTimecode = parseMovie(movieBoxOf(file));
+    expect(withTimecode.tracks.map((track) => track.trackId)).toEqual([1]);
+  });
+
   it('refuses a fragmented movie, whose samples are described outside the movie box', () => {
     const [movie] = boxesIn(movieBoxOf(file));
     const movieExtends = encodeBox('mvex', new Uint8Array(8));

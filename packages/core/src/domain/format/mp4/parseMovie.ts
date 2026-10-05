@@ -57,7 +57,7 @@ function playedTrackOf(trackBox: Mp4Box, movieTimescale: number): TrackSampleTab
     kind,
     ...locations,
     ...timing,
-    syncSamples: syncSamplesOf(boxes.sampleTable),
+    syncSamples: syncSamplesOf(boxes.sampleTable, locations.sizes.length),
     keyframeRule: keyframeRuleFor(headers),
   });
   return [track];
@@ -65,11 +65,21 @@ function playedTrackOf(trackBox: Mp4Box, movieTimescale: number): TrackSampleTab
 
 /**
  * The samples decoding may start at, counted from zero; undefined for a track without a sync
- * sample table, whose every sample is one.
+ * sample table, whose every sample is one. The standard lists them in ascending order, each a
+ * sample of the track; a table that does not is the file's damage.
  */
-function syncSamplesOf(sampleTable: readonly Mp4Box[]): number[] | undefined {
+function syncSamplesOf(sampleTable: readonly Mp4Box[], sampleCount: number): number[] | undefined {
   const box = optionalBox(sampleTable, Mp4BoxType.SyncSample);
   if (!box) return undefined;
   const { sampleNumber } = readTableColumns(fullBoxOf(box).content, SYNC_SAMPLE);
-  return sampleNumber.map((number) => number - FIRST_SAMPLE_NUMBER);
+  const samples = sampleNumber.map((number) => number - FIRST_SAMPLE_NUMBER);
+  const stray = samples.findIndex(
+    (sample, index) => sample < 0 || sample >= sampleCount || sample <= (samples[index - 1] ?? -1),
+  );
+  if (stray !== -1) {
+    throw unreadableMovie(
+      `lists sync sample ${sampleNumber[stray] ?? 0} out of order or outside its ${sampleCount} samples`,
+    );
+  }
+  return samples;
 }

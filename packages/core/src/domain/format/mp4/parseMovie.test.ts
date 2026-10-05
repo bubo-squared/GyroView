@@ -71,6 +71,24 @@ function movieBoxOf(file: BuiltMp4File): Uint8Array {
   return file.bytes.subarray(file.movieBox.offset, file.movieBox.end);
 }
 
+/**
+ * A copy of the movie box whose first sync sample table lists `numbers` in place of its own;
+ * as many as it had.
+ */
+function withSyncSamples(movieBox: Uint8Array, numbers: readonly number[]): Uint8Array {
+  const patched = Uint8Array.from(movieBox);
+  const type = new TextDecoder().decode(patched).indexOf('stss');
+  const view = new DataView(patched.buffer);
+  const entries = type + STSS_ENTRIES_AFTER_TYPE;
+  for (const [index, number] of numbers.entries()) view.setUint32(entries + 4 * index, number);
+  return patched;
+}
+
+/**
+ * The box type, then its version and flags and its entry count, before the entries.
+ */
+const STSS_ENTRIES_AFTER_TYPE = 12;
+
 describe('parseMovie', () => {
   const tracks = [lens(1), SOUND, lens(3)];
   let file: BuiltMp4File;
@@ -129,6 +147,19 @@ describe('parseMovie', () => {
     const file = buildMp4File([lens(1), malformedTimecode]);
     const withTimecode = parseMovie(movieBoxOf(file));
     expect(withTimecode.tracks.map((track) => track.trackId)).toEqual([1]);
+  });
+
+  it.each([
+    ['sample 0, which does not exist', [0, 4]],
+    ['a sample twice', [1, 1]],
+    ['a sample past the last', [1, 7]],
+  ])("refuses a sync sample table listing %s as the file's damage", (_, numbers) => {
+    const file = buildMp4File([lens(1)]);
+    const movieBox = withSyncSamples(movieBoxOf(file), numbers);
+    expect(captureError(() => parseMovie(movieBox))).toMatchObject({
+      code: 'unsupported-container',
+      message: expect.stringContaining('sync sample') as string,
+    });
   });
 
   it('refuses a track whose times count in a timescale of zero', () => {

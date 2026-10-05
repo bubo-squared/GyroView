@@ -288,7 +288,7 @@ export type { FrameSink, Presentation } from './ports/FrameSink';
 export type { PictureRenderer } from './ports/PictureRenderer';
 export { WallClock } from './application/playback/WallClock';
 export { isFlowing, type PlayerState } from './domain/playback/PlayerState';
-export { TypedEmitter } from './shared/events/TypedEmitter';
+export { TypedEmitter, type Listenable } from './shared/events/TypedEmitter';
 export {
   PlaybackSession,
   type PlaybackSessionEvents,

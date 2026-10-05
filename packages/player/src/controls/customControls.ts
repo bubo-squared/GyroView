@@ -1,13 +1,11 @@
-import { messageOf } from '@gyroview/core';
-
 import { bindKeyboard, type KeyboardHost } from './keyboard';
 import { ViewGestures } from './ViewGestures';
 import type { Player } from '../player/Player';
 
 /**
- * What a tap toggles, and where a refused start is reported.
+ * What a tap or a play key toggles; the player reports a refused start as its `warning`.
  */
-export type PlaybackToggle = Pick<Player, 'isPaused' | 'pause' | 'play' | 'events'>;
+export type PlaybackToggle = Pick<Player, 'togglePlayback'>;
 
 export interface ViewGestureOptions {
   /**
@@ -39,7 +37,7 @@ export function attachViewGestures(
   const onTap =
     options.onTap ??
     ((): void => {
-      togglePlayback(player);
+      player.togglePlayback();
     });
   const gestures = new ViewGestures(surface, player, onTap);
   return (): void => {
@@ -62,7 +60,7 @@ export function attachKeyboard(
   return bindKeyboard(target, {
     player,
     togglePlay: (): void => {
-      togglePlayback(player);
+      player.togglePlayback();
     },
     toggleFullscreen:
       options.toggleFullscreen ??
@@ -73,21 +71,5 @@ export function attachKeyboard(
     exitFullscreen: (): void => {
       void document.exitFullscreen();
     },
-  });
-}
-
-/**
- * Pauses, or starts playing and reports a refused start as the player's `warning`.
- */
-export function togglePlayback(player: PlaybackToggle): void {
-  if (!player.isPaused) {
-    player.pause();
-    return;
-  }
-  void player.play().catch((error: unknown) => {
-    player.events.emit('warning', {
-      code: 'playback-failed',
-      message: `playback could not start: ${messageOf(error)}`,
-    });
   });
 }

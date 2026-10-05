@@ -331,9 +331,11 @@ The composition root and the user-facing element, in three layers.
   from a `FrameLoop`, keeps the canvas sized (`DrawingBufferFit`, whose ratio cap the quality sets), and owns the settings (view and view
   mode in `PlayerView`, which also keeps the device's hold on the view, motion look in
   `MotionLook`, which hears the sensor only while it turns something, stabilization, gain
-  matching and quality in `PictureSettings`, sound in `PlayerSound`, autoplay in `Autoplay`,
-  the loop, which the session plays) across loads (ADR 0016). It and its parts announce through
-  one `Outbox`, so a change is heard once it is whole (ADR 0021). Its
+  matching and quality in `PictureSettings`, sound in `PlayerSound`, the starts nobody awaits,
+  autoplay and a press of play, in `PlaybackStarts`, the loop, which the session plays) across
+  loads (ADR 0016). It and its parts announce through one `Outbox`, so a change is heard once it
+  is whole (ADR 0021), the status once for each change (`StatusAnnouncer`); a page is handed
+  its events to listen to (`Listenable`), never to emit. Its
   life with a recording is one `PlayerPhase`. The element drives it; the embed bridge drives the element.
 - **`element`** and **`controls`**: `GyroViewElement` is `<gyro-view>`: attributes parsed by
   pure functions in `attributes.ts` (names in `attributeNames.ts`, published as

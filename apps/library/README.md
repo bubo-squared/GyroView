@@ -100,7 +100,9 @@ const fromUrl = await inspectRecording('https://media.example/VID_20260814_13264
 ```
 
 For an interface of your own, `createBrowserPlayer` gives the player without the element: it
-draws on your canvas, sounds through your audio element and has the same events.
+draws on your canvas, sounds through your audio element and has the same events, which
+`player.events.on` listens to. `player.togglePlayback()` plays or pauses as the element's tap
+does, a refused start reported as a `warning`.
 `attachViewGestures` and `attachKeyboard` give your canvas the element's drags, pinches, wheel
 zoom and taps, and its keyboard shortcuts; each returns what removes them.
 

@@ -48,7 +48,6 @@ import { TypedEventElement } from './TypedEventElement';
 import { createBrowserPlayer } from '../browserPlayer';
 import { queryShadow } from '../controls/controlParts';
 import { bindControlsBar } from '../controls/controlsBar';
-import { togglePlayback } from '../controls/customControls';
 import type { ControlsHost } from '../controls/ControlsHost';
 import { bindKeyboard, type KeyboardHost } from '../controls/keyboard';
 import type { GyroViewMessageOverrides, GyroViewMessages } from '../controls/messages';
@@ -425,11 +424,8 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     this.togglePlayback();
   };
 
-  /**
-   * Pauses, or starts playing and reports a refused start as a warning.
-   */
   private readonly togglePlayback = (): void => {
-    togglePlayback(this.player);
+    this.player.togglePlayback();
   };
 
   private readonly warn = (warning: PlayerWarning): void => {

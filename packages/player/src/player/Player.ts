@@ -7,6 +7,7 @@ import {
   seconds,
   TypedEmitter,
   type DragDelta,
+  type Listenable,
   type PictureQuality,
   type ScreenPoint,
   type Seconds,
@@ -14,7 +15,6 @@ import {
   type ViewMode,
 } from '@gyroview/core';
 
-import { Autoplay } from './Autoplay';
 import { cssSizeOf } from './DrawingBufferFit';
 import { ensureFinite, viewStateOf } from './ensureFinite';
 import { FrameLoop } from './FrameLoop';
@@ -31,9 +31,11 @@ import {
   type PlayerPhase,
 } from './PlayerPhase';
 import { PictureSettings } from './PictureSettings';
+import { PlaybackStarts } from './PlaybackStarts';
 import { PlayerSound } from './PlayerSound';
 import { PlayerView } from './PlayerView';
 import { SessionRelay } from './SessionRelay';
+import { StatusAnnouncer } from './StatusAnnouncer';
 import { anglesOf } from './viewAngles';
 
 import { NO_ATTITUDE_SENSOR } from '../composition/attitudeSensor';
@@ -48,11 +50,16 @@ import type { PlayerSource } from '../PlayerSource';
  * load to load. `<gyro-view>` is a facade over it.
  */
 export class Player {
-  public readonly events = new TypedEmitter<PlayerEvents>();
+  /**
+   * What the player announces, to listen to: only the player and its parts emit.
+   */
+  public readonly events: Listenable<PlayerEvents>;
+  private readonly emitter = new TypedEmitter<PlayerEvents>();
   /**
    * What the player and its parts announce, heard once each change is whole (ADR 0021).
    */
-  private readonly outbox = new Outbox(this.events);
+  private readonly outbox = new Outbox(this.emitter);
+  private readonly statuses = new StatusAnnouncer(this.outbox, this.emitter);
   private readonly loop: FrameLoop;
   private phase: PlayerPhase = IDLE;
   private readonly viewing: PlayerView;
@@ -66,10 +73,10 @@ export class Player {
   private readonly relay = new SessionRelay({
     events: this.outbox,
     onState: (): void => {
-      this.announceStatus();
+      this.statuses.announce(this.status);
     },
   });
-  private readonly autoplay = new Autoplay(this.outbox, () => this.play());
+  private readonly starts = new PlaybackStarts(this.outbox, () => this.play());
   /**
    * Whether the recording plays again from the start at its end; kept across loads.
    */
@@ -78,15 +85,12 @@ export class Player {
    * Past `dispose`: a listener of the idle it announces must not load again.
    */
   private isDisposed = false;
-  /**
-   * The status listeners heard last.
-   */
-  private lastStatus: PlayerStatus = 'idle';
 
   /**
    * @internal A page gets its player from `createBrowserPlayer`, which composes the parts.
    */
   public constructor(private readonly parts: PlayerParts) {
+    this.events = this.emitter;
     this.loop = new FrameLoop(this.tick);
     // A hidden tab or an offscreen frame gets no animation frames: the sound's end ticks the
     // session itself, so the recording still ends, and loops, there.
@@ -186,7 +190,7 @@ export class Player {
       this.unload();
       const next = loadingPhase();
       this.phase = next;
-      this.announceStatus();
+      this.statuses.announce(this.status);
       return next;
     });
     try {
@@ -202,7 +206,7 @@ export class Player {
   public unload(): void {
     this.outbox.change(() => {
       this.release();
-      this.announceStatus();
+      this.statuses.announce(this.status);
     });
   }
 
@@ -220,6 +224,15 @@ export class Player {
 
   public pause(): void {
     this.loaded?.pipeline.session.pause();
+  }
+
+  /**
+   * Pauses, or starts playing and reports a refused start as a `warning`: what a tap on the
+   * picture or a play button does.
+   */
+  public togglePlayback(): void {
+    if (this.isPaused) this.starts.press();
+    else this.pause();
   }
 
   public stop(): void {
@@ -349,7 +362,7 @@ export class Player {
     this.motion.dispose();
     this.parts.host.audio.removeEventListener('ended', this.tick);
     this.sound.dispose();
-    this.events.removeAll();
+    this.emitter.removeAll();
   }
 
   private readonly tick = (): void => {
@@ -379,7 +392,7 @@ export class Player {
       if (options.preload !== false) loaded.pipeline.session.preload();
     });
     // A listener of `ready` may have loaded something else: whether that plays is its own call.
-    if (options.autoplay && this.loaded === loaded) void this.autoplay.start();
+    if (options.autoplay && this.loaded === loaded) void this.starts.autoplay();
   }
 
   private startAtPendingTime(loaded: LoadedRecording): void {
@@ -397,7 +410,7 @@ export class Player {
     this.picture.attach(loaded.pipeline);
     this.relay.attach(session);
     this.loop.start();
-    this.announceStatus();
+    this.statuses.announce(this.status);
     for (const warning of loaded.warnings) this.outbox.emit('warning', warning);
     this.outbox.emit('ready', loaded.opened.metadata);
   }
@@ -426,22 +439,9 @@ export class Player {
       // recording, when it failed after attaching it.
       this.release();
       this.phase = { kind: 'failed', failure };
-      this.announceStatus();
+      this.statuses.announce(this.status);
       this.outbox.emit('error', failure);
     });
     return failure;
-  }
-
-  /**
-   * Announces the status the phase gives now, heard once for each change: a status announced
-   * again before listeners heard the other one in between is heard once.
-   */
-  private announceStatus(): void {
-    const { status } = this;
-    this.outbox.post(() => {
-      if (status === this.lastStatus) return;
-      this.lastStatus = status;
-      this.events.emit('statuschange', status);
-    });
   }
 }

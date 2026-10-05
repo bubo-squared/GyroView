@@ -480,6 +480,35 @@ describe('Player over the synthetic X5 recording', () => {
     await expect(player.play()).rejects.toMatchObject({ code: 'no-source' });
   });
 
+  it('toggles playback as a tap does, a refused start a warning', async () => {
+    const { player, warnings } = open();
+    player.togglePlayback();
+    await waitFor(() => warnings.length > 0, 'the refused start');
+    expect(warnings).toEqual([
+      {
+        code: 'playback-failed',
+        message: 'playback could not start: there is no recording to play',
+      },
+    ]);
+
+    await player.load(sourceOf(X5_RECORDING_URL));
+    player.togglePlayback();
+    await waitFor(() => !player.isPaused, 'playing');
+    player.togglePlayback();
+    expect(player.isPaused).toBe(true);
+  });
+
+  it('gives its listeners no way to emit or silence its events, at compile time', () => {
+    const { player } = open();
+    const reachForEmitting = (): unknown[] => [
+      // @ts-expect-error -- a page listens to the player; only the player and its parts emit
+      player.events.emit,
+      // @ts-expect-error -- nor does a page take the other listeners away
+      player.events.removeAll,
+    ];
+    expect(reachForEmitting).toBeTypeOf('function');
+  });
+
   it('rejects a play waiting for a load that a newer load replaced, and plays nothing', async () => {
     const { player } = open();
     const first = player.load(sourceOf(X5_RECORDING_URL));

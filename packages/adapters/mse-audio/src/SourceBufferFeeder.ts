@@ -35,6 +35,11 @@ const EVICT_BEHIND_SECONDS = 60;
  */
 const LEAD_IN_SECONDS = 1;
 /**
+ * How close to the end of a buffered range a waiting playhead counts as at that end, where the
+ * run appends next: a few AAC frames of 1024 samples.
+ */
+const RANGE_END_SECONDS = 0.1;
+/**
  * Events on which the feeder re-checks whether the buffer needs more data.
  */
 const WAKE_EVENTS = ['timeupdate', 'seeking', 'waiting', 'play'] as const;
@@ -45,14 +50,28 @@ type Segments = AsyncIterator<Uint8Array<ArrayBuffer>>;
  * Keeps the source buffer filled from the playhead onwards: appends segments while less than
  * `BUFFER_AHEAD_SECONDS` of audio is buffered past the current time, evicts what lies far behind,
  * and ends the stream when the track ends. A seek restarts it from what the new time is missing;
+ * so does an element waiting at a playhead whose audio went missing after it was appended;
  * disposal stops it.
  */
 export class SourceBufferFeeder {
   private stop = new RunStop();
   private run: Promise<void> = Promise.resolve();
   private failureValue: GyroViewError | undefined;
+  /**
+   * Where the latest run was asked to start.
+   */
+  private restartedFrom: Seconds | undefined;
+  private readonly listening = new AbortController();
 
-  public constructor(private readonly parts: SourceBufferFeederParts) {}
+  public constructor(private readonly parts: SourceBufferFeederParts) {
+    parts.element.addEventListener(
+      'waiting',
+      () => {
+        this.feedThePlayheadIfLost();
+      },
+      { signal: this.listening.signal },
+    );
+  }
 
   /**
    * The first error the feeder met, if any. The element keeps whatever was buffered before.
@@ -65,6 +84,7 @@ export class SourceBufferFeeder {
     this.stop.stop();
     const stop = new RunStop();
     this.stop = stop;
+    this.restartedFrom = time;
     this.run = this.feedAfter(this.run, time, stop);
   }
 
@@ -74,6 +94,21 @@ export class SourceBufferFeeder {
    */
   public dispose(): void {
     this.stop.stop();
+    this.listening.abort();
+  }
+
+  /**
+   * The element waits in a hole at the playhead, not at the end of what a run appends: the engine
+   * evicted the audio there after it was appended, as a managed media source may at any time. A
+   * run appending further on, or one that ended the stream, never comes back for it, and the
+   * clock would stand still with the sound. Asked for once per playhead, as a seek to it is.
+   */
+  private feedThePlayheadIfLost(): void {
+    const { element } = this.parts;
+    const playhead = seconds(element.currentTime);
+    const isInHole = !this.isBufferedAt(playhead) && !this.endsRangeAt(playhead);
+    const canPlay = !element.ended && !this.hasElementFailed();
+    if (isInHole && canPlay && playhead !== this.restartedFrom) this.restartFrom(playhead);
   }
 
   /**
@@ -169,6 +204,21 @@ export class SourceBufferFeeder {
     return seconds(this.bufferedEndAt(currentTime) - currentTime);
   }
 
+  private isBufferedAt(time: number): boolean {
+    return this.bufferedEndAt(time) > time;
+  }
+
+  /**
+   * A buffered range ends at `time`, give or take a few audio frames: where a run appends next.
+   */
+  private endsRangeAt(time: number): boolean {
+    const { buffered } = this.parts.element;
+    for (let index = 0; index < buffered.length; index += 1) {
+      if (Math.abs(buffered.end(index) - time) <= RANGE_END_SECONDS) return true;
+    }
+    return false;
+  }
+
   /**
    * The end of the buffered range `time` lies in; `time` itself outside any.
    */
@@ -187,7 +237,22 @@ export class SourceBufferFeeder {
     this.parts.sourceBuffer.remove(0, currentTime - KEEP_BEHIND_SECONDS);
   }
 
+  /**
+   * A full source buffer is made room in once, keeping only the window the playhead needs, and
+   * the segment appended again: the feeder's own eviction keeps what lies behind in bounds, not
+   * what earlier positions left ahead.
+   */
   private async append(segment: Uint8Array<ArrayBuffer>): Promise<void> {
+    try {
+      await this.appendOnce(segment);
+    } catch (error) {
+      if (!isQuotaExceeded(error)) throw error;
+      await this.keepOnlyTheWindow();
+      await this.appendOnce(segment);
+    }
+  }
+
+  private async appendOnce(segment: Uint8Array<ArrayBuffer>): Promise<void> {
     const { sourceBuffer } = this.parts;
     await this.settlePendingAppend();
     const outcome = nextOfEvents(sourceBuffer, ['updateend', 'error']);
@@ -199,6 +264,24 @@ export class SourceBufferFeeder {
     if ((await outcome) === 'error') {
       throw new GyroViewError('decode', 'the audio buffer could not parse a segment');
     }
+  }
+
+  /**
+   * Removes what lies outside the lead-in before the playhead and the window ahead of it.
+   */
+  private async keepOnlyTheWindow(): Promise<void> {
+    const { currentTime } = this.parts.element;
+    const { duration } = this.parts.mediaSource;
+    await this.remove(0, currentTime - LEAD_IN_SECONDS);
+    await this.remove(currentTime + BUFFER_AHEAD_SECONDS, duration);
+  }
+
+  private async remove(start: number, end: number): Promise<void> {
+    if (end <= Math.max(start, 0)) return;
+    await this.settlePendingAppend();
+    const done = nextOfEvents(this.parts.sourceBuffer, ['updateend']);
+    this.parts.sourceBuffer.remove(Math.max(start, 0), end);
+    await done;
   }
 
   /**
@@ -218,4 +301,15 @@ export class SourceBufferFeeder {
     const { mediaSource, sourceBuffer } = this.parts;
     if (mediaSource.readyState === 'open' && !sourceBuffer.updating) mediaSource.endOfStream();
   }
+}
+
+/**
+ * The source buffer has no room left; the cause a `decode` failure carries.
+ */
+function isQuotaExceeded(error: unknown): boolean {
+  return error instanceof GyroViewError && isNamed(error.cause, 'QuotaExceededError');
+}
+
+function isNamed(error: unknown, name: string): boolean {
+  return error instanceof Error && error.name === name;
 }

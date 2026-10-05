@@ -128,10 +128,10 @@ through: `trusted-types gyroview`, with `'allow-duplicates'` if two copies of th
 Every failure is a `GyroViewError` with a stable `code` and a `category`; the README's "When a
 recording cannot play" lists the codes of each category. A failed load or playback arrives as
 the `error` event (and as the rejection of `load()`); the rest arrive where they happen:
-`playback-blocked` rejects `play()`, and becomes a `warning` event when autoplay, a tap or the
-loop meets it; `invalid-argument` is thrown by the call that got the value, or rejects its
-promise when it returns one (`scrub()`, every embed handle method); `embed-destroyed` rejects
-the embed handle's promises.
+`playback-blocked`, `no-source` and `play-interrupted` reject `play()`, and the first becomes a
+`warning` event when autoplay or a tap meets it; `invalid-argument` is thrown by the call that
+got the value, or rejects its promise when it returns one (`scrub()`, every embed handle
+method); `embed-destroyed` rejects the embed handle's promises.
 
 | Code                    | Meaning and what to do                                                       |
 | ----------------------- | ---------------------------------------------------------------------------- |
@@ -162,6 +162,9 @@ the embed handle's promises.
 |                         | could not be drawn during playback (a GPU that gave up).                     |
 | `invalid-argument`      | A property, method or embed command got a value it does not accept.          |
 | `embed-destroyed`       | A command reached an embed handle after `destroy()`.                         |
+| `no-source`             | `play()` with no recording loaded or loading.                                |
+| `play-interrupted`      | A newer `src`, an unload or the element's removal came before `play()` could |
+|                         | start the recording it waited for, as a video's `play()` rejects.            |
 | `invariant-violation`   | A failure the player did not expect, the original error as its cause.        |
 
 Other codes (`invalid-*`, `unsupported-*`, `binary-*`, `index-out-of-range`) come from a

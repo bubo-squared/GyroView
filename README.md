@@ -105,9 +105,9 @@ Methods and properties:
 
 | Member                                                | What it does                                                                                                      |
 | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `load()`                                              | Resolves once the recording is ready; an element out of the page loads once connected.                            |
+| `load()`                                              | Resolves once ready, `autoplay` starting it after; an element out of the page loads once connected.               |
 | `loadFiles({ main, second })`                         | Plays local files in place of `src`, until `src` or `src2` change.                                                |
-| `play()`, `pause()`, `stop()`                         | As a video's; `play()` waits for a load in progress.                                                              |
+| `play()`, `pause()`, `stop()`                         | As a video's; `play()` waits for a load in progress or a connection, and resolves once it plays.                  |
 | `seek(seconds)`, `currentTime`                        | Seeks exactly.                                                                                                    |
 | `scrub(seconds)`                                      | Seeks to the key frame at or before the time: quick to show while a seek bar is dragged.                          |
 | `duration`, `paused`, `status`, `metadata`            | What is loaded and where playback is.                                                                             |
@@ -126,9 +126,9 @@ Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewEle
 | ----------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `ready`                                               | metadata                  | The recording is ready: camera, layout, calibration version, frame time source, gyro and IMU frame, audio, duration. |
 | `statuschange`                                        | status                    | `idle`, `loading`, `ready`, `playing`, `buffering`, `paused`, `seeking`, `ended` or `error`.                         |
-| `play`, `playing`, `waiting`, `pause`, `ended`        | none                      | As a video's.                                                                                                        |
+| `play`, `playing`, `waiting`, `pause`, `ended`        | none                      | As a video's: `pause` comes before `ended`, and a `loop` seeks to the start, never ending.                           |
 | `timeupdate`                                          | seconds                   | Every quarter second of playback, and on a pause, a seek or the end.                                                 |
-| `seeking`, `seeked`                                   | seconds                   | Around a seek.                                                                                                       |
+| `seeking`, `seeked`                                   | seconds                   | Around a seek; `seeked` once the picture there is drawn, the status `seeking` until then.                            |
 | `frame`                                               | seconds                   | Right after each picture is drawn.                                                                                   |
 | `viewchange`, `viewmodechange`, `stabilizationchange` | the view, mode or setting | Whatever changed it.                                                                                                 |
 | `motionlookchange`                                    | the motion look state     | Turned on or off, or found available or not.                                                                         |
@@ -139,11 +139,11 @@ Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewEle
 
 A `warning`'s code says what the player worked around: `recording-degraded` for missing or
 damaged data such as no gyro or an unverified IMU frame, `no-sound` for a silent clock,
-`autoplay-blocked`, `playback-failed` for a refused start, a seek bar position it could not
-show or a loop that could not restart, `ignored-attribute` for a value it does not know,
-`refused-property` for a property set before the element was defined, `motion-look-refused` when
-the viewer or an iframe's `allow` refused the device's attitude (motion look is then
-unavailable), and `motion-look-needs-gesture` when motion look was started outside a tap.
+`autoplay-blocked`, `playback-failed` for a refused start or a seek bar position it could not
+show, `ignored-attribute` for a value it does not know, `refused-property` for a property set
+before the element was defined, `motion-look-refused` when the viewer or an iframe's `allow`
+refused the device's attitude (motion look is then unavailable), and `motion-look-needs-gesture`
+when motion look was started outside a tap.
 
 Controls: over the bottom of the picture, a seek bar above play, mute with a volume slider, the
 time, the Stabilization and View buttons (each showing the icon of the choice in effect and
@@ -294,7 +294,8 @@ whose side the failure is on:
 - `source`: the recording's bytes could not be read as the player reads them. `cors`,
   `range-unsupported`, `source-unreadable`, `source-changed`, `source-truncated`.
 - `usage`: the page called the API with something it does not accept. `invalid-argument`,
-  `embed-destroyed`.
+  `embed-destroyed`, and as `play()`'s rejection, as a video's `play()` rejects: `no-source`
+  (nothing to play) and `play-interrupted` (a newer `src` or the element's removal came first).
 - `internal`: a failure the player did not expect, worth an issue. `invariant-violation`,
   `index-out-of-range`.
 

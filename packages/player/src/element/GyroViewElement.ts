@@ -47,7 +47,7 @@ import { renderShadowTree } from './template';
 import { TypedEventElement } from './TypedEventElement';
 import { createBrowserPlayer } from '../browserPlayer';
 import { queryShadow } from '../controls/controlParts';
-import { bindControlsBar } from '../controls/controlsBar';
+import { bindControlsBar, type ControlsBar } from '../controls/controlsBar';
 import type { ControlsHost } from '../controls/ControlsHost';
 import { bindKeyboard, type KeyboardHost } from '../controls/keyboard';
 import type { GyroViewMessageOverrides, GyroViewMessages } from '../controls/messages';
@@ -118,7 +118,10 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   private readonly player: Player;
   private readonly loads: ElementLoads;
   private readonly wording = new Wording();
-  private readonly fullscreen = new FullscreenToggle(this);
+  private readonly controlsBar: ControlsBar;
+  private readonly fullscreen = new FullscreenToggle(this, () => {
+    this.controlsBar.fullscreenChanged();
+  });
   private readonly idle: IdleWatcher;
   private readonly posterImage: HTMLImageElement;
 
@@ -139,7 +142,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     this.loads = new ElementLoads(this, this.player);
     defineLiveSettings(this, this.player);
     const host = this.controlsHost();
-    bindControlsBar(shadow, host);
+    this.controlsBar = bindControlsBar(shadow, host);
     new ViewGestures(canvas, this.player, this.onPictureTap);
     bindKeyboard(this, host);
     this.idle = new IdleWatcher(this, () => this.player.status === 'playing');

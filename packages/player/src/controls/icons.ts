@@ -37,6 +37,7 @@ export const ICONS = {
     '<rect x="8.5" y="4.5" width="7" height="15" rx="1.5"/><path d="M11 16.5h2"/><path d="M5 8.5a7 7 0 0 0 0 7"/><path d="M19 8.5a7 7 0 0 1 0 7"/>',
   ),
   fullscreen: icon('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
+  exitFullscreen: icon('<path d="M9 4v5H4M15 4v5h5M20 15h-5v5M4 15h5v5"/>'),
   close: icon('<path d="M6 6l12 12M18 6L6 18"/>'),
 } satisfies Readonly<Record<string, string>>;
 

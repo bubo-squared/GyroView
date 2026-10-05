@@ -16,5 +16,9 @@ export interface ControlsHost {
    */
   togglePlay(): void;
   toggleFullscreen(): void;
+  /**
+   * Whether the element fills the screen, through the Fullscreen API or pinned over the page.
+   */
+  isFullscreen(): boolean;
   warn(warning: PlayerWarning): void;
 }

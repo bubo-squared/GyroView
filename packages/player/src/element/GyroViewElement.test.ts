@@ -1241,6 +1241,27 @@ describe('<gyro-view>', () => {
     await waitFor(() => !isFillingTheScreen(element), 'leaving fullscreen');
   });
 
+  it('shows on its Fullscreen button whether it fills the screen, pinned or not', async () => {
+    const element = await createReady();
+    const button = control(element, '.fullscreen', HTMLButtonElement);
+    const enterIcon = button.getHTML();
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+
+    await userEvent.click(button);
+    await waitFor(() => button.getAttribute('aria-pressed') === 'true', 'the button pressed');
+    expect(element.matches(':fullscreen')).toBe(true);
+    expect(button.getHTML()).not.toBe(enterIcon);
+    await userEvent.click(button);
+    await waitFor(() => button.getAttribute('aria-pressed') === 'false', 'the button released');
+    expect(button.getHTML()).toBe(enterIcon);
+
+    refuseFullscreen(element);
+    await element.toggleFullscreen();
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    pressKey(element, 'Escape');
+    await waitFor(() => button.getAttribute('aria-pressed') === 'false', 'the fill left');
+  });
+
   it('keeps the Escape that leaves the pinned fill from a dialog around it', async () => {
     const dialog = centredClippingDialog();
     const element = create({ controls: '' });

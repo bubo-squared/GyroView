@@ -92,8 +92,8 @@ export const CONTROLS_STYLES: string = controlsStyles;
  * The big play button and the control bar, for the element's stage; built when first asked for,
  * so a page importing only the package's types and errors carries none of it. Class names are
  * the contract with `queryControlParts` and `controls.css`. It holds no words, which the
- * wording fills in, nor the play and mute buttons' state-dependent labels and icons, which
- * those buttons give themselves when they are bound.
+ * wording fills in, nor the play, mute and fullscreen buttons' state-dependent labels and icons,
+ * which those buttons give themselves when they are bound.
  */
 export function controlsMarkup(): string {
   return `
@@ -109,7 +109,7 @@ export function controlsMarkup(): string {
       ${pictureMenusMarkup()}
       <button class="icon-button motion-look" type="button" aria-pressed="false" data-label="motionLook" hidden>${ICONS.motionLook}</button>
       <button class="icon-button reset-view" type="button" data-label="resetView">${ICONS.resetView}</button>
-      <button class="icon-button fullscreen" type="button" data-label="fullscreen">${ICONS.fullscreen}</button>
+      <button class="icon-button fullscreen" type="button" aria-pressed="false" data-label="fullscreen"></button>
     </div>
   </div>`;
 }

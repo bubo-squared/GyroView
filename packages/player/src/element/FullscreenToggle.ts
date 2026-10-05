@@ -24,7 +24,15 @@ export class FullscreenToggle {
    */
   private isOwnPopover = false;
 
-  public constructor(private readonly element: HTMLElement) {}
+  /**
+   * `onChange` hears the element enter or leave either way.
+   */
+  public constructor(
+    private readonly element: HTMLElement,
+    private readonly onChange: () => void,
+  ) {
+    element.addEventListener('fullscreenchange', onChange);
+  }
 
   public get isActive(): boolean {
     return this.isNativelyFullscreen() || this.element.hasAttribute(FILL_ATTRIBUTE);
@@ -41,6 +49,7 @@ export class FullscreenToggle {
     if (this.isOwnPopover) this.element.removeAttribute(POPOVER_ATTRIBUTE);
     this.isOwnPopover = false;
     this.element.removeAttribute(FILL_ATTRIBUTE);
+    this.onChange();
   }
 
   /**
@@ -72,6 +81,7 @@ export class FullscreenToggle {
     if (!this.element.isConnected) return;
     this.element.setAttribute(FILL_ATTRIBUTE, '');
     this.raiseToTopLayer();
+    this.onChange();
   }
 
   /**

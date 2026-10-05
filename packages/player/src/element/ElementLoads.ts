@@ -3,6 +3,7 @@ import { Deferred } from '@gyroview/core';
 import { PlaybackAttribute } from './attributeNames';
 import { shouldPreload } from './attributes';
 import { elementSourceOf, type FileSource } from './elementSource';
+import type { PlayerCanvas } from './PlayerCanvas';
 import type { Player } from '../player/Player';
 
 /**
@@ -38,6 +39,7 @@ export class ElementLoads {
   public constructor(
     private readonly element: LoadingElement,
     private readonly player: Player,
+    private readonly canvas: Pick<PlayerCanvas, 'prepare'>,
   ) {}
 
   public connected(): void {
@@ -135,6 +137,7 @@ export class ElementLoads {
       this.player.unload();
       return Promise.resolve();
     }
+    this.canvas.prepare();
     const loading = this.player.load(source, {
       autoplay: this.element.autoplay,
       preload: shouldPreload(read(PlaybackAttribute.Preload)),

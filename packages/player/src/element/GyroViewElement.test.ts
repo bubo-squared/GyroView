@@ -1344,6 +1344,37 @@ describe('<gyro-view>', () => {
     await ready;
   });
 
+  it('gives up its WebGL context once removed, and draws on a fresh canvas once back', async () => {
+    const element = await createReady();
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    const context = canvas.getContext('webgl2');
+    element.remove();
+    await waitFor(() => context?.isContextLost() === true, 'the context given up');
+
+    const ready = nextEvent(element, 'ready');
+    document.body.append(element);
+    await ready;
+    const fresh = control(element, 'canvas', HTMLCanvasElement);
+    expect(fresh).not.toBe(canvas);
+    expect(fresh.getAttribute('part')).toBe('canvas');
+    await element.play();
+    await waitFor(() => element.dataset['hasFrame'] !== undefined, 'a frame on the fresh canvas');
+  });
+
+  it('loads on a fresh canvas when the browser took the context away between recordings', async () => {
+    const element = await createReady();
+    element.src = null;
+    await waitFor(() => element.status === 'idle', 'the unload');
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();
+    await settle();
+
+    const ready = nextEvent(element, 'ready');
+    element.src = X5_RECORDING_URL;
+    await ready;
+    expect(control(element, 'canvas', HTMLCanvasElement)).not.toBe(canvas);
+  });
+
   it('keeps its recording when moved within the document', async () => {
     const element = await createReady();
     const statuses: string[] = [];

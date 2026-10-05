@@ -55,6 +55,10 @@ export interface RecordingPorts<Handle = unknown> {
 /**
  * The DOM the pipeline draws on and plays sound through; both borrowed from the element.
  */
+/**
+ * Where the player draws and sounds. The canvas is read at each load and each measure, so a host
+ * may hand a fresh one between loads, as the element does for one whose WebGL context is gone.
+ */
 export interface PipelineHost {
   readonly canvas: HTMLCanvasElement;
   readonly audio: HTMLMediaElement;

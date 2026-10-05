@@ -96,8 +96,7 @@ export class Player {
     // session itself, so the recording still ends, and loops, there.
     parts.host.audio.addEventListener('ended', this.tick);
     this.sound = new PlayerSound(parts.host.audio, this.outbox);
-    const { canvas } = parts.host;
-    this.viewing = new PlayerView(this.outbox, () => cssSizeOf(canvas));
+    this.viewing = new PlayerView(this.outbox, () => cssSizeOf(parts.host.canvas));
     this.motion = new MotionLook({
       sensor: parts.attitude ?? NO_ATTITUDE_SENSOR,
       view: this.viewing,

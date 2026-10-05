@@ -330,7 +330,8 @@ The composition root and the user-facing element, in three layers.
   the pass-through `TypedEventElement`), a shadow tree with the canvas, the audio element,
   poster and overlays. `ElementLoads` decides when the element loads and what: the attributes
   read together a microtask after they change, a load owed to the next connection, a recording
-  let go after a removal unless the element only moved. The shadow tree (`template.ts`) is parsed
+  let go after a removal. The element tells a removal from a move (still out of the document a
+  microtask later) and leaves the pinned fill on one too. The shadow tree (`template.ts`) is parsed
   once per page through a Trusted Types policy (`parseMarkup`) and cloned per element, its
   stylesheets constructed once and adopted. The markup holds no words: `Wording` fills in
   every label, menu choice and failure text it names, from `messages` (English defaults, the

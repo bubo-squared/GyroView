@@ -223,8 +223,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
 
   public disconnectedCallback(): void {
     this.idle.stop();
-    void this.loads.disconnected();
-    void this.fullscreen.disconnected();
+    void this.leaveIfRemoved();
   }
 
   public attributeChangedCallback(
@@ -370,6 +369,18 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
    */
   public loadFiles(files: FileSource): void {
     this.loads.loadFiles(files);
+  }
+
+  /**
+   * A move within the document disconnects and connects again at once: only an element still out
+   * of it a microtask later was removed. It lets its recording go, and leaves the pinned fill as
+   * the browser's fullscreen element leaves fullscreen.
+   */
+  private async leaveIfRemoved(): Promise<void> {
+    await Promise.resolve();
+    if (this.isConnected) return;
+    this.loads.removed();
+    await this.fullscreen.exit();
   }
 
   /**

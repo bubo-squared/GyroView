@@ -1,3 +1,5 @@
+import { leaveNativeFullscreen } from '../controls/nativeFullscreen';
+
 const FILL_ATTRIBUTE = 'data-fill';
 const POPOVER_ATTRIBUTE = 'popover';
 /**
@@ -33,7 +35,7 @@ export class FullscreenToggle {
   }
 
   public async exit(): Promise<void> {
-    if (this.isNativelyFullscreen()) await document.exitFullscreen();
+    if (this.isNativelyFullscreen()) await leaveNativeFullscreen();
     if (!this.element.hasAttribute(FILL_ATTRIBUTE)) return;
     // Without the attribute, the browser takes the element out of the top layer.
     if (this.isOwnPopover) this.element.removeAttribute(POPOVER_ATTRIBUTE);

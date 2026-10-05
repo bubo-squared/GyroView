@@ -1,4 +1,5 @@
 import { bindKeyboard, type KeyboardHost } from './keyboard';
+import { leaveNativeFullscreen, toggleNativeFullscreen } from './nativeFullscreen';
 import { ViewGestures } from './ViewGestures';
 import type { Player } from '../player/Player';
 
@@ -65,11 +66,11 @@ export function attachKeyboard(
     toggleFullscreen:
       options.toggleFullscreen ??
       ((): void => {
-        void (isFullscreen() ? document.exitFullscreen() : target.requestFullscreen());
+        void toggleNativeFullscreen(target);
       }),
     isFullscreen,
     exitFullscreen: (): void => {
-      void document.exitFullscreen();
+      void leaveNativeFullscreen();
     },
   });
 }

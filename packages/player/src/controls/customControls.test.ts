@@ -1,7 +1,8 @@
 import type { DragDelta, ScreenPoint } from '@gyroview/core';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { attachKeyboard, attachViewGestures } from './customControls';
+import { settle } from '../test/waiting';
 
 /**
  * The player as a page's own interface drives it, recording what it was asked.
@@ -129,6 +130,41 @@ describe('attachKeyboard', () => {
       'stop',
       'seek 15',
     ]);
+  });
+
+  it('leaves F alone where the browser has no fullscreen for the target, rather than throwing', async () => {
+    const target = surface();
+    vi.spyOn(document, 'fullscreenEnabled', 'get').mockReturnValue(false);
+    Object.defineProperty(target, 'requestFullscreen', { value: undefined });
+    const thrown: unknown[] = [];
+    const hearThrown = (event: ErrorEvent): void => {
+      thrown.push(event.error);
+      event.preventDefault();
+    };
+    globalThis.addEventListener('error', hearThrown);
+    attachKeyboard(target, new FakePlayer());
+    key(target, 'f');
+    await settle();
+    globalThis.removeEventListener('error', hearThrown);
+    vi.restoreAllMocks();
+    expect(thrown).toEqual([]);
+  });
+
+  it('takes a fullscreen the browser refuses without leaving its refusal unhandled', async () => {
+    const target = surface();
+    target.requestFullscreen = (): Promise<void> => Promise.reject(new TypeError('refused'));
+    const unhandled: unknown[] = [];
+    const hearUnhandled = (event: PromiseRejectionEvent): void => {
+      unhandled.push(event.reason);
+      event.preventDefault();
+    };
+    globalThis.addEventListener('unhandledrejection', hearUnhandled);
+    attachKeyboard(target, new FakePlayer());
+    key(target, 'f');
+    await settle();
+    await settle();
+    globalThis.removeEventListener('unhandledrejection', hearUnhandled);
+    expect(unhandled).toEqual([]);
   });
 
   it('fills the screen as the page says when it gives its own way', () => {

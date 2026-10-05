@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { cdp, page, server } from 'vitest/browser';
 
 import { defineGyroView } from './defineGyroView';
+import { BrowserAttitudeSensor } from '../composition/BrowserAttitudeSensor';
 import type { GyroViewElement } from './GyroViewElement';
 import { queryShadow } from '../controls/controlParts';
 import { X5_RECORDING_URL } from '../test/recordings';
@@ -15,6 +16,10 @@ const ORIENTATION_EVENT = 'deviceorientation';
 
 beforeAll(() => {
   defineGyroView();
+  // The page's probe, which a sensor starts, hears for every element of the page: from here on
+  // the device reports.
+  new BrowserAttitudeSensor().dispose();
+  reportAttitude();
 });
 
 /**
@@ -79,15 +84,20 @@ function expectBarWithinAt(element: GyroViewElement, widthsInRem: readonly numbe
   }
 }
 
+/**
+ * On the narrowest player the toggle stays and the stabilization menu gives way to it.
+ */
+function expectToggleKeptAt(element: GyroViewElement, widthInRem: number): void {
+  element.style.width = `${widthInRem * 16}px`;
+  const stabilization = element.shadowRoot?.querySelector('.stabilization-button');
+  expect(getComputedStyle(toggleOf(element)).display).not.toBe('none');
+  expect(stabilization?.getBoundingClientRect().width).toBe(0);
+}
+
 describe('<gyro-view> motion look', () => {
-  // The page's probe hears for every element of the page: the first test sees the device report
-  // for the first time, the others after it.
-  it('offers motion look in the normal view once the device reports its attitude', async () => {
+  it('offers motion look in the normal view where the device reports its attitude', async () => {
     const element = await createReady({ 'view-mode': 'normal' });
     const toggle = toggleOf(element);
-    expect(element.motionLook).toBe('unavailable');
-    expect(toggle.hidden).toBe(true);
-    reportAttitude();
     expect(element.motionLook).toBe('off');
     expect(toggle.hidden).toBe(false);
     element.setViewMode('equirectangular');
@@ -124,10 +134,16 @@ describe('<gyro-view> motion look', () => {
     const element = await createReady({ 'view-mode': 'normal', stabilization: 'horizon' });
     expect(toggleOf(element).hidden).toBe(false);
     expectBarWithinAt(element, [38, 26.5, 20.5, 16.5, 14]);
-    element.style.width = `${16.5 * 16}px`;
-    expect(getComputedStyle(toggleOf(element)).display).not.toBe('none');
-    element.style.width = `${14 * 16}px`;
-    expect(getComputedStyle(toggleOf(element)).display).toBe('none');
+    expectToggleKeptAt(element, 14);
+    element.remove();
+  });
+
+  it('never hides the toggle while the device turns the view', async () => {
+    await page.viewport(WIDE_PAGE.width, WIDE_PAGE.height);
+    const element = await createReady({ 'view-mode': 'normal', stabilization: 'horizon' });
+    await element.startMotionLook();
+    expectBarWithinAt(element, [38, 26.5, 20.5, 16.5, 14]);
+    expectToggleKeptAt(element, 14);
     element.remove();
   });
 
@@ -144,6 +160,7 @@ describe('<gyro-view> motion look', () => {
         expect(matchMedia('(pointer: coarse)').matches).toBe(true);
         const element = await createReady({ 'view-mode': 'normal', stabilization: 'horizon' });
         expectBarWithinAt(element, [38, 30, 24, 19.5, 16]);
+        expectToggleKeptAt(element, 16);
         element.remove();
       } finally {
         await session.send('Emulation.setTouchEmulationEnabled', { enabled: false });

@@ -111,7 +111,6 @@ export class PlayerView {
    */
   public followDevice(reading: DeviceReading): void {
     const hold = followReading(this.framing.view, this.previous, reading);
-    if (!hold) return;
     this.previous = hold.reading;
     this.frame({ ...this.framing, view: hold.view });
   }

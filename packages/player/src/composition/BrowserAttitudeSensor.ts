@@ -6,7 +6,12 @@ import {
   type DeviceReading,
 } from '@gyroview/core';
 
-import type { AttitudeAccess, AttitudeAvailability, AttitudeSensor } from './attitudeSensor';
+import {
+  NOTHING_TO_STOP,
+  type AttitudeAccess,
+  type AttitudeAvailability,
+  type AttitudeSensor,
+} from './attitudeSensor';
 
 /**
  * The event the browser reports the device's attitude with (W3C DeviceOrientation Event
@@ -15,14 +20,14 @@ import type { AttitudeAccess, AttitudeAvailability, AttitudeSensor } from './att
 const ORIENTATION_EVENT = 'deviceorientation';
 
 /**
- * What the sensor reads of the browser: the window its events reach, whether the page is a
- * secure context (the only place browsers report the attitude), the orientation event's class
- * where the browser has one (with a `requestPermission` on iOS, and in newer Chromium), how many
- * touch points the screen takes, and the screen's turn.
+ * What the sensor reads of the browser: the window its events reach, whether the page may read
+ * the sensors (a secure context, and a frame whose `allow` names them where the browser says),
+ * the orientation event's class where the browser has one (with a `requestPermission` on iOS,
+ * and in newer Chromium), how many touch points the screen takes, and the screen's turn.
  */
 export interface AttitudeSource {
   readonly target: EventTarget;
-  readonly isSecureContext: boolean;
+  readonly mayReadSensors: boolean;
   readonly orientationEvents: object | undefined;
   readonly touchPoints: number;
   screenAngle(): number;
@@ -35,12 +40,33 @@ export interface AttitudeSource {
 export function browserAttitudeSource(): AttitudeSource {
   return {
     target: globalThis,
-    isSecureContext: globalThis.isSecureContext,
+    mayReadSensors: globalThis.isSecureContext && areSensorsAllowed(),
     orientationEvents: 'DeviceOrientationEvent' in globalThis ? DeviceOrientationEvent : undefined,
     touchPoints: navigator.maxTouchPoints,
-    // Safari before 16.4 has no `screen.orientation`; its content then stands upright.
-    screenAngle: () => (globalThis.screen.orientation as ScreenOrientation | undefined)?.angle ?? 0,
+    screenAngle: () => globalThis.screen.orientation.angle,
   };
+}
+
+/**
+ * The sensors Chromium's orientation events need in a frame: without them in the frame's
+ * `allow`, it sends no event at all.
+ */
+const ORIENTATION_SENSORS = ['accelerometer', 'gyroscope'] as const;
+
+/**
+ * Chromium's own say on the frame's policy (`document.featurePolicy`, which no standard type
+ * declares); other browsers do not say, and a refusal shows only once access is asked for.
+ */
+function areSensorsAllowed(): boolean {
+  const policy: unknown = Reflect.get(document, 'featurePolicy');
+  const allowsFeature: unknown =
+    typeof policy === 'object' && policy !== null
+      ? Reflect.get(policy, 'allowsFeature')
+      : undefined;
+  return (
+    typeof allowsFeature !== 'function' ||
+    ORIENTATION_SENSORS.every((sensor) => Reflect.apply(allowsFeature, policy, [sensor]) === true)
+  );
 }
 
 /**
@@ -68,7 +94,9 @@ export class BrowserAttitudeSensor implements AttitudeSensor {
   }
 
   public onAvailabilityChange(listener: () => void): () => void {
-    return this.track(probeOf(this.source.target).onChange(listener));
+    return this.canReport()
+      ? this.track(probeOf(this.source.target).onChange(listener))
+      : NOTHING_TO_STOP;
   }
 
   /**
@@ -111,7 +139,7 @@ export class BrowserAttitudeSensor implements AttitudeSensor {
   }
 
   private canReport(): boolean {
-    return this.source.isSecureContext && this.source.orientationEvents !== undefined;
+    return this.source.mayReadSensors && this.source.orientationEvents !== undefined;
   }
 
   /**
@@ -149,7 +177,7 @@ function accessOf(answer: unknown): AttitudeAccess {
  */
 function attitudeOf(event: Event, screenAngle: number): DeviceAttitude | undefined {
   const { alpha, beta, gamma } = event as Partial<DeviceOrientationEvent>;
-  return typeof alpha === 'number' && typeof beta === 'number' && typeof gamma === 'number'
+  return isAngle(alpha) && isAngle(beta) && isAngle(gamma)
     ? {
         alpha: degrees(alpha),
         beta: degrees(beta),
@@ -160,14 +188,22 @@ function attitudeOf(event: Event, screenAngle: number): DeviceAttitude | undefin
 }
 
 /**
+ * Browsers send `null` for an angle they lack; a value that is not finite is no angle either.
+ */
+function isAngle(value: number | null | undefined): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+/**
  * What the page's probe has heard: nothing yet, an event without the angles (no sensor), or
  * the angles.
  */
 type Heard = 'nothing' | 'no-angles' | 'angles';
 
 /**
- * Listens once for every player on the page until it hears the angles, then stops: on a phone
- * they come at once; where nothing comes, listening costs nothing.
+ * Listens once for every player on the page until it hears the angles, then stops and forgets
+ * its listeners, since nothing changes after that: on a phone they come at once; where nothing
+ * comes, listening costs nothing.
  */
 class AttitudeProbe {
   private heardValue: Heard = 'nothing';
@@ -190,10 +226,14 @@ class AttitudeProbe {
 
   private readonly hear = (event: Event): void => {
     const heard = attitudeOf(event, 0) ? 'angles' : 'no-angles';
-    if (heard === 'angles') this.target.removeEventListener(ORIENTATION_EVENT, this.hear);
     if (heard === this.heardValue) return;
     this.heardValue = heard;
-    for (const listener of this.listeners) listener();
+    const listeners = [...this.listeners];
+    if (heard === 'angles') {
+      this.target.removeEventListener(ORIENTATION_EVENT, this.hear);
+      this.listeners.clear();
+    }
+    for (const listener of listeners) listener();
   };
 }
 

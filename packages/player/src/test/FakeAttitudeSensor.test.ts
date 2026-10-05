@@ -6,7 +6,6 @@ describeAttitudeSensorContract('fake', () => {
   return {
     sensor,
     reportAttitude: (): void => {
-      sensor.changeAvailability('available');
       sensor.report(0, [0, 0, 0]);
     },
   };

@@ -43,7 +43,7 @@ class CountingTarget extends EventTarget {
 function sourceOn(target: EventTarget, changes: Partial<AttitudeSource> = {}): AttitudeSource {
   return {
     target,
-    isSecureContext: true,
+    mayReadSensors: true,
     orientationEvents: {},
     touchPoints: 5,
     screenAngle: () => 0,
@@ -98,6 +98,7 @@ describe('BrowserAttitudeSensor', () => {
     const sensor = new BrowserAttitudeSensor(sourceOn(target));
     report(target, WITHOUT_SENSOR);
     report(target, { ...UPRIGHT, alpha: null });
+    report(target, { ...UPRIGHT, gamma: NaN });
     expect(sensor.availability).toBe('unavailable');
     report(target, UPRIGHT);
     expect(sensor.availability).toBe('available');
@@ -137,7 +138,7 @@ describe('BrowserAttitudeSensor', () => {
   });
 
   it.each([
-    { name: 'outside a secure context', changes: { isSecureContext: false } },
+    { name: 'where the page may not read the sensors', changes: { mayReadSensors: false } },
     { name: 'without orientation events', changes: { orientationEvents: undefined } },
   ])('is unavailable and refuses access $name', async ({ changes }) => {
     const target = new EventTarget();

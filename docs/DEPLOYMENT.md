@@ -123,6 +123,31 @@ needs no `'unsafe-inline'` styles: the element adopts stylesheets it constructs,
 (`require-trusted-types-for 'script'`) allows the policy the element parses its own markup
 through: `trusted-types gyroview`, with `'allow-duplicates'` if two copies of the player load.
 
+### The embed page's own headers
+
+`embed.html` is a page other sites frame, and it fetches whatever recording its query names, so
+its own response headers matter:
+
+- **Framing must be allowed.** No `X-Frame-Options`, and a `frame-ancestors` that names the
+  sites that may embed it, or `*`. A host or CDN preset that adds `X-Frame-Options: SAMEORIGIN`
+  or `frame-ancestors 'self'` breaks every embed; the snippet's handle then reports
+  `embed-unreachable`.
+- **A strict Content Security Policy.** The page needs its own scripts and stylesheet, the
+  recordings' and posters' hosts, and `blob:` for the sound; everything else can be refused.
+  This policy, one header line wrapped here, plays a recording in Chromium and WebKit with no
+  violation; narrow `connect-src` and `img-src` to the hosts that serve recordings and posters
+  where they are known:
+
+  ```
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self';
+    connect-src 'self' https:; img-src 'self' https: data:; media-src blob:; base-uri 'none';
+    form-action 'none'; frame-ancestors *; require-trusted-types-for 'script';
+    trusted-types gyroview
+  ```
+
+- **`X-Content-Type-Options: nosniff`**, and a `Permissions-Policy`, if any, that does not refuse
+  the page `fullscreen`, `autoplay`, `accelerometer`, `gyroscope` or `magnetometer`.
+
 ## Error codes
 
 Every failure is a `GyroViewError` with a stable `code` and a `category`; the README's "When a

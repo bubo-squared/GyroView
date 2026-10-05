@@ -1,0 +1,17 @@
+/* The embed page: the player filling the frame. A file of its own rather than a <style>, so the
+   page's Content Security Policy allows styles from its own origin alone (DEPLOYMENT). */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+gyro-view {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}

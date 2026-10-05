@@ -23,6 +23,7 @@ export const POLYNOMIAL_CALIBRATION_LAYOUT: CalibrationStringLayout = {
   lensTokens: V2_LENS_TOKENS,
   trailingTokens: VERSIONED_TRAILING_TOKENS,
   radialScale: RADIUS_AS_READ,
+  scaleTokens: [V2Token.EdgeRadius],
 
   versionWordProblem: (versionWord: number): string | undefined =>
     versionWordMismatch(versionWord, CalibrationVersion.Polynomial),

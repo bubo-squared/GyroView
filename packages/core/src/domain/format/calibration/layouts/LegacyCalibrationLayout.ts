@@ -30,6 +30,7 @@ export const LEGACY_CALIBRATION_LAYOUT: CalibrationStringLayout = {
   lensTokens: V1_LENS_TOKENS,
   trailingTokens: V1_TRAILING_TOKENS,
   radialScale: RADIUS_AS_READ,
+  scaleTokens: [V1Token.EdgeRadius],
 
   parseLens(block: LensBlock, lensIndex: number): LensCalibration {
     return {

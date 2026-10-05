@@ -37,6 +37,8 @@ export interface MeiStringFormat {
   readonly radialScale: number;
 }
 
+const MEI_SCALE_TOKENS: readonly number[] = [MeiToken.FocalX, MeiToken.FocalY];
+
 /**
  * The layout of a Mei string version, a version word after its lens blocks.
  */
@@ -46,6 +48,7 @@ export function meiLayout(format: MeiStringFormat): CalibrationStringLayout {
     lensTokens: format.lensTokens,
     trailingTokens: VERSIONED_TRAILING_TOKENS,
     radialScale: format.radialScale,
+    scaleTokens: MEI_SCALE_TOKENS,
     versionWordProblem: (versionWord) => versionWordMismatch(versionWord, format.version),
     parseLens: (block, lensIndex) => meiLensOf(block, lensIndex, format),
     canvasOf: (_numbers, blocks) =>

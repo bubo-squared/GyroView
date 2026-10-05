@@ -1,4 +1,5 @@
 import type { VersionedCalibration } from './CalibrationVersion';
+import type { CanvasSize } from '../../optics/LensCalibration';
 import { type CalibrationStringLayout, type LensBlock } from './layouts/CalibrationStringLayout';
 import { LEGACY_CALIBRATION_LAYOUT } from './layouts/LegacyCalibrationLayout';
 import {
@@ -10,6 +11,12 @@ import { FIRST_LENS_TOKEN, LENS_COUNT_TOKEN } from './offsetTokens';
 import { GyroViewError } from '../../../shared/errors/GyroViewError';
 
 const TOKEN_SEPARATOR = '_';
+
+/**
+ * Every camera the format describes has two lenses: a string for another count calibrates none
+ * of them, however well it parses.
+ */
+const LENSES_OF_A_CAMERA = 2;
 
 /**
  * Every calibration string version the player reads; their token counts never coincide for a
@@ -38,12 +45,46 @@ export function parseOffsetString(
   const blocks = Array.from({ length: lensCount }, (_unused, lensIndex) =>
     lensBlock(numbers, FIRST_LENS_TOKEN + lensIndex * layout.lensTokens),
   );
+  const canvas = layout.canvasOf(numbers, blocks);
+  ensurePlausible(layout, blocks, canvas);
   return {
     version: layout.version,
-    canvas: layout.canvasOf(numbers, blocks),
+    canvas,
     lenses: blocks.map((block, lensIndex) => layout.parseLens(block, lensIndex)),
     radialScale: layout.radialScale,
   };
+}
+
+/**
+ * Refuses a string that parses but could calibrate no camera, so that the next string is tried
+ * instead of failing later on a lens count or drawing nothing.
+ */
+function ensurePlausible(
+  layout: CalibrationStringLayout,
+  blocks: readonly LensBlock[],
+  canvas: CanvasSize,
+): void {
+  const problem = implausibilityOf(layout, blocks, canvas);
+  if (problem !== undefined) {
+    throw new GyroViewError(
+      'invalid-calibration',
+      `calibration string has the v${layout.version} layout but ${problem}`,
+    );
+  }
+}
+
+function implausibilityOf(
+  layout: CalibrationStringLayout,
+  blocks: readonly LensBlock[],
+  canvas: CanvasSize,
+): string | undefined {
+  if (blocks.length !== LENSES_OF_A_CAMERA) return `describes ${blocks.length} lenses`;
+  if (canvas.width <= 0 || canvas.height <= 0) {
+    return `a canvas of ${canvas.width}x${canvas.height}`;
+  }
+  const scales = blocks.flatMap((block) => layout.scaleTokens.map((token) => block(token)));
+  const unscaled = scales.find((scale) => scale <= 0);
+  return unscaled === undefined ? undefined : `a lens of scale ${unscaled}`;
 }
 
 function tokenCountFor(lensCount: number, lensTokens: number, trailingTokens: number): number {

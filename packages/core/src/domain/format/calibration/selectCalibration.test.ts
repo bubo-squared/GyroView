@@ -59,6 +59,18 @@ describe('selectCalibration', () => {
     ]);
   });
 
+  it('passes over a legacy string that parses but describes no lens, to a v6 string that does', () => {
+    const choice = selectCalibration({
+      ...NONE,
+      offset: '0_10752_5376_1137',
+      offsetV6: OFFICE_CALIBRATION.offsetV6,
+    });
+    expect(choice.calibration?.version).toBe(CalibrationVersion.ExtendedMei);
+    expect(choice.warnings).toEqual([
+      expect.stringMatching(/^offset skipped: .*describes 0 lenses/) as string,
+    ]);
+  });
+
   it('prefers the v6 string, the newer Mei fit, to v3 without the legacy string', () => {
     const choice = selectCalibration({
       ...NONE,

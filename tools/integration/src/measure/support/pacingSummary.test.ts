@@ -21,6 +21,7 @@ function drawingTick(start: number, timestamp: number): TickRecord {
       { timestamp, ms: 4 },
     ],
     mipmapMs: 0.5,
+    canvasDraws: 1,
     gpuDoneAt: start + 13,
   };
 }

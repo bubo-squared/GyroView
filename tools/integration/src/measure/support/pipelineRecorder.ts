@@ -36,6 +36,7 @@ export function recordPipeline(
   const restores = [
     recordTicks({ audio, canvas, cursor, ticks }),
     recordUploads(cursor),
+    recordCanvasDraws(canvas, cursor),
     recordDecodes(decoded),
   ];
   return {
@@ -82,6 +83,7 @@ function tickAt(frameTime: number, audio: HTMLMediaElement): TickRecord {
     clock: audio.currentTime,
     uploads: [],
     mipmapMs: 0,
+    canvasDraws: 0,
     gpuDoneAt: undefined,
   };
 }
@@ -143,6 +145,36 @@ function recordUploads(cursor: TickCursor): () => void {
   return () => {
     prototype.texImage2D = texImage2D;
     prototype.generateMipmap = generateMipmap;
+  };
+}
+
+/**
+ * Counts the draws into the recorded canvas's default framebuffer, in the tick that makes them.
+ */
+function recordCanvasDraws(canvas: HTMLCanvasElement, cursor: TickCursor): () => void {
+  const prototype = WebGL2RenderingContext.prototype;
+  const { drawArrays, drawElements } = prototype;
+  const count = (gl: WebGL2RenderingContext): void => {
+    const isCanvas = gl.canvas === canvas && gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING) === null;
+    if (isCanvas && cursor.current) cursor.current.canvasDraws += 1;
+  };
+  prototype.drawArrays = function countedArrays(
+    this: WebGL2RenderingContext,
+    ...parameters: Parameters<WebGL2RenderingContext['drawArrays']>
+  ): void {
+    count(this);
+    drawArrays.apply(this, parameters);
+  };
+  prototype.drawElements = function countedElements(
+    this: WebGL2RenderingContext,
+    ...parameters: Parameters<WebGL2RenderingContext['drawElements']>
+  ): void {
+    count(this);
+    drawElements.apply(this, parameters);
+  };
+  return () => {
+    prototype.drawArrays = drawArrays;
+    prototype.drawElements = drawElements;
   };
 }
 

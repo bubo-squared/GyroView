@@ -1,4 +1,4 @@
-import { closeFramePair, type FramePair } from '../../ports/FramePair';
+import type { FramePair } from '../../ports/FramePair';
 import { ClockWatch, isAtEndOfMedia, isStoppedFromOutside } from './ClockWatch';
 import { SeekOrder } from './SeekOrder';
 import { TimeUpdates } from './TimeUpdates';
@@ -6,8 +6,9 @@ import { Buffering } from './Buffering';
 import { SessionLifecycle, type PlaybackSessionEvents } from './SessionLifecycle';
 import { DecodeRun, type DecodeRunParts } from './DecodeRun';
 import { keyframeTimeAt } from './keyframeTimeAt';
+import { PictureOnScreen } from './PictureOnScreen';
 import type { PlayerState } from '../../domain/playback/PlayerState';
-import type { FrameSink, Presentation } from '../../ports/FrameSink';
+import type { FrameSink } from '../../ports/FrameSink';
 import type { PlaybackClock } from '../../ports/PlaybackClock';
 import { asGyroViewError } from '../../shared/errors/GyroViewError';
 import { TypedEmitter } from '../../shared/events/TypedEmitter';
@@ -44,16 +45,17 @@ export class PlaybackSession<Handle = unknown> {
    * The decode under way, if any: one per start or seek, replaced whole.
    */
   private run: DecodeRun<Handle> | undefined;
-  /**
-   * The pair on screen, kept open until the next one replaces it.
-   */
-  private presented: Presentation<Handle> | undefined;
+  private readonly screen: PictureOnScreen<Handle>;
   private readonly timeUpdates = new TimeUpdates(this.lifecycle);
   private readonly buffering = new Buffering(this.lifecycle);
   private readonly clockWatch = new ClockWatch();
   private readonly seeks = new SeekOrder();
 
-  public constructor(private readonly parts: PlaybackSessionParts<Handle>) {}
+  public constructor(private readonly parts: PlaybackSessionParts<Handle>) {
+    this.screen = new PictureOnScreen(parts.sink, (error) => {
+      this.fail(error);
+    });
+  }
 
   public get state(): PlayerState {
     return this.lifecycle.current;
@@ -183,17 +185,17 @@ export class PlaybackSession<Handle = unknown> {
    * picture stands still; while playing, the next pair shows it soon enough.
    */
   public redraw(): void {
-    if (!this.presented || this.lifecycle.isOneOf('playing', 'error')) return;
-    const { presented } = this;
-    this.lifecycle.change(() => this.draw(presented));
+    if (!this.screen.hasPicture || this.lifecycle.isOneOf('playing', 'error')) return;
+    this.lifecycle.change(() => {
+      this.screen.redraw();
+    });
   }
 
   public dispose(): void {
     if (this.lifecycle.current === 'disposed') return;
     this.lifecycle.change(() => {
       this.abortRun();
-      if (this.presented) closeFramePair(this.presented.pair);
-      this.presented = undefined;
+      this.screen.clear();
       this.parts.clock.pause();
       this.lifecycle.moveTo('disposed');
       this.buffering.settleStart();
@@ -261,7 +263,7 @@ export class PlaybackSession<Handle = unknown> {
       this.timeUpdates.announce(now);
       return;
     }
-    if (this.run?.isStarvedAt(now, this.presented?.pair.timestamp) === true) {
+    if (this.run?.isStarvedAt(now, this.screen.timestamp) === true) {
       this.parts.clock.pause();
       this.buffering.enter('starvation');
       return;
@@ -392,23 +394,7 @@ export class PlaybackSession<Handle = unknown> {
   }
 
   private present(pair: FramePair<Handle>, mediaTime: Seconds): void {
-    if (this.presented) closeFramePair(this.presented.pair);
-    this.presented = { pair, mediaTime };
-    if (this.draw(this.presented)) this.lifecycle.announce('present', mediaTime);
-  }
-
-  /**
-   * A sink that cannot draw (a renderer the GPU refused) fails the session, never unheard.
-   */
-  private draw(presentation: Presentation<Handle>): boolean {
-    try {
-      this.parts.sink.present(presentation);
-      return true;
-    } catch (error) {
-      // A GPU that gave up, told apart from a stream that broke.
-      this.fail(asGyroViewError(error, 'render-unavailable', 'the picture could not be drawn'));
-      return false;
-    }
+    if (this.screen.show(pair, mediaTime)) this.lifecycle.announce('present', mediaTime);
   }
 
   /**

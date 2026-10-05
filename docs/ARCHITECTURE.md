@@ -224,14 +224,19 @@ Use cases that orchestrate the domain through ports.
 | `SeamMismatchMeter`  | per seam-strip bin, how far the lenses disagree for each slide of lens 0's sampling across the ring                                             | the lab's `SeamMismatchPass`                                          |
 | `ResourceLocator`    | does this URL exist                                                                                                                             | `HttpResourceLocator`                                                 |
 
-`WallClock` is the one port implementation in the core: it reads time the host hands it (the
-page's monotonic clock) and holds no timer, so it is as pure as the rest; the player uses it when
-a recording has no sound this browser plays.
+The core implements some ports itself (`WallClock`, `SourceByteStream`, `DownloadedVideoTrack`,
+`DownloadedAudioSamples`, `FileDownload`, `RecordingBuffer`), from other ports and pure code.
+`WallClock` reads time the host hands it (the page's monotonic clock) and holds no timer, so it
+is as pure as the rest; the player uses it when a recording has no sound this browser plays.
 
-Every port has a contract suite in `core/src/testing`, run against its fake and its real
-implementations alike (`RandomAccessSource`, `ByteStream`, `CodecReader`, `VideoTrackReader`,
-`AudioSampleSource`, `MediaBuffer`, `VideoDecoderPort`, `PlaybackClock`, `ResourceLocator`),
-and `AudioSegmentSource`'s against the mediabunny packager alone, asserting the error codes too.
+The ports the core reads from have a contract suite in `core/src/testing`, run against their
+fakes and their real implementations alike (`RandomAccessSource`, `ByteStream`, `CodecReader`,
+`VideoTrackReader`, `AudioSampleSource`, `MediaBuffer`, `VideoDecoderPort`, `PlaybackClock`,
+`ResourceLocator`), and `AudioSegmentSource`'s against the mediabunny packager alone, asserting
+the error codes too; the player's attitude sensor has one in `player/src/test`. The ports the
+core draws through (`FrameSink`, `PictureRenderer`, `SeamMeter`, `SeamMismatchMeter`) and
+`AudioPackager` have none: the renderer's and the packager's own browser tests check what they
+do.
 `VideoTrackReader` and `MediaBuffer` are implemented in the core itself; they are ports because
 the playback use cases may see nothing else.
 `FakeFrameSink` only records what it is shown, for tests of what drives a sink; the renderer's

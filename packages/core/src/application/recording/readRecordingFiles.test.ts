@@ -5,11 +5,13 @@ import { readSampleTable } from './readSampleTable';
 import { UNSPECIFIED_COLOUR } from '../../domain/colour/TrackColour';
 import { CalibrationVersion } from '../../domain/format/calibration/CalibrationVersion';
 import { InfoRecordFormat, RecordType } from '../../domain/format/constants';
+import { InfoField } from '../../domain/format/info/infoFields';
 import type { CodecReader, ContainerCodecs } from '../../ports/CodecReader';
 import { FakeCodecReader } from '../../testing/FakeCodecReader';
 import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSource';
-import { minimalInfoRecord } from '../../testing/minimalInfoRecord';
+import { minimalInfoFields, minimalInfoRecord } from '../../testing/minimalInfoRecord';
 import { lensMp4File } from '../../testing/mp4/lensMp4File';
+import { encodeProtobuf, stringField } from '../../testing/protobufWriter';
 import { TrailerFixtureBuilder } from '../../testing/TrailerFixtureBuilder';
 import { loadFixture } from '../../../test/support/fixtures';
 
@@ -30,11 +32,15 @@ interface ServedFile {
   readonly codecs: ContainerCodecs;
 }
 
+const SQUARE = { codedWidth: LENS_SIZE, codedHeight: LENS_SIZE };
+
 /**
- * The codecs of a file's square lens tracks.
+ * The codecs of a file's lens tracks, square unless another size is given.
  */
-function lensCodecs(lenses: number): ContainerCodecs {
-  const size = { codedWidth: LENS_SIZE, codedHeight: LENS_SIZE };
+function lensCodecs(
+  lenses: number,
+  size: { readonly codedWidth: number; readonly codedHeight: number } = SQUARE,
+): ContainerCodecs {
   const video = Array.from({ length: lenses }, (_, trackIndex) => ({
     trackId: trackIndex + 1,
     description: { trackIndex, codec: 'avc1.fake', ...size, colour: UNSPECIFIED_COLOUR },
@@ -78,16 +84,26 @@ function bareHalf(name: string | undefined, frames?: number): ServedFile {
 }
 
 /**
+ * A file of the given tracks that ends with a trailer holding only an info record.
+ */
+function withTrailer(
+  tracks: Uint8Array,
+  info: Uint8Array,
+  format: number = InfoRecordFormat.Protobuf,
+): Uint8Array {
+  return new TrailerFixtureBuilder()
+    .withPrefix(tracks)
+    .addRecord({ id: RecordType.Info, format, payload: info })
+    .buildIndexed({ alignment: 64, wrapInInstBox: true }).bytes;
+}
+
+/**
  * The half an info record calls split, with no calibration: opening it stops once its layout is
  * known.
  */
 function declaredSplitHalf(name: string): ServedFile {
   const info = minimalInfoRecord({ model: 'Insta360 X3', fileLayout: SPLIT_FILES });
-  const bytes = new TrailerFixtureBuilder()
-    .withPrefix(lensMp4File({ lenses: 1 }).bytes)
-    .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: info })
-    .buildIndexed({ alignment: 64, wrapInInstBox: true }).bytes;
-  return served(name, bytes, 1);
+  return served(name, withTrailer(lensMp4File({ lenses: 1 }).bytes, info), 1);
 }
 
 /**
@@ -188,18 +204,27 @@ describe('readRecordingFiles', () => {
     expect(finder.asked).toBe(0);
   });
 
-  it('refuses a recording without calibration, which cannot be stitched', async () => {
-    const info = minimalInfoRecord({ model: 'Insta360 X3' });
-    const bytes = new TrailerFixtureBuilder()
-      .withPrefix(lensMp4File({ lenses: 2 }).bytes)
-      .addRecord({ id: RecordType.Info, format: InfoRecordFormat.Protobuf, payload: info })
-      .buildIndexed({ alignment: 64, wrapInInstBox: true }).bytes;
+  it('refuses a recording without calibration, which cannot be stitched, naming what it skipped', async () => {
+    const fields = [
+      ...minimalInfoFields({ model: 'Insta360 X3' }),
+      stringField(InfoField.Offset, '2_1_2_3'),
+    ];
+    const bytes = withTrailer(lensMp4File({ lenses: 2 }).bytes, encodeProtobuf(fields));
     const uncalibrated = served(BACK_NAME, bytes, 2);
     const reader = await codecReaderOf([uncalibrated]);
 
     await expect(
       readRecordingFiles([uncalibrated.file], { codecReader: reader }),
-    ).rejects.toMatchObject({ code: 'no-calibration' });
+    ).rejects.toMatchObject({
+      code: 'no-calibration',
+      message: expect.stringContaining('(offset skipped:') as string,
+    });
+  });
+
+  it('refuses no files at all as a mistake of its caller', async () => {
+    await expect(readRecordingFiles([], { codecReader })).rejects.toMatchObject({
+      code: 'invariant-violation',
+    });
   });
 
   it('finds the other lens file before reading the tracks when the info record says the recording is split', async () => {
@@ -228,6 +253,28 @@ describe('readRecordingFiles', () => {
 
     expect(failure).toMatchObject({ code: 'missing-second-file' });
     expect(finder.asked).toBe(1);
+  });
+
+  it('asks for nothing beside a pair given whole, even one its info record calls split', async () => {
+    const finder = new SecondFileFinder(undefined);
+    const reader = await codecReaderOf([files.declared, files.bareScreen]);
+
+    // The minimal info record carries no calibration: opening stops once the layout is known.
+    const failure = await captureRejection(
+      readRecordingFiles([files.declared.file, files.bareScreen.file], {
+        codecReader: reader,
+        findSecondFile: finder.find,
+      }),
+    );
+
+    expect(failure).toMatchObject({ code: 'no-calibration' });
+    expect(finder.asked).toBe(0);
+  });
+
+  it('reports a half its info record calls split as such where there is nothing to look for', async () => {
+    await expect(readRecordingFiles([files.declared.file], { codecReader })).rejects.toMatchObject({
+      code: 'missing-second-file',
+    });
   });
 
   it('fetches the other lens file once the tracks of a lone half fall short, and plays as long as the shorter', async () => {
@@ -285,6 +332,17 @@ describe('readRecordingFiles', () => {
     );
   });
 
+  it('lets the names decide a pair whose files both carry a trailer', async () => {
+    const screen = x5Half(SCREEN_NAME);
+    const back = x5Half(BACK_NAME);
+    const reader = await codecReaderOf([screen, back]);
+
+    const read = await readRecordingFiles([screen.file, back.file], { codecReader: reader });
+
+    expect(read.files.map((file) => file.hasTrailer)).toEqual([true, true]);
+    expect(read.layout.sources.map((source) => source.inputIndex)).toEqual([1, 0]);
+  });
+
   it('asks for the other file of a lone _10_ file without a trailer, not calling it damaged', async () => {
     await expect(
       readRecordingFiles([files.bareScreen.file], { codecReader }),
@@ -308,5 +366,42 @@ describe('readRecordingFiles', () => {
     await expect(
       readRecordingFiles([files.twoLensesNoTrailer.file], { codecReader }),
     ).rejects.toMatchObject({ code: 'invalid-trailer' });
+  });
+
+  it('calls a file without a trailer damaged when its tracks fit no layout at all', async () => {
+    const wide = { codedWidth: 1920, codedHeight: 1080 };
+    const notALens = {
+      file: {
+        name: BACK_NAME,
+        source: new InMemoryRandomAccessSource(lensMp4File({ lenses: 1, frames: 20 }).bytes),
+      },
+      codecs: lensCodecs(1, wide),
+    };
+    const reader = await codecReaderOf([notALens]);
+
+    await expect(
+      readRecordingFiles([notALens.file], { codecReader: reader }),
+    ).rejects.toMatchObject({ code: 'invalid-trailer' });
+  });
+
+  it('calls a file without a trailer damaged when it holds no movie either', async () => {
+    const noMovie = served(BACK_NAME, new Uint8Array(200), 1);
+
+    await expect(readRecordingFiles([noMovie.file], { codecReader })).rejects.toMatchObject({
+      code: 'invalid-trailer',
+    });
+  });
+
+  it('reads no second file when the first fails for another reason than a missing trailer', async () => {
+    const json = withTrailer(
+      lensMp4File({ lenses: 1 }).bytes,
+      new TextEncoder().encode('{}'),
+      InfoRecordFormat.Json,
+    );
+    const unreadable = served(BACK_NAME, json, 1);
+
+    await expect(
+      readRecordingFiles([unreadable.file, files.x5Back.file], { codecReader }),
+    ).rejects.toMatchObject({ code: 'unsupported-info-format' });
   });
 });

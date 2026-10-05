@@ -8,12 +8,9 @@ import {
 import { LAB_SHADERS } from './labPrograms';
 import { applySeamAlignment, createSeamJoinUniforms, type SeamJoinUniforms } from './seamJoin';
 import { SeamMismatchPass } from './seamMismatch/SeamMismatchPass';
+import { openRendererParts, type RendererParts } from '../rendererParts';
 import { applyLensPose } from '../rendererUniforms';
-import {
-  ThreeFrameRenderer,
-  type RendererParts,
-  type ThreeFrameRendererOptions,
-} from '../ThreeFrameRenderer';
+import { ThreeFrameRenderer, type ThreeFrameRendererOptions } from '../ThreeFrameRenderer';
 
 /**
  * The renderer `pnpm measure` draws with: the player's renderer, with the instruments the
@@ -36,7 +33,7 @@ export class LabRenderer extends ThreeFrameRenderer {
   ): LabRenderer {
     const join = createSeamJoinUniforms();
     const pictures = { shaders: LAB_SHADERS, uniforms: { ...join } };
-    return new this(super.openParts(canvas, setup, { options, pictures }), canvas, join);
+    return new this(openRendererParts(canvas, setup, { options, pictures }), canvas, join);
   }
 
   /**

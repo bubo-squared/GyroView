@@ -11,6 +11,11 @@ import { seconds, type Seconds } from '../../shared/units/time';
 export class FramePairer<Handle = unknown> {
   private readonly queues: DecodedFrame<Handle>[][];
   private unpairedCount = 0;
+  /**
+   * When the first and the latest frame dropped since the last pair show, if any was.
+   */
+  private unpairedFrom: Seconds | undefined;
+  private unpairedTo: Seconds | undefined;
 
   public constructor(
     sourceCount: number,
@@ -25,6 +30,17 @@ export class FramePairer<Handle = unknown> {
    */
   public get unpaired(): number {
     return this.unpairedCount;
+  }
+
+  /**
+   * The media time between the first and the latest frame dropped since the last pair: how long
+   * the lenses have shown no common instant.
+   */
+  public get unpairedSpan(): Seconds {
+    const { unpairedFrom, unpairedTo } = this;
+    return seconds(
+      unpairedFrom === undefined || unpairedTo === undefined ? 0 : unpairedTo - unpairedFrom,
+    );
   }
 
   public push(sourceIndex: number, frame: DecodedFrame<Handle>): void {
@@ -51,18 +67,22 @@ export class FramePairer<Handle = unknown> {
         (frame) => Math.abs(frame.timestamp - earliest) <= this.tolerance,
       );
       if (isAligned) this.emit(heads, seconds(earliest));
-      else this.dropHeadAt(earliest);
+      else this.dropHeadAt(seconds(earliest));
     }
   }
 
   private emit(frames: readonly DecodedFrame<Handle>[], timestamp: Seconds): void {
     for (const queue of this.queues) queue.shift();
+    this.unpairedFrom = undefined;
+    this.unpairedTo = undefined;
     this.onPair({ timestamp, frames });
   }
 
-  private dropHeadAt(timestamp: number): void {
+  private dropHeadAt(timestamp: Seconds): void {
     const queue = this.queues.find((candidate) => candidate[0]?.timestamp === timestamp);
     queue?.shift()?.close();
     this.unpairedCount += 1;
+    this.unpairedFrom ??= timestamp;
+    this.unpairedTo = timestamp;
   }
 }

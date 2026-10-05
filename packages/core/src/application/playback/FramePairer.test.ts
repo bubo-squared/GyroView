@@ -53,6 +53,30 @@ describe('FramePairer', () => {
     },
   );
 
+  it('measures the media time its lenses went unpaired since their last pair', () => {
+    const pairer = new FramePairer<Probe>(2, seconds(0.0001), () => {
+      // pairs are irrelevant here
+    });
+    for (let index = 0; index < 4; index += 1) {
+      pairer.push(0, frame(index * 0.1));
+      pairer.push(1, frame(index * 0.1 + 0.001));
+    }
+    expect(pairer.unpaired).toBe(7);
+    expect(pairer.unpairedSpan).toBeCloseTo(0.3, 9);
+  });
+
+  it('measures no unpaired span once a pair comes again', () => {
+    const pairer = new FramePairer<Probe>(2, seconds(0.0001), () => {
+      // pairs are irrelevant here
+    });
+    pairer.push(0, frame(0));
+    pairer.push(0, frame(0.1));
+    pairer.push(0, frame(0.2));
+    pairer.push(1, frame(0.2));
+    expect(pairer.unpaired).toBe(2);
+    expect(pairer.unpairedSpan).toBe(0);
+  });
+
   it('treats timestamps within the tolerance as one instant', () => {
     const pairs: FramePair<Probe>[] = [];
     const pairer = new FramePairer<Probe>(2, seconds(0.002), (pair) => {

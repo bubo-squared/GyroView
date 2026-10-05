@@ -377,6 +377,27 @@ describe('DecodePipeline', () => {
     expect(decoderPort.inner.openDecoders).toBe(0);
   });
 
+  it('fails, as the recording, once its lenses go unpaired for seconds of media', async () => {
+    const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
+    const shifted = new FakeVideoTrack({
+      trackIndex: 1,
+      frameRate: FRAME_RATE,
+      frameCount: FRAMES,
+      framesPerGop: GOP,
+      firstTimestamp: seconds(0.001),
+    });
+    const [lens0] = twoLensTracks();
+    const pipeline = new DecodePipeline([lens0!, shifted], decoderPort, OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    const run = pipeline.run(seconds(0), queue);
+    await expect(run).rejects.toMatchObject({ code: 'unsupported-layout', category: 'recording' });
+    queue.close();
+    expect(queue.length).toBe(0);
+    expect(decoderPort.framesCreated.length).toBeLessThan(FRAMES * 2);
+    expect(decoderPort.openFrames).toBe(0);
+  });
+
   it('rejects with no-key-frame when a track has no key frame', async () => {
     const pipeline = new DecodePipeline(
       twoLensTracks(0),

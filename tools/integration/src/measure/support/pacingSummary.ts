@@ -12,6 +12,11 @@ export interface TickRecord {
   readonly clock: number;
   readonly uploads: UploadRecord[];
   mipmapMs: number;
+  /**
+   * Draw calls into the canvas itself, a whole picture each: not the passes into the meters'
+   * small targets.
+   */
+  canvasDraws: number;
   gpuDoneAt: number | undefined;
 }
 

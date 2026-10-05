@@ -34,7 +34,7 @@ import { createFullscreenTriangle } from './fullscreenPass';
 import { createRenderer, type ContextOptions } from './webglRenderer';
 
 import { SeamMeterPass } from './seamMeter/SeamMeterPass';
-import { applyTextureFilters, createLensTextures } from './lensTextures';
+import { applyTextureFilters, createLensTextures, ensureUploadable } from './lensTextures';
 import { SAMPLING_STRATEGIES } from './samplingStrategies';
 import {
   compilePictureMaterials,
@@ -237,6 +237,8 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
       frames.length === this.parts.textures.length,
       `a pair of ${frames.length} frames does not fit ${this.parts.textures.length} lens textures`,
     );
+    const { maxTextureSize } = this.parts.renderer.capabilities;
+    for (const frame of frames) ensureUploadable(frame.handle, maxTextureSize);
     for (const [index, texture] of this.parts.textures.entries()) {
       const frame = frames[index];
       if (frame) texture.setFrame(frame.handle);

@@ -28,6 +28,27 @@ export function frameOf(paint: Painter, size = DEFAULT_FRAME_SIZE): DecodedFrame
   };
 }
 
+/**
+ * A black frame `width` pixels wide and two high, built from bytes: a canvas that wide may be
+ * refused before the renderer sees it.
+ */
+export function stripFrame(width: number): DecodedFrame<VideoFrame> {
+  const height = 2;
+  const frame = new VideoFrame(new Uint8Array(width * height * RGBA_CHANNELS), {
+    format: 'RGBA',
+    codedWidth: width,
+    codedHeight: height,
+    timestamp: 0,
+  });
+  return {
+    timestamp: seconds(0),
+    handle: frame,
+    close: (): void => {
+      frame.close();
+    },
+  };
+}
+
 export function solidFrame(fillStyle: string): DecodedFrame<VideoFrame> {
   return frameOf((context, size) => {
     context.fillStyle = fillStyle;

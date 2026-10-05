@@ -36,6 +36,7 @@ import {
   halvesFrame,
   solidFrame,
   stripesFrame,
+  stripFrame,
 } from './test/syntheticFrames';
 import {
   PACKED,
@@ -818,6 +819,18 @@ describe('ThreeFrameRenderer', () => {
     expect(() => open({ ...setup, frameSlotCount: 3 })).toThrow(
       expect.objectContaining({ code: 'unsupported-layout' }),
     );
+  });
+
+  it('refuses a frame wider than the GPU holds as a texture, rather than shrinking it at every upload', () => {
+    const renderer = open();
+    const largest: unknown = canvases
+      .at(-1)
+      ?.getContext('webgl2')
+      ?.getParameter(WebGL2RenderingContext.MAX_TEXTURE_SIZE);
+    if (typeof largest !== 'number') throw new Error('no WebGL2 context');
+    expect(() => {
+      present(renderer, [stripFrame(largest + 1), solidFrame('#0000ff')]);
+    }).toThrow(expect.objectContaining({ code: 'render-unavailable' }));
   });
 
   it('refuses a pair that does not match the lens textures', () => {

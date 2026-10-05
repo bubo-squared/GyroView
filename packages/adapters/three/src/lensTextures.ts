@@ -1,3 +1,4 @@
+import { GyroViewError } from '@gyroview/core';
 import { LinearFilter, NoColorSpace, VideoFrameTexture } from 'three';
 
 import type { SamplingStrategy } from './samplingStrategies';
@@ -23,4 +24,16 @@ export function applyTextureFilters(texture: VideoFrameTexture, strategy: Sampli
   texture.minFilter = strategy.minFilter;
   texture.generateMipmaps = strategy.generateMipmaps;
   texture.anisotropy = strategy.anisotropy;
+}
+
+/**
+ * Three would shrink a frame larger than the GPU's largest texture through a 2D canvas at every
+ * upload, slowly and blurred, saying nothing; such a frame is refused instead.
+ */
+export function ensureUploadable(frame: VideoFrame, maxTextureSize: number): void {
+  if (Math.max(frame.displayWidth, frame.displayHeight) <= maxTextureSize) return;
+  throw new GyroViewError(
+    'render-unavailable',
+    `this GPU holds textures of at most ${maxTextureSize} pixels a side; a decoded frame is ${frame.displayWidth} x ${frame.displayHeight}`,
+  );
 }

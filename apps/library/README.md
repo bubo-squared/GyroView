@@ -189,7 +189,10 @@ server renders is safe and registers nothing.
 Each player holds a WebGL context and, while a recording is loaded, two hardware video
 decoders. Browsers cap both (about sixteen WebGL contexts in Chrome, fewer decoders on phones),
 so a gallery gives its players `preload="none"`, which keeps the decoders idle until play, and
-loads a recording only for the player in view, removing `src` from the others.
+loads a recording only for the player in view, removing `src` from the others. An element the
+page removes gives its WebGL context up at once rather than when it is collected, and draws on a
+fresh canvas if it is added again; one whose context the browser took away while it held no
+recording draws on a fresh canvas at its next load.
 
 ## Requirements
 

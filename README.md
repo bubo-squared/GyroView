@@ -148,7 +148,8 @@ when motion look was started outside a tap.
 Controls: over the bottom of the picture, a seek bar above play, mute with a volume slider, the
 time, the Stabilization and View buttons (each showing the icon of the choice in effect and
 opening a menu of the choices, each with its icon and a line describing it), the motion look
-toggle, Reset view and Fullscreen. They fit the player's own width, not the page's: a narrower
+toggle, Reset view and Fullscreen, a toggle pressed while the player fills the screen, drawn as
+the way out. They fit the player's own width, not the page's: a narrower
 player gives up the volume slider and shows its menus over the whole player, then gives up the
 time and Reset view in turn, and, while the motion look toggle shows, the Stabilization menu
 rather than the toggle. On touch every target is 44 pixels and the
@@ -171,7 +172,8 @@ player.
 Keyboard: space or K play/pause, J and L seek, S stops, arrows look around (Shift + arrows
 seek), plus and minus zoom, 0 resets the view, M mutes, F fills the screen, Escape closes an
 open menu first and then leaves fullscreen (in the browser's own fullscreen, the browser takes
-the first Escape itself). A focused slider keeps its arrows and a focused button
+the first Escape itself); an Escape the player takes goes no further, to a dialog around it.
+A focused slider keeps its arrows and a focused button
 its Space. Mouse and touch: drag to look, wheel or pinch to zoom toward the pointer or the
 fingers (the keys zoom about the centre), tap to play or pause (on touch, a tap on faded
 controls only brings them back). The equirectangular panorama and the raw lenses zoom up to
@@ -190,9 +192,11 @@ volume, their handles, the checked choice and the focus ring), `--gyro-view-cont
 `::part(canvas)`, `::part(poster)`, `::part(controls)`, `::part(big-play)`, `::part(loading)`,
 `::part(error)`, `::part(error-message)` and `::part(error-code)` reach the parts. The element
 writes its state on itself for a page's selectors, and a page never sets these: `data-status`
-(the status, as in `gyro-view[data-status='error']`), `data-has-frame` once a picture is drawn,
-`data-idle` while the controls have faded, `data-fill` while it is pinned over the page in
-place of fullscreen, with `popover="manual"` beside it where the browser has popovers. Under
+(the status, as in `gyro-view[data-status='error']`), `data-has-frame` once the recording loaded
+now has drawn a picture (until then the canvas shows nothing, the previous recording's last
+picture included), `data-idle` while the controls have faded, `data-fill` while it is pinned
+over the page in place of fullscreen, with `popover="manual"` beside it where the browser has
+popovers, unless the page made a popover of it itself. Under
 `prefers-reduced-motion` the spinner turns slower and the controls do not fade; under
 `prefers-reduced-transparency`, and where the browser has no backdrop blur, the menus are
 opaque; forced colours keep the sliders and the menus' edges visible.

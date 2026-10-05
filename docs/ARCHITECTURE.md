@@ -346,12 +346,16 @@ The composition root and the user-facing element, in three layers.
   poster and overlays. `ElementLoads` decides when the element loads and what: the attributes
   read together a microtask after they change, a load owed to the next connection, a recording
   let go after a removal. The element tells a removal from a move (still out of the document a
-  microtask later) and leaves the pinned fill on one too. The shadow tree (`template.ts`) is parsed
+  microtask later) and leaves the pinned fill on one too. `PlayerCanvas` holds the canvas the
+  player draws on: a removed element gives its WebGL context up at once, and a load puts a fresh
+  canvas in place of one whose context is gone, since a context lost with no renderer to ask for
+  it back never returns. The element's own warnings are queued, as a media element's events are. The shadow tree (`template.ts`) is parsed
   once per page through a Trusted Types policy (`parseMarkup`) and cloned per element, its
   stylesheets constructed once and adopted. The markup holds no words: `Wording` fills in
   every label, menu choice and failure text it names, from `messages` (English defaults, the
-  page's own through the element's `messages` property). `bindControlsBar` binds `TransportButtons`, the view buttons (Reset view,
-  Fullscreen), `SeekBar` (key-frame
+  page's own through the element's `messages` property; frozen, so they change through the setter
+  alone). `bindControlsBar` binds `TransportButtons`, Reset view, `FullscreenButton` (a toggle the
+  element's `FullscreenToggle` tells of each change), `SeekBar` (key-frame
   scrubbing), `SoundControls`, `MotionLookButton` (the motion look toggle) and `PictureMenus` (the view mode and stabilization menus, each a
   `ChoiceMenu` behind a button that shows the icon of the choice in effect; stabilization is offered
   only for a recording with a gyro in a stitched view mode). How much the bar shows follows the
@@ -359,7 +363,9 @@ The composition root and the user-facing element, in three layers.
   `controls.css`, which the element's template takes in, and every icon button draws an SVG
   from `icons`, cloned from one parsed copy when a button changes its icon. `ViewGestures` turns drags,
   pinches and wheel turns into view changes; `keyboard` maps keys to commands;
-  `FullscreenToggle` and `IdleWatcher` handle filling the screen and fading the controls.
+  `FullscreenToggle` and `IdleWatcher` handle filling the screen and fading the controls;
+  `nativeFullscreen` calls the Fullscreen API for both the element and `attachKeyboard`, a
+  refusal leaving the target as it was.
 
 ## The site: `apps/embed`
 

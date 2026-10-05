@@ -52,6 +52,7 @@ export class PlaybackSession<Handle = unknown> {
   private readonly clockWatch = new ClockWatch();
   private readonly seeks = new SeekOrder();
   private readonly starts: ClockStart;
+  private shouldLoop = false;
 
   public constructor(private readonly parts: PlaybackSessionParts<Handle>) {
     this.screen = new PictureOnScreen(parts.sink, (error) => {
@@ -157,6 +158,14 @@ export class PlaybackSession<Handle = unknown> {
     // A seek or scrub made meanwhile is newer: this scrub lands no more.
     if (!this.seeks.isScrubCurrent(ticket) || this.lifecycle.isOneOf('disposed', 'error')) return;
     this.seek(keyframeTime);
+  }
+
+  /**
+   * Whether the end seeks back to the start and plays on, as a media element's `loop` does,
+   * rather than ending.
+   */
+  public setLooping(shouldLoop: boolean): void {
+    this.shouldLoop = shouldLoop;
   }
 
   /**
@@ -421,11 +430,19 @@ export class PlaybackSession<Handle = unknown> {
     this.run = undefined;
   }
 
+  /**
+   * The time first, then the state, then the end, as a media element fires `timeupdate`, `pause`
+   * and `ended`. A looping session seeks back to the start instead and plays on.
+   */
   private end(): void {
     if (!this.lifecycle.canMoveTo('ended')) return;
+    if (this.shouldLoop) {
+      this.seek(seconds(0));
+      return;
+    }
     this.parts.clock.pause();
-    this.lifecycle.moveTo('ended');
     this.timeUpdates.announce(this.parts.clock.currentTime);
+    this.lifecycle.moveTo('ended');
     this.lifecycle.announce('ended', undefined);
   }
 

@@ -22,6 +22,7 @@ import type { GyroSample, GyroTrack } from '../gyro/GyroTrack';
 import { toBodyFrame, type ImuFrame } from '../imu/ImuFrame';
 import type { CaptureClock } from '../timing/CaptureClock';
 import { clamp } from '../../../shared/math/clamp';
+import { countAtOrBelow } from '../../../shared/math/countAtOrBelow';
 
 export interface IntegrationOptions {
   /**
@@ -151,14 +152,7 @@ export class OrientationTrack {
   }
 
   private firstIndexAfter(videoTime: Seconds): number {
-    let low = 0;
-    let high = this.length;
-    while (low < high) {
-      const middle = Math.floor((low + high) / 2);
-      if ((this.videoTimes[middle] ?? Infinity) <= videoTime) low = middle + 1;
-      else high = middle;
-    }
-    return low;
+    return countAtOrBelow(this.length, (index) => this.videoTimes[index] ?? Infinity, videoTime);
   }
 }
 

@@ -2,6 +2,7 @@ import type { CaptureClock } from './CaptureClock';
 import { ensureIndexInRange, ensureInvariant } from '../../../shared/errors/GyroViewError';
 import { type Microseconds, microseconds, seconds, type Seconds } from '../../../shared/units/time';
 import { clamp } from '../../../shared/math/clamp';
+import { countAtOrBelow } from '../../../shared/math/countAtOrBelow';
 
 export interface FrameTime {
   readonly index: number;
@@ -112,17 +113,11 @@ export class FrameTimes {
   }
 
   /**
-   * The last frame captured at or before `videoTime`.
+   * The last frame captured at or before `videoTime`; one before the first when none is.
    */
   private lastCapturedAt(videoTime: Seconds): number {
     const target = this.clock.captureTimeOf(videoTime);
-    let low = 0;
-    let high = this.frameCount - 1;
-    while (low < high) {
-      const middle = Math.ceil((low + high) / 2);
-      if ((this.captureTimes[middle] ?? Infinity) <= target) low = middle;
-      else high = middle - 1;
-    }
-    return low;
+    const times = this.captureTimes;
+    return countAtOrBelow(this.frameCount, (index) => times[index] ?? Infinity, target) - 1;
   }
 }

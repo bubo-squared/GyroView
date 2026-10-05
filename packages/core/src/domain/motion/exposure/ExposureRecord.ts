@@ -1,5 +1,6 @@
 import type { ReadonlyFloat64Array } from '../../../shared/binary/ReadonlyTypedArray';
 import { ensureIndexInRange, ensureInvariant } from '../../../shared/errors/GyroViewError';
+import { countBelow } from '../../../shared/math/countAtOrBelow';
 import { type Microseconds, microseconds, seconds, type Seconds } from '../../../shared/units/time';
 
 export interface ExposureEntry {
@@ -45,14 +46,8 @@ export class ExposureRecord {
    * Index of the first entry captured at or after `captureTime`, or the length when none is.
    */
   public indexAtOrAfter(captureTime: Microseconds): number {
-    let low = 0;
-    let high = this.captureTimeStore.length;
-    while (low < high) {
-      const middle = (low + high) >>> 1;
-      if ((this.captureTimeStore[middle] ?? Infinity) < captureTime) low = middle + 1;
-      else high = middle;
-    }
-    return low;
+    const store = this.captureTimeStore;
+    return countBelow(store.length, (index) => store[index] ?? Infinity, captureTime);
   }
 
   /**

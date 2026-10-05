@@ -4,6 +4,7 @@
   "private": true,
   "description": "Node.js adapters for GyroView core ports: RandomAccessSource over the file system.",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./src/index.ts",

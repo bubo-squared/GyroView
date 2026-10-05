@@ -4,6 +4,7 @@
   "private": true,
   "description": "GyroView domain and application layer: Insta360 .insv format, optics, motion and playback. Pure TypeScript with no runtime dependencies.",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./src/index.ts",

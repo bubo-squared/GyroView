@@ -20,8 +20,10 @@ What a page may notice:
   record keyed on every event or code needs them.
 - `view` and `viewchange` give a fresh object of `yaw`, `pitch` and `fieldOfView` each time.
 - The iframe the snippet creates allows `accelerometer; gyroscope; magnetometer`; a hand-written
-  iframe needs them for motion look. Over the bridge, `viewchange` comes at most once every 16 ms,
-  the latest, and always before the result of the command that caused it.
+  iframe needs them for motion look. Without them, Chromium offers no toggle; iOS offers it and
+  refuses at the first press (`motion-look-refused`).
+- On the narrowest players with the motion look toggle shown, the Stabilization menu gives way
+  to it.
 
 ## 0.5.0 (2026-10-03)
 

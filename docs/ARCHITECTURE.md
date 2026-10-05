@@ -351,7 +351,7 @@ The composition root and the user-facing element, in three layers.
   and, when embedded, bridges to the embedding page.
 - `protocol/` is the versioned `postMessage` vocabulary (`hello`, `command`, `result`, `event`),
   validated on receipt, with the origin rules. `frame/EmbedHost` runs commands on the element
-  and forwards its events, `viewchange` at most once a frame (`OncePerFrame`); `bridge/EmbedHandle` is the embedding page's side, the player API as
+  and forwards its events; `bridge/EmbedHandle` is the embedding page's side, the player API as
   promises with a state mirror; both talk through an `Endpoint` (a window pair in production, a
   `MessagePort` in tests). What `embed.js` bundles (`snippet/`, `protocol/`, `bridge/`) never
   imports the player's code or the frame side (dependency-cruiser). ADR 0010.

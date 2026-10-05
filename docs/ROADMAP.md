@@ -92,7 +92,9 @@ upright, the rest of its IMU frame assumed (ADR 0009).
 - **An iPhone and an Android phone for motion look** (ADR 0040), over HTTPS: the permission prompt
   at the first press and a refusal, portrait and landscape, a level horizon when rolling, a steady
   picture looking straight up and down, the iframe embed (a tap outside the frame with motion look
-  on: Chromium may pause an unfocused cross-origin frame's sensors), whether a phone at rest stops
+  on: Chromium may pause an unfocused cross-origin frame's sensors), turning the phone between
+  portrait and landscape with motion look on (the screen's angle and the canvas's size change at
+  different moments, which may show a quarter-turn roll for a frame), whether a phone at rest stops
   redrawing, and the frames shown a second after three to five minutes with motion look on, for
   an 8K30 and a 5.7K60 recording (heat).
 

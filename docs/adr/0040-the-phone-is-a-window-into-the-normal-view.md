@@ -32,10 +32,12 @@ names the sensors.
   the turn is taken as yaw alone.
 - **The heading is the view's own.** Only the device's changes of yaw turn the view, so starting,
   a drag, the arrows, Reset view and a page's `lookAt` move the heading and the device carries on
-  from there. Pitch and roll are the device's. Readings more than half a second apart start anew
-  without a sideways jump: iOS and Android count the yaw from a new zero when the sensor restarts,
-  and a hidden page hears nothing. A turn under a hundredth of a degree is not drawn, so a phone at
-  rest does not redraw the stitch at the sensor's rate; its drift lands once it shows.
+  from there. Pitch and roll are the device's. Two consecutive readings more than half a second
+  apart start anew without a sideways jump: iOS and Android count the yaw from a new zero when the
+  sensor restarts, and a hidden page hears nothing; a main thread held up that long, by a seek or a
+  decoder starting, loses the turn made meanwhile. A turn under a hundredth of a degree is not
+  drawn, though its reading still counts as heard, so a phone at rest does not redraw the stitch at
+  the sensor's rate, and a slow drift lands in full once it shows.
 - **While the device holds the view** (`MOTION_LOOK_VIEW`, from its first reading until it lets
   go): sideways drags and arrows turn the heading, up and down is the device's, a zoom narrows
   about the centre, Reset view looks ahead at the default zoom, and a page's view sets the yaw and
@@ -45,24 +47,30 @@ names the sensors.
   the view a page sees and sets (`view`, `viewchange`, the attributes, the bridge) keeps yaw, pitch
   and field of view, as published.
 - **Available means heard.** The page's probe (one per page) listens until it hears the angles:
-  then the device is available. An event without them means no sensor. Before anything is heard,
-  a touch device whose browser can ask for permission is taken to have the sensors (iOS); anything
-  else is not. Access is asked for only where the events wait for it, as the first thing in the
+  then the device is available, and the probe stops and forgets its listeners. An event without
+  them means no sensor. Before anything is heard, a touch device whose browser can ask for
+  permission is taken to have the sensors (iOS); anything else is not. Neither is a frame whose
+  policy Chromium says refuses the accelerometer or the gyroscope, where it sends no event at all;
+  iOS does not say, and refuses at the first press. Access is asked for only where the events wait for it, as the first thing in the
   press: an `await` before it would leave the gesture behind. A refusal makes motion look
   unavailable with a `motion-look-refused` warning; a start outside a gesture leaves it off with
   `motion-look-needs-gesture`. Neither rejects.
-- **The sensor is heard only while it turns something**: motion look on, a recording drawn, the
-  normal view shown. The player disposes it with itself.
+- **The page holds the player only while it draws.** The player follows the sensor's
+  availability while a recording is drawn, and hears its readings while motion look is also on and
+  the normal view shown; an element taken out of the page unloads and lets go of both, so it can be
+  collected. `motionLook` is the availability as last known, read afresh by `startMotionLook()`.
+  The player disposes the sensor with itself.
 - **Embedding.** The snippet's iframe allows `accelerometer; gyroscope; magnetometer` beside
   `fullscreen; autoplay`. The bridge mirrors `motionLook` but has no command to start it: a tap on
   the embedding page does not activate a cross-origin frame, so iOS would refuse; the frame's own
-  toggle serves. The frame forwards `viewchange` at most once a frame (16 ms), the latest, and
-  before any other message, so a command's result still follows the view change it caused; a
-  device turning the view, or WebKit's pointer moves, no longer cross `postMessage` at their own
-  rate.
+  toggle serves. `viewchange` crosses `postMessage` as often as the device turns the view, about
+  60 times a second, as a drag's do; a small message costs microseconds, so the frame does not
+  throttle it.
 - **The bar** gives up its parts one target sooner while the toggle shows, keyed on the toggle
   being shown (`:has()`) rather than on the pointer, since a laptop with sensors may have a mouse;
-  on the narrowest players the toggle itself gives way.
+  on the narrowest players the stabilization menu gives way to it. The toggle never hides while
+  the device turns the view, which a phone turned to portrait would otherwise leave it doing with
+  no way out but the View menu.
 
 ## Alternatives considered
 

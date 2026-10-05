@@ -100,13 +100,14 @@ export class SampleCursor {
   }
 
   /**
-   * A range failed: fails the awaited read if the sample lies there.
+   * A range failed: fails the awaited read if the sample lies there, and says whether it did.
    */
-  public fail(range: ByteRange, error: Error): void {
+  public fail(range: ByteRange, error: Error): boolean {
     const { waiter } = this;
-    if (waiter === undefined || !range.overlaps(this.track.rangeOf(this.next))) return;
+    if (waiter === undefined || !range.overlaps(this.track.rangeOf(this.next))) return false;
     this.waiter = undefined;
     waiter.reject(error);
+    return true;
   }
 
   public close(): void {

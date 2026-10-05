@@ -127,6 +127,15 @@ async function play(context: Playing, startFrame: number, frames: number): Promi
   }
 }
 
+/**
+ * Reads every sample up to `last`, as a decoder would, and the last one read.
+ */
+async function readUpTo(cursor: SampleCursor, last: number): Promise<CursorSample | undefined> {
+  let sample: CursorSample | undefined;
+  while (cursor.position <= last) sample = await cursor.nextSample();
+  return sample;
+}
+
 async function idle(link: SimulatedLink, ticks: number): Promise<void> {
   for (let tick = 0; tick < ticks; tick += 1) {
     link.advance();
@@ -312,6 +321,33 @@ describe('FileDownload', () => {
     const again = context.download.openCursor(RECORDING.lens0, 60).nextSample();
     await idle(context.link, 5);
     await expect(again).resolves.toMatchObject({ sample: 60 });
+  });
+
+  it('asks once more, when a reader comes to it, for a range that failed while read ahead', async () => {
+    const context = setup(POLICY, FAST_NETWORK);
+    const error = new GyroViewError('source-unreadable', 'the connection dropped');
+    context.link.failWhere((range) => range.end > 50 * SLOT, error);
+    const cursor = context.download.openCursor(RECORDING.lens0, 0);
+    context.download.startReadingAhead();
+    await idle(context.link, 10);
+    const requestsWhileFailing = context.link.requests.length;
+    context.link.failWhere(() => false, error);
+    const reading = readUpTo(cursor, 60);
+    await idle(context.link, 10);
+    await expect(reading).resolves.toMatchObject({ sample: 60 });
+    expect(context.link.requests.length).toBeGreaterThan(requestsWhileFailing);
+  });
+
+  it('fails the reader when a range that failed while read ahead fails again once needed', async () => {
+    const context = setup(POLICY, FAST_NETWORK);
+    const error = new GyroViewError('source-unreadable', 'the connection dropped');
+    context.link.failWhere((range) => range.end > 50 * SLOT, error);
+    const cursor = context.download.openCursor(RECORDING.lens0, 0);
+    context.download.startReadingAhead();
+    await idle(context.link, 10);
+    const reading = expect(readUpTo(cursor, 60)).rejects.toBe(error);
+    await idle(context.link, 10);
+    await reading;
   });
 
   it('asks for what another reader waits on once a failed range makes room', async () => {

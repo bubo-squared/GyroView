@@ -162,7 +162,7 @@ describe('MediabunnyCodecReader', () => {
     }
   });
 
-  it('refuses a video track whose sample entry carries no codec configuration', async () => {
+  it("refuses a video track whose sample entry carries no codec configuration as the file's failing", async () => {
     const lens = {
       trackId: 1,
       handler: 'vide',
@@ -177,7 +177,8 @@ describe('MediabunnyCodecReader', () => {
     };
     const movieBytes = await movieBytesOf(buildMp4File([lens]).bytes);
     await expect(new MediabunnyCodecReader().read(movieBytes)).rejects.toMatchObject({
-      code: 'codec-unsupported',
+      code: 'unsupported-container',
+      category: 'recording',
     });
   });
 });

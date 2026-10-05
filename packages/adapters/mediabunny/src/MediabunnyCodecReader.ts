@@ -29,7 +29,7 @@ const MOVIE_FORMATS = [MP4, QTFF];
  * CodecReader over mediabunny: opens the file type and movie boxes as a file of their own, in
  * memory, and tells each track's decoder configuration. mediabunny reads a sample only for a
  * video codec without its configuration box; the samples are not there, so that track is
- * refused.
+ * refused as the file's failing.
  */
 export class MediabunnyCodecReader implements CodecReader {
   public async read(movieBytes: Uint8Array): Promise<ContainerCodecs> {
@@ -54,16 +54,10 @@ export class MediabunnyCodecReader implements CodecReader {
 
 async function videoCodecOf(track: InputVideoTrack, trackIndex: number): Promise<VideoTrackCodec> {
   const [config, codedWidth, codedHeight] = await Promise.all([
-    configurationOrNull(track),
+    configurationOf(track, trackIndex),
     track.getCodedWidth(),
     track.getCodedHeight(),
   ]);
-  if (config === null) {
-    throw new GyroViewError(
-      'codec-unsupported',
-      `video track ${trackIndex} has no decoder configuration in its sample entry`,
-    );
-  }
   const description = {
     trackIndex,
     codedWidth,
@@ -79,15 +73,30 @@ async function videoCodecOf(track: InputVideoTrack, trackIndex: number): Promise
 }
 
 /**
- * The configuration of a codec that carries it in the movie box; null for one that would need
- * a sample, which the movie bytes do not hold.
+ * The configuration of a codec that carries it in the movie box. A sample entry without one, or
+ * with one mediabunny cannot read, fails as the file's: no browser could configure a decoder from
+ * it, and the movie bytes hold no sample to find it in.
  */
-async function configurationOrNull(track: InputVideoTrack): Promise<VideoDecoderConfig | null> {
+async function configurationOf(
+  track: InputVideoTrack,
+  trackIndex: number,
+): Promise<VideoDecoderConfig> {
+  let config: VideoDecoderConfig | null;
   try {
-    return await track.getDecoderConfig();
-  } catch {
-    return null;
+    config = await track.getDecoderConfig();
+  } catch (error) {
+    throw noConfiguration(trackIndex, { cause: error });
   }
+  if (config === null) throw noConfiguration(trackIndex);
+  return config;
+}
+
+function noConfiguration(trackIndex: number, options?: ErrorOptions): GyroViewError {
+  return new GyroViewError(
+    'unsupported-container',
+    `video track ${trackIndex} has no decoder configuration in its sample entry`,
+    options,
+  );
 }
 
 /**

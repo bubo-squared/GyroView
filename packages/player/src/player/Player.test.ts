@@ -218,7 +218,9 @@ describe('Player over the synthetic X5 recording', () => {
 
     player.stop();
     expect(player.currentTime).toBe(0);
-    expect(player.status).toBe('paused');
+    expect(player.status).toBe('seeking');
+    expect(player.isPaused).toBe(true);
+    await waitFor(() => player.status === 'paused', 'the picture at the start');
     // Whether play found the preloaded frames already primed decides if a `waiting` precedes
     // `playing`, and a slow machine may stall again later; the transport sequence around them
     // does not depend on decode timing.
@@ -236,16 +238,34 @@ describe('Player over the synthetic X5 recording', () => {
     expect(events.indexOf('playing')).toBeGreaterThan(events.indexOf('play'));
   });
 
-  it('ends at the end of the clip and, when looping, starts over', async () => {
+  it('pauses and then ends at the end of the clip, as a media element does', async () => {
+    const { player, events } = open();
+    await player.load(sourceOf(X5_RECORDING_URL));
+    player.seek(seconds(2.7));
+
+    await player.play();
+    await waitFor(() => events.includes('ended'), 'the end of the clip');
+    expect(events.slice(-2)).toEqual(['pause', 'ended']);
+    expect(player.status).toBe('ended');
+  });
+
+  it('when looping, seeks back to the start and plays on without ending', async () => {
     const { player, events } = open();
     await player.load(sourceOf(X5_RECORDING_URL));
     player.setLooping(true);
     player.seek(seconds(2.7));
 
     await player.play();
-    await waitFor(() => events.includes('ended'), 'the end of the clip');
+    const seeksBeforeTheLoop = events.filter((name) => name === 'seeked').length;
+    await waitFor(
+      () => events.filter((name) => name === 'seeked').length > seeksBeforeTheLoop,
+      'the loop',
+    );
     await waitFor(() => player.status === 'playing' && player.currentTime < 1, 'the restart');
     expect(player.isLooping).toBe(true);
+    const looped = events.slice(events.lastIndexOf('play'));
+    expect(looped).not.toContain('ended');
+    expect(looped.filter((name) => name === 'play' || name === 'pause')).toEqual(['play']);
   });
 
   it('announces a change of volume or mute, whoever made it', async () => {

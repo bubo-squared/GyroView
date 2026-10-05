@@ -14,7 +14,7 @@ import {
   type ViewMode,
 } from '@gyroview/core';
 
-import { AutomaticStarts } from './AutomaticStarts';
+import { Autoplay } from './Autoplay';
 import { cssSizeOf } from './DrawingBufferFit';
 import { ensureFinite, viewStateOf } from './ensureFinite';
 import { FrameLoop } from './FrameLoop';
@@ -61,11 +61,12 @@ export class Player {
     onState: (): void => {
       this.announceStatus();
     },
-    onEnded: (): void => {
-      this.starts.ended();
-    },
   });
-  private readonly starts = new AutomaticStarts(this.outbox, () => this.play());
+  private readonly autoplay = new Autoplay(this.outbox, () => this.play());
+  /**
+   * Whether the recording plays again from the start at its end; kept across loads.
+   */
+  private shouldLoop = false;
   /**
    * Past `dispose`: a listener of the idle it announces must not load again.
    */
@@ -149,7 +150,7 @@ export class Player {
   }
 
   public get isLooping(): boolean {
-    return this.starts.isLooping;
+    return this.shouldLoop;
   }
 
   public get volume(): number {
@@ -314,7 +315,8 @@ export class Player {
   }
 
   public setLooping(isLooping: boolean): void {
-    this.starts.setLooping(isLooping);
+    this.shouldLoop = isLooping;
+    this.loaded?.pipeline.session.setLooping(isLooping);
   }
 
   /**
@@ -376,7 +378,7 @@ export class Player {
       if (options.preload !== false) loaded.pipeline.session.preload();
     });
     // A listener of `ready` may have loaded something else: whether that plays is its own call.
-    if (options.autoplay && this.loaded === loaded) await this.starts.autoplay();
+    if (options.autoplay && this.loaded === loaded) await this.autoplay.start();
   }
 
   private startAtPendingTime(loaded: LoadedRecording): void {
@@ -390,6 +392,7 @@ export class Player {
     this.viewing.attach(loaded.pipeline.renderer);
     this.motion.reconsider();
     const { session } = loaded.pipeline;
+    session.setLooping(this.shouldLoop);
     this.picture.attach(loaded.pipeline);
     this.relay.attach(session);
     this.loop.start();

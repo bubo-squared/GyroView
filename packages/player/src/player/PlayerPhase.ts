@@ -46,6 +46,9 @@ export function loadingPhase(): LoadingPhase {
   return { kind: 'loading', controller: new AbortController(), settled: new Deferred() };
 }
 
+/**
+ * A loaded recording's status is its session's state, `seeking` until a seek's picture is drawn.
+ */
 export function statusOf(phase: PlayerPhase): PlayerStatus {
   switch (phase.kind) {
     case 'idle': {
@@ -55,7 +58,8 @@ export function statusOf(phase: PlayerPhase): PlayerStatus {
       return 'loading';
     }
     case 'loaded': {
-      return phase.loaded.pipeline.session.state;
+      const { session } = phase.loaded.pipeline;
+      return session.isSeeking ? 'seeking' : session.state;
     }
     case 'failed': {
       return 'error';

@@ -120,6 +120,7 @@ describe('the embed bridge over a message channel', () => {
     await waitFor(() => handle.state.status === 'playing', 'playing');
     await handle.pause();
     await handle.seek(2);
+    await waitFor(() => heard.at(-1) === 'seeked', 'the picture at the seek');
     const state = await handle.getState();
     expect(state.currentTime).toBe(2);
     expect(state.isPaused).toBe(true);

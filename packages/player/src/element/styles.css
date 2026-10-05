@@ -112,13 +112,25 @@ canvas {
 
 :host([data-status='loading']) .overlay.loading,
 :host([data-status='buffering']) .overlay.loading,
+:host([data-status='seeking']) .overlay.loading,
 :host([data-status='error']) .overlay.error {
   display: flex;
 }
 
-:host([data-status='buffering']) .overlay.loading {
+/* A wait while playing or seeking shows over the picture once it lasts: the short ones of a
+   seek or a loop would only flash. */
+:host([data-status='buffering']) .overlay.loading,
+:host([data-status='seeking']) .overlay.loading {
   background: transparent;
   pointer-events: none;
+  visibility: hidden;
+  animation: gyro-view-shown-once-lasting 0s linear 0.3s forwards;
+}
+
+@keyframes gyro-view-shown-once-lasting {
+  to {
+    visibility: visible;
+  }
 }
 
 .spinner {

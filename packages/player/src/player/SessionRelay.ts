@@ -14,15 +14,14 @@ export type RelayedSession = Pick<PlaybackSession, 'events' | 'state' | 'current
 export interface RelayTargets {
   readonly events: EventSink<PlayerEvents>;
   /**
-   * The session's state, which is the player's status while a recording is loaded.
+   * The session's state changed, or its seek is done: the player's status may have changed.
    */
   onState(state: PlayerState): void;
-  onEnded(): void;
 }
 
 /**
  * Relays the loaded session's events in media-element terms: transport events for its state
- * changes, time updates, drawn frames, errors and the end. Listens to one session at a time and
+ * changes, time updates, drawn frames, finished seeks, errors and the end. Listens to one session at a time and
  * stops before that session is disposed, so its disposal is never announced. A change is relayed
  * whole, as a media element fires the events it queued before a listener's `pause()`; the
  * session announces a listener's newer change after it (ADR 0021).
@@ -51,8 +50,11 @@ export class SessionRelay {
       session.events.on('present', (time) => {
         events.emit('frame', time);
       }),
+      session.events.on('seeked', (time) => {
+        this.onSeeked(time, session);
+      }),
       session.events.on('ended', () => {
-        this.targets.onEnded();
+        events.emit('ended', undefined);
       }),
       session.events.on('error', (error) => {
         events.emit('error', error);
@@ -78,9 +80,15 @@ export class SessionRelay {
     this.targets.onState(state);
   }
 
+  private onSeeked(time: number, session: RelayedSession): void {
+    const detachments = this.detachments;
+    this.targets.events.emit('seeked', time);
+    if (this.detachments === detachments) this.targets.onState(session.state);
+  }
+
   private emitTransport(name: TransportEventName, session: RelayedSession): void {
     const { events } = this.targets;
-    if (name === 'seeking' || name === 'seeked') events.emit(name, session.currentTime);
+    if (name === 'seeking') events.emit(name, session.currentTime);
     else events.emit(name, undefined);
   }
 }

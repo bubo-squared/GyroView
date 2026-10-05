@@ -11,7 +11,8 @@ import type { ViewAngles } from './PlayerOptions';
 import type { PlayerMetadata } from '../PlayerMetadata';
 
 /**
- * The session's states plus the two only the player knows: nothing loaded, and loading.
+ * The session's states plus the two only the player knows: nothing loaded, and loading. A
+ * recording is `seeking` from a seek until the picture there is drawn.
  */
 export type PlayerStatus = 'idle' | 'loading' | PlayerState;
 
@@ -36,7 +37,7 @@ export interface SoundLevel {
  *   what it got.
  * - `no-sound`: the recording has no sound, or none this browser plays; a silent clock runs.
  * - `autoplay-blocked`: the browser waits for a user gesture before it starts playback.
- * - `playback-failed`: a start (a press, autoplay, the loop) or the seek bar's preview failed.
+ * - `playback-failed`: a start (a press, autoplay) or the seek bar's preview failed.
  * - `ignored-attribute`: an attribute's value names nothing the element knows; the setting stays.
  * - `refused-property`: a property set before the element was defined was refused.
  * - `motion-look-refused`: the viewer, or an iframe's `allow`, refused access to the device's

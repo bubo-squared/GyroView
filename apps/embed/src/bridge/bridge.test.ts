@@ -140,7 +140,7 @@ describe('the embed bridge over a message channel', () => {
 
   it('mirrors motion look as the frame announces it', async () => {
     const { handle } = bridge({ 'view-mode': 'normal' });
-    await handle.getState();
+    await handle.load({ src: recordingUrl });
     expect(handle.state.motionLook).toBe('unavailable');
     globalThis.dispatchEvent(
       Object.assign(new Event('deviceorientation'), { alpha: 0, beta: 90, gamma: 0 }),

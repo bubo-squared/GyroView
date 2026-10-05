@@ -70,7 +70,11 @@ class NalKeyframeRule implements KeyframeRule {
       const unitStart = offset + this.lengthSize;
       const unitEnd = unitStart + lengthAt(sample, offset, this.lengthSize);
       if (unitEnd > sample.length) return false;
-      const verdict = this.family.verdictOn(this.family.typeOf(sample[unitStart] ?? 0));
+      // An empty unit has no header: the byte after its length is the next unit's length.
+      const verdict =
+        unitEnd === unitStart
+          ? 'read-on'
+          : this.family.verdictOn(this.family.typeOf(sample[unitStart] ?? 0));
       if (verdict !== 'read-on') return verdict === 'keyframe';
       offset = unitEnd;
     }

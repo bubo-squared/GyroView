@@ -1179,6 +1179,25 @@ describe('<gyro-view>', () => {
     expect(element.hasAttribute('popover')).toBe(false);
   });
 
+  it('keeps a popover the page made of it, shown, when it leaves the pinned fill', async () => {
+    const element = create({ controls: '', popover: 'auto' });
+    element.showPopover();
+    refuseFullscreen(element);
+    await element.toggleFullscreen();
+    expect(isCoveringTheViewport(element)).toBe(true);
+
+    await element.toggleFullscreen();
+    expect(element.getAttribute('popover')).toBe('auto');
+    expect(element.matches(':popover-open')).toBe(true);
+  });
+
+  it('keeps a popover the page made of it when the page removes it', async () => {
+    const element = create({ controls: '', popover: 'auto' });
+    element.remove();
+    await settle();
+    expect(element.getAttribute('popover')).toBe('auto');
+  });
+
   it('goes back to its place on the page when it leaves the pinned fill', async () => {
     const element = create({ controls: '', style: 'width: 300px; height: 150px; margin: 8px' });
     const placed = boundsOf(element);

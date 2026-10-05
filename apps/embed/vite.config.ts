@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
 
+import { NOTICED_OUTPUT } from '../library/thirdPartyNotice.ts';
+
 import { samplesPlugin } from './dev/samplesPlugin.ts';
 import { samplesWithheld } from './dev/samplesWithheld.ts';
 
@@ -65,6 +67,8 @@ export default defineConfig({
     chunkSizeWarningLimit: 1400,
     rollupOptions: {
       input: { embed: path.join(APP_ROOT, 'embed.html') },
+      // The page's player chunk compiles in three.js and mediabunny, as the standalone file does.
+      output: NOTICED_OUTPUT,
     },
   },
 });

@@ -2,12 +2,7 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
 
-/**
- * The notice the standalone file carries for what it bundles: mediabunny's MPL-2.0 asks that
- * whoever receives it in compiled form learns where its source is.
- */
-const THIRD_PARTY_NOTICE = `/*! @bubo-squared/gyroview (MIT). Bundles three.js (MIT, https://github.com/mrdoob/three.js) and
- mediabunny (MPL-2.0, source at https://github.com/Vanilagy/mediabunny). */`;
+import { NOTICED_OUTPUT } from './thirdPartyNotice';
 
 /**
  * `dist/standalone.js`: the package with Three.js and mediabunny inside, one minified ES module
@@ -27,7 +22,6 @@ export default defineConfig({
       formats: ['es'],
       fileName: (): string => 'standalone.js',
     },
-    // After minification, which would drop the notice with every other comment.
-    rollupOptions: { output: { postBanner: THIRD_PARTY_NOTICE, minify: true } },
+    rollupOptions: { output: { ...NOTICED_OUTPUT, minify: true } },
   },
 });

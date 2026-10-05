@@ -87,7 +87,7 @@ describe('MotionLookButton', () => {
     let wasAsked = false;
     const sensor = new BrowserAttitudeSensor({
       target: new EventTarget(),
-      isSecureContext: true,
+      mayReadSensors: true,
       orientationEvents: {
         requestPermission: (): Promise<string> => {
           wasAsked = true;

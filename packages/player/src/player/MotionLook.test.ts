@@ -30,6 +30,7 @@ interface Rig {
   readonly states: MotionLookState[];
   readonly warnings: WarningCode[];
   readonly recording: { isDrawn: boolean };
+  readonly events: TypedEmitter<PlayerEvents>;
 }
 
 function rig(sensor = new FakeAttitudeSensor()): Rig {
@@ -50,7 +51,9 @@ function rig(sensor = new FakeAttitudeSensor()): Rig {
     events,
     hasRecording: (): boolean => recording.isDrawn,
   });
-  return { motion, sensor, view, states, warnings, recording };
+  // As the player does once a recording is drawn.
+  motion.reconsider();
+  return { motion, sensor, view, states, warnings, recording, events };
 }
 
 describe('MotionLook', () => {
@@ -70,6 +73,57 @@ describe('MotionLook', () => {
     expect(states).toEqual(['on', 'unavailable']);
     expect(sensor.listenerCount).toBe(0);
     expect(view.lettingGo).toBe(1);
+  });
+
+  it('follows the availability only while a recording is drawn, holding nothing of the page between', () => {
+    const { motion, sensor, recording, states } = rig(new FakeAttitudeSensor('unavailable'));
+    expect(sensor.availabilityListenerCount).toBe(1);
+    recording.isDrawn = false;
+    motion.reconsider();
+    expect(sensor.availabilityListenerCount).toBe(0);
+    sensor.changeAvailability('available');
+    expect(states).toEqual([]);
+    recording.isDrawn = true;
+    motion.reconsider();
+    expect(states).toEqual(['off']);
+    expect(sensor.availabilityListenerCount).toBe(1);
+  });
+
+  it('reads the availability afresh when started', async () => {
+    const { motion, sensor, recording } = rig(new FakeAttitudeSensor('unavailable'));
+    recording.isDrawn = false;
+    motion.reconsider();
+    sensor.availability = 'available';
+    await expect(motion.start()).resolves.toBe('on');
+  });
+
+  it('ignores an answer that a change of availability overtook', async () => {
+    const { motion, sensor } = rig();
+    sensor.access = 'held';
+    const started = motion.start();
+    sensor.changeAvailability('unavailable');
+    sensor.answer('granted');
+    await expect(started).resolves.toBe('unavailable');
+    expect(sensor.listenerCount).toBe(0);
+  });
+
+  it('stays off when the sensor rejects, as if a gesture were wanted, and can start again', async () => {
+    const sensor = new FakeAttitudeSensor();
+    sensor.requestAccess = (): Promise<'granted'> => Promise.reject(new Error('broken'));
+    const { motion, warnings } = rig(sensor);
+    await expect(motion.start()).resolves.toBe('off');
+    expect(warnings).toEqual(['motion-look-needs-gesture']);
+  });
+
+  it('announces each change once it is whole: the device heard, or let go', async () => {
+    const { motion, sensor, events } = rig();
+    const hearingWhenAnnounced: number[] = [];
+    events.on('motionlookchange', () => {
+      hearingWhenAnnounced.push(sensor.listenerCount);
+    });
+    await motion.start();
+    motion.stop();
+    expect(hearingWhenAnnounced).toEqual([1, 0]);
   });
 
   it('stays unavailable after a refusal, whatever the device says later', async () => {

@@ -29,6 +29,10 @@ export class FakeAttitudeSensor implements AttitudeSensor {
     return this.listeners.size;
   }
 
+  public get availabilityListenerCount(): number {
+    return this.availabilityListeners.size;
+  }
+
   public onAvailabilityChange(listener: () => void): () => void {
     this.availabilityListeners.add(listener);
     return () => {
@@ -66,9 +70,11 @@ export class FakeAttitudeSensor implements AttitudeSensor {
   }
 
   /**
-   * The device looking at yaw, pitch and roll, in degrees, read at `at` milliseconds.
+   * The device looking at yaw, pitch and roll, in degrees, read at `at` milliseconds: available
+   * from then on, as a browser's first reading shows.
    */
   public report(at: number, [yaw, pitch, roll]: readonly [number, number, number]): void {
+    this.changeAvailability('available');
     const reading = {
       look: { yaw: degrees(yaw), pitch: degrees(pitch), roll: degrees(roll) },
       at: milliseconds(at),

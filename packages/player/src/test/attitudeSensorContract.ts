@@ -45,6 +45,12 @@ export function describeAttitudeSensorContract(
       expect(heard).toBe(2);
     });
 
+    it('answers a request for access without rejecting', async () => {
+      const { sensor, reportAttitude } = open();
+      reportAttitude();
+      await expect(sensor.requestAccess()).resolves.toMatch(/^(granted|denied|needs-gesture)$/);
+    });
+
     it('hears nothing more once disposed, not even a change of availability', () => {
       const { sensor, reportAttitude } = open();
       let heard = 0;

@@ -644,8 +644,10 @@ describe('Player motion look', () => {
     player.setViewMode('equirectangular');
     expect(sensor.listenerCount).toBe(0);
     player.setViewMode('normal');
+    expect(sensor.availabilityListenerCount).toBe(1);
     player.unload();
     expect(sensor.listenerCount).toBe(0);
+    expect(sensor.availabilityListenerCount).toBe(0);
     expect(player.motionLook).toBe('on');
     await player.load(sourceOf(X5_RECORDING_URL));
     expect(sensor.listenerCount).toBe(1);

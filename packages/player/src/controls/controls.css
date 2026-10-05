@@ -8,9 +8,10 @@
  * volume to the device's own buttons. A narrow player, whatever the pointer, gives up the volume
  * slider, shows the menus over the whole player, and past that gives up the time and then Reset
  * view (the widths below). The motion look toggle, shown only where the device reports its
- * attitude, makes the bar one target wider, so each part gives way one target sooner, and the
- * toggle itself on the narrowest players. Sizes are in rem like the page's text, so larger text
- * moves the widths with it.
+ * attitude, makes the bar one target wider, so each part gives way one target sooner, and on the
+ * narrowest players the stabilization menu gives way to it: the toggle never hides, since the
+ * device may be turning the view. Sizes are in rem like the page's text, so larger text moves the
+ * widths with it.
  */
 
 .big-play {
@@ -426,7 +427,7 @@ input[type='range']::-moz-range-thumb {
 }
 
 /* With the motion look toggle each width moves out by one target and its gap; below the
-   narrowest bar that fits without it, the toggle gives way too. */
+   narrowest bar that fits without it, the stabilization menu gives way to it. */
 @container (max-width: 26rem) {
   .row:has(.motion-look:not([hidden])) .time {
     display: none;
@@ -444,7 +445,7 @@ input[type='range']::-moz-range-thumb {
 }
 
 @container (max-width: 16rem) {
-  .motion-look {
+  .row:has(.motion-look:not([hidden])) .choice:has(.stabilization-button) {
     display: none;
   }
 }
@@ -467,7 +468,7 @@ input[type='range']::-moz-range-thumb {
   }
 
   @container (max-width: 19rem) {
-    .motion-look {
+    .row:has(.motion-look:not([hidden])) .choice:has(.stabilization-button) {
       display: none;
     }
   }

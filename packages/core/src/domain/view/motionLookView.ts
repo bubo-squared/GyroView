@@ -1,9 +1,8 @@
 import { withView, type Framing } from './Framing';
-import { rectilinearPicture } from './normalView';
 import { aspectOf, SCREEN_CENTRE } from './screenLayout';
 import type { ScreenLook } from './screenLook';
 import { lookAt, panView, zoomViewAt } from './viewGestures';
-import type { ViewModeRules } from './ViewMode';
+import type { ViewGestureRules } from './ViewMode';
 import { clampView, DEFAULT_VIEW, viewRotation, type ViewState } from './ViewState';
 import { angleBetweenRotations } from '../../shared/math/Matrix3';
 import { degrees, degreesToRadians, wrapHalfTurn } from '../../shared/units/angle';
@@ -85,12 +84,11 @@ export function withoutRoll(view: ViewState): ViewState {
 }
 
 /**
- * The normal view while the device holds it (ADR 0040): the device gives the pitch and the roll,
- * so drags and the arrows turn the heading alone, a zoom narrows about the centre, and a page's
- * view sets the heading and the zoom.
+ * The normal view's gestures while the device holds it (ADR 0040): the device gives the pitch
+ * and the roll, so drags and the arrows turn the heading alone, a zoom narrows about the centre,
+ * and a page's view sets the heading and the zoom. The picture stays the normal view's.
  */
-export const MOTION_LOOK_VIEW: ViewModeRules = {
-  isStabilized: true,
+export const MOTION_LOOK_VIEW: ViewGestureRules = {
   canPan: () => true,
   pan: (framing, delta, { viewport }) =>
     withView(framing, panView(framing.view, { x: delta.x, y: 0 }, viewport)),
@@ -110,7 +108,6 @@ export const MOTION_LOOK_VIEW: ViewModeRules = {
       fieldOfView: DEFAULT_VIEW.fieldOfView,
     }),
   place: withHeading,
-  picture: rectilinearPicture,
 };
 
 /**

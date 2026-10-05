@@ -148,8 +148,8 @@ point. Motion look (ADR 0040): `screenLook` turns the browser's device attitude 
 pitch and roll of a screen held up as a window, the one place that knows the DeviceOrientation
 convention; `motionLookView` follows the device's readings (`followReading`: the heading the
 view's own, a gap starting anew, an unseen turn not drawn) and is `MOTION_LOOK_VIEW`, the normal
-view's rules while the device holds it, which `motionLookRulesFor` gives for the modes the device
-turns. Every mode's rules also say how a page's view is placed (`place`).
+view's gesture rules (`ViewGestureRules`, the part of `ViewModeRules` without the picture) while
+the device holds it, which `motionLookRulesFor` gives for the modes the device turns. Every mode's rules also say how a page's view is placed (`place`).
 
 ### Application: `core/src/application`
 

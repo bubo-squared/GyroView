@@ -5,6 +5,7 @@ import { NORMAL_VIEW } from './normalView';
 import { shownFieldOfView } from './rectilinear';
 import { aspectOf } from './screenLayout';
 import { DEFAULT_VIEW, viewRotation } from './ViewState';
+import { degrees } from '../../shared/units/angle';
 import {
   framed,
   PORTRAIT,
@@ -45,10 +46,11 @@ describe('the normal view', () => {
     expect(NORMAL_VIEW.reset(framing)).toEqual({ ...framing, view: DEFAULT_VIEW });
   });
 
-  it('draws a rectilinear picture turned by the whole view over the whole screen', () => {
-    expect(NORMAL_VIEW.picture(framed(TILTED), SQUARE)).toEqual({
+  it('draws a rectilinear picture turned by the whole view, roll included, over the whole screen', () => {
+    const rolled = { ...TILTED, roll: degrees(5) };
+    expect(NORMAL_VIEW.picture(framed(rolled), SQUARE)).toEqual({
       kind: 'rectilinear',
-      rotation: viewRotation(TILTED),
+      rotation: viewRotation(rolled),
       fieldOfView: 60,
       area: { x: 0, y: 0, width: 1, height: 1 },
     });

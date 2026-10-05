@@ -26,15 +26,10 @@ export interface ViewContext {
 }
 
 /**
- * Strategy: how one view mode answers the viewer's gestures and what it draws. Each mode reads
- * and changes its own part of the framing, so a detour through another mode loses nothing.
+ * How a view mode answers the viewer's gestures and a page's view. Each mode reads and changes
+ * its own part of the framing, so a detour through another mode loses nothing.
  */
-export interface ViewModeRules {
-  /**
-   * Whether the stabilization mode changes what this mode draws: the stitched pictures turn into
-   * the stabilized frame, the raw lenses show the lenses as recorded.
-   */
-  readonly isStabilized: boolean;
+export interface ViewGestureRules {
   /**
    * Whether a drag moves the picture as it is framed now.
    */
@@ -60,5 +55,17 @@ export interface ViewModeRules {
    * given, unless the device holds the view (ADR 0040).
    */
   place(framing: Framing, view: ViewState): Framing;
+}
+
+/**
+ * Strategy: how one view mode answers the viewer's gestures and what it draws. While the device
+ * holds the view only the gestures change (ADR 0040); the picture stays the mode's.
+ */
+export interface ViewModeRules extends ViewGestureRules {
+  /**
+   * Whether the stabilization mode changes what this mode draws: the stitched pictures turn into
+   * the stabilized frame, the raw lenses show the lenses as recorded.
+   */
+  readonly isStabilized: boolean;
   picture(framing: Framing, context: ViewContext): Picture;
 }

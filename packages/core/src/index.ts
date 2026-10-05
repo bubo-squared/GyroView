@@ -108,6 +108,7 @@ export {
   VIEW_MODES,
   type ViewContext,
   type ViewMode,
+  type ViewGestureRules,
   type ViewModeRules,
 } from './domain/view/ViewMode';
 export { motionLookRulesFor, viewModeRulesFor } from './domain/view/viewModes';

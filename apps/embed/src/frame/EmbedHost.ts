@@ -2,7 +2,6 @@ import { GyroViewError, messageOf } from '@gyroview/core';
 import type { GyroViewElement } from '@gyroview/player';
 
 import { COMMAND_HANDLERS, stateOf } from './commandHandlers';
-import { OncePerFrame } from './OncePerFrame';
 import type { Endpoint } from '../bridge/Endpoint';
 import {
   eventMessage,
@@ -18,9 +17,9 @@ import {
 
 /**
  * The iframe side of the bridge: runs the commands the embedding page sends on the element
- * and forwards the element's events, the view's changes at most once a frame. Says hello once
- * listening, with the element's state, so a page that embedded the frame before it loaded knows
- * when to start talking and what the element was configured with.
+ * and forwards the element's events. Says hello once listening, with the element's state, so a
+ * page that embedded the frame before it loaded knows when to start talking and what the
+ * element was configured with.
  */
 export class EmbedHost {
   private readonly stopReceiving: () => void;
@@ -31,19 +30,11 @@ export class EmbedHost {
    * running already.
    */
   private readonly commandsRun = new Set<number>();
-  /**
-   * The view changes as often as the device reports its attitude or the pointer moves: a page
-   * hears the latest once a frame.
-   */
-  private readonly viewChanges: OncePerFrame;
 
   public constructor(
     private readonly element: GyroViewElement,
     private readonly endpoint: Endpoint,
   ) {
-    this.viewChanges = new OncePerFrame((message) => {
-      endpoint.send(message);
-    });
     this.stopReceiving = endpoint.receive((message) => {
       this.onMessage(message);
     });
@@ -53,7 +44,6 @@ export class EmbedHost {
 
   public dispose(): void {
     this.stopReceiving();
-    this.viewChanges.dispose();
     for (const [name, listener] of this.listeners) this.element.removeEventListener(name, listener);
   }
 
@@ -63,9 +53,7 @@ export class EmbedHost {
   private forward(name: ForwardedEventName): void {
     const listener: EventListener = (event): void => {
       const detail = event instanceof CustomEvent ? (event.detail as unknown) : undefined;
-      const message = eventMessage(name, serializeDetail(detail));
-      if (name === 'viewchange') this.viewChanges.offer(message);
-      else this.send(message);
+      this.endpoint.send(eventMessage(name, serializeDetail(detail)));
     };
     this.element.addEventListener(name, listener);
     this.listeners.push([name, listener]);
@@ -90,18 +78,10 @@ export class EmbedHost {
   private async run(command: CommandMessage): Promise<void> {
     try {
       const value = await COMMAND_HANDLERS[command.name](this.element, command.parameters);
-      this.send(okResult(command.id, value));
+      this.endpoint.send(okResult(command.id, value));
     } catch (error) {
-      this.send(failedResult(command.id, serializeError(error)));
+      this.endpoint.send(failedResult(command.id, serializeError(error)));
     }
-  }
-
-  /**
-   * After the view change held back, so the page hears every message in the order it happened.
-   */
-  private send(message: ProtocolMessage): void {
-    this.viewChanges.flush();
-    this.endpoint.send(message);
   }
 }
 

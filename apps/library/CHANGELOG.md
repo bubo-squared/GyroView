@@ -18,11 +18,15 @@ What a page may notice:
 
 - While pinned, the element has `popover="manual"` beside `data-fill`; a page never sets the
   attribute itself. A popover or dialog the page opens meanwhile shows above it, as over the
-  browser's fullscreen. A style the page gives every `[popover]` reaches it where the fill does
-  not override it: its colours and font hold, a shadow or an opacity would not. Where the
-  browser has no popovers (Safari before 17), the element is pinned in place as before.
+  browser's fullscreen. Where the browser has no popovers of its own (Safari before 17), the
+  element is pinned in place as before.
+- While pinned, the element's background, colour, font and overflow are its own: a page's styles
+  for every `[popover]`, and the page's own `background`, `color` or `font-family` on
+  `gyro-view`, no longer reach it; the `--gyro-view-*` properties still theme it. A page's
+  shadow or opacity for every popover would.
 - An element the page removes while pinned leaves the fill, as one in the browser's fullscreen
-  does; one it moves stays pinned.
+  does. One it moves within the same task, taken out and put back before a microtask runs, stays
+  pinned.
 
 ## 0.6.0 (2026-10-05)
 

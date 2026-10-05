@@ -25,15 +25,18 @@ popover's default border and padding, as they override the page's sizing.
 
 - **Leaving** removes the attribute, which takes the element out of the top layer.
 - **A move**: the browser takes a popover out of the top layer when its element leaves the
-  document, so a pinned element raises itself again once connected. The player's own
-  `display: block` outranks the browser's rule that hides a closed popover, so meanwhile it is
-  pinned in place, never hidden.
-- **A removal**: an element still out of the document a microtask after it left leaves the fill,
-  as the browser's fullscreen element does when removed, rather than covering the page again with
-  no gesture whenever the page puts it back.
-- **The page's styles for every popover** outrank the host's own; the fill holds its colours and
-  font as it holds its box.
-- **Without popovers** (Safari before 17), the element is pinned in place as before.
+  document, so a pinned element raises itself again once connected. A page that takes it out of
+  the top layer itself (`hidePopover()`) leaves it pinned in place, not hidden: the player's own
+  `display: block` outranks the browser's rule that hides a closed popover.
+- **A removal**: an element still out of the document a microtask after it left was removed,
+  not moved (the rule by which it lets its recording go). It leaves the fill, as the browser's
+  fullscreen element does when removed, rather than covering the page again with no gesture
+  whenever the page puts it back; a refusal of the Fullscreen API that arrives after a removal
+  pins nothing.
+- **The page's styles for every popover** outrank the host's own; the fill holds its overflow,
+  colours and font as it holds its box.
+- **Without popovers of the browser's own** (Safari before 17, which does not parse
+  `:popover-open`, whatever a polyfill adds), the element is pinned in place as before.
 
 ## Alternatives considered
 
@@ -61,5 +64,6 @@ popover's default border and padding, as they override the page's sizing.
 - `GyroViewElement.test.ts` pins the element inside a dialog centred by a translate and
   clipping it, under a page layer at the highest `z-index`, beside page styles for every
   popover, after a move into such a dialog and through a resize of the viewport inside one, as
-  a phone's turn makes; it removes a pinned element, and pins one where the browser has no
-  popovers. Each runs in Chromium and WebKit; neither is iOS Safari, which a phone run confirms.
+  a phone's turn makes; it removes a pinned element, removes one while the Fullscreen API's
+  refusal is on its way, and pins one where the browser has no popovers. Each runs in Chromium
+  and WebKit; neither is iOS Safari, which a run on an iPhone is to confirm.

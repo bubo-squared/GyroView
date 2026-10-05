@@ -131,6 +131,14 @@ describe('parseMovie', () => {
     expect(withTimecode.tracks.map((track) => track.trackId)).toEqual([1]);
   });
 
+  it('refuses a track whose times count in a timescale of zero', () => {
+    const file = buildMp4File([{ ...lens(1), timescale: 0 }]);
+    expect(captureError(() => parseMovie(movieBoxOf(file)))).toMatchObject({
+      code: 'unsupported-container',
+      message: expect.stringContaining('timescale of 0') as string,
+    });
+  });
+
   it('refuses a fragmented movie, whose samples are described outside the movie box', () => {
     const [movie] = boxesIn(movieBoxOf(file));
     const movieExtends = encodeBox('mvex', new Uint8Array(8));

@@ -107,11 +107,16 @@ function trackIdOf(track: readonly Mp4Box[]): number {
   return header.content.uint32BeAt(inVersion(header, TRACK_HEADER_ID, Mp4BoxType.TrackHeader));
 }
 
+/**
+ * Every time of the track is divided by it: a timescale of zero would make each one not a number.
+ */
 function mediaTimescaleOf(media: readonly Mp4Box[]): number {
   const header = fullBoxOf(requiredBox(media, Mp4BoxType.MediaHeader));
-  return header.content.uint32BeAt(
+  const timescale = header.content.uint32BeAt(
     inVersion(header, MEDIA_HEADER, Mp4BoxType.MediaHeader).timescale,
   );
+  if (timescale === 0) throw unreadableMovie('has a track whose times count in a timescale of 0');
+  return timescale;
 }
 
 function handlerTypeOf(media: readonly Mp4Box[]): string {

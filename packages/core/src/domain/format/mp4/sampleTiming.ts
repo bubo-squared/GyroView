@@ -131,10 +131,22 @@ function editShiftOf(track: readonly Mp4Box[], context: TimingContext): number {
       continue;
     }
     return entries.mediaRate[entry] === UNIT_MEDIA_RATE
-      ? mediaTime - Math.round((emptyDuration / context.movie) * context.media)
+      ? mediaTime - mediaTicksOf(emptyDuration, context)
       : 0;
   }
   return 0;
+}
+
+/**
+ * Movie ticks in the track's timescale, rounded as mediabunny rounds them. Only an empty edit
+ * needs the movie's timescale, so only then is one of zero refused.
+ */
+function mediaTicksOf(movieTicks: number, context: TimingContext): number {
+  if (movieTicks === 0) return 0;
+  if (context.movie === 0) {
+    throw unreadableMovie('delays a track by an empty edit in a movie timescale of 0');
+  }
+  return Math.round((movieTicks / context.movie) * context.media);
 }
 
 /**

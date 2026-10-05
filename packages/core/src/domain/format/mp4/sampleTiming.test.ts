@@ -161,6 +161,25 @@ describe('sampleTimingOf', () => {
     expect(timing.timestamps[1]).toBe(0);
   });
 
+  it('reads an edit list without an empty edit whatever the movie timescale', () => {
+    const boxes = trackBoxesFor(track({ edits: [{ segmentDuration: 300, mediaTime: DELTA }] }));
+    const timing = sampleTimingOf(boxes, { media: TIMESCALE, movie: 0, sampleCount: 6 });
+    expect(timing.timestamps[1]).toBe(0);
+  });
+
+  it('refuses an empty edit in a movie timescale of zero, which would make every time not a number', () => {
+    const edits = [
+      { segmentDuration: 300, mediaTime: -1 },
+      { segmentDuration: 300, mediaTime: 0 },
+    ];
+    const boxes = trackBoxesFor(track({ edits }));
+    const timescales = { media: TIMESCALE, movie: 0, sampleCount: 6 };
+    expect(captureError(() => sampleTimingOf(boxes, timescales))).toMatchObject({
+      code: 'unsupported-container',
+      message: expect.stringContaining('movie timescale of 0') as string,
+    });
+  });
+
   it('refuses a time-to-sample table that counts other samples than the sizes do', () => {
     const timescales = { media: TIMESCALE, movie: MOVIE_TIMESCALE, sampleCount: 7 };
     expect(captureError(() => sampleTimingOf(trackBoxesFor(track()), timescales))).toMatchObject({

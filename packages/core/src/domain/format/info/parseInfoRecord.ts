@@ -18,7 +18,7 @@ import type {
 } from './RecordingInfo';
 import { CALIBRATION_SOURCES } from './calibrationSources';
 import { InfoRecordFormat } from '../constants';
-import { GyroViewError } from '../../../shared/errors/GyroViewError';
+import { GyroViewError, hasErrorCode } from '../../../shared/errors/GyroViewError';
 import { ProtobufMessage } from '../../../shared/protobuf/ProtobufMessage';
 import { mapRecord } from '../../../shared/mapRecord';
 
@@ -43,24 +43,39 @@ export function parseInfoRecord(payload: Uint8Array, format: number): RecordingI
   }
   const message = ProtobufMessage.decode(payload);
   return {
-    serialNumber: message.string(InfoField.SerialNumber),
+    serialNumber: reported(() => message.string(InfoField.SerialNumber)),
     model: message.string(InfoField.Model),
-    firmware: message.string(InfoField.Firmware),
+    firmware: reported(() => message.string(InfoField.Firmware)),
     calibration: calibrationStringsOf(message),
-    dimension: dimensionOf(message.message(InfoField.Dimension)),
-    frameRate: message.varint(InfoField.FrameRate),
-    captureMode: message.string(InfoField.CaptureMode),
+    dimension: reported(() => dimensionOf(message.message(InfoField.Dimension))),
+    frameRate: reported(() => message.varint(InfoField.FrameRate)),
+    captureMode: reported(() => message.string(InfoField.CaptureMode)),
     firstFrameTimestamp: message.varint(InfoField.FirstFrameTimestamp),
-    readoutTime: secondsFromMilliseconds(message.double(InfoField.RollingShutterTimeMs)),
-    windowCrop: windowCropOf(message.message(InfoField.WindowCropInfo)),
+    readoutTime: reported(() =>
+      secondsFromMilliseconds(message.double(InfoField.RollingShutterTimeMs)),
+    ),
+    windowCrop: reported(() => windowCropOf(message.message(InfoField.WindowCropInfo))),
     gyroOffset: gyroOffsetOf(message),
-    gyroType: message.varint(InfoField.GyroType),
+    gyroType: reported(() => message.varint(InfoField.GyroType)),
     isRawGyro: message.boolean(InfoField.IsRawGyro),
     preferredFrameTimeSource: frameTimeSourceOf(message.varint(InfoField.PtsType)),
     sensorRanges: sensorRangesOf(message.message(InfoField.GyroConfig)),
     fileLayout: fileLayoutOf(message.varint(InfoField.FileLayout)),
     trackOrder: trackOrderOf(message.varint(InfoField.TrackOrder)),
   };
+}
+
+/**
+ * A field the player only reports, never plays by: one whose bytes do not decode as its type is
+ * left out rather than keeping the recording from opening.
+ */
+function reported<Value>(read: () => Value | undefined): Value | undefined {
+  try {
+    return read();
+  } catch (error) {
+    if (hasErrorCode(error, 'invalid-protobuf')) return undefined;
+    throw error;
+  }
 }
 
 function secondsFromMilliseconds(value: number | undefined): Seconds | undefined {

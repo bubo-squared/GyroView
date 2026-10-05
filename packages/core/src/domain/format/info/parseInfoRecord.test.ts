@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseInfoRecord } from './parseInfoRecord';
-import { FileLayoutValue, TrackOrderValue } from './infoFields';
+import { FileLayoutValue, InfoField, TrackOrderValue } from './infoFields';
 import { InfoRecordFormat } from '../constants';
 import { minimalInfoFields, minimalInfoRecord } from '../../../testing/minimalInfoRecord';
 import {
@@ -91,6 +91,31 @@ describe('parseInfoRecord edge cases', () => {
     expect(info.model).toBeUndefined();
     expect(Object.values(info.calibration).every((text) => text === undefined)).toBe(true);
     expect(info.dimension).toBeUndefined();
+  });
+
+  it('leaves out a field it only reports when it does not decode as its type, and opens the recording', () => {
+    const fields = [
+      ...minimalInfoFields({ model: 'Insta360 X3' }),
+      varintField(InfoField.Dimension, 7),
+      stringField(InfoField.WindowCropInfo, '\u{7}'),
+      varintField(InfoField.CaptureMode, 3),
+      stringField(InfoField.FrameRate, 'thirty'),
+    ];
+    const info = parseInfoRecord(encodeProtobuf(fields), InfoRecordFormat.Protobuf);
+    expect(info).toMatchObject({
+      model: 'Insta360 X3',
+      dimension: undefined,
+      windowCrop: undefined,
+      captureMode: undefined,
+      frameRate: undefined,
+    });
+  });
+
+  it('refuses a field it plays by when it does not decode as its type', () => {
+    const fields = [varintField(InfoField.Model, 5)];
+    expect(
+      captureError(() => parseInfoRecord(encodeProtobuf(fields), InfoRecordFormat.Protobuf)),
+    ).toMatchObject({ code: 'invalid-protobuf' });
   });
 
   it('rejects the JSON encoding with a typed error naming the format', () => {

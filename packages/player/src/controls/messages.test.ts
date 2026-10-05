@@ -35,6 +35,17 @@ describe('messagesWith', () => {
     expect(messagesWith(null)).toEqual(DEFAULT_MESSAGES);
   });
 
+  it("keeps the default words, shared by every player, and a page's from being changed in place", () => {
+    const messages = messagesWith({ labels: { play: 'Lecture' } });
+    for (const words of [DEFAULT_MESSAGES, messages]) {
+      expect(Object.isFrozen(words)).toBe(true);
+      expect(Object.values(words).every((table) => Object.isFrozen(table))).toBe(true);
+    }
+    expect(() => {
+      (DEFAULT_MESSAGES.labels as { play: string }).play = 'Lecture';
+    }).toThrow(TypeError);
+  });
+
   it('tells visitors what failed in their words, never the developer diagnostic', () => {
     expect(DEFAULT_MESSAGES.errors['range-unsupported']).toBe('The video could not be loaded.');
     expect(DEFAULT_MESSAGES.errors['codec-unsupported']).toBe(

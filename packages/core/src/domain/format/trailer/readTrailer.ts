@@ -49,6 +49,25 @@ async function recordsOf(
   }
 }
 
+/**
+ * Whether a file ends with the Insta360 footer, in one read of its last bytes: what tells the
+ * file of an older camera's pair that carries the trailer from its sibling, whose records are
+ * not wanted.
+ */
+export async function hasTrailerAtEnd(
+  source: RandomAccessSource,
+  fileSize: number,
+): Promise<boolean> {
+  if (fileSize < TRAILER_FOOTER_SIZE) return false;
+  try {
+    TrailerFooter.parse(await source.read(ByteRange.lastOf(fileSize, TRAILER_FOOTER_SIZE)));
+    return true;
+  } catch (error) {
+    if (hasErrorCode(error, 'invalid-trailer')) return false;
+    throw error;
+  }
+}
+
 function parseLayout(tail: Uint8Array, fileSize: number): TrailerLayout {
   const reader = new ByteReader(tail);
   const footer = TrailerFooter.parse(reader.bytesAt(RECORD_HEADER_SIZE, TRAILER_FOOTER_SIZE));

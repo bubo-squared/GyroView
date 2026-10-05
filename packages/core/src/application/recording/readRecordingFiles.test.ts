@@ -266,6 +266,25 @@ describe('readRecordingFiles', () => {
     expect(read.layout.sources.map((source) => source.inputIndex)).toEqual([1, 0]);
   });
 
+  it('takes lens 0 from the file that carries the trailer, whatever the files are called', async () => {
+    const opaqueScreen = bareHalf('media/a1b2.insv');
+    const opaqueBack = x5Half('media/c3d4.insv');
+    const reader = await codecReaderOf([opaqueScreen, opaqueBack]);
+
+    const read = await readRecordingFiles([opaqueScreen.file, opaqueBack.file], {
+      codecReader: reader,
+    });
+
+    expect(read.layout.sources.map((source) => [source.lensIndex, source.inputIndex])).toEqual([
+      [0, 1],
+      [1, 0],
+    ]);
+    expect(read.files.map((file) => file.hasTrailer)).toEqual([false, true]);
+    expect(read.layout.evidence).toContain(
+      'lens 0 taken from the file that carries the trailer (media/c3d4.insv)',
+    );
+  });
+
   it('asks for the other file of a lone _10_ file without a trailer, not calling it damaged', async () => {
     await expect(
       readRecordingFiles([files.bareScreen.file], { codecReader }),

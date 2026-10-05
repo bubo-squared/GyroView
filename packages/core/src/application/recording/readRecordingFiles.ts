@@ -9,6 +9,7 @@ import {
   type LayoutHints,
 } from '../../domain/format/layout/detectLensLayout';
 import type { LensLayout } from '../../domain/stitching/LensLayout';
+import { hasTrailerAtEnd } from '../../domain/format/trailer/readTrailer';
 import type { CodecReader, ContainerCodecs } from '../../ports/CodecReader';
 import type { RandomAccessSource } from '../../ports/RandomAccessSource';
 import { ensureInvariant, GyroViewError, hasErrorCode } from '../../shared/errors/GyroViewError';
@@ -25,12 +26,14 @@ export interface RecordingFile {
 }
 
 /**
- * What opening reads of a file: its sample table, its tracks' codecs and its size.
+ * What opening reads of a file: its sample table, its tracks' codecs, its size, and whether it
+ * ends with a trailer, which an older camera writes to its back lens's file alone.
  */
 export interface FileContents {
   readonly table: SampleTable;
   readonly codecs: ContainerCodecs;
   readonly size: number;
+  readonly hasTrailer: boolean;
 }
 
 export type ReadFile<File extends RecordingFile> = File & FileContents;
@@ -62,6 +65,14 @@ export interface FileReading<File extends RecordingFile> {
 const NO_HINTS: LayoutHints = { fileLayout: undefined, trackOrder: undefined };
 
 /**
+ * The recording's metadata and the file it was read from.
+ */
+interface TrailerCarrier {
+  readonly recording: Recording;
+  readonly carrier: RecordingFile;
+}
+
+/**
  * Use case: reads the given files as one recording (ADR 0029), following the data: its metadata
  * from the file that carries the trailer, every file's sample table and codecs, then the lens
  * layout (ADR 0004) and the calibration. A lone file of a split pair has its other lens file
@@ -88,9 +99,9 @@ async function readGiven<File extends RecordingFile>(
   given: readonly File[],
   reading: FileReading<File>,
 ): Promise<RecordingFiles<File>> {
-  const recording = await readTrailerCarrier(given, reading.codecReader);
+  const { recording, carrier } = await readTrailerCarrier(given, reading.codecReader);
   const files = [...given, ...(await declaredSecond(given, recording, reading))];
-  const read = await Promise.all(files.map((file) => readFile(file, reading.codecReader)));
+  const read = await Promise.all(files.map((file) => readFile(file, reading.codecReader, carrier)));
   const layout = detectLensLayout(
     read.map((file) => describedFile(file)),
     recording.info,
@@ -100,18 +111,25 @@ async function readGiven<File extends RecordingFile>(
   return { recording, files: read, layout, calibration, duration };
 }
 
+/**
+ * What opening reads of `file`; whether a file other than the `carrier` the trailer was read
+ * from ends with one too takes a read of its last bytes.
+ */
 async function readFile<File extends RecordingFile>(
   file: File,
   codecReader: CodecReader,
+  carrier: RecordingFile | undefined,
 ): Promise<ReadFile<File>> {
   const { table, movieBytes } = await readSampleTable(file.source);
   const codecs = await codecReader.read(movieBytes);
-  return { ...file, table, codecs, size: await file.source.size() };
+  const size = await file.source.size();
+  const hasTrailer = file === carrier || (await hasTrailerAtEnd(file.source, size));
+  return { ...file, table, codecs, size, hasTrailer };
 }
 
 function describedFile(file: ReadFile<RecordingFile>): InputDescription {
   const videoTracks = file.codecs.video.map(({ description }) => ({ description }));
-  return { name: file.name, videoTracks };
+  return { name: file.name, videoTracks, hasTrailer: file.hasTrailer };
 }
 
 /**
@@ -137,14 +155,15 @@ async function declaredSecond<File extends RecordingFile>(
 async function readTrailerCarrier(
   given: readonly RecordingFile[],
   codecReader: CodecReader,
-): Promise<Recording> {
+): Promise<TrailerCarrier> {
   const [first, second] = given;
   ensureInvariant(first !== undefined, 'a recording needs at least one file');
   try {
-    return await readRecording(first.source);
+    return { recording: await readRecording(first.source), carrier: first };
   } catch (error) {
     if (!hasErrorCode(error, 'invalid-trailer')) throw error;
-    if (second !== undefined) return readRecording(second.source);
+    if (second !== undefined)
+      return { recording: await readRecording(second.source), carrier: second };
     await refuseAsLoneHalf(first, codecReader);
     throw error;
   }
@@ -158,7 +177,7 @@ async function readTrailerCarrier(
 async function refuseAsLoneHalf(file: RecordingFile, codecReader: CodecReader): Promise<void> {
   let read: ReadFile<RecordingFile>;
   try {
-    read = await readFile(file, codecReader);
+    read = await readFile(file, codecReader, undefined);
   } catch {
     return;
   }

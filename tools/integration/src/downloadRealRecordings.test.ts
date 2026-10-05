@@ -48,7 +48,11 @@ describe.skipIf(!hasSamples())('reading the real X5 recordings through the downl
     const input = await openDownloadedSource(source, new MediabunnyCodecReader());
     try {
       const recording = await readRecording(source);
-      const tracks = { name: SAILING_RECORDING, videoTracks: input.videoTracks };
+      const tracks = {
+        name: SAILING_RECORDING,
+        videoTracks: input.videoTracks,
+        hasTrailer: true,
+      };
       const layout = detectLensLayout([tracks], recording.info);
       expect(layout.kind).toBe('multi-track');
       const isSwapped = recording.info.trackOrder === 'stream-10-first';

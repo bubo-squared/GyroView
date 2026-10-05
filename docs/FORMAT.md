@@ -59,7 +59,8 @@ sequence number. The first digit of the stream code names the lens (0 back, 1 sc
 second marks a proxy (0 the recording, 1 its low-resolution LRV, written as
 `LRV_20260814_132640_01_013.lrv`). Split-file recordings pair `_00_` with `_10_`. Names are hints
 for finding the other lens file and ordering inputs; everything they suggest is verified against the
-file's contents (`RecordingFileName`, ADR 0004).
+file's contents (`RecordingFileName`, ADR 0004): of a pair where one file alone ends with the
+trailer, as an older camera writes it to `_00_`, that file is lens 0 whatever it is called.
 
 ## Trailer
 

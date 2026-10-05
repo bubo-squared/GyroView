@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { WALK_CHUNK_SIZE } from './locateRecords';
-import { readTrailer as readTrailerWithSize } from './readTrailer';
+import { hasTrailerAtEnd, readTrailer as readTrailerWithSize } from './readTrailer';
 import type { RandomAccessSource } from '../../../ports/RandomAccessSource';
 import {
   FOOTER_TRAILER_SIZE_OFFSET,
@@ -260,5 +260,20 @@ describe('Trailer', () => {
     const trailer = await readTrailer(new InMemoryRandomAccessSource(file.bytes));
     expect(trailer.locationOf(RecordType.Gps)).toBeUndefined();
     expect(trailer.records).toHaveLength(3);
+  });
+});
+
+describe('hasTrailerAtEnd', () => {
+  it('tells a file that ends with the footer in one read of its last bytes', async () => {
+    const source = realFileStandIn('office');
+    await expect(hasTrailerAtEnd(source, manifest.office.fileSize)).resolves.toBe(true);
+    expect(source.reads).toHaveLength(1);
+  });
+
+  it('tells a file without it, however short', async () => {
+    const without = new InMemoryRandomAccessSource(new Uint8Array(200));
+    const tiny = new InMemoryRandomAccessSource(new Uint8Array(10));
+    await expect(hasTrailerAtEnd(without, 200)).resolves.toBe(false);
+    await expect(hasTrailerAtEnd(tiny, 10)).resolves.toBe(false);
   });
 });

@@ -78,6 +78,11 @@ export class DecodePipeline<Handle = unknown> {
    * would go on reading until its awaits settle.
    */
   private iterators: readonly PacketIterator[] = [];
+  /**
+   * The run's decoders, which an abort closes at once too: the run a seek starts opens its own
+   * within a few microtasks, and a phone may have no more decoders than one run needs.
+   */
+  private decoders: readonly VideoDecoderHandle[] = [];
 
   public constructor(
     private readonly frameSources: readonly VideoTrackReader[],
@@ -111,12 +116,13 @@ export class DecodePipeline<Handle = unknown> {
   }
 
   /**
-   * Ends the run early: its packet reads are let go of at once, pending decodes discarded. Safe
-   * before, during and after the run.
+   * Ends the run early: its packet reads are let go of and its decoders closed at once, pending
+   * decodes discarded. Safe before, during and after the run.
    */
   public abort(): void {
     this.stop.stop();
     closeIterators(this.iterators);
+    closeDecoders(this.decoders);
   }
 
   private async openRun(from: Seconds, output: FramePairQueue<Handle>): Promise<Run<Handle>> {
@@ -142,12 +148,26 @@ export class DecodePipeline<Handle = unknown> {
       stop.stop();
     };
     try {
-      const decoders = stop.wasStopped ? [] : await this.createDecoders(pairer, onError);
+      const decoders = await this.openDecoders(pairer, onError);
       return { output, stop, failure, tally, gate, pairer, iterators, decoders };
     } catch (error) {
       closeIterators(iterators);
       throw error;
     }
+  }
+
+  /**
+   * The run's decoders, none for a run already aborted; an abort that comes while they open
+   * closes them as soon as they are there.
+   */
+  private async openDecoders(
+    pairer: FramePairer<Handle>,
+    onError: (error: Error) => void,
+  ): Promise<readonly VideoDecoderHandle[]> {
+    const decoders = this.stop.wasStopped ? [] : await this.createDecoders(pairer, onError);
+    this.decoders = decoders;
+    if (this.stop.wasStopped) closeDecoders(decoders);
+    return decoders;
   }
 
   /**
@@ -241,10 +261,17 @@ async function drain(
 }
 
 function closeRun<Handle>(run: Run<Handle>): void {
-  for (const decoder of run.decoders) decoder.close();
+  closeDecoders(run.decoders);
   run.pairer.discardAll();
   run.gate.discard();
   closeIterators(run.iterators);
+}
+
+/**
+ * An abort and the run's own end may both close a decoder, which the port allows.
+ */
+function closeDecoders(decoders: readonly VideoDecoderHandle[]): void {
+  for (const decoder of decoders) decoder.close();
 }
 
 function closeIterators(iterators: readonly PacketIterator[]): void {

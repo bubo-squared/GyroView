@@ -238,6 +238,21 @@ describe('DecodePipeline', () => {
     queue.close();
   });
 
+  it('closes its decoders the moment it is aborted, so a seek never holds two sets', async () => {
+    const decoderPort = new FakeVideoDecoderPort(DECODER_LATENCY);
+    const pipeline = new DecodePipeline(twoLensTracks(), decoderPort, OPTIONS);
+    const queue = new FramePairQueue<FakeFrameHandle>(4);
+
+    const run = pipeline.run(seconds(0), queue);
+    await settle();
+    expect(decoderPort.openDecoders).toBe(2);
+    pipeline.abort();
+    expect(decoderPort.openDecoders).toBe(0);
+    await run;
+    queue.close();
+    expect(decoderPort.openFrames).toBe(0);
+  });
+
   it('lets go of the packet reads of a run aborted while it opens its decoders', async () => {
     const tracks = twoLensTracks();
     const pipeline = new DecodePipeline(tracks, new FakeVideoDecoderPort(DECODER_LATENCY), OPTIONS);

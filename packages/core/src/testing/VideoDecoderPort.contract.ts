@@ -130,6 +130,16 @@ export function describeVideoDecoderPortContract<Handle>(
       closeAll(opened);
     });
 
+    it('takes a second close as nothing', async () => {
+      const opened = await openDecoder(await setup());
+      opened.decoder.decode(opened.key);
+      opened.decoder.close();
+      expect(() => {
+        opened.decoder.close();
+      }).not.toThrow();
+      expect(opened.errors).toEqual([]);
+    });
+
     it('ends a wait for room that is under way when it closes', async () => {
       const opened = await openDecoder(await setup());
       opened.decoder.decode(opened.key);

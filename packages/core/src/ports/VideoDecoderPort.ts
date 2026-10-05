@@ -44,6 +44,9 @@ export interface VideoDecoderHandle {
    * Resolves when every submitted packet has produced its frame; rejects if the decoder failed.
    */
   flush(): Promise<void>;
+  /**
+   * Closing again does nothing: a run that is aborted and ends both close it.
+   */
   close(): void;
 }
 

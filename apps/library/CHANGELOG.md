@@ -3,6 +3,27 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+Fixed:
+
+- Where the browser has no fullscreen for the element (iPhone Safari), the pinned player covers
+  the whole viewport from inside a modal, a carousel or any container with a transform, a filter
+  or containment: it is shown in the top layer, as the browser's own fullscreen is (ADR 0041).
+  It filled only that container, and the page showed around it. It also stays above the page's
+  own layers, whatever their `z-index`, and keeps none of the page's corners, `translate`,
+  `rotate` or `scale` for it.
+
+What a page may notice:
+
+- While pinned, the element has `popover="manual"` beside `data-fill`; a page never sets the
+  attribute itself. A popover or dialog the page opens meanwhile shows above it, as over the
+  browser's fullscreen. A style the page gives every `[popover]` reaches it where the fill does
+  not override it: its colours and font hold, a shadow or an opacity would not. Where the
+  browser has no popovers (Safari before 17), the element is pinned in place as before.
+- An element the page removes while pinned leaves the fill, as one in the browser's fullscreen
+  does; one it moves stays pinned.
+
 ## 0.6.0 (2026-10-05)
 
 New:

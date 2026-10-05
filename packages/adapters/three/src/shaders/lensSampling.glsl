@@ -30,8 +30,9 @@ vec2 canvasPixel(int i, vec3 d, float theta, out bool isKnown) {
 }
 
 // What lens i shows in a body direction, read as `sampling` says, if it images it at all:
-// outside its field, or beyond the window the frame shows, nothing. The footprint is taken in
-// every fragment before the gates, so its derivatives are defined.
+// outside its field, or beyond the window the frame shows, nothing. The footprint is taken and
+// the texture read in every fragment before the gates: a read inside a branch that some pixels
+// of a 2x2 quad skip took a far too coarse footprint on Apple GPUs (rawLenses.frag.glsl).
 LensSample sampleLensWith(int i, vec3 dirBody, int sampling) {
   vec3 d = uLensRotation[i] * dirBody;
   // atan keeps its precision near the axis where acos loses it.
@@ -42,12 +43,11 @@ LensSample sampleLensWith(int i, vec3 dirBody, int sampling) {
   Footprint footprint = footprintOf(i, windowUv);
   bool isInWindow =
     all(greaterThanEqual(windowUv, vec2(0.0))) && all(lessThanEqual(windowUv, vec2(1.0)));
+  vec3 texel = sampleLens(uLensTexture[i], footprint, sampling).rgb;
   LensSample result;
   result.theta = theta;
   result.isImaged = isKnown && theta < uLensHalfFov[i] && isInWindow;
-  result.signal = result.isImaged
-    ? exposureSignalOf(i, sampleLens(uLensTexture[i], footprint, sampling).rgb)
-    : vec3(0.0);
+  result.signal = result.isImaged ? exposureSignalOf(i, texel) : vec3(0.0);
   return result;
 }
 

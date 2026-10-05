@@ -475,6 +475,29 @@ describe('Player over the synthetic X5 recording', () => {
     expect(player.currentTime).toBeCloseTo(1.5, 1);
   });
 
+  it('refuses to play with nothing loaded or loading', async () => {
+    const { player } = open();
+    await expect(player.play()).rejects.toMatchObject({ code: 'no-source' });
+  });
+
+  it('rejects a play waiting for a load that a newer load replaced, and plays nothing', async () => {
+    const { player } = open();
+    const first = player.load(sourceOf(X5_RECORDING_URL));
+    const playing = player.play();
+    const second = player.load(sourceOf(X5_RECORDING_URL));
+    await expect(playing).rejects.toMatchObject({ code: 'play-interrupted' });
+    await Promise.all([first, second]);
+    expect(player.isPaused).toBe(true);
+  });
+
+  it('rejects a play waiting for a load that an unload let go of', async () => {
+    const { player } = open();
+    void player.load(sourceOf(X5_RECORDING_URL));
+    const playing = player.play();
+    player.unload();
+    await expect(playing).rejects.toMatchObject({ code: 'play-interrupted' });
+  });
+
   it('refuses to play after a failed load with that failure', async () => {
     const { player } = open();
     await expect(player.load(sourceOf(`${X5_RECORDING_URL}.missing`))).rejects.toThrow();
@@ -632,7 +655,7 @@ describe('Player over the synthetic X5 recording', () => {
 
   it('lets a newer load supersede an older one quietly and ignores transport before a load', async () => {
     const { player, events, errors } = open();
-    await player.play();
+    await expect(player.play()).rejects.toMatchObject({ code: 'no-source' });
     player.pause();
     player.seek(seconds(1));
     expect(player.status).toBe('idle');

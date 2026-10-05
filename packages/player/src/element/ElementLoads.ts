@@ -28,7 +28,8 @@ export class ElementLoads {
    */
   private isOwed = true;
   /**
-   * A `load()` asked for out of the document, settled by the load the connection starts.
+   * A `load()` or `play()` asked for out of the document, settled once connected, by the load
+   * the connection starts if it starts one.
    */
   private awaited: Deferred<void> | undefined;
   private startTime: number | undefined;
@@ -88,11 +89,12 @@ export class ElementLoads {
   }
 
   /**
-   * The waiting load, however it ends: a failure has been dispatched as an `error` already.
+   * The waiting load, however it ends: a failure has been dispatched as an `error` already. Out
+   * of the document, the next connection and the load it starts, if it starts one.
    */
   public async settled(): Promise<void> {
     try {
-      await this.scheduled;
+      await (this.element.isConnected ? this.scheduled : this.nextConnection());
     } catch {
       // Reported as an `error` event.
     }
@@ -100,6 +102,10 @@ export class ElementLoads {
 
   private loadOnConnection(): Promise<void> {
     this.isOwed = true;
+    return this.nextConnection();
+  }
+
+  private nextConnection(): Promise<void> {
     this.awaited ??= new Deferred<void>();
     return this.awaited.promise;
   }

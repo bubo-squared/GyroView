@@ -120,6 +120,8 @@ const ERRORS: Readonly<Record<GyroViewErrorCode, string>> = {
   'no-calibration': UNREADABLE,
   'no-info-record': UNREADABLE,
   'no-key-frame': UNREADABLE,
+  'no-source': FAILED,
+  'play-interrupted': FAILED,
   'playback-blocked': FAILED,
   'range-unsupported': UNREACHABLE,
   'render-unavailable': UNSUPPORTED_BROWSER,

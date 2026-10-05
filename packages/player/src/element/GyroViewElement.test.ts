@@ -333,14 +333,40 @@ describe('<gyro-view>', () => {
     expect(element.currentTime).toBeGreaterThanOrEqual(1.5);
   });
 
-  it('loads nothing once removed in the task that set its src', async () => {
+  it('loads nothing once removed in the task that set its src, and its play says so', async () => {
     const element = create({ controls: '' });
     element.src = X5_RECORDING_URL;
     const playing = element.play();
     element.remove();
-    await playing;
+    await expect(playing).rejects.toMatchObject({ code: 'play-interrupted', category: 'usage' });
     expect(element.status).toBe('idle');
     expect(element.paused).toBe(true);
+  });
+
+  it('refuses to play with no src, as a media element without a source does', async () => {
+    const element = create({ controls: '' });
+    await expect(element.play()).rejects.toMatchObject({ code: 'no-source', category: 'usage' });
+  });
+
+  it('plays a src set while out of the document once it is connected', async () => {
+    const element = document.createElement('gyro-view');
+    element.style.width = '256px';
+    element.src = X5_RECORDING_URL;
+    const playing = element.play();
+    await settle();
+    expect(element.status).toBe('idle');
+    document.body.append(element);
+    elements.push(element);
+    await playing;
+    expect(element.paused).toBe(false);
+  });
+
+  it('resolves load once ready, autoplay starting after it', async () => {
+    const element = create({ controls: '', autoplay: '' });
+    element.src = X5_RECORDING_URL;
+    await element.load();
+    expect(element.status).not.toBe('loading');
+    await waitFor(() => !element.paused, 'autoplay');
   });
 
   it('starts playing on its own once loaded when told to autoplay', async () => {

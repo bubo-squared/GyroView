@@ -1,4 +1,10 @@
-import type { PictureQuality, ScreenPoint, StabilizationMode, ViewMode } from '@gyroview/core';
+import {
+  GyroViewError,
+  type PictureQuality,
+  type ScreenPoint,
+  type StabilizationMode,
+  type ViewMode,
+} from '@gyroview/core';
 
 import {
   OBSERVED_ATTRIBUTES,
@@ -246,11 +252,16 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   }
 
   /**
-   * Starts playing, waiting for a load in progress, or one the attributes set just now asked
-   * for; rejects when the browser refuses to start.
+   * Starts playing, waiting for a load in progress, one the attributes set just now asked for,
+   * or, out of the document, the connection; resolves once playback runs. Rejects when the
+   * browser refuses to start, with `no-source` without a recording, and with `play-interrupted`
+   * when the element left the document or its recording was replaced first.
    */
   public async play(): Promise<void> {
     await this.loads.settled();
+    if (!this.isConnected) {
+      throw new GyroViewError('play-interrupted', 'the element left the document before playing');
+    }
     await this.player.play();
   }
 

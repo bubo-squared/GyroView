@@ -22,7 +22,14 @@ import { loadRecording, type LoadedRecording } from './loadRecording';
 import { MotionLook } from './MotionLook';
 import type { MotionLookState, PlayerEvents, PlayerStatus } from './PlayerEvents';
 import type { LoadOptions, PlayerParts, ViewAngles } from './PlayerOptions';
-import { IDLE, loadingPhase, statusOf, type LoadingPhase, type PlayerPhase } from './PlayerPhase';
+import {
+  IDLE,
+  loadingPhase,
+  sessionToPlay,
+  statusOf,
+  type LoadingPhase,
+  type PlayerPhase,
+} from './PlayerPhase';
 import { PictureSettings } from './PictureSettings';
 import { PlayerSound } from './PlayerSound';
 import { PlayerView } from './PlayerView';
@@ -169,9 +176,9 @@ export class Player {
   }
 
   /**
-   * Replaces whatever was loaded. Resolves once the recording is ready (and started, with
-   * `autoplay`); rejects with the failure after reporting it as an `error` event. A load that a
-   * newer load or `unload` supersedes resolves quietly.
+   * Replaces whatever was loaded. Resolves once the recording is ready, `autoplay` starting it
+   * then, a refusal a warning; rejects with the failure after reporting it as an `error` event.
+   * A load that a newer load or `unload` supersedes resolves quietly.
    */
   public async load(source: PlayerSource, options: LoadOptions = {}): Promise<void> {
     if (this.isDisposed) return;
@@ -200,14 +207,15 @@ export class Player {
   }
 
   /**
-   * Starts playback, after a load in progress is ready, as a media element's `play()` does.
-   * Rejects with the load's failure, or with `playback-blocked` when the browser wants a user
-   * gesture first; with nothing loaded there is nothing to start.
+   * Starts playback, after a load in progress is ready, and resolves once it runs, as a media
+   * element's `play()` does. Rejects with the load's failure, with `playback-blocked` when the
+   * browser wants a user gesture first, with `no-source` when nothing is loaded or loading, and
+   * with `play-interrupted` when a newer load or `unload` replaced the load it waited for.
    */
   public async play(): Promise<void> {
-    await this.loadInProgress();
-    if (this.phase.kind === 'failed') throw this.phase.failure;
-    await this.loaded?.pipeline.session.play();
+    const waitedFor = this.phase.kind === 'loading' ? this.phase : undefined;
+    await waitedFor?.settled.promise;
+    await sessionToPlay(this.phase, waitedFor).play();
   }
 
   public pause(): void {
@@ -348,13 +356,6 @@ export class Player {
     this.loaded?.pipeline.session.tick();
   };
 
-  /**
-   * Whatever it ends in: a failure is the load's to report, and `play` reads it from the phase.
-   */
-  private async loadInProgress(): Promise<void> {
-    if (this.phase.kind === 'loading') await this.phase.settled.promise;
-  }
-
   private get loaded(): LoadedRecording | undefined {
     return this.phase.kind === 'loaded' ? this.phase.loaded : undefined;
   }
@@ -378,7 +379,7 @@ export class Player {
       if (options.preload !== false) loaded.pipeline.session.preload();
     });
     // A listener of `ready` may have loaded something else: whether that plays is its own call.
-    if (options.autoplay && this.loaded === loaded) await this.autoplay.start();
+    if (options.autoplay && this.loaded === loaded) void this.autoplay.start();
   }
 
   private startAtPendingTime(loaded: LoadedRecording): void {

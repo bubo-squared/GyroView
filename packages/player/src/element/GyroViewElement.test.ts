@@ -853,6 +853,23 @@ describe('<gyro-view>', () => {
     expect(getComputedStyle(canvas).opacity).toBe('0');
   });
 
+  it('marks its first frame once a load, not at every frame', async () => {
+    const element = create({ controls: '' });
+    const marks: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => {
+      marks.push(...records);
+    });
+    observer.observe(element, { attributeFilter: ['data-has-frame'] });
+    const ready = nextEvent(element, 'ready');
+    element.src = X5_RECORDING_URL;
+    await ready;
+    await element.play();
+    await waitFor(() => element.currentTime > 0.3, 'a few frames played');
+    await settle();
+    observer.disconnect();
+    expect(marks).toHaveLength(1);
+  });
+
   it('reports a src that is no URL as an error, like any source it cannot read', async () => {
     const element = create({ controls: '' });
     const failed = nextEvent<{ code: string }>(element, 'error');

@@ -28,8 +28,10 @@ export function mirrorPlayerEvents(player: Player, target: MirrorTarget): void {
     element.dataset['status'] = status;
     idle.refresh();
   });
+  // Once a load: each write of an attribute is a mutation a page's observers hear and a restyle
+  // of the host, sixty times a second for a mark that changes once.
   player.events.on('frame', () => {
-    element.dataset['hasFrame'] = '';
+    element.dataset['hasFrame'] ??= '';
   });
   // The visitor reads the failure in words for them; the event tells the developer what exactly.
   player.events.on('error', (error) => {

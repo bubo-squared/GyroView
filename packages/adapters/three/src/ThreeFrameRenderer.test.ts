@@ -801,6 +801,18 @@ describe('ThreeFrameRenderer', () => {
     );
   });
 
+  it("refuses a canvas whose context is lost as the browser's failure, not its own", () => {
+    const canvas = document.createElement('canvas');
+    document.body.append(canvas);
+    canvases.push(canvas);
+    const loser = canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context');
+    if (!loser) throw new Error('WEBGL_lose_context is unavailable');
+    loser.loseContext();
+    expect(() => ThreeFrameRenderer.create(canvas, setupAsRecorded(MULTI_TRACK))).toThrow(
+      expect.objectContaining({ code: 'render-unavailable' }),
+    );
+  });
+
   it('refuses a layout with more decoded frames than the shader samples', () => {
     const setup = setupAsRecorded(MULTI_TRACK);
     expect(() => open({ ...setup, frameSlotCount: 3 })).toThrow(

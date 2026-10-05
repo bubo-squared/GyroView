@@ -1,7 +1,5 @@
-import { pixelAtRadius, toPolar } from './lensGeometry';
 import type { LensModel, LensProjectionParameters } from './LensModel';
 import type { PixelPoint } from './PixelPoint';
-import type { Vector3 } from '../../shared/math/Vector3';
 import type { Radians } from '../../shared/units/angle';
 import { HALF_FIELD_OF_VIEW } from './opticsConstants';
 
@@ -35,13 +33,6 @@ export class EquidistantModel implements LensModel {
       principalPoint: this.principalPoint,
       coefficients: [this.pixelsPerRadian, 0, 0, 0],
     };
-  }
-
-  public project(direction: Vector3): PixelPoint | undefined {
-    const { theta, radialUnit } = toPolar(direction);
-    return theta > this.halfFieldOfView
-      ? undefined
-      : pixelAtRadius(this.principalPoint, this.pixelsPerRadian * theta, radialUnit);
   }
 
   private get pixelsPerRadian(): number {

@@ -21,7 +21,11 @@ import {
   type Vector3,
   type ViewState,
 } from '@gyroview/core';
-import { equirectangularPixelOf, MeiModel, parseOffsetString } from '@gyroview/core/testing';
+import {
+  equirectangularPixelOf,
+  parseOffsetString,
+  projectDirection,
+} from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { DRAW_AT_ONCE, type DrawSchedule } from './drawSchedules';
@@ -37,6 +41,7 @@ import {
   PACKED,
   MULTI_TRACK,
   setupAsRecorded,
+  syntheticCalibration,
   syntheticMeiCalibration,
 } from './test/syntheticStitching';
 import { ThreeFrameRenderer } from './ThreeFrameRenderer';
@@ -301,9 +306,9 @@ describe('ThreeFrameRenderer', () => {
   }
 
   /**
-   * Draws lens 0 of a Mei calibration over a gradient, lens 1 silenced so lens 0 alone fills the
-   * feather band, and holds each probe's sampled texel to the frame position the core model
-   * projects the probe's direction to, at the setup's radial scale.
+   * Draws lens 0 of a calibration over a gradient, lens 1 silenced so lens 0 alone fills the
+   * feather band, and holds each probe's sampled texel to the frame position the core projects
+   * the probe's direction to through the setup's lens, at its radial scale.
    */
   function expectLensZeroSampledWhereTheSetupDrawsIt(calibration: CalibrationSet): void {
     const setup = setupAsRecorded(MULTI_TRACK, calibration);
@@ -314,12 +319,11 @@ describe('ThreeFrameRenderer', () => {
     present(renderer, [gradientFrame(), solidFrame('#000000')]);
     const [lens] = setup.lenses;
     const [calibrated] = calibration.lenses;
-    if (!calibrated || lens?.projection.kind !== 'mei') throw new Error('no Mei lens');
-    const drawnModel = new MeiModel(lens.projection);
+    if (!calibrated || !lens) throw new Error('no lens 0');
     for (const [yaw, pitch] of PROBES_ON_LENS_ZERO) {
       const body = bodyDirectionAt(yaw, pitch);
       const sampled = pixelAt(renderer, equirectangularPixelOf(body, size), size);
-      const expected = drawnModel.project(transformVector(lensRotation(calibrated), body));
+      const expected = projectDirection(lens, transformVector(lensRotation(calibrated), body));
       if (!expected) throw new Error('direction outside lens 0');
       const u = (expected.x - lens.window.x) / lens.window.width;
       const v = (expected.y - lens.window.y) / lens.window.height;
@@ -592,6 +596,11 @@ describe('ThreeFrameRenderer', () => {
       ...parseOffsetString(OFFICE_MEI),
       radialScale: 1.1,
     });
+  });
+
+  it('samples a radial-polynomial lens drawn at a radial scale where the scaled projection draws it', () => {
+    // A twentieth further out keeps the farthest probe inside the lens's square.
+    expectLensZeroSampledWhereTheSetupDrawsIt({ ...syntheticCalibration(), radialScale: 1.05 });
   });
 
   for (const [term, distortion] of ONE_TERM_DISTORTIONS) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { LensModel } from './LensModel';
+import { projectDirection } from './projectDirection';
 import { parseOffsetString } from '../format/calibration/parseOffsetString';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { OFFICE_CALIBRATION } from '../../../test/support/officeCalibration';
@@ -31,7 +32,7 @@ function directionAt(thetaDegrees: number, azimuthDegrees = 0): Vector3 {
 }
 
 function radiusOf(model: LensModel, thetaDegrees: number): number {
-  const point = model.project(directionAt(thetaDegrees));
+  const point = projectDirection(model, directionAt(thetaDegrees));
   if (!point) throw new Error(`direction at ${thetaDegrees} degrees is outside the lens`);
   return Math.hypot(point.x - model.principalPoint.x, point.y - model.principalPoint.y);
 }
@@ -47,7 +48,7 @@ function worstRadialDifference(candidate: LensModel, reference: LensModel): numb
 describe('lens models on the X5 office lenses', () => {
   it('map the optical axis to the principal point', () => {
     for (const lens of [...mei, ...polynomial, ...equidistant]) {
-      expect(lens.model.project([0, 0, 1])).toEqual(lens.model.principalPoint);
+      expect(projectDirection(lens.model, [0, 0, 1])).toEqual(lens.model.principalPoint);
     }
   });
 
@@ -60,15 +61,15 @@ describe('lens models on the X5 office lenses', () => {
   });
 
   it('project off-axis directions along the image radius', () => {
-    const point = mei[0]!.model.project(directionAt(45, 90));
+    const point = projectDirection(mei[0]!.model, directionAt(45, 90));
     expect(point!.x).toBeCloseTo(mei[0]!.model.principalPoint.x, 0);
     expect(point!.y).toBeGreaterThan(mei[0]!.model.principalPoint.y + 1000);
   });
 
   it('refuse directions beyond the field of view', () => {
     for (const lens of [...mei, ...polynomial, ...equidistant]) {
-      expect(lens.model.project(directionAt(101))).toBeUndefined();
-      expect(lens.model.project([0, 0, -1])).toBeUndefined();
+      expect(projectDirection(lens.model, directionAt(101))).toBeUndefined();
+      expect(projectDirection(lens.model, [0, 0, -1])).toBeUndefined();
     }
   });
 
@@ -96,7 +97,7 @@ describe('lens models on the X5 office lenses', () => {
   it.each(BACK_LENS_GOLDEN)(
     'MEI projects theta $theta at azimuth $azimuth to the golden pixel ($x, $y) including tangential distortion',
     ({ theta, azimuth, x, y }) => {
-      const point = mei[1]!.model.project(directionAt(theta, azimuth));
+      const point = projectDirection(mei[1]!.model, directionAt(theta, azimuth));
       expect(point?.x).toBeCloseTo(x, 3);
       expect(point?.y).toBeCloseTo(y, 3);
     },

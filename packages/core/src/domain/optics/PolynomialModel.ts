@@ -1,7 +1,5 @@
-import { pixelAtRadius, toPolar } from './lensGeometry';
 import type { LensModel, LensProjectionParameters } from './LensModel';
 import type { PixelPoint } from './PixelPoint';
-import type { Vector3 } from '../../shared/math/Vector3';
 import { HALF_FIELD_OF_VIEW } from './opticsConstants';
 
 export interface PolynomialParameters {
@@ -40,13 +38,6 @@ export class PolynomialModel implements LensModel {
       principalPoint: this.principalPoint,
       coefficients: [c1 * this.scale, c2 * this.scale, c3 * this.scale, c4 * this.scale],
     };
-  }
-
-  public project(direction: Vector3): PixelPoint | undefined {
-    const { theta, radialUnit } = toPolar(direction);
-    return theta > this.halfFieldOfView
-      ? undefined
-      : pixelAtRadius(this.principalPoint, this.scale * this.polynomial(theta), radialUnit);
   }
 
   private polynomial(theta: number): number {

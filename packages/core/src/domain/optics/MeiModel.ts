@@ -1,7 +1,6 @@
 import type { LensModel, LensProjectionParameters } from './LensModel';
-import { distortMei, ensureWithinTermCapacity, type MeiDistortion } from './MeiDistortion';
+import { ensureWithinTermCapacity, type MeiDistortion } from './MeiDistortion';
 import type { PixelPoint } from './PixelPoint';
-import type { Vector3 } from '../../shared/math/Vector3';
 import { HALF_FIELD_OF_VIEW } from './opticsConstants';
 
 export interface MeiParameters {
@@ -31,16 +30,5 @@ export class MeiModel implements LensModel {
 
   public get projection(): LensProjectionParameters {
     return { kind: 'mei', ...this.parameters };
-  }
-
-  public project(direction: Vector3): PixelPoint | undefined {
-    const [x, y, z] = direction;
-    const depth = z + this.parameters.xi;
-    if (depth <= 0 || Math.atan2(Math.hypot(x, y), z) > this.halfFieldOfView) return undefined;
-    const [distortedX, distortedY] = distortMei(this.parameters.distortion, [x / depth, y / depth]);
-    return {
-      x: this.parameters.focal[0] * distortedX + this.principalPoint.x,
-      y: this.parameters.focal[1] * distortedY + this.principalPoint.y,
-    };
   }
 }

@@ -7,6 +7,7 @@ import {
   type Matrix3,
   type Vector3,
 } from '@gyroview/core';
+import { projectDirection } from '@gyroview/core/testing';
 
 import { paintedFrame } from './syntheticFrames';
 
@@ -38,7 +39,11 @@ export function recordedFrame({
   const side = calibration.canvas.height;
   const squareX = Math.floor(lens.model.principalPoint.x / side) * side;
   const { principalPoint, halfFieldOfView } = lens.model;
-  const rim = lens.model.project([Math.sin(halfFieldOfView), 0, Math.cos(halfFieldOfView)]);
+  const rim = projectDirection(lens.model, [
+    Math.sin(halfFieldOfView),
+    0,
+    Math.cos(halfFieldOfView),
+  ]);
   if (!rim) throw new Error('the lens images its own rim');
   const edgeRadius = rim.x - principalPoint.x;
   return paintedFrame(RECORDED_FRAME_SIZE, (column, row) => {

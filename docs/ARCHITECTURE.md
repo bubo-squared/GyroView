@@ -79,10 +79,12 @@ ports and application code.
 
 **`optics`: lenses and calibration.** A `CalibrationSet` holds one `LensCalibration` per lens
 and the radial scale they are drawn at; each lens has a `LensModel` strategy (`MeiModel`,
-`PolynomialModel`, `EquidistantModel`) that maps a direction to a canvas pixel and also exposes
-its parameters for the shader. The Mei model's distortion is `MeiDistortion`, families of terms
-by order evaluated by `distortMei`, and `scaledProjection` applies a radial scale to any model's
-parameters. `lensPose` gives the body-to-lens rotation from the calibration's yaw, pitch and
+`PolynomialModel`, `EquidistantModel`) that builds the parameters of one of two projections, the
+Mei model or a radial polynomial. `projectDirection` evaluates those parameters, a model's or a
+stitching setup's lens drawn at its radial scale, on the CPU as the shader does on the GPU: the
+reference the parsers and the shader are held to. The Mei model's distortion is `MeiDistortion`,
+families of terms by order evaluated by `distortMei`, and `scaledProjection` applies a radial
+scale to any model's parameters. `lensPose` gives the body-to-lens rotation from the calibration's yaw, pitch and
 roll (ADR 0008, ADR 0025).
 
 **`colour`: how a track's texels reach the display.** `TrackColour` is a video track's colour as

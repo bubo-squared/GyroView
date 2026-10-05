@@ -49,6 +49,17 @@ describe('StartGate', () => {
     expect(delivered).toEqual([decoded]);
   });
 
+  it('closes the held pair when the pair at the start comes, since that one is on screen', () => {
+    const sampleTime = 2002 / 30_000;
+    const { gate, delivered } = gateAt(sampleTime);
+    const [before, decoded] = [pairAt(1001 / 30_000), pairAt(sampleTime - TOLERANCE / 2)];
+    gate.push(before);
+    gate.push(decoded);
+    expect(delivered).toEqual([decoded]);
+    expect(before.closedFrames()).toBe(2);
+    expect(gate.dropped).toBe(1);
+  });
+
   it('still holds a pair one frame before the start', () => {
     const { gate, delivered } = gateAt(2002 / 30_000);
     gate.push(pairAt(1001 / 30_000));

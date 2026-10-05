@@ -152,6 +152,9 @@ upright, the rest of its IMU frame assumed (ADR 0009).
   under six times CPU throttling, and longer the longer the recording.
 - The 8K and 5.7K60 modes decode about as many pixels a second as one 8K30 stream: a phone
   or laptop whose decoder is of 4K60 class plays them in stretches between waits.
+- While the device turns the view, motion look draws the stitch once a display frame: a 30 fps
+  recording costs about twice the draws and 1.4 to 1.7 times the GPU time it does with the view
+  still, measured headless (ADR 0040); a phone's heat over minutes is still to be measured.
 - Recordings split into several `_NNN` segment files play one segment at a time.
 - Playback speed is 1x: another speed needs the decoders to keep up with it, which an 8K
   recording's barely do at 1x, and the sound to follow at that rate.

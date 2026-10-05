@@ -72,6 +72,28 @@ names the sensors.
   the device turns the view, which a phone turned to portrait would otherwise leave it doing with
   no way out but the View menu.
 
+## Measured
+
+`measure/motionLookPacing.test.ts` plays the X5 sailing recording (8K30) and the office recording
+(5.7K60) in a 1280 by 720 canvas, headless on the developer machine, with a scripted device: a
+hand turning at 60 readings a second, the same in bursts of four readings every 16 ms, and a
+phone at rest. Canvas draws a second and the GPU's milliseconds a second, sailing, playing:
+
+| Device                 | Chromium draws | Chromium GPU | WebKit draws | WebKit GPU |
+| ---------------------- | -------------- | ------------ | ------------ | ---------- |
+| Motion look off        | 30             | 347          | 29           | 184        |
+| Turning, 60 a second   | 58             | 495          | 52           | 316        |
+| Turning, 4 every 16 ms | 58             | 501          | 52           | 313        |
+| At rest                | 30             | 365          | 30           | 196        |
+
+No animation frame drew the stitch twice in any case, in either browser, so bursts of readings
+cost nothing more (ADR 0035). The recording kept its pace: 29.7 pairs a second in Chromium and
+28.3 to 28.7 in WebKit, none skipped. Paused, a turning device draws once a frame (58 and 48 a
+second) and one at rest as little as motion look off (0.3). The office recording draws at about
+the display's rate whether the view turns or not. Hearing a reading takes under 0.1 ms. With
+motion look off, `measure/framePacing.test.ts` paces both recordings on this change as before
+it, within the run-to-run spread.
+
 ## Alternatives considered
 
 - **Yaw and pitch from the phone, no roll**: the view's state would not change, but the picture

@@ -92,7 +92,7 @@ export class PlaybackSession<Handle = unknown> {
   public async play(): Promise<void> {
     if (this.lifecycle.current === 'playing') return;
     if (this.lifecycle.current === 'buffering') {
-      await this.buffering.waitingStart;
+      await this.buffering.awaitStart();
       return;
     }
     await this.lifecycle.change(() => this.beginStart());

@@ -65,6 +65,10 @@ export const UPRIGHT_MOUNTING: Mounting = { name: 'upright', toBody: lensLevel(r
 
 const DOWN: Vector3 = [0, 1, 0];
 const LENS_AXIS: Vector3 = [0, 0, 1];
+/**
+ * The upright frame's forward: where the view opens, at a yaw and pitch of zero.
+ */
+const FORWARD: Vector3 = [0, 0, 1];
 
 /**
  * The four ways a camera can stand with its lens axis level, one for each body axis across it
@@ -130,6 +134,13 @@ export function mountingOf(gyro: GyroTrack, frame: ImuFrame): Mounting {
 function isNearLensAxis(gravity: Vector3): boolean {
   const alongLensAxis = Math.abs(dotProduct(gravity, LENS_AXIS));
   return alongLensAxis > LENS_VERTICAL_CONE_COSINE * magnitudeOf(gravity);
+}
+
+/**
+ * The body direction the view opens facing on a camera that stood so (ADR 0039).
+ */
+export function openingDirectionOf(mounting: Mounting): Vector3 {
+  return transformVector(mounting.toBody, FORWARD);
 }
 
 /**

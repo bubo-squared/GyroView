@@ -191,7 +191,8 @@ Use cases that orchestrate the domain through ports.
 - `playback/probeDecoding` decodes the first key frame of every lens track under a deadline
   before anything else is built, because platforms say yes to codecs they then fail on.
 - `gainMatching/GainMatching` measures the seam through a `SeamMeter` every half second of
-  media, one measurement at a time, and applies the gains `GainMatcher` follows (ADR 0012).
+  media, one measurement at a time, and applies the gains `GainMatcher` follows onto the lens
+  `referenceLensOf` names, the one the view opens facing (ADR 0012).
   `GainMatchingFrameSink` puts it in front of the sink chain: it measures after each
   presentation while enabled, with a meter the renderer creates over what it draws.
 - `stabilization/StabilizingFrameSink` wraps the renderer and sets the

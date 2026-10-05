@@ -7,6 +7,7 @@ import {
   messageOf,
   milliseconds,
   PlaybackSession,
+  referenceLensOf,
   seconds,
   stabilizerFor,
   StabilizingFrameSink,
@@ -91,14 +92,20 @@ interface Drawing {
  * drawn once at the next animation frame, where a frame presented in it draws it anyway.
  */
 function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
-  const renderer = ThreeFrameRenderer.create(parts.host.canvas, stitchingSetupOf(parts.opened), {
+  const setup = stitchingSetupOf(parts.opened);
+  const renderer = ThreeFrameRenderer.create(parts.host.canvas, setup, {
     drawSchedule: new AnimationFrameDraws(),
   });
   disposables.add(() => {
     renderer.dispose();
   });
   const { sink, stabilizing } = sinkOver(renderer, parts.opened);
-  const gainMatching = new GainMatchingFrameSink(sink, renderer);
+  const mounting = parts.opened.motion?.mounting ?? UPRIGHT_MOUNTING;
+  const gainMatching = new GainMatchingFrameSink(
+    sink,
+    renderer,
+    referenceLensOf(setup.lenses, mounting),
+  );
   disposables.add(() => {
     gainMatching.dispose();
   });

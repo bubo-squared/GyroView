@@ -162,6 +162,7 @@ export {
   GainMatchingFrameSink,
   type GainRenderer,
 } from './application/gainMatching/GainMatchingFrameSink';
+export { referenceLensOf } from './application/gainMatching/referenceLensOf';
 export type { SeamMeter } from './ports/SeamMeter';
 export type { SeamMismatchMeter, SeamMismatchRequest } from './ports/SeamMismatchMeter';
 export {

@@ -50,3 +50,13 @@ The seam meter reads each lens's exposure signal, where its exposure is a factor
 scales that signal before bringing it to the display: on an SDR camera the texel as recorded,
 as before; on the X6, HLG's scene light raised to the display's power, before the highlight
 roll-off, so one gain matches two lenses a stop apart in the shadows and in the sky alike.
+
+## Since ADR 0039 (2026-10-05)
+
+The reference was lens 0 because the view opened facing it. Since ADR 0039 the view opens a half
+turn from lens 0 on every camera whose lens axis lies level, and on every recording whose gravity
+cannot be read: lens 0 was behind the viewer, and the hemisphere in front of them was the one
+re-exposed, the first measurement applied whole and every later change of exposure pumping it.
+The reference is now the lens whose optical axis lies nearest the direction the view opens facing
+(`referenceLensOf`, from the mounting and the lenses' poses): lens 1 on those cameras, either on a
+lens-vertical one, whose view opens across both lenses.

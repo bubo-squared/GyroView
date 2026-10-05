@@ -37,6 +37,7 @@ const BAND_HALF_WIDTH_DEGREES = 6;
  * A pixel no seam bin holds: outside the band, under the camera, or left out of a comparison.
  */
 const NO_BIN = -1;
+const LENS_0 = 0;
 
 /**
  * Each panorama pixel's seam bin, or {@link NO_BIN}.
@@ -105,14 +106,14 @@ export function bandShownBy(band: SeamBand, images: readonly GreyImage[]): SeamB
 
 /**
  * The gains gain matching gives the frames on screen, measured along the seam as the player
- * measures them.
+ * measures them, onto lens 0: the reference ADR 0026's evidence was measured with.
  */
 export async function matchedGains(renderer: LabRenderer): Promise<Vector3[]> {
   const meter = renderer.createSeamMeter();
   try {
     const means = await meter.measure();
     if (!means) throw new Error('the seam was not measured');
-    return gainsMatching(means, DEFAULT_MAX_GAIN);
+    return gainsMatching(means, DEFAULT_MAX_GAIN, LENS_0);
   } finally {
     meter.dispose();
   }

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { mountingOf, rotationIntoBody, uprightImuFrame, UPRIGHT_MOUNTING } from './Mounting';
+import {
+  mountingOf,
+  openingDirectionOf,
+  rotationIntoBody,
+  uprightImuFrame,
+  UPRIGHT_MOUNTING,
+} from './Mounting';
 import { rotationAboutY, transformVector } from '../../../shared/math/Matrix3';
 import type { Vector3 } from '../../../shared/math/Vector3';
 import { degrees, degreesToRadians, radians } from '../../../shared/units/angle';
@@ -127,6 +133,14 @@ describe('mountingOf', () => {
   it('keeps upright a camera that never rests', () => {
     const accelerating = restingWith([0, 0, 2]);
     expect(mountingOf(accelerating, MEASURED_ALIGNED)).toBe(UPRIGHT_MOUNTING);
+  });
+});
+
+describe('openingDirectionOf', () => {
+  it("is the body direction the upright frame's forward lies along: lens 1's axis on a level lens axis", () => {
+    expectVector(openingDirectionOf(UPRIGHT_MOUNTING), [0, 0, -1]);
+    const lensUp = mountingOf(restingWith([0, 0, 1]), MEASURED_ALIGNED);
+    expectVector(openingDirectionOf(lensUp), [-1, 0, 0]);
   });
 });
 

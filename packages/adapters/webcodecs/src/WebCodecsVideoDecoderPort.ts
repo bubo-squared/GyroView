@@ -5,6 +5,7 @@ import {
   microseconds,
   microsecondsToSeconds,
   secondsToMicroseconds,
+  type Seconds,
   type DecodedFrame,
   type EncodedVideoPacket,
   type VideoDecoderCallbacks,
@@ -177,10 +178,18 @@ function webCodecsUnavailable(): GyroViewError {
 function chunkOf(packet: EncodedVideoPacket): EncodedVideoChunk {
   return new EncodedVideoChunk({
     type: packet.isKeyFrame ? 'key' : 'delta',
-    timestamp: secondsToMicroseconds(packet.timestamp),
-    duration: secondsToMicroseconds(packet.duration),
+    timestamp: wholeMicrosecondsOf(packet.timestamp),
+    duration: wholeMicrosecondsOf(packet.duration),
     data: packet.data,
   });
+}
+
+/**
+ * The nearest whole microsecond: a chunk's times are integers, which WebIDL would otherwise reach
+ * by truncation, a microsecond early for a time like 0.8 s that floating point holds as 0.7999….
+ */
+function wholeMicrosecondsOf(time: Seconds): number {
+  return Math.round(secondsToMicroseconds(time));
 }
 
 function wrapFrame(frame: VideoFrame): DecodedFrame<VideoFrame> {

@@ -123,7 +123,7 @@ export class DecodePipeline<Handle = unknown> {
     const { stop } = this;
     const failure = new Deferred<Error>();
     const tally: RunTally = { packets: 0, pairs: 0 };
-    const gate = new StartGate<Handle>(from, (pair) => {
+    const gate = new StartGate<Handle>(from, this.options.pairTolerance, (pair) => {
       tally.pairs += 1;
       output.push(pair);
     });

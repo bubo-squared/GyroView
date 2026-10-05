@@ -1,7 +1,7 @@
 import { directionAt, rayThroughPicture } from './rectilinear';
 import { SCREEN_CENTRE, type DragDelta, type ScreenPoint } from './screenLayout';
 import { clampView, type ViewState } from './ViewState';
-import { rotationAboutX, transformVector } from '../../shared/math/Matrix3';
+import { rotationAboutX, rotationAboutZ, transformVector } from '../../shared/math/Matrix3';
 import type { Vector3 } from '../../shared/math/Vector3';
 import {
   degrees,
@@ -79,7 +79,11 @@ export function zoomViewAt(view: ViewState, zoom: ZoomRequest, viewportAspect: n
   const isAtCentre = zoom.focus.x === SCREEN_CENTRE.x && zoom.focus.y === SCREEN_CENTRE.y;
   if (isAtCentre || zoomed.fieldOfView === view.fieldOfView) return zoomed;
   const direction = directionAt(view, zoom.focus, viewportAspect);
-  const ray = rayThroughPicture(zoomed.fieldOfView, zoom.focus, viewportAspect);
+  // The roll stays as it is, so the pitch and yaw solved for turn the rolled ray.
+  const ray = transformVector(
+    rotationAboutZ(degreesToRadians(view.roll)),
+    rayThroughPicture(zoomed.fieldOfView, zoom.focus, viewportAspect),
+  );
   const pitch = pitchRaising(ray, direction[1], view.pitch);
   if (pitch === undefined) return zoomed;
   const tilted = transformVector(rotationAboutX(degreesToRadians(pitch)), ray);

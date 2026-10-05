@@ -66,6 +66,21 @@ describe('view gestures', () => {
     expectVector(directionAt(zoomed, focus, ASPECT), underPointer);
   });
 
+  it.each([
+    { focus: { x: 0.8, y: 0.3 }, view: viewOf(0, 0, 100), roll: 25 },
+    { focus: { x: 0.1, y: 0.9 }, view: viewOf(30, 20, 100), roll: 60 },
+    { focus: { x: 0.95, y: 0.05 }, view: viewOf(-60, -40, 90), roll: -40 },
+  ])(
+    'keeps the direction under the pointer where it is in a rolled view: roll $roll',
+    ({ focus, view, roll }) => {
+      const rolled = { ...view, roll: degrees(roll) };
+      const underPointer = directionAt(rolled, focus, ASPECT);
+      const zoomed = zoomViewAt(rolled, { steps: 3, focus }, ASPECT);
+      expect(zoomed.roll).toBe(roll);
+      expectVector(directionAt(zoomed, focus, ASPECT), underPointer);
+    },
+  );
+
   it('zooms about the centre like the centred zoom for a pointer at the centre', () => {
     const view = viewOf(40, -15, 90);
     const zoomed = zoomViewAt(view, { steps: 2, focus: SCREEN_CENTRE }, ASPECT);

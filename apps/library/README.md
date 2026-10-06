@@ -45,10 +45,10 @@ A page without a bundler loads the standalone file, which has Three.js and media
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/@bubo-squared/gyroview@0.6/dist/standalone.js"
+  src="https://cdn.jsdelivr.net/npm/@bubo-squared/gyroview@0.7/dist/standalone.js"
 ></script>
 <script type="module">
-  import { inspectRecording } from 'https://cdn.jsdelivr.net/npm/@bubo-squared/gyroview@0.6/dist/standalone.js';
+  import { inspectRecording } from 'https://cdn.jsdelivr.net/npm/@bubo-squared/gyroview@0.7/dist/standalone.js';
 </script>
 ```
 

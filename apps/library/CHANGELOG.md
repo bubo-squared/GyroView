@@ -3,7 +3,7 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
-## Unreleased
+## 0.7.0 (2026-10-06)
 
 Changed (ADR 0042, the player keeps a media element's promises):
 

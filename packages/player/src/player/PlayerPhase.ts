@@ -1,4 +1,4 @@
-import { Deferred, type GyroViewError } from '@gyroview/core';
+import { Deferred, GyroViewError } from '@gyroview/core';
 
 import type { LoadedRecording } from './loadRecording';
 import type { PlayerStatus } from './PlayerEvents';
@@ -46,6 +46,9 @@ export function loadingPhase(): LoadingPhase {
   return { kind: 'loading', controller: new AbortController(), settled: new Deferred() };
 }
 
+/**
+ * A loaded recording's status is its session's state, `seeking` until a seek's picture is drawn.
+ */
 export function statusOf(phase: PlayerPhase): PlayerStatus {
   switch (phase.kind) {
     case 'idle': {
@@ -55,10 +58,35 @@ export function statusOf(phase: PlayerPhase): PlayerStatus {
       return 'loading';
     }
     case 'loaded': {
-      return phase.loaded.pipeline.session.state;
+      const { session } = phase.loaded.pipeline;
+      return session.isSeeking ? 'seeking' : session.state;
     }
     case 'failed': {
       return 'error';
     }
   }
+}
+
+/**
+ * The session a `play` starts once the load it waited for, if it waited, has settled: the one
+ * loaded, by that load. A failure is the load's; a load replaced meanwhile interrupts the play,
+ * as a newer load interrupts a media element's.
+ */
+export function sessionToPlay(
+  phase: PlayerPhase,
+  waitedFor: LoadingPhase | undefined,
+): LoadedRecording['pipeline']['session'] {
+  if (phase.kind === 'failed') throw phase.failure;
+  const isReplaced =
+    waitedFor !== undefined &&
+    (phase.kind !== 'loaded' || phase.controller !== waitedFor.controller);
+  if (isReplaced) {
+    throw new GyroViewError(
+      'play-interrupted',
+      'a newer load or an unload replaced the load to play',
+    );
+  }
+  if (phase.kind !== 'loaded')
+    throw new GyroViewError('no-source', 'there is no recording to play');
+  return phase.loaded.pipeline.session;
 }

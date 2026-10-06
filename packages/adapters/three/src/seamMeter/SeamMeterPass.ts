@@ -49,7 +49,7 @@ export class SeamMeterPass implements SeamMeter {
     this.material = createPassMaterial(uniforms, programOf(SEAM_ANALYSIS));
     this.scene.add(new Mesh(this.geometry, this.material));
     try {
-      compileAndProve(renderer, this.scene, this.camera);
+      this.prove();
     } catch (error) {
       this.dispose();
       throw error;
@@ -57,7 +57,15 @@ export class SeamMeterPass implements SeamMeter {
   }
 
   /**
-   * Mean colour (0..1) each lens shows along the seam, or undefined when a lens images none of it.
+   * Compiles and proves the meter's program now, rather than at its first measurement.
+   */
+  public prove(): void {
+    compileAndProve(this.renderer, this.scene, this.camera);
+  }
+
+  /**
+   * Mean colour (0..1) each lens shows along the seam where they can be compared, or undefined
+   * when they cannot be anywhere.
    */
   public async measure(): Promise<readonly Vector3[] | undefined> {
     try {

@@ -70,6 +70,7 @@ export {
 } from '../domain/format/calibration/v6TermReading';
 export { MeiModel, type MeiParameters } from '../domain/optics/MeiModel';
 export { EquidistantModel, type EquidistantParameters } from '../domain/optics/EquidistantModel';
+export { projectDirection, type ProjectingLens } from '../domain/optics/projectDirection';
 export { RADIUS_AS_READ } from '../domain/optics/LensCalibration';
 export { UNSPECIFIED_COLOUR } from '../domain/colour/TrackColour';
 export {

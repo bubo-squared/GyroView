@@ -28,15 +28,19 @@ const DEFAULT_GAIN_MATCH_OPTIONS: GainMatchOptions = {
 };
 
 /**
- * Per-channel gains that bring every lens's overlap brightness to the first lens's. Lens 0 is
- * the reference and keeps unit gain; the first is the lens the viewer starts facing, so its
- * exposure is the one that must not shift under them.
+ * Per-channel gains that bring every lens's overlap brightness to the reference lens's, the lens
+ * the viewer starts facing (`referenceLensOf`): it keeps unit gain, so the exposure of the view
+ * they open on does not shift under them. Lenses count by their place among the means.
  */
-export function gainsMatching(overlapMeans: readonly Vector3[], maxGain: number): Vector3[] {
-  const [reference] = overlapMeans;
+export function gainsMatching(
+  overlapMeans: readonly Vector3[],
+  maxGain: number,
+  referenceLens: number,
+): Vector3[] {
+  const reference = overlapMeans[referenceLens];
   return reference
     ? overlapMeans.map((mean, lensIndex) =>
-        lensIndex === 0 ? UNIT_GAIN : channelGains(reference, mean, maxGain),
+        lensIndex === referenceLens ? UNIT_GAIN : channelGains(reference, mean, maxGain),
       )
     : [];
 }
@@ -63,13 +67,16 @@ export class GainMatcher {
   private current: readonly Vector3[] | undefined;
   private lastTime: Seconds | undefined;
 
-  public constructor(private readonly options: GainMatchOptions = DEFAULT_GAIN_MATCH_OPTIONS) {}
+  public constructor(
+    private readonly referenceLens: number,
+    private readonly options: GainMatchOptions = DEFAULT_GAIN_MATCH_OPTIONS,
+  ) {}
 
   /**
    * Feeds the overlap means measured at `time` (media time) and returns the gains to apply.
    */
   public update(overlapMeans: readonly Vector3[], time: Seconds): readonly Vector3[] {
-    const target = gainsMatching(overlapMeans, this.options.maxGain);
+    const target = gainsMatching(overlapMeans, this.options.maxGain, this.referenceLens);
     const elapsed = this.lastTime === undefined ? Infinity : Math.max(time - this.lastTime, 0);
     this.lastTime = time;
     const weight = this.current ? 1 - Math.exp(-elapsed / this.options.timeConstant) : 1;

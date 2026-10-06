@@ -63,3 +63,12 @@ A page handles failures by category and reads the code only where it needs the d
 plain HTTP now hears `webcodecs-unavailable` where it heard `codec-unsupported`; the change is
 listed in the changelog. The categories are part of the public API: moving a code to another
 category is a breaking change.
+
+## Since the review of 2026-10-05
+
+- The iframe handle now rebuilds the `error` event's error from its code, as it did a rejected
+  command's: the event reached the page as a plain code and message, without the category this
+  ADR says the handle gets.
+- `embed-unreachable` (`usage`) fails the iframe handle's commands when the frame loads and never
+  says hello: a wrong `embedPageUrl`, a host that refuses to be framed, a page without an origin.
+  They waited forever. It is the page's setup, not the browser's or the recording's.

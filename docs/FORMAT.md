@@ -59,7 +59,8 @@ sequence number. The first digit of the stream code names the lens (0 back, 1 sc
 second marks a proxy (0 the recording, 1 its low-resolution LRV, written as
 `LRV_20260814_132640_01_013.lrv`). Split-file recordings pair `_00_` with `_10_`. Names are hints
 for finding the other lens file and ordering inputs; everything they suggest is verified against the
-file's contents (`RecordingFileName`, ADR 0004).
+file's contents (`RecordingFileName`, ADR 0004): of a pair where one file alone ends with the
+trailer, as an older camera writes it to `_00_`, that file is lens 0 whatever it is called.
 
 ## Trailer
 
@@ -81,8 +82,9 @@ start`; slot k describes record type k, so the index holds as many slots as its 
   needs; zero slots are empty). Most records sit at file offsets aligned to 128 KiB with zero padding
   between them (the info record and the small record 0x0a do not), so they cannot be walked
   contiguously.
-- Contiguous layout (older firmware, unverified): no index; walk headers backwards from EOF-78
-  until the payload start.
+- Contiguous layout (older firmware; verified on the ONE R trailer of the insta360py fixture,
+  `test/fixtures/thirdparty/insta360py`): no index; walk headers backwards from EOF-78 until the
+  payload start.
 
 Record ids seen or documented: 1 info, 2 thumbnail, 3 gyro, 4 exposure, 5 thumbnail extended,
 6 per-frame timestamps, 7 GPS, 0x09 0x0a 0x0b 0x0c 0x16 0x1b 0x1c 0x1d (X5, purpose unknown),

@@ -79,11 +79,13 @@ ports and application code.
 
 **`optics`: lenses and calibration.** A `CalibrationSet` holds one `LensCalibration` per lens
 and the radial scale they are drawn at; each lens has a `LensModel` strategy (`MeiModel`,
-`PolynomialModel`, `EquidistantModel`) that maps a direction to a canvas pixel and also exposes
-its parameters for the shader. The Mei model's distortion is `MeiDistortion`, families of terms
-by order evaluated by `distortMei`, and `scaledProjection` applies a radial scale to any model's
-parameters. `lensPose` gives the body-to-lens rotation from the calibration's yaw, pitch and
-roll (ADR 0008, ADR 0025). `gainMatch` holds the exposure-matching model (ADR 0012).
+`PolynomialModel`, `EquidistantModel`) that builds the parameters of one of two projections, the
+Mei model or a radial polynomial. `projectDirection` evaluates those parameters, a model's or a
+stitching setup's lens drawn at its radial scale, on the CPU as the shader does on the GPU: the
+reference the parsers and the shader are held to. The Mei model's distortion is `MeiDistortion`,
+families of terms by order evaluated by `distortMei`, and `scaledProjection` applies a radial
+scale to any model's parameters. `lensPose` gives the body-to-lens rotation from the calibration's yaw, pitch and
+roll (ADR 0008, ADR 0025).
 
 **`colour`: how a track's texels reach the display.** `TrackColour` is a video track's colour as
 its bitstream names it. `DisplayConversion` is the data of one way of showing a track's texels
@@ -91,7 +93,8 @@ on the SDR BT.709 canvas, chosen per frame source by `displayConversionsOf` thro
 every transfer: as recorded for SDR, HLG to SDR BT.709 for HLG (ADR 0033). `exposureSignalOf`
 and `shownOf` are its two stages around the exposure gain, the references the shader is held
 to; `matrixCorrectionOf` brings R′G′B′ a platform derived through another matrix back to the
-track's.
+track's. `gainMatch` holds the exposure-matching model, which scales the exposure signals of the
+lenses onto one another (ADR 0012).
 
 **`motion`: time and orientation.** `CaptureClock` relates the camera's microsecond clock to
 video time. `FrameTimes` and the frame time sources (exposure record, track
@@ -145,8 +148,8 @@ point. Motion look (ADR 0040): `screenLook` turns the browser's device attitude 
 pitch and roll of a screen held up as a window, the one place that knows the DeviceOrientation
 convention; `motionLookView` follows the device's readings (`followReading`: the heading the
 view's own, a gap starting anew, an unseen turn not drawn) and is `MOTION_LOOK_VIEW`, the normal
-view's rules while the device holds it, which `motionLookRulesFor` gives for the modes the device
-turns. Every mode's rules also say how a page's view is placed (`place`).
+view's gesture rules (`ViewGestureRules`, the part of `ViewModeRules` without the picture) while
+the device holds it, which `motionLookRulesFor` gives for the modes the device turns. Every mode's rules also say how a page's view is placed (`place`).
 
 ### Application: `core/src/application`
 
@@ -173,7 +176,11 @@ Use cases that orchestrate the domain through ports.
   boxes and the records' places for the inspector, which playing never needs. The result,
   `Recording`, hands out the large gyro and exposure records on demand, read by the format's
   `TrailerRecords`. `locateOtherLensFile` looks for the other lens's file of a split-file pair.
-  `inspectRecording` condenses a file into a `RecordingInspection`, plain data for a report or a
+  `readRecordingFiles` reads the files a page gives as one recording, following the data: its
+  metadata from the file that carries the trailer, every file's sample table and codecs, the
+  other lens file of a lone half (before its tracks are read when the info record says the
+  recording is split, once they fall short otherwise), then `detectLensLayout` and the
+  calibration, which it requires. `inspectRecording` condenses a file into a `RecordingInspection`, plain data for a report or a
   page: its boxes and records, the info record, the calibration and summaries of the gyro and
   exposure records.
 - `playback/DecodePipeline` runs one lockstep decode of all frame sources from a time: one
@@ -190,7 +197,8 @@ Use cases that orchestrate the domain through ports.
 - `playback/probeDecoding` decodes the first key frame of every lens track under a deadline
   before anything else is built, because platforms say yes to codecs they then fail on.
 - `gainMatching/GainMatching` measures the seam through a `SeamMeter` every half second of
-  media, one measurement at a time, and applies the gains `GainMatcher` follows (ADR 0012).
+  media, one measurement at a time, and applies the gains `GainMatcher` follows onto the lens
+  `referenceLensOf` names, the one the view opens facing (ADR 0012).
   `GainMatchingFrameSink` puts it in front of the sink chain: it measures after each
   presentation while enabled, with a meter the renderer creates over what it draws.
 - `stabilization/StabilizingFrameSink` wraps the renderer and sets the
@@ -216,14 +224,19 @@ Use cases that orchestrate the domain through ports.
 | `SeamMismatchMeter`  | per seam-strip bin, how far the lenses disagree for each slide of lens 0's sampling across the ring                                             | the lab's `SeamMismatchPass`                                          |
 | `ResourceLocator`    | does this URL exist                                                                                                                             | `HttpResourceLocator`                                                 |
 
-`WallClock` is the one port implementation in the core: it reads time the host hands it (the
-page's monotonic clock) and holds no timer, so it is as pure as the rest; the player uses it when
-a recording has no sound this browser plays.
+The core implements some ports itself (`WallClock`, `SourceByteStream`, `DownloadedVideoTrack`,
+`DownloadedAudioSamples`, `FileDownload`, `RecordingBuffer`), from other ports and pure code.
+`WallClock` reads time the host hands it (the page's monotonic clock) and holds no timer, so it
+is as pure as the rest; the player uses it when a recording has no sound this browser plays.
 
-Every port has a contract suite in `core/src/testing`, run against its fake and its real
-implementations alike (`RandomAccessSource`, `ByteStream`, `CodecReader`, `VideoTrackReader`,
-`AudioSampleSource`, `MediaBuffer`, `VideoDecoderPort`, `PlaybackClock`, `ResourceLocator`),
-and `AudioSegmentSource`'s against the mediabunny packager alone, asserting the error codes too.
+The ports the core reads from have a contract suite in `core/src/testing`, run against their
+fakes and their real implementations alike (`RandomAccessSource`, `ByteStream`, `CodecReader`,
+`VideoTrackReader`, `AudioSampleSource`, `MediaBuffer`, `VideoDecoderPort`, `PlaybackClock`,
+`ResourceLocator`), and `AudioSegmentSource`'s against the mediabunny packager alone, asserting
+the error codes too; the player's attitude sensor has one in `player/src/test`. The ports the
+core draws through (`FrameSink`, `PictureRenderer`, `SeamMeter`, `SeamMismatchMeter`) and
+`AudioPackager` have none: the renderer's and the packager's own browser tests check what they
+do.
 `VideoTrackReader` and `MediaBuffer` are implemented in the core itself; they are ports because
 the playback use cases may see nothing else.
 `FakeFrameSink` only records what it is shown, for tests of what drives a sink; the renderer's
@@ -287,11 +300,10 @@ One package per external technology; none imports another.
 
 The composition root and the user-facing element, in three layers.
 
-- **`composition`**: `openRecording` is the use case that opens what a `PlayerSource` names,
-  following the data: `readInputs` reads the trailer, and every input's sample table and codecs,
-  then `detectLensLayout` (fetching the other lens file of a lone split file when the server has
-  it: before reading its tracks when the info record says the recording is split, after they
-  fall short otherwise), calibration required, one download a file (ADR 0029), the decode probe
+- **`composition`**: `openRecording` is the use case that opens what a `PlayerSource` names:
+  `readInputs` opens every input through the ports and hands them to the core's
+  `readRecordingFiles`, with a lookup of the other lens file beside a lone URL; then one
+  download a file (ADR 0029), the decode probe
   through them (an undecodable recording is an error; nothing plays in its place, ADR 0017),
   then the core's `timeRecording`. The downloads read only what the picture waits for until the
   pipeline's session first flows, then read ahead.
@@ -301,7 +313,8 @@ The composition root and the user-facing element, in three layers.
   supplies the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
   the renderer, which draws a changed setting once at the next animation frame
   (`AnimationFrameDraws` over the `FrameScheduler` the player's `FrameLoop` ticks on, ADR 0035),
-  the stabilizing and gain-matching sinks, the session. The player receives it as a
+  its drawing buffer kept to the canvas's size (`DrawingBufferFit`, whose pixel ratio cap the
+  quality sets), the stabilizing and gain-matching sinks, the session. The player receives it as a
   `PipelineFactory` and drives the `Pipeline` contract in `composition/ports`, never the
   adapters or the sinks: it sets the stabilization mode and gain matching as commands, which
   the pipeline routes to its sinks and shows at once; `createBrowserPlayer` joins the browser's ports and `buildPipeline` into a `Player`,
@@ -316,12 +329,14 @@ The composition root and the user-facing element, in three layers.
   seconds and degrees, as a page gives them; the core's unit types start inside it. It loads, unloads,
   relays the session's states as media-element events (`SessionRelay`, `transportEventsFor`),
   ticks the session
-  from a `FrameLoop`, keeps the canvas sized (`DrawingBufferFit`, whose ratio cap the quality sets), and owns the settings (view and view
+  from a `FrameLoop`, and owns the settings (view and view
   mode in `PlayerView`, which also keeps the device's hold on the view, motion look in
   `MotionLook`, which hears the sensor only while it turns something, stabilization, gain
-  matching and quality in `PictureSettings`, sound in `PlayerSound`, autoplay and loop in
-  `AutomaticStarts`) across loads (ADR 0016). It and its parts announce through one `Outbox`,
-  so a change is heard once it is whole (ADR 0021). Its
+  matching and quality in `PictureSettings`, sound in `PlayerSound`, the starts nobody awaits,
+  autoplay and a press of play, in `PlaybackStarts`, the loop, which the session plays) across
+  loads (ADR 0016). It and its parts announce through one `Outbox`, so a change is heard once it
+  is whole (ADR 0021), the status once for each change (`StatusAnnouncer`); a page is handed
+  its events to listen to (`Listenable`), never to emit. Its
   life with a recording is one `PlayerPhase`. The element drives it; the embed bridge drives the element.
 - **`element`** and **`controls`**: `GyroViewElement` is `<gyro-view>`: attributes parsed by
   pure functions in `attributes.ts` (names in `attributeNames.ts`, published as
@@ -331,12 +346,16 @@ The composition root and the user-facing element, in three layers.
   poster and overlays. `ElementLoads` decides when the element loads and what: the attributes
   read together a microtask after they change, a load owed to the next connection, a recording
   let go after a removal. The element tells a removal from a move (still out of the document a
-  microtask later) and leaves the pinned fill on one too. The shadow tree (`template.ts`) is parsed
+  microtask later) and leaves the pinned fill on one too. `PlayerCanvas` holds the canvas the
+  player draws on: a removed element gives its WebGL context up at once, and a load puts a fresh
+  canvas in place of one whose context is gone, since a context lost with no renderer to ask for
+  it back never returns. The element's own warnings are queued, as a media element's events are. The shadow tree (`template.ts`) is parsed
   once per page through a Trusted Types policy (`parseMarkup`) and cloned per element, its
   stylesheets constructed once and adopted. The markup holds no words: `Wording` fills in
   every label, menu choice and failure text it names, from `messages` (English defaults, the
-  page's own through the element's `messages` property). `bindControlsBar` binds `TransportButtons`, the view buttons (Reset view,
-  Fullscreen), `SeekBar` (key-frame
+  page's own through the element's `messages` property; frozen, so they change through the setter
+  alone). `bindControlsBar` binds `TransportButtons`, Reset view, `FullscreenButton` (a toggle the
+  element's `FullscreenToggle` tells of each change), `SeekBar` (key-frame
   scrubbing), `SoundControls`, `MotionLookButton` (the motion look toggle) and `PictureMenus` (the view mode and stabilization menus, each a
   `ChoiceMenu` behind a button that shows the icon of the choice in effect; stabilization is offered
   only for a recording with a gyro in a stitched view mode). How much the bar shows follows the
@@ -344,7 +363,9 @@ The composition root and the user-facing element, in three layers.
   `controls.css`, which the element's template takes in, and every icon button draws an SVG
   from `icons`, cloned from one parsed copy when a button changes its icon. `ViewGestures` turns drags,
   pinches and wheel turns into view changes; `keyboard` maps keys to commands;
-  `FullscreenToggle` and `IdleWatcher` handle filling the screen and fading the controls.
+  `FullscreenToggle` and `IdleWatcher` handle filling the screen and fading the controls;
+  `nativeFullscreen` calls the Fullscreen API for both the element and `attachKeyboard`, a
+  refusal leaving the target as it was.
 
 ## The site: `apps/embed`
 
@@ -358,7 +379,8 @@ The composition root and the user-facing element, in three layers.
   imports the player's code or the frame side (dependency-cruiser). ADR 0010.
 - `snippet/embedSnippet` builds `embed.js`: `GyroView.embed(container, options, settings?)`
   creates the iframe and returns `{ iframe, handle, destroy }`; `settings.embedPageUrl` names
-  `embed.html` where the script cannot tell (inlined). `component.ts` builds `gyro-view.js`, the element as one module.
+  `embed.html` where the script cannot tell (inlined). The site's `gyro-view.js` is the npm
+  package's `standalone.js`, copied after the build, so there is one script-tag player.
 - `index.html` (`pages/developmentPage`) is the developer page; `dev/samplesPlugin` lists the
   local sample recordings for it.
 
@@ -412,7 +434,8 @@ half second the gain-match pass measures the seam and adjusts the lens gains.
 **Embedding.** `GyroView.embed` builds the frame URL from the options and this page's origin,
 creates the iframe and an `EmbedHandle` listening only to the frame; the frame's `EmbedHost`
 says `hello` with the element's state, which the handle's mirror starts from, then runs
-validated commands on its element and forwards the element's events as plain data.
+validated commands on its element and forwards the element's events as plain data; the handle
+rebuilds an error from its code and message, so the page hears it with its category.
 
 ## Rules that keep it this way
 

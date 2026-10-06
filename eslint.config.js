@@ -1,6 +1,7 @@
 // Lint gate for every package, app and tool.
 import { defineConfig, globalIgnores } from 'eslint/config';
 import prettier from 'eslint-config-prettier';
+import esX from 'eslint-plugin-es-x';
 import unicorn from 'eslint-plugin-unicorn';
 import tseslint from 'typescript-eslint';
 
@@ -152,6 +153,20 @@ export default defineConfig(
         },
       ],
     },
+  },
+  {
+    // What a page runs: the oldest browsers the npm README names (Chrome 111, Safari 16.4) have
+    // ES2023 and nothing newer, so a later built-in or syntax would break them where nothing
+    // guards it. Tests and tools run in Node 24 and current browsers only.
+    files: ['packages/**/src/**/*.ts', 'apps/**/src/**/*.ts'],
+    ignores: [
+      '**/*.test.ts',
+      '**/*.contract.ts',
+      '**/test/**',
+      '**/testing/**',
+      'packages/adapters/node/**',
+    ],
+    extends: [esX.configs['flat/restrict-to-es2023']],
   },
   {
     files: ['**/*.test.ts', '**/*.contract.ts', '**/test/**/*.ts'],

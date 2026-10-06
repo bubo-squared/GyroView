@@ -30,12 +30,13 @@ export const LEGACY_CALIBRATION_LAYOUT: CalibrationStringLayout = {
   lensTokens: V1_LENS_TOKENS,
   trailingTokens: V1_TRAILING_TOKENS,
   radialScale: RADIUS_AS_READ,
+  scaleTokens: [V1Token.EdgeRadius],
 
   parseLens(block: LensBlock, lensIndex: number): LensCalibration {
     return {
       lensIndex,
       model: new EquidistantModel({
-        edgeRadius: block(V1Token.EdgeRadius),
+        radius: block(V1Token.EdgeRadius),
         radiusAngle: LEGACY_RADIUS_ANGLE,
         principalPoint: { x: block(V1Token.CenterX), y: block(V1Token.CenterY) },
       }),

@@ -1,21 +1,17 @@
-import { TypedEmitter, type DragDelta, type ScreenPoint } from '@gyroview/core';
-import { afterEach, describe, expect, it } from 'vitest';
+import type { DragDelta, ScreenPoint } from '@gyroview/core';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { attachKeyboard, attachViewGestures } from './customControls';
-import type { PlayerEvents, PlayerWarning } from '../player/PlayerEvents';
 import { settle } from '../test/waiting';
 
 /**
  * The player as a page's own interface drives it, recording what it was asked.
  */
 class FakePlayer {
-  public readonly events = new TypedEmitter<PlayerEvents>();
   public readonly calls: string[] = [];
   public readonly canPan = true;
-  public isPaused = true;
   public currentTime = 10;
   public isMuted = false;
-  public refusal: Error | undefined;
 
   public pan(delta: DragDelta): void {
     this.calls.push(`pan ${delta.x},${delta.y}`);
@@ -25,16 +21,8 @@ class FakePlayer {
     this.calls.push(`zoom ${steps}${focus ? ` at ${focus.x.toFixed(1)}` : ''}`);
   }
 
-  public async play(): Promise<void> {
-    await Promise.resolve();
-    if (this.refusal) throw this.refusal;
-    this.isPaused = false;
-    this.calls.push('play');
-  }
-
-  public pause(): void {
-    this.isPaused = true;
-    this.calls.push('pause');
+  public togglePlayback(): void {
+    this.calls.push('toggle playback');
   }
 
   public seek(time: number): void {
@@ -85,7 +73,7 @@ describe('attachViewGestures', () => {
     for (const element of surfaces.splice(0)) element.remove();
   });
 
-  it('looks around on a drag, zooms toward the wheel, plays on a tap, and stops once detached', async () => {
+  it('looks around on a drag, zooms toward the wheel, toggles playback on a tap, and stops once detached', () => {
     const [target, player] = [surface(), new FakePlayer()];
     const detach = attachViewGestures(target, player);
 
@@ -95,12 +83,11 @@ describe('attachViewGestures', () => {
     target.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, clientX: 150, clientY: 50 }));
     target.dispatchEvent(pointer('pointerdown', 100));
     target.dispatchEvent(pointer('pointerup', 100));
-    await settle();
     detach();
     target.dispatchEvent(pointer('pointerdown', 50));
     target.dispatchEvent(pointer('pointermove', 90));
 
-    expect(player.calls).toEqual(['pan 20,0', 'zoom 1 at 0.8', 'play']);
+    expect(player.calls).toEqual(['pan 20,0', 'zoom 1 at 0.8', 'toggle playback']);
   });
 
   it('hands a tap to the page when it asks for them', () => {
@@ -127,44 +114,67 @@ describe('attachKeyboard', () => {
     for (const element of surfaces.splice(0)) element.remove();
   });
 
-  it('answers the element shortcuts until detached', async () => {
+  it('answers the element shortcuts until detached', () => {
     const [target, player] = [surface(), new FakePlayer()];
     const detach = attachKeyboard(target, player);
     for (const name of ['k', 'l', 'ArrowLeft', 'm', '0', 's']) key(target, name);
     key(target, 'ArrowRight', true);
-    await settle();
     detach();
     key(target, 'k');
-    // The start settles after the synchronous commands, as a media element's play() does.
     expect(player.calls).toEqual([
+      'toggle playback',
       'seek 15',
       'turn -5,0',
       'muted true',
       'reset view',
       'stop',
       'seek 15',
-      'play',
     ]);
   });
 
-  it('reports a start the browser refused as a warning', async () => {
+  it('leaves F alone where the browser has no fullscreen for the target, rather than throwing', async () => {
+    const target = surface();
+    vi.spyOn(document, 'fullscreenEnabled', 'get').mockReturnValue(false);
+    Object.defineProperty(target, 'requestFullscreen', { value: undefined });
+    const thrown: unknown[] = [];
+    const hearThrown = (event: ErrorEvent): void => {
+      thrown.push(event.error);
+      event.preventDefault();
+    };
+    globalThis.addEventListener('error', hearThrown);
+    attachKeyboard(target, new FakePlayer());
+    key(target, 'f');
+    await settle();
+    globalThis.removeEventListener('error', hearThrown);
+    vi.restoreAllMocks();
+    expect(thrown).toEqual([]);
+  });
+
+  it('takes a fullscreen the browser refuses without leaving its refusal unhandled', async () => {
+    const target = surface();
+    target.requestFullscreen = (): Promise<void> => Promise.reject(new TypeError('refused'));
+    const unhandled: unknown[] = [];
+    const hearUnhandled = (event: PromiseRejectionEvent): void => {
+      unhandled.push(event.reason);
+      event.preventDefault();
+    };
+    globalThis.addEventListener('unhandledrejection', hearUnhandled);
+    attachKeyboard(target, new FakePlayer());
+    key(target, 'f');
+    await settle();
+    await settle();
+    globalThis.removeEventListener('unhandledrejection', hearUnhandled);
+    expect(unhandled).toEqual([]);
+  });
+
+  it('fills the screen as the page says when it gives its own way', () => {
     const [target, player] = [surface(), new FakePlayer()];
-    player.refusal = new Error('the browser wants a gesture');
-    const warnings: PlayerWarning[] = [];
-    player.events.on('warning', (warning) => {
-      warnings.push(warning);
-    });
     attachKeyboard(target, player, {
       toggleFullscreen: (): void => {
         player.calls.push('fullscreen');
       },
     });
-    key(target, ' ');
     key(target, 'f');
-    await settle();
-    expect(warnings).toEqual([
-      { code: 'playback-failed', message: 'playback could not start: the browser wants a gesture' },
-    ]);
     expect(player.calls).toEqual(['fullscreen']);
   });
 });

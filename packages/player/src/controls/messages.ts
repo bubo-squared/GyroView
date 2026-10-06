@@ -109,6 +109,7 @@ const ERRORS: Readonly<Record<GyroViewErrorCode, string>> = {
   cors: UNREACHABLE,
   decode: FAILED,
   'embed-destroyed': FAILED,
+  'embed-unreachable': FAILED,
   'index-out-of-range': FAILED,
   'invalid-argument': FAILED,
   'invalid-byte-range': UNREACHABLE,
@@ -120,6 +121,8 @@ const ERRORS: Readonly<Record<GyroViewErrorCode, string>> = {
   'no-calibration': UNREADABLE,
   'no-info-record': UNREADABLE,
   'no-key-frame': UNREADABLE,
+  'no-source': FAILED,
+  'play-interrupted': FAILED,
   'playback-blocked': FAILED,
   'range-unsupported': UNREACHABLE,
   'render-unavailable': UNSUPPORTED_BROWSER,
@@ -134,7 +137,7 @@ const ERRORS: Readonly<Record<GyroViewErrorCode, string>> = {
   'webcodecs-unavailable': UNSUPPORTED_BROWSER,
 };
 
-export const DEFAULT_MESSAGES: GyroViewMessages = {
+export const DEFAULT_MESSAGES: GyroViewMessages = frozenMessages({
   labels: {
     player: '360° video player',
     loading: 'Loading',
@@ -165,7 +168,7 @@ export const DEFAULT_MESSAGES: GyroViewMessages = {
     normal: 'Standard view, drag to look around',
   },
   errors: ERRORS,
-};
+});
 
 /**
  * The default words with the page's own in their place. What is not a string is left out, so a
@@ -173,7 +176,7 @@ export const DEFAULT_MESSAGES: GyroViewMessages = {
  */
 export function messagesWith(overrides: unknown): GyroViewMessages {
   const given = isRecord(overrides) ? overrides : {};
-  return {
+  return frozenMessages({
     labels: tableWith(DEFAULT_MESSAGES.labels, given['labels']),
     stabilizationModes: tableWith(DEFAULT_MESSAGES.stabilizationModes, given['stabilizationModes']),
     stabilizationModeDescriptions: tableWith(
@@ -186,7 +189,7 @@ export function messagesWith(overrides: unknown): GyroViewMessages {
       given['viewModeDescriptions'],
     ),
     errors: tableWith(DEFAULT_MESSAGES.errors, given['errors']),
-  };
+  });
 }
 
 export function isLabelName(name: string | null): name is LabelName {
@@ -195,6 +198,15 @@ export function isLabelName(name: string | null): name is LabelName {
 
 export function isChoiceTable(name: string | null): name is ChoiceTable {
   return name !== null && CHOICE_TABLES.has(name);
+}
+
+/**
+ * Frozen table by table: the element's `messages` hands them to the page, and the defaults are
+ * every player's on it, so a write to one would change the words of players that never show it.
+ */
+function frozenMessages(messages: GyroViewMessages): GyroViewMessages {
+  for (const table of Object.values(messages)) Object.freeze(table);
+  return Object.freeze(messages);
 }
 
 function tableWith<Table extends object>(defaults: Table, overrides: unknown): Table {

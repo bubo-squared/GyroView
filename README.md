@@ -47,7 +47,7 @@ import '@bubo-squared/gyroview/define'; // registers <gyro-view>
 ```
 
 Without a bundler, load the package's standalone file (Three.js and mediabunny inside) from
-a CDN or your own host; the site build's `gyro-view.js` registers the element the same way:
+a CDN or your own host; the site build's `gyro-view.js` is that file under another name:
 
 ```html
 <script
@@ -78,7 +78,7 @@ Attributes:
 | `stabilization`             | `off`, `lock`, `horizon`, `follow`        | How the gyro steadies the picture.                                                                                        |
 | `view-mode`                 | `raw-lenses`, `equirectangular`, `normal` | What the picture shows (below); the raw lenses until set.                                                                 |
 | `quality`                   | `fast`, `balanced`, `high`                | How finely the lens images are read and how many device pixels are drawn (below); `balanced` until set.                   |
-| `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees.                                                                   |
+| `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees; a taller player spans 120 top to bottom at most.                  |
 | `yaw`, `pitch`              | degrees                                   | Where the normal view looks: yaw positive to the right, pitch positive up; 0 where Insta360 Studio centres the recording. |
 
 The element opens on `raw-lenses`, the decoded lens images side by side or stacked, whichever
@@ -105,9 +105,9 @@ Methods and properties:
 
 | Member                                                | What it does                                                                                                      |
 | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `load()`                                              | Resolves once the recording is ready; an element out of the page loads once connected.                            |
+| `load()`                                              | Resolves once ready, `autoplay` starting it after; an element out of the page loads once connected.               |
 | `loadFiles({ main, second })`                         | Plays local files in place of `src`, until `src` or `src2` change.                                                |
-| `play()`, `pause()`, `stop()`                         | As a video's; `play()` waits for a load in progress.                                                              |
+| `play()`, `pause()`, `stop()`                         | As a video's; `play()` waits for a load in progress or a connection, and resolves once it plays.                  |
 | `seek(seconds)`, `currentTime`                        | Seeks exactly.                                                                                                    |
 | `scrub(seconds)`                                      | Seeks to the key frame at or before the time: quick to show while a seek bar is dragged.                          |
 | `duration`, `paused`, `status`, `metadata`            | What is loaded and where playback is.                                                                             |
@@ -126,9 +126,9 @@ Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewEle
 | ----------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `ready`                                               | metadata                  | The recording is ready: camera, layout, calibration version, frame time source, gyro and IMU frame, audio, duration. |
 | `statuschange`                                        | status                    | `idle`, `loading`, `ready`, `playing`, `buffering`, `paused`, `seeking`, `ended` or `error`.                         |
-| `play`, `playing`, `waiting`, `pause`, `ended`        | none                      | As a video's.                                                                                                        |
+| `play`, `playing`, `waiting`, `pause`, `ended`        | none                      | As a video's: `pause` comes before `ended`, and a `loop` seeks to the start, never ending.                           |
 | `timeupdate`                                          | seconds                   | Every quarter second of playback, and on a pause, a seek or the end.                                                 |
-| `seeking`, `seeked`                                   | seconds                   | Around a seek.                                                                                                       |
+| `seeking`, `seeked`                                   | seconds                   | Around a seek; `seeked` once the picture there is drawn, the status `seeking` until then.                            |
 | `frame`                                               | seconds                   | Right after each picture is drawn.                                                                                   |
 | `viewchange`, `viewmodechange`, `stabilizationchange` | the view, mode or setting | Whatever changed it.                                                                                                 |
 | `motionlookchange`                                    | the motion look state     | Turned on or off, or found available or not.                                                                         |
@@ -139,16 +139,17 @@ Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewEle
 
 A `warning`'s code says what the player worked around: `recording-degraded` for missing or
 damaged data such as no gyro or an unverified IMU frame, `no-sound` for a silent clock,
-`autoplay-blocked`, `playback-failed` for a refused start, a seek bar position it could not
-show or a loop that could not restart, `ignored-attribute` for a value it does not know,
-`refused-property` for a property set before the element was defined, `motion-look-refused` when
-the viewer or an iframe's `allow` refused the device's attitude (motion look is then
-unavailable), and `motion-look-needs-gesture` when motion look was started outside a tap.
+`autoplay-blocked`, `playback-failed` for a refused start or a seek bar position it could not
+show, `ignored-attribute` for a value it does not know, `refused-property` for a property set
+before the element was defined, `motion-look-refused` when the viewer or an iframe's `allow`
+refused the device's attitude (motion look is then unavailable), and `motion-look-needs-gesture`
+when motion look was started outside a tap.
 
 Controls: over the bottom of the picture, a seek bar above play, mute with a volume slider, the
 time, the Stabilization and View buttons (each showing the icon of the choice in effect and
 opening a menu of the choices, each with its icon and a line describing it), the motion look
-toggle, Reset view and Fullscreen. They fit the player's own width, not the page's: a narrower
+toggle, Reset view and Fullscreen, a toggle pressed while the player fills the screen, drawn as
+the way out. They fit the player's own width, not the page's: a narrower
 player gives up the volume slider and shows its menus over the whole player, then gives up the
 time and Reset view in turn, and, while the motion look toggle shows, the Stabilization menu
 rather than the toggle. On touch every target is 44 pixels and the
@@ -171,7 +172,8 @@ player.
 Keyboard: space or K play/pause, J and L seek, S stops, arrows look around (Shift + arrows
 seek), plus and minus zoom, 0 resets the view, M mutes, F fills the screen, Escape closes an
 open menu first and then leaves fullscreen (in the browser's own fullscreen, the browser takes
-the first Escape itself). A focused slider keeps its arrows and a focused button
+the first Escape itself); an Escape the player takes goes no further, to a dialog around it.
+A focused slider keeps its arrows and a focused button
 its Space. Mouse and touch: drag to look, wheel or pinch to zoom toward the pointer or the
 fingers (the keys zoom about the centre), tap to play or pause (on touch, a tap on faded
 controls only brings them back). The equirectangular panorama and the raw lenses zoom up to
@@ -190,9 +192,11 @@ volume, their handles, the checked choice and the focus ring), `--gyro-view-cont
 `::part(canvas)`, `::part(poster)`, `::part(controls)`, `::part(big-play)`, `::part(loading)`,
 `::part(error)`, `::part(error-message)` and `::part(error-code)` reach the parts. The element
 writes its state on itself for a page's selectors, and a page never sets these: `data-status`
-(the status, as in `gyro-view[data-status='error']`), `data-has-frame` once a picture is drawn,
-`data-idle` while the controls have faded, `data-fill` while it is pinned over the page in
-place of fullscreen, with `popover="manual"` beside it where the browser has popovers. Under
+(the status, as in `gyro-view[data-status='error']`), `data-has-frame` once the recording loaded
+now has drawn a picture (until then the canvas shows nothing, the previous recording's last
+picture included), `data-idle` while the controls have faded, `data-fill` while it is pinned
+over the page in place of fullscreen, with `popover="manual"` beside it where the browser has
+popovers, unless the page made a popover of it itself. Under
 `prefers-reduced-motion` the spinner turns slower and the controls do not fade; under
 `prefers-reduced-transparency`, and where the browser has no backdrop blur, the menus are
 opaque; forced colours keep the sliders and the menus' edges visible.
@@ -239,8 +243,12 @@ in the container and returns the same API as the element, as promises over `post
 but `frame` on `handle.events`, and a `state` mirror, `motionLook` included; motion
 look starts only from the frame's own toggle, since a tap on the page does not reach the frame.
 The frame talks only to the page that embedded it and
-the page only to the frame. Moving the container reloads the iframe, as the browser does with any
-iframe: it starts again from the embed options, and commands it had not answered are asked again.
+the page only to the frame. A frame that loads but never answers (a wrong `embedPageUrl`, a host
+that refuses to be framed) fails the handle's promises with `embed-unreachable` ten seconds
+later, and a command the frame does not know, from a snippet newer than the frame, with
+`invalid-argument`. On an iPhone, which has no fullscreen for an element, the Fullscreen button
+inside the iframe fills only the iframe for now; the element form fills the screen. Moving the
+container reloads the iframe, as the browser does with any iframe: it starts again from the embed options, and commands it had not answered are asked again.
 Without the snippet, an iframe of
 `embed.html?src=...&stabilization=lock&muted=1` plays on its own; every attribute above is a
 query parameter (`controls=0` hides the controls; the snippet's `viewMode` option is the
@@ -294,7 +302,9 @@ whose side the failure is on:
 - `source`: the recording's bytes could not be read as the player reads them. `cors`,
   `range-unsupported`, `source-unreadable`, `source-changed`, `source-truncated`.
 - `usage`: the page called the API with something it does not accept. `invalid-argument`,
-  `embed-destroyed`.
+  `embed-destroyed`, `embed-unreachable` (the iframe loaded but never answered), and as
+  `play()`'s rejection, as a video's `play()` rejects: `no-source`
+  (nothing to play) and `play-interrupted` (a newer `src` or the element's removal came first).
 - `internal`: a failure the player did not expect, worth an issue. `invariant-violation`,
   `index-out-of-range`.
 

@@ -27,6 +27,7 @@ export interface ViewState {
  */
 const NARROWEST_DEGREES = 30;
 const WIDEST_DEGREES = 120;
+export const WIDEST_FIELD_OF_VIEW = degrees(WIDEST_DEGREES);
 const DEFAULT_FIELD_OF_VIEW_DEGREES = 90;
 const MAX_PITCH_DEGREES = 90;
 

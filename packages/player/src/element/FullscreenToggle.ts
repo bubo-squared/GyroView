@@ -1,3 +1,5 @@
+import { leaveNativeFullscreen } from '../controls/nativeFullscreen';
+
 const FILL_ATTRIBUTE = 'data-fill';
 const POPOVER_ATTRIBUTE = 'popover';
 /**
@@ -13,10 +15,24 @@ const MANUAL_POPOVER = 'manual';
  * The pinned element is a manual popover, in the top layer the browser's own fullscreen uses:
  * no transform, clip or stacking context of the page holds it there. Pinned in place, a dialog
  * centred by a transform would make its fixed position fill the dialog, not the viewport. A
- * browser without popovers pins it in place all the same.
+ * browser without popovers pins it in place all the same. A popover the page made of the
+ * element is shown as it is and stays the page's.
  */
 export class FullscreenToggle {
-  public constructor(private readonly element: HTMLElement) {}
+  /**
+   * Whether the element is a popover because the fill made it one, so leaving takes it away.
+   */
+  private isOwnPopover = false;
+
+  /**
+   * `onChange` hears the element enter or leave either way.
+   */
+  public constructor(
+    private readonly element: HTMLElement,
+    private readonly onChange: () => void,
+  ) {
+    element.addEventListener('fullscreenchange', onChange);
+  }
 
   public get isActive(): boolean {
     return this.isNativelyFullscreen() || this.element.hasAttribute(FILL_ATTRIBUTE);
@@ -27,10 +43,13 @@ export class FullscreenToggle {
   }
 
   public async exit(): Promise<void> {
-    if (this.isNativelyFullscreen()) await document.exitFullscreen();
+    if (this.isNativelyFullscreen()) await leaveNativeFullscreen();
+    if (!this.element.hasAttribute(FILL_ATTRIBUTE)) return;
     // Without the attribute, the browser takes the element out of the top layer.
-    this.element.removeAttribute(POPOVER_ATTRIBUTE);
+    if (this.isOwnPopover) this.element.removeAttribute(POPOVER_ATTRIBUTE);
+    this.isOwnPopover = false;
     this.element.removeAttribute(FILL_ATTRIBUTE);
+    this.onChange();
   }
 
   /**
@@ -62,6 +81,7 @@ export class FullscreenToggle {
     if (!this.element.isConnected) return;
     this.element.setAttribute(FILL_ATTRIBUTE, '');
     this.raiseToTopLayer();
+    this.onChange();
   }
 
   /**
@@ -71,7 +91,10 @@ export class FullscreenToggle {
     if (!hasPopovers() || !this.element.isConnected || this.element.matches(':popover-open')) {
       return;
     }
-    this.element.setAttribute(POPOVER_ATTRIBUTE, MANUAL_POPOVER);
+    if (!this.element.hasAttribute(POPOVER_ATTRIBUTE)) {
+      this.element.setAttribute(POPOVER_ATTRIBUTE, MANUAL_POPOVER);
+      this.isOwnPopover = true;
+    }
     this.element.showPopover();
   }
 }

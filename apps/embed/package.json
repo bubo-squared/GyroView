@@ -2,11 +2,11 @@
   "name": "@gyroview/embed",
   "version": "0.0.0",
   "private": true,
-  "description": "Static site around <gyro-view>: the iframe embed page, the embed.js snippet with its postMessage bridge, the script-tag bundle and the developer demo page.",
+  "description": "Static site around <gyro-view>: the iframe embed page, the embed.js snippet with its postMessage bridge, the npm package's standalone file as gyro-view.js, and the developer demo page.",
   "type": "module",
   "scripts": {
     "dev": "vite --port 5180",
-    "build": "vite build && vite build --config vite.snippet.config.ts && vite build --config vite.component.config.ts",
+    "build": "vite build && vite build --config vite.snippet.config.ts && cp node_modules/@bubo-squared/gyroview/dist/standalone.js dist/gyro-view.js",
     "preview": "vite preview --port 5181",
     "typecheck": "tsc -p tsconfig.build.json && tsc -p tsconfig.json",
     "test": "vitest run"
@@ -16,6 +16,7 @@
     "@gyroview/player": "workspace:*"
   },
   "devDependencies": {
+    "@bubo-squared/gyroview": "workspace:*",
     "@types/node": "26.6.1",
     "@vitest/browser": "4.1.11",
     "@vitest/browser-playwright": "4.1.11",

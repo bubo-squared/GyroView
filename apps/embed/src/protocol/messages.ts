@@ -46,7 +46,11 @@ export interface CommandMessage {
    * Unique among the commands one page sends one frame document.
    */
   readonly id: number;
-  readonly name: CommandName;
+  /**
+   * A `CommandName`, or a name only a later build knows: a page may embed a frame served from an
+   * earlier one, which answers it as a command it cannot run.
+   */
+  readonly name: string;
   readonly parameters: readonly unknown[];
   /**
    * The oldest command the page still waits on, this one included: the frame forgets the ids
@@ -105,13 +109,10 @@ const FORWARDED: Readonly<Record<ForwardedEventName, true>> = {
 export const FORWARDED_EVENT_NAMES = keysOf(FORWARDED);
 
 /**
- * Events as the embedding page hears them: the player's, with errors as plain data.
+ * Events as the embedding page hears them: the player's, the error rebuilt from the code and
+ * message that cross the channel, with its category.
  */
-export type EmbedEvents = {
-  readonly [Name in ForwardedEventName]: Name extends 'error'
-    ? SerializedError
-    : PlayerEvents[Name];
-};
+export type EmbedEvents = Pick<PlayerEvents, ForwardedEventName>;
 
 export interface EventMessage {
   readonly protocol: typeof PROTOCOL;
@@ -126,7 +127,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isCommandName(value: unknown): value is CommandName {
+export function isCommandName(value: unknown): value is CommandName {
   return typeof value === 'string' && (COMMAND_NAMES as readonly string[]).includes(value);
 }
 
@@ -162,7 +163,7 @@ const BODY_CHECKS: ReadonlyMap<string, BodyCheck> = new Map<string, BodyCheck>([
     'command',
     (message): boolean =>
       typeof message['id'] === 'number' &&
-      isCommandName(message['name']) &&
+      typeof message['name'] === 'string' &&
       Array.isArray(message['parameters']) &&
       isOptionalNumber(message['oldestUnanswered']),
   ],

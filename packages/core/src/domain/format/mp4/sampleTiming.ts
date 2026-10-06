@@ -67,12 +67,13 @@ export function sampleTimingOf(boxes: TrackBoxes, context: TimingContext): Sampl
  */
 function decodeTicksOf(box: Mp4Box, context: TimingContext): DecodeTicks {
   const runs = readTableColumns(fullBoxOf(box).content, TIME_TO_SAMPLE);
-  const deltas = expandedRuns(runs.sampleCount, runs.sampleDelta);
-  if (deltas.length !== context.sampleCount) {
-    throw unreadableMovie(
-      `times ${deltas.length} samples of a track that has ${context.sampleCount}`,
-    );
+  // Counted before anything is allocated: a run's count is the file's word, and a damaged or
+  // hostile one would otherwise ask for gigabytes.
+  const timed = runs.sampleCount.reduce((sum, count) => sum + count, 0);
+  if (timed !== context.sampleCount) {
+    throw unreadableMovie(`times ${timed} samples of a track that has ${context.sampleCount}`);
   }
+  const deltas = expandedRuns(runs.sampleCount, runs.sampleDelta, context.sampleCount);
   const times = new Float64Array(deltas.length);
   for (let sample = 1; sample < deltas.length; sample += 1) {
     times[sample] = (times[sample - 1] ?? 0) + (deltas[sample - 1] ?? 0);
@@ -91,14 +92,19 @@ function compositionOffsetsOf(
   const box = optionalBox(sampleTable, Mp4BoxType.CompositionOffset);
   if (!box) return undefined;
   const runs = readTableColumns(fullBoxOf(box).content, COMPOSITION_OFFSET);
-  const offsets = new Float64Array(sampleCount);
-  offsets.set(expandedRuns(runs.sampleCount, runs.sampleOffset).subarray(0, sampleCount));
-  return offsets;
+  return expandedRuns(runs.sampleCount, runs.sampleOffset, sampleCount);
 }
 
-function expandedRuns(counts: readonly number[], values: readonly number[]): Float64Array {
-  const total = counts.reduce((sum, count) => sum + count, 0);
-  const expanded = new Float64Array(total);
+/**
+ * Each run's value repeated over its count, for the track's samples only: runs past them are
+ * left out, and samples past the last run are zero.
+ */
+function expandedRuns(
+  counts: readonly number[],
+  values: readonly number[],
+  sampleCount: number,
+): Float64Array {
+  const expanded = new Float64Array(sampleCount);
   let start = 0;
   for (const [run, count] of counts.entries()) {
     expanded.fill(values[run] ?? 0, start, start + count);
@@ -125,10 +131,22 @@ function editShiftOf(track: readonly Mp4Box[], context: TimingContext): number {
       continue;
     }
     return entries.mediaRate[entry] === UNIT_MEDIA_RATE
-      ? mediaTime - Math.round((emptyDuration / context.movie) * context.media)
+      ? mediaTime - mediaTicksOf(emptyDuration, context)
       : 0;
   }
   return 0;
+}
+
+/**
+ * Movie ticks in the track's timescale, rounded as mediabunny rounds them. Only an empty edit
+ * needs the movie's timescale, so only then is one of zero refused.
+ */
+function mediaTicksOf(movieTicks: number, context: TimingContext): number {
+  if (movieTicks === 0) return 0;
+  if (context.movie === 0) {
+    throw unreadableMovie('delays a track by an empty edit in a movie timescale of 0');
+  }
+  return Math.round((movieTicks / context.movie) * context.media);
 }
 
 /**

@@ -27,7 +27,7 @@ describe('inspectRecording', () => {
       payloadStart: file.payloadStart,
       info: { model: 'Insta360 X5' },
       calibration: { lenses: [{ lensIndex: 0 }, { lensIndex: 1 }] },
-      gyro: { layout: 'raw', samples: 2000, damagedSamples: 0 },
+      gyro: { layout: 'raw', samples: 2000, damagedSamples: 0, unwrittenSamples: 0 },
       exposure: { entries: 16 },
     });
     expect(inspection.records.map((record) => record.id)).toEqual([

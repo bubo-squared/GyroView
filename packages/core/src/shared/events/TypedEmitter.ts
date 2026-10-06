@@ -3,6 +3,14 @@ import { reportLater } from '../errors/reportLater';
 type Listener<Payload> = (payload: Payload) => void;
 
 /**
+ * What a listener is given of an emitter: it hears events, and stops hearing them through the
+ * function `on` returns, but cannot emit one or silence the others.
+ */
+export interface Listenable<Events extends object> {
+  on<Name extends keyof Events>(name: Name, listener: Listener<Events[Name]>): () => void;
+}
+
+/**
  * Minimal typed observer: one payload type per event name, unsubscribe through the returned
  * function. No platform EventTarget so it works in the dependency-free core.
  *
@@ -12,7 +20,7 @@ type Listener<Payload> = (payload: Payload) => void;
  * Listeners are stored with their payload type erased to `never`, which every listener type is
  * assignable to; `emit` restores the type its event name guarantees.
  */
-export class TypedEmitter<Events extends object> {
+export class TypedEmitter<Events extends object> implements Listenable<Events> {
   private readonly listeners = new Map<keyof Events, Set<Listener<never>>>();
 
   public constructor(

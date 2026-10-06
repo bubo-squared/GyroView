@@ -4,7 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
 
+import { NOTICED_OUTPUT } from '../library/thirdPartyNotice.ts';
+
 import { samplesPlugin } from './dev/samplesPlugin.ts';
+import { samplesWithheld } from './dev/samplesWithheld.ts';
 
 const APP_ROOT = fileURLToPath(new URL('.', import.meta.url));
 const REPOSITORY_ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -37,17 +40,25 @@ function phoneHttps(): { readonly cert: Buffer; readonly key: Buffer } | undefin
 const https = phoneHttps();
 
 /**
- * The pages: the developer page and the embed target. The two script bundles have their own
- * configurations (`vite.snippet.config.ts`, `vite.component.config.ts`).
+ * Whether the server lists and streams the local samples. Every sample is private (ADR 0031): a
+ * server opened to the network for a phone serves them only when `GYROVIEW_DEV_SHARE_SAMPLES=1`
+ * asks it to, since anyone on the same network could read them too.
+ */
+const isServingSamples = https === undefined || process.env['GYROVIEW_DEV_SHARE_SAMPLES'] === '1';
+
+/**
+ * The pages: the developer page, served in development only, and the embed target, the one page
+ * the build produces. `embed.js` has its own configuration (`vite.snippet.config.ts`), and
+ * `gyro-view.js` is the npm package's standalone file, copied after the build.
  */
 export default defineConfig({
   root: APP_ROOT,
   // Pages that find their scripts next to themselves, so the site works under any path, as
   // DEPLOYMENT has it: a versioned folder on a CDN, beside embed.js.
   base: './',
-  plugins: [samplesPlugin(SAMPLES_ROOT)],
+  plugins: [isServingSamples ? samplesPlugin(SAMPLES_ROOT) : samplesWithheld(SAMPLES_ROOT)],
   server: {
-    fs: { allow: [REPOSITORY_ROOT, ...sampleTargets()] },
+    fs: { allow: [REPOSITORY_ROOT, ...(isServingSamples ? sampleTargets() : [])] },
     ...(https && { https, host: true }),
   },
   build: {
@@ -55,10 +66,9 @@ export default defineConfig({
     // The player chunk carries Three.js and mediabunny: about 1 MB, 260 kB compressed.
     chunkSizeWarningLimit: 1400,
     rollupOptions: {
-      input: {
-        index: path.join(APP_ROOT, 'index.html'),
-        embed: path.join(APP_ROOT, 'embed.html'),
-      },
+      input: { embed: path.join(APP_ROOT, 'embed.html') },
+      // The page's player chunk compiles in three.js and mediabunny, as the standalone file does.
+      output: NOTICED_OUTPUT,
     },
   },
 });

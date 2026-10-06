@@ -11,6 +11,8 @@ describe('GyroViewError', () => {
     expect(new GyroViewError('binary-out-of-bounds', 'past the end').category).toBe('recording');
     expect(new GyroViewError('cors', 'forbidden').category).toBe('source');
     expect(new GyroViewError('invalid-argument', 'yaw is NaN').category).toBe('usage');
+    expect(new GyroViewError('no-source', 'nothing to play').category).toBe('usage');
+    expect(new GyroViewError('play-interrupted', 'a newer load').category).toBe('usage');
     expect(new GyroViewError('invariant-violation', 'unexpected').category).toBe('internal');
   });
 

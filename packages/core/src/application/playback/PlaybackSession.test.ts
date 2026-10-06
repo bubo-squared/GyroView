@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { seconds } from '../../shared/units/time';
+import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
 import {
   DURATION,
   FRAME_RATE,
@@ -12,6 +13,23 @@ import {
 import { settle } from '../../../test/support/settle';
 
 const FRAME = 1 / FRAME_RATE;
+
+/**
+ * What a session announced, in order: state changes, drawn pictures and finished seeks.
+ */
+function announcements(session: ReturnType<typeof sessionHarness>['session']): string[] {
+  const heard: string[] = [];
+  session.events.on('statechange', (state) => {
+    heard.push(state);
+  });
+  session.events.on('present', () => {
+    heard.push('present');
+  });
+  session.events.on('seeked', (time) => {
+    heard.push(`seeked ${time}`);
+  });
+  return heard;
+}
 
 describe('PlaybackSession transport', () => {
   it('is ready after construction and presents frames in step with the clock once playing', async () => {
@@ -216,6 +234,37 @@ describe('PlaybackSession transport', () => {
     session.dispose();
   });
 
+  it('loops back to the start at the end and plays on, never ending', async () => {
+    const { session, sink, advance, states } = sessionHarness();
+    const heard = announcements(session);
+    let endings = 0;
+    session.events.on('ended', () => {
+      endings += 1;
+    });
+    session.setLooping(true);
+    await session.play();
+    for (let step = 0; step < 40; step += 1) await advance(100);
+    expect(endings).toBe(0);
+    expect(states).not.toContain('ended');
+    expect(heard).toContain('seeked 0');
+    expect(session.state).toBe('playing');
+    expect(session.currentTime).toBeLessThan(DURATION);
+    const shown = sink.presentations.map((presentation) => Number(presentation.pair.timestamp));
+    const lastFrame = shown.findIndex((timestamp) => timestamp > DURATION - 1.5 * FRAME);
+    expect(shown.indexOf(0, lastFrame)).toBeGreaterThan(lastFrame);
+    session.dispose();
+  });
+
+  it('ends at the end once looping is turned off', async () => {
+    const { session, advance } = sessionHarness();
+    session.setLooping(true);
+    session.setLooping(false);
+    await session.play();
+    for (let step = 0; step < 40; step += 1) await advance(100);
+    expect(session.state).toBe('ended');
+    session.dispose();
+  });
+
   it('does not end while decoded frames are still due, even with the clock past the duration', async () => {
     const { session, advance } = sessionHarness();
     await session.play();
@@ -243,6 +292,94 @@ describe('PlaybackSession transport', () => {
     session.stop();
     expect(session.state).toBe('paused');
     expect(session.currentTime).toBe(0);
+    session.dispose();
+  });
+});
+
+describe('PlaybackSession seeks', () => {
+  it('announces a seek done once the first picture at the target is drawn, not before', async () => {
+    const { session, advance } = sessionHarness();
+    const heard = announcements(session);
+    session.seek(seconds(1));
+    expect(session.isSeeking).toBe(true);
+    expect(heard).toEqual(['seeking', 'paused']);
+    await advance(0);
+    await advance(0);
+    expect(heard).toEqual(['seeking', 'paused', 'present', 'seeked 1']);
+    expect(session.isSeeking).toBe(false);
+    session.dispose();
+  });
+
+  it('resumes a playing seek only once the picture at the target is on screen', async () => {
+    const { session, advance } = sessionHarness();
+    await session.play();
+    await advance(100);
+    const heard = announcements(session);
+    session.seek(seconds(2));
+    for (let step = 0; step < 4; step += 1) await advance(0);
+    expect(session.state).toBe('playing');
+    expect(heard.slice(0, 2)).toEqual(['seeking', 'buffering']);
+    expect(heard.indexOf('seeked 2')).toBeLessThan(heard.lastIndexOf('playing'));
+    expect(heard.filter((event) => event.startsWith('seeked'))).toHaveLength(1);
+    session.dispose();
+  });
+
+  it('a play while the picture of a seek is pending waits for it', async () => {
+    const { session, advance } = sessionHarness();
+    const heard = announcements(session);
+    session.seek(seconds(1));
+    const playing = session.play();
+    expect(session.state).toBe('buffering');
+    await advance(0);
+    await advance(0);
+    await playing;
+    expect(heard.indexOf('seeked 1')).toBeLessThan(heard.indexOf('playing'));
+    session.dispose();
+  });
+
+  it('announces once, for the latest, seeks made before a picture came', async () => {
+    const { session, advance } = sessionHarness();
+    const heard = announcements(session);
+    session.seek(seconds(1));
+    session.seek(seconds(2));
+    await advance(0);
+    await advance(0);
+    expect(heard.filter((event) => event.startsWith('seeked'))).toEqual(['seeked 2']);
+    session.dispose();
+  });
+
+  it('leaves no seek under way once playback failed', async () => {
+    const { session, advance } = sessionHarness({ decoder: { failAtPacket: 1 } });
+    const heard = announcements(session);
+    session.seek(seconds(1));
+    await advance(0);
+    await advance(0);
+    expect(session.state).toBe('error');
+    expect(session.isSeeking).toBe(false);
+    expect(heard.some((event) => event.startsWith('seeked'))).toBe(false);
+    session.dispose();
+  });
+
+  it('finishes a seek whose decode ends without a picture, so playing can go on', async () => {
+    const unpaired = [0, 0.001].map(
+      (firstTimestamp, trackIndex) =>
+        new FakeVideoTrack({
+          trackIndex,
+          frameRate: FRAME_RATE,
+          frameCount: 5,
+          framesPerGop: 5,
+          firstTimestamp: seconds(firstTimestamp),
+        }),
+    );
+    const { session, advance } = sessionHarness({ parts: { frameSources: unpaired } });
+    const heard = announcements(session);
+    const playing = session.play();
+    session.seek(seconds(0.2));
+    for (let step = 0; step < 3; step += 1) await advance(0);
+    await playing;
+    expect(session.isSeeking).toBe(false);
+    expect(heard).toContain('seeked 0.2');
+    expect(session.state).toBe('playing');
     session.dispose();
   });
 });

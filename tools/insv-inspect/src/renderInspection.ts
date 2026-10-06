@@ -98,10 +98,12 @@ function renderGyro(inspection: Inspection): string {
   const stray = gyro.strayBytes > 0 ? `, ${gyro.strayBytes} stray byte(s)` : '';
   const damaged =
     gyro.damagedSamples > 0 ? `, ${gyro.damagedSamples} damaged sample(s) left out` : '';
+  const unwritten =
+    gyro.unwrittenSamples > 0 ? `, ${gyro.unwrittenSamples} unwritten slot(s) left out` : '';
   const mended = gyro.mendedStamps > 0 ? `, ${gyro.mendedStamps} stamp(s) mended` : '';
   return (
     `Gyro: ${gyro.layout} layout, ${gyro.samples.toLocaleString('en-US')} samples over ${fixed(gyro.spanSeconds)} s, ` +
-    `mean interval ${showFixed(gyro.meanIntervalUs)} us, mean |a| ${showFixed(gyro.meanAccelerationMagnitudeG)} g${stray}${damaged}${mended}`
+    `mean interval ${showFixed(gyro.meanIntervalUs)} us, mean |a| ${showFixed(gyro.meanAccelerationMagnitudeG)} g${stray}${damaged}${unwritten}${mended}`
   );
 }
 

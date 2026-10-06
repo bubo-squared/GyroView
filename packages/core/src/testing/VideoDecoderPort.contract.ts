@@ -102,6 +102,15 @@ export function describeVideoDecoderPortContract<Handle>(
       closeAll(opened);
     });
 
+    it('times a picture to the nearest whole microsecond of its packet, never truncated', async () => {
+      const opened = await openDecoder(await setup());
+      // 1.025 s in microseconds is 1024999.9999… in floating point: truncated, 1.024999 s.
+      opened.decoder.decode({ ...opened.key, timestamp: seconds(1.025) });
+      await opened.decoder.flush();
+      expect(opened.frames[0]?.timestamp).toBe(1.025);
+      closeAll(opened);
+    });
+
     it('refuses a delta packet as the first packet after creation', async () => {
       const opened = await openDecoder(await setup());
       expect(() => {
@@ -119,6 +128,16 @@ export function describeVideoDecoderPortContract<Handle>(
       expect(opened.decoder.pendingCount).toBe(0);
       await opened.decoder.flush();
       closeAll(opened);
+    });
+
+    it('takes a second close as nothing', async () => {
+      const opened = await openDecoder(await setup());
+      opened.decoder.decode(opened.key);
+      opened.decoder.close();
+      expect(() => {
+        opened.decoder.close();
+      }).not.toThrow();
+      expect(opened.errors).toEqual([]);
     });
 
     it('ends a wait for room that is under way when it closes', async () => {

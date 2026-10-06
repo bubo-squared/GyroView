@@ -291,6 +291,7 @@ describe('<gyro-view>', () => {
     customElements.define('gyro-view-refused-late', class extends GyroViewElement {});
     const upgraded = element as GyroViewElement;
     elements.push(upgraded);
+    await settle();
     expect(warnings).toEqual([
       {
         code: 'refused-property',
@@ -299,6 +300,20 @@ describe('<gyro-view>', () => {
     ]);
     expect(upgraded.muted).toBe(true);
     await nextEvent(upgraded, 'ready');
+  });
+
+  it('warns of an attribute it ignores at its upgrade to a listener added once it is defined', async () => {
+    const element = document.createElement('gyro-view-misspelt');
+    element.setAttribute('view-mode', 'normall');
+    document.body.append(element);
+    customElements.define('gyro-view-misspelt', class extends GyroViewElement {});
+    elements.push(element as GyroViewElement);
+    const warnings: PlayerWarning[] = [];
+    element.addEventListener('warning', (event) => {
+      warnings.push((event as CustomEvent<PlayerWarning>).detail);
+    });
+    await settle();
+    expect(warnings.map((warning) => warning.code)).toEqual(['ignored-attribute']);
   });
 
   it('refuses a time that is not a finite number, even while a load waits', () => {
@@ -333,14 +348,40 @@ describe('<gyro-view>', () => {
     expect(element.currentTime).toBeGreaterThanOrEqual(1.5);
   });
 
-  it('loads nothing once removed in the task that set its src', async () => {
+  it('loads nothing once removed in the task that set its src, and its play says so', async () => {
     const element = create({ controls: '' });
     element.src = X5_RECORDING_URL;
     const playing = element.play();
     element.remove();
-    await playing;
+    await expect(playing).rejects.toMatchObject({ code: 'play-interrupted', category: 'usage' });
     expect(element.status).toBe('idle');
     expect(element.paused).toBe(true);
+  });
+
+  it('refuses to play with no src, as a media element without a source does', async () => {
+    const element = create({ controls: '' });
+    await expect(element.play()).rejects.toMatchObject({ code: 'no-source', category: 'usage' });
+  });
+
+  it('plays a src set while out of the document once it is connected', async () => {
+    const element = document.createElement('gyro-view');
+    element.style.width = '256px';
+    element.src = X5_RECORDING_URL;
+    const playing = element.play();
+    await settle();
+    expect(element.status).toBe('idle');
+    document.body.append(element);
+    elements.push(element);
+    await playing;
+    expect(element.paused).toBe(false);
+  });
+
+  it('resolves load once ready, autoplay starting after it', async () => {
+    const element = create({ controls: '', autoplay: '' });
+    element.src = X5_RECORDING_URL;
+    await element.load();
+    expect(element.status).not.toBe('loading');
+    await waitFor(() => !element.paused, 'autoplay');
   });
 
   it('starts playing on its own once loaded when told to autoplay', async () => {
@@ -747,13 +788,14 @@ describe('<gyro-view>', () => {
     expect(element.stabilization).toBe('lock');
   });
 
-  it('warns of a view attribute it cannot read, as it warns of an unknown choice', () => {
+  it('warns of a view attribute it cannot read, as it warns of an unknown choice', async () => {
     const element = create({ controls: '' });
     const warnings: PlayerWarning[] = [];
     element.addEventListener('warning', (event) => {
       warnings.push(event.detail);
     });
     element.setAttribute('fov', 'wide');
+    await settle();
     expect(warnings).toEqual([
       { code: 'ignored-attribute', message: 'ignoring fov="wide"; expected a number of degrees' },
     ]);
@@ -810,6 +852,38 @@ describe('<gyro-view>', () => {
 
     element.src = null;
     await waitFor(() => element.status === 'idle', 'unloading');
+  });
+
+  it('shows nothing of the last recording while the next one loads or after it fails', async () => {
+    const element = await createReady();
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    await element.play();
+    await waitFor(() => element.dataset['hasFrame'] !== undefined, 'a frame on screen');
+    expect(getComputedStyle(canvas).opacity).toBe('1');
+
+    const failed = nextEvent(element, 'error');
+    element.src = `${X5_RECORDING_URL}.missing`;
+    await settle();
+    expect(getComputedStyle(canvas).opacity).toBe('0');
+    await failed;
+    expect(getComputedStyle(canvas).opacity).toBe('0');
+  });
+
+  it('marks its first frame once a load, not at every frame', async () => {
+    const element = create({ controls: '' });
+    const marks: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => {
+      marks.push(...records);
+    });
+    observer.observe(element, { attributeFilter: ['data-has-frame'] });
+    const ready = nextEvent(element, 'ready');
+    element.src = X5_RECORDING_URL;
+    await ready;
+    await element.play();
+    await waitFor(() => element.currentTime > 0.3, 'a few frames played');
+    await settle();
+    observer.disconnect();
+    expect(marks).toHaveLength(1);
   });
 
   it('reports a src that is no URL as an error, like any source it cannot read', async () => {
@@ -1121,6 +1195,25 @@ describe('<gyro-view>', () => {
     expect(element.hasAttribute('popover')).toBe(false);
   });
 
+  it('keeps a popover the page made of it, shown, when it leaves the pinned fill', async () => {
+    const element = create({ controls: '', popover: 'auto' });
+    element.showPopover();
+    refuseFullscreen(element);
+    await element.toggleFullscreen();
+    expect(isCoveringTheViewport(element)).toBe(true);
+
+    await element.toggleFullscreen();
+    expect(element.getAttribute('popover')).toBe('auto');
+    expect(element.matches(':popover-open')).toBe(true);
+  });
+
+  it('keeps a popover the page made of it when the page removes it', async () => {
+    const element = create({ controls: '', popover: 'auto' });
+    element.remove();
+    await settle();
+    expect(element.getAttribute('popover')).toBe('auto');
+  });
+
   it('goes back to its place on the page when it leaves the pinned fill', async () => {
     const element = create({ controls: '', style: 'width: 300px; height: 150px; margin: 8px' });
     const placed = boundsOf(element);
@@ -1162,6 +1255,46 @@ describe('<gyro-view>', () => {
 
     element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await waitFor(() => !isFillingTheScreen(element), 'leaving fullscreen');
+  });
+
+  it('shows on its Fullscreen button whether it fills the screen, pinned or not', async () => {
+    const element = await createReady();
+    const button = control(element, '.fullscreen', HTMLButtonElement);
+    const enterIcon = button.getHTML();
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+
+    await userEvent.click(button);
+    await waitFor(() => button.getAttribute('aria-pressed') === 'true', 'the button pressed');
+    expect(element.matches(':fullscreen')).toBe(true);
+    expect(button.getHTML()).not.toBe(enterIcon);
+    await userEvent.click(button);
+    await waitFor(() => button.getAttribute('aria-pressed') === 'false', 'the button released');
+    expect(button.getHTML()).toBe(enterIcon);
+
+    refuseFullscreen(element);
+    await element.toggleFullscreen();
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    pressKey(element, 'Escape');
+    await waitFor(() => button.getAttribute('aria-pressed') === 'false', 'the fill left');
+  });
+
+  it('keeps the Escape that leaves the pinned fill from a dialog around it', async () => {
+    const dialog = centredClippingDialog();
+    const element = create({ controls: '' });
+    dialog.append(element);
+    refuseFullscreen(element);
+    await element.toggleFullscreen();
+    const heard: string[] = [];
+    dialog.addEventListener('keydown', (event) => {
+      heard.push(event.key);
+    });
+
+    const escape = pressKey(element, 'Escape');
+
+    expect(escape.defaultPrevented).toBe(true);
+    expect(heard).toEqual([]);
+    await waitFor(() => !isFillingTheScreen(element), 'leaving the fill');
+    dialog.remove();
   });
 
   it('leaves the fullscreen it entered from its button when it sits inside another component', async () => {
@@ -1209,6 +1342,37 @@ describe('<gyro-view>', () => {
     const ready = nextEvent(element, 'ready');
     document.body.append(element);
     await ready;
+  });
+
+  it('gives up its WebGL context once removed, and draws on a fresh canvas once back', async () => {
+    const element = await createReady();
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    const context = canvas.getContext('webgl2');
+    element.remove();
+    await waitFor(() => context?.isContextLost() === true, 'the context given up');
+
+    const ready = nextEvent(element, 'ready');
+    document.body.append(element);
+    await ready;
+    const fresh = control(element, 'canvas', HTMLCanvasElement);
+    expect(fresh).not.toBe(canvas);
+    expect(fresh.getAttribute('part')).toBe('canvas');
+    await element.play();
+    await waitFor(() => element.dataset['hasFrame'] !== undefined, 'a frame on the fresh canvas');
+  });
+
+  it('loads on a fresh canvas when the browser took the context away between recordings', async () => {
+    const element = await createReady();
+    element.src = null;
+    await waitFor(() => element.status === 'idle', 'the unload');
+    const canvas = control(element, 'canvas', HTMLCanvasElement);
+    canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();
+    await settle();
+
+    const ready = nextEvent(element, 'ready');
+    element.src = X5_RECORDING_URL;
+    await ready;
+    expect(control(element, 'canvas', HTMLCanvasElement)).not.toBe(canvas);
   });
 
   it('keeps its recording when moved within the document', async () => {

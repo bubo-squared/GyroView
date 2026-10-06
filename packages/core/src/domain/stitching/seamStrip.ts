@@ -3,7 +3,7 @@ import { degrees, type Degrees } from '../../shared/units/angle';
 
 /**
  * An arc of azimuths around the seam ring: from `start` up to `end`, in degrees from body +x
- * towards body +y (down).
+ * towards body +y.
  */
 export interface AzimuthArc {
   readonly start: Degrees;
@@ -15,10 +15,10 @@ export interface AzimuthArc {
  * see the same scene and their agreement is measured. It is sampled every half degree in
  * azimuth and in the angle from body +z, and read in 5-degree azimuth bins.
  *
- * Azimuth runs from body +x (the right seam) towards body +y (down): 0 right, 90 nadir, 180
- * left, 270 zenith. The strip reaches 7 degrees either side of the ring; a slide of one lens's
- * sampling moves the directions it reads, and the share of each bin both lenses still image
- * (its validity) says how much of a slide the strip holds.
+ * Azimuth runs in the body frame (ADR 0008), from body +x towards body +y: 90 is body +y, the
+ * nadir only of a camera standing upright (ADR 0038). The strip reaches 7 degrees either side of
+ * the ring; a slide of one lens's sampling moves the directions it reads, and the share of each
+ * bin both lenses still image (its validity) says how much of a slide the strip holds.
  */
 const STRIP_HALF_WIDTH_DEGREES = 7;
 const STRIP_STEP_DEGREES = 0.5;
@@ -44,8 +44,10 @@ export const SEAM_BIN_COUNT = Math.round(FULL_CIRCLE_DEGREES / BIN_WIDTH_DEGREES
 export const SEAM_CELL_SUBSAMPLES = 5;
 
 /**
- * The arc under the camera, where whatever holds it (a hand, a stick, a deck) is always within a
- * metre and its parallax dwarfs anything else: the disparity field stays flat there.
+ * The arc under a camera standing upright, where whatever holds it (a hand, a stick, a deck) is
+ * always within a metre and its parallax dwarfs anything else: the disparity field stays flat
+ * there. Fixed in the body frame, so it misses what holds a camera mounted another way, on its
+ * side most often (ADR 0026, a known limit of the trial).
  */
 const NADIR_ARC_START_DEGREES = 60;
 const NADIR_ARC_END_DEGREES = 120;

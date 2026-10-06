@@ -66,3 +66,17 @@ without a pause. Pixels outside the picture's areas are black. A new mode that r
 projection is a change to core alone; a new projection is one picture kind, one ray chunk and
 one program entry, each checked by the compiler. Gain matching keeps measuring while the raw
 lenses show; its gains apply again when a stitched mode returns.
+
+## Since 2026-10-05: a tall picture's height is bounded too
+
+The 120-degree bound held across the picture only. On a phone held upright (about 0.46 wide
+for each unit of height) the default 90 degrees across spanned 131 from top to bottom, and 120
+across spanned 150, stretching the top and bottom edges about five times: the distortion the
+bound exists to avoid, on the device motion look is made for. The field of view a rectilinear
+picture shows (`shownFieldOfView` in `rectilinear.ts`) is now the view's, narrowed on a picture
+taller than wide so that its height spans 120 degrees at most. The view state, the `fov`
+attribute and `viewchange` keep the horizontal field the page set, so turning the phone back
+shows it again. Drags count degrees per pixel at the shown field and the zoom toward the
+pointer solves with it, so the point under a finger stays under it; a zoom starts from the
+shown field, so zooming in shows at the first step and zooming out at the bound changes
+nothing.

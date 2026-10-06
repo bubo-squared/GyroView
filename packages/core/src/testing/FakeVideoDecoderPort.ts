@@ -6,6 +6,12 @@ import type {
   VideoDecoderPort,
 } from '../ports/VideoDecoderPort';
 import { GyroViewError } from '../shared/errors/GyroViewError';
+import {
+  microseconds,
+  microsecondsToSeconds,
+  secondsToMicroseconds,
+  type Seconds,
+} from '../shared/units/time';
 
 /**
  * What the fake decoder hands out: enough to trace a frame back to its packet and to assert that
@@ -207,7 +213,7 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
   private frameFor(packet: EncodedVideoPacket): DecodedFrame<FakeFrameHandle> {
     let isClosed = false;
     return {
-      timestamp: packet.timestamp,
+      timestamp: inWholeMicroseconds(packet.timestamp),
       handle: {
         packetData: packet.data,
         isClosed: (): boolean => isClosed,
@@ -217,6 +223,16 @@ export class FakeVideoDecoder implements VideoDecoderHandle {
       },
     };
   }
+}
+
+/**
+ * A platform decoder carries timestamps in whole microseconds, so a frame comes back a fraction of
+ * one away from a sample-table time that is not a whole number of them, as the port's contract
+ * allows.
+ */
+function inWholeMicroseconds(time: Seconds): Seconds {
+  const whole = microseconds(Math.round(secondsToMicroseconds(time)));
+  return microsecondsToSeconds(whole);
 }
 
 async function afterTicks(ticks: number): Promise<void> {

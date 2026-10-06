@@ -7,8 +7,9 @@ import { DEFAULT_VIEW, type ViewState } from './ViewState';
 import type { Vector3 } from '../../shared/math/Vector3';
 import { degrees } from '../../shared/units/angle';
 
-const VIEWPORT_WIDTH = 900;
+const VIEWPORT = { width: 900, height: 900 / (16 / 9) };
 const ASPECT = 16 / 9;
+const PORTRAIT_ASPECT = 390 / 844;
 
 function viewOf(yaw: number, pitch: number, fieldOfView: number): ViewState {
   return {
@@ -32,19 +33,19 @@ function expectVector(actual: Vector3, expected: Vector3): void {
 
 describe('view gestures', () => {
   it('drags the picture: a drag to the right turns the viewer left by the covered angle', () => {
-    const panned = panView(DEFAULT_VIEW, { x: 90, y: 0 }, VIEWPORT_WIDTH);
+    const panned = panView(DEFAULT_VIEW, { x: 90, y: 0 }, VIEWPORT);
     expect(panned.yaw).toBeCloseTo(-9, 9);
     expect(panned.pitch).toBe(0);
   });
 
   it('drags the picture down to look up, and never past the poles', () => {
-    expect(panView(DEFAULT_VIEW, { x: 0, y: 450 }, VIEWPORT_WIDTH).pitch).toBeCloseTo(45, 9);
-    expect(panView(DEFAULT_VIEW, { x: 0, y: 2000 }, VIEWPORT_WIDTH).pitch).toBe(90);
+    expect(panView(DEFAULT_VIEW, { x: 0, y: 450 }, VIEWPORT).pitch).toBeCloseTo(45, 9);
+    expect(panView(DEFAULT_VIEW, { x: 0, y: 2000 }, VIEWPORT).pitch).toBe(90);
   });
 
   it('covers fewer degrees per pixel when zoomed in', () => {
     const zoomedIn = { ...DEFAULT_VIEW, fieldOfView: degrees(45) };
-    expect(panView(zoomedIn, { x: 90, y: 0 }, VIEWPORT_WIDTH).yaw).toBeCloseTo(-4.5, 9);
+    expect(panView(zoomedIn, { x: 90, y: 0 }, VIEWPORT).yaw).toBeCloseTo(-4.5, 9);
   });
 
   it('zooms in steps and stays within the field of view range', () => {
@@ -64,6 +65,29 @@ describe('view gestures', () => {
     const zoomed = zoomViewAt(view, { steps, focus }, ASPECT);
     expect(zoomed.fieldOfView).toBeCloseTo(view.fieldOfView / 1.1 ** steps, 9);
     expectVector(directionAt(zoomed, focus, ASPECT), underPointer);
+  });
+
+  it.each([
+    { focus: { x: 0.8, y: 0.3 }, view: viewOf(0, 0, 100), roll: 25 },
+    { focus: { x: 0.1, y: 0.9 }, view: viewOf(30, 20, 100), roll: 60 },
+    { focus: { x: 0.95, y: 0.05 }, view: viewOf(-60, -40, 90), roll: -40 },
+  ])(
+    'keeps the direction under the pointer where it is in a rolled view: roll $roll',
+    ({ focus, view, roll }) => {
+      const rolled = { ...view, roll: degrees(roll) };
+      const underPointer = directionAt(rolled, focus, ASPECT);
+      const zoomed = zoomViewAt(rolled, { steps: 3, focus }, ASPECT);
+      expect(zoomed.roll).toBe(roll);
+      expectVector(directionAt(zoomed, focus, ASPECT), underPointer);
+    },
+  );
+
+  it('keeps the direction under the pointer where it is on a portrait screen', () => {
+    const focus = { x: 0.2, y: 0.85 };
+    const view = viewOf(20, 10, 90);
+    const underPointer = directionAt(view, focus, PORTRAIT_ASPECT);
+    const zoomed = zoomViewAt(view, { steps: 2, focus }, PORTRAIT_ASPECT);
+    expectVector(directionAt(zoomed, focus, PORTRAIT_ASPECT), underPointer);
   });
 
   it('zooms about the centre like the centred zoom for a pointer at the centre', () => {
@@ -87,7 +111,7 @@ describe('view gestures', () => {
 
   it('keeps the roll the device gave the view through every gesture', () => {
     const rolled = { ...viewOf(20, 10, 90), roll: degrees(25) };
-    expect(panView(rolled, { x: 90, y: 90 }, VIEWPORT_WIDTH).roll).toBe(25);
+    expect(panView(rolled, { x: 90, y: 90 }, VIEWPORT).roll).toBe(25);
     expect(zoomViewAt(rolled, { steps: 1, focus: SCREEN_CENTRE }, ASPECT).roll).toBe(25);
     expect(zoomViewAt(rolled, { steps: 1, focus: { x: 0.8, y: 0.3 } }, ASPECT).roll).toBe(25);
     expect(lookAt(rolled, degrees(5), degrees(5)).roll).toBe(25);

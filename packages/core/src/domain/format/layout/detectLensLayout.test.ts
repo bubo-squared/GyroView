@@ -23,7 +23,18 @@ function input(
   name: string | undefined,
   ...videoTracks: VideoTrackDescription[]
 ): InputDescription {
-  return { name, videoTracks: videoTracks.map((description) => ({ description })) };
+  return {
+    name,
+    videoTracks: videoTracks.map((description) => ({ description })),
+    hasTrailer: false,
+  };
+}
+
+/**
+ * A file of an older camera's pair that ends with the trailer, as its back lens's file does.
+ */
+function carrier(name: string | undefined, videoTrack: VideoTrackDescription): InputDescription {
+  return { ...input(name, videoTrack), hasTrailer: true };
 }
 
 describe('detectLensLayout', () => {
@@ -83,6 +94,44 @@ describe('detectLensLayout', () => {
     expect(layout.evidence[0]).toBe(
       'two inputs with one video track each (VID_20240101_120000_10_001.insv, VID_20240101_120000_00_001.insv)',
     );
+  });
+
+  it('takes lens 0 from the file that carries the trailer when the names say nothing', () => {
+    const layout = detectLensLayout(
+      [input('media/a1b2.insv', track(0, 2880)), carrier('media/c3d4.insv', track(0, 2880))],
+      NO_HINTS,
+    );
+    expect(layout.sources.map((source) => [source.lensIndex, source.inputIndex])).toEqual([
+      [0, 1],
+      [1, 0],
+    ]);
+    expect(layout.evidence[1]).toBe(
+      'lens 0 taken from the file that carries the trailer (media/c3d4.insv)',
+    );
+  });
+
+  it('follows the trailer over a name that says otherwise, and says so', () => {
+    const layout = detectLensLayout(
+      [
+        input('VID_20240101_120000_00_001.insv', track(0, 2880)),
+        carrier('VID_20240101_120000_10_001.insv', track(0, 2880)),
+      ],
+      NO_HINTS,
+    );
+    expect(layout.sources.map((source) => source.inputIndex)).toEqual([1, 0]);
+    expect(layout.evidence[1]).toContain('though its name says _10_');
+  });
+
+  it('lets the names decide where both files carry a trailer', () => {
+    const layout = detectLensLayout(
+      [
+        carrier('VID_20240101_120000_10_001.insv', track(0, 2880)),
+        carrier('VID_20240101_120000_00_001.insv', track(0, 2880)),
+      ],
+      NO_HINTS,
+    );
+    expect(layout.sources.map((source) => source.inputIndex)).toEqual([1, 0]);
+    expect(layout.evidence[1]).toBe('lens 0 taken from the _00_ file when named');
   });
 
   it('keeps the given order for a pair of unnamed inputs', () => {

@@ -149,7 +149,13 @@ upright, the rest of its IMU frame assumed (ADR 0009).
   that decoder falls behind and waits.
 - Opening a recording integrates its whole gyro record on the main thread before the first
   frame: 70 ms for the 4.4-minute X5 office recording on an M4 Pro, a long task of half a second
-  under six times CPU throttling, and longer the longer the recording.
+  under six times CPU throttling, and longer the longer the recording. The record is read whole,
+  in one range request, and kept as typed arrays a few times its size: an hour-long recording on
+  an iPhone's memory is still to be checked.
+- A raw gyro record whose info record states no accelerometer range is read at telemetry-parser's
+  16 g. Every raw-layout camera seen states 32 g, so such a file would read gravity at half its
+  strength, and stabilization would lose the accelerometer's correction of drift; telling the
+  range from the resting magnitude waits for such a file.
 - The 8K and 5.7K60 modes decode about as many pixels a second as one 8K30 stream: a phone
   or laptop whose decoder is of 4K60 class plays them in stretches between waits.
 - While the device turns the view, motion look draws the stitch once a display frame: a 30 fps
@@ -163,6 +169,10 @@ upright, the rest of its IMU frame assumed (ADR 0009).
 - The download's budget (128 MiB ahead, 32 MiB behind, shared by a pair's files) is a
   desktop's; an iPhone's memory under several players is still to be measured.
 - The iframe embed speaks English: the element's `messages` do not cross the embed protocol.
+- On an iPhone, the Fullscreen button of the iframe form fills only the iframe: Safari has no
+  fullscreen for an element there, and the player's pinned fill (ADR 0041) can cover only its
+  own document, which is the frame. The element form fills the screen. Covering the screen from
+  the iframe would need the snippet to pin the iframe itself, told over the embed protocol.
 - Firefox and Android are best effort: Firefox has WebCodecs only on desktop, Android
   decoders vary.
 - HEVC on Linux decodes only where the browser reaches the GPU through VA-API (Intel or AMD);

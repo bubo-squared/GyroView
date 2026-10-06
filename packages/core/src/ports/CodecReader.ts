@@ -30,7 +30,7 @@ export interface ContainerCodecs {
 /**
  * Port: tells the decoder configuration of each track of a file from its file type and movie
  * boxes, held in memory; it reads no sample. Rejects with `unsupported-container` for bytes that
- * are no movie, and with `codec-unsupported` for a video track it cannot configure.
+ * are no movie, and for a video track whose sample entry carries no decoder configuration.
  */
 export interface CodecReader {
   read(movieBytes: Uint8Array): Promise<ContainerCodecs>;

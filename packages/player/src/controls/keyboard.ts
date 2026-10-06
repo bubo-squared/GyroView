@@ -68,12 +68,14 @@ export function shortcutFor(press: KeyPress): ShortcutCommand | undefined {
 /**
  * What the keyboard drives, and how Escape leaves fullscreen when the element fills the screen.
  */
-export interface KeyboardHost extends Pick<ControlsHost, 'togglePlay' | 'toggleFullscreen'> {
+export interface KeyboardHost extends Pick<
+  ControlsHost,
+  'togglePlay' | 'toggleFullscreen' | 'isFullscreen'
+> {
   readonly player: Pick<
     Player,
     'currentTime' | 'seek' | 'stop' | 'turn' | 'zoom' | 'resetView' | 'isMuted' | 'setMuted'
   >;
-  readonly isFullscreen: () => boolean;
   exitFullscreen(): void;
 }
 
@@ -140,6 +142,9 @@ export function bindKeyboard(element: HTMLElement, host: KeyboardHost): () => vo
     'keydown',
     (event) => {
       if (event.key === 'Escape' && host.isFullscreen()) {
+        // Kept: the same press would also close a dialog the player sits in.
+        event.preventDefault();
+        event.stopPropagation();
         host.exitFullscreen();
         return;
       }

@@ -4,6 +4,7 @@
   "private": true,
   "description": "Codec reader and audio packager for GyroView core ports, built on mediabunny.",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./src/index.ts",

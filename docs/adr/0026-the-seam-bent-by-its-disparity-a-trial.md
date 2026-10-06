@@ -117,3 +117,13 @@ join is dropped: it trades one artefact for another.
   tens of milliseconds a frame, and points where the seam needs a value at every azimuth.
 - A rigid refinement of the back lens per recording, as omnikit does: aligns one depth at a time;
   the near objects own the seam's cost (the withdrawn refiner).
+
+## Since ADR 0038 (2026-10-05)
+
+The arc the field keeps flat under the camera (`NADIR_ARC`, body azimuths 60 to 120 degrees) is
+body +y: the nadir of a camera standing upright. An X camera held upright on a stick reads "on its
+right side" (ADR 0038), its down along body +x, at azimuth 0. On such a recording the arc lies
+over a level sector of the scene, while the stick and whatever is below it are bent and counted
+as trusted bins; some of the doubling left near the deck in the evidence above may be this. A
+player-side trial takes the arc from the mounting (world down in the body, at azimuth
+`atan2(y, x)`), keeps none for a lens-vertical mounting, and lets an arc wrap through zero.

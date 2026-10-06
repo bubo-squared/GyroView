@@ -1,7 +1,13 @@
-import { directionAt, rayThroughPicture } from './rectilinear';
-import { SCREEN_CENTRE, type DragDelta, type ScreenPoint } from './screenLayout';
+import { directionAt, rayThroughPicture, shownFieldOfView } from './rectilinear';
+import {
+  aspectOf,
+  SCREEN_CENTRE,
+  type DragDelta,
+  type ScreenPoint,
+  type ViewportSize,
+} from './screenLayout';
 import { clampView, type ViewState } from './ViewState';
-import { rotationAboutX, transformVector } from '../../shared/math/Matrix3';
+import { rotationAboutX, rotationAboutZ, transformVector } from '../../shared/math/Matrix3';
 import type { Vector3 } from '../../shared/math/Vector3';
 import {
   degrees,
@@ -42,18 +48,20 @@ export function zoomFactor(steps: number): number {
 }
 
 /**
- * Angle covered by one pixel across the viewport: the field of view spread over its width.
+ * Angle covered by one pixel across the viewport: the field of view it shows spread over its
+ * width.
  */
-function degreesPerPixel(view: ViewState, viewportWidth: number): Degrees {
-  return degrees(view.fieldOfView / Math.max(viewportWidth, 1));
+function degreesPerPixel(view: ViewState, viewport: ViewportSize): Degrees {
+  const shown = shownFieldOfView(view.fieldOfView, aspectOf(viewport));
+  return degrees(shown / Math.max(viewport.width, 1));
 }
 
 /**
  * Turns the view by a drag: dragging the picture to the right turns the viewer to the left, as
- * grabbing a globe does, by as many degrees as the drag covers at the current field of view.
+ * grabbing a globe does, by as many degrees as the drag covers at the field of view shown.
  */
-export function panView(view: ViewState, delta: DragDelta, viewportWidth: number): ViewState {
-  const perPixel = degreesPerPixel(view, viewportWidth);
+export function panView(view: ViewState, delta: DragDelta, viewport: ViewportSize): ViewState {
+  const perPixel = degreesPerPixel(view, viewport);
   return clampView({
     ...view,
     yaw: degrees(view.yaw - delta.x * perPixel),
@@ -62,10 +70,14 @@ export function panView(view: ViewState, delta: DragDelta, viewportWidth: number
 }
 
 /**
- * Narrows the field of view by `steps` zoom steps (negative widens), within its bounds.
+ * Narrows the field of view shown by `steps` zoom steps (negative widens), within its bounds.
+ * A zoom starts from what the picture shows, so a view wider than a portrait screen shows
+ * neither waits through steps that change nothing nor changes when it cannot widen further.
  */
-function zoomView(view: ViewState, steps: number): ViewState {
-  return clampView({ ...view, fieldOfView: degrees(view.fieldOfView / zoomFactor(steps)) });
+function zoomView(view: ViewState, steps: number, viewportAspect: number): ViewState {
+  const shown = shownFieldOfView(view.fieldOfView, viewportAspect);
+  const zoomed = clampView({ ...view, fieldOfView: degrees(shown / zoomFactor(steps)) });
+  return shownFieldOfView(zoomed.fieldOfView, viewportAspect) === shown ? view : zoomed;
 }
 
 /**
@@ -74,12 +86,20 @@ function zoomView(view: ViewState, steps: number): ViewState {
  * stays under it. When the poles leave no such turn, it zooms about the centre.
  */
 export function zoomViewAt(view: ViewState, zoom: ZoomRequest, viewportAspect: number): ViewState {
-  const zoomed = zoomView(view, zoom.steps);
+  const zoomed = zoomView(view, zoom.steps, viewportAspect);
   // The centre needs no turn; leaving the trigonometry out keeps the angles exactly as they were.
   const isAtCentre = zoom.focus.x === SCREEN_CENTRE.x && zoom.focus.y === SCREEN_CENTRE.y;
   if (isAtCentre || zoomed.fieldOfView === view.fieldOfView) return zoomed;
   const direction = directionAt(view, zoom.focus, viewportAspect);
-  const ray = rayThroughPicture(zoomed.fieldOfView, zoom.focus, viewportAspect);
+  // The roll stays as it is, so the pitch and yaw solved for turn the rolled ray.
+  const ray = transformVector(
+    rotationAboutZ(degreesToRadians(view.roll)),
+    rayThroughPicture(
+      shownFieldOfView(zoomed.fieldOfView, viewportAspect),
+      zoom.focus,
+      viewportAspect,
+    ),
+  );
   const pitch = pitchRaising(ray, direction[1], view.pitch);
   if (pitch === undefined) return zoomed;
   const tilted = transformVector(rotationAboutX(degreesToRadians(pitch)), ray);

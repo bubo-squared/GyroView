@@ -31,6 +31,11 @@ export interface InputDescription {
    */
   readonly name: string | undefined;
   readonly videoTracks: readonly { readonly description: VideoTrackDescription }[];
+  /**
+   * Whether the file ends with an Insta360 trailer, which an older camera writes to its back
+   * lens's file alone.
+   */
+  readonly hasTrailer: boolean;
 }
 
 interface Candidate {
@@ -81,22 +86,37 @@ function multiTrack(candidates: readonly Candidate[], hints: LayoutHints): LensL
   };
 }
 
+/**
+ * Lens 0 is the back lens. Where one file of the pair carries the trailer, as an older camera
+ * writes it to its back lens's file alone, that file is lens 0, whatever the files are called;
+ * otherwise the `_00_` name tells.
+ */
 function splitFiles(
   inputs: readonly InputDescription[],
   candidates: readonly Candidate[],
 ): LensLayout {
-  const ordered = candidates.toSorted(
-    (left, right) => fileRank(left.input) - fileRank(right.input),
-  );
+  const carriers = candidates.filter((candidate) => candidate.input.hasTrailer);
+  const [carrier] = carriers;
+  const isTrailerDecisive = carriers.length === 1 && carrier !== undefined;
+  const ordered = isTrailerDecisive
+    ? [carrier, ...candidates.filter((candidate) => candidate !== carrier)]
+    : candidates.toSorted((left, right) => fileRank(left.input) - fileRank(right.input));
   const names = inputs.map((input) => input.name ?? '?').join(', ');
   return {
     kind: 'split-files',
     sources: ordered.map((candidate, lensIndex) => fullFrameSource(candidate, lensIndex)),
     evidence: [
       `two inputs with one video track each (${names})`,
-      'lens 0 taken from the _00_ file when named',
+      isTrailerDecisive ? trailerEvidence(carrier) : 'lens 0 taken from the _00_ file when named',
     ],
   };
+}
+
+function trailerEvidence(carrier: Candidate): string {
+  const name = carrier.input.name ?? '?';
+  const disagreement =
+    fileRank(carrier.input) === SCREEN_LENS_RANK ? ', though its name says _10_' : '';
+  return `lens 0 taken from the file that carries the trailer (${name})${disagreement}`;
 }
 
 function packed(candidate: Candidate): LensLayout {
@@ -155,8 +175,8 @@ function isPacked(track: VideoTrackDescription): boolean {
 }
 
 /**
- * The back lens file (`_00_`) sorts first, the screen-side lens file (`_10_`) second; unnamed or
- * unconventionally named files keep their given order.
+ * Where the trailer does not tell: the back lens file (`_00_`) sorts first, the screen-side lens
+ * file (`_10_`) second; unnamed or unconventionally named files keep their given order.
  */
 function fileRank(input: InputDescription): number {
   const name = RecordingFileName.parse(input.name ?? '');

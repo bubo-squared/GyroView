@@ -100,7 +100,9 @@ const fromUrl = await inspectRecording('https://media.example/VID_20260814_13264
 ```
 
 For an interface of your own, `createBrowserPlayer` gives the player without the element: it
-draws on your canvas, sounds through your audio element and has the same events.
+draws on your canvas, sounds through your audio element and has the same events, which
+`player.events.on` listens to. `player.togglePlayback()` plays or pauses as the element's tap
+does, a refused start reported as a `warning`.
 `attachViewGestures` and `attachKeyboard` give your canvas the element's drags, pinches, wheel
 zoom and taps, and its keyboard shortcuts; each returns what removes them.
 
@@ -187,7 +189,10 @@ server renders is safe and registers nothing.
 Each player holds a WebGL context and, while a recording is loaded, two hardware video
 decoders. Browsers cap both (about sixteen WebGL contexts in Chrome, fewer decoders on phones),
 so a gallery gives its players `preload="none"`, which keeps the decoders idle until play, and
-loads a recording only for the player in view, removing `src` from the others.
+loads a recording only for the player in view, removing `src` from the others. An element the
+page removes gives its WebGL context up at once rather than when it is collected, and draws on a
+fresh canvas if it is added again; one whose context the browser took away while it held no
+recording draws on a fresh canvas at its next load.
 
 ## Requirements
 
@@ -216,13 +221,14 @@ loads a recording only for the player in view, removing `src` from the others.
   decode fails with the `codec-unsupported` error.
 
 The supported browsers, with the oldest versions that have what the player uses (WebCodecs,
-WebGL 2, container queries, and on iPhone `ManagedMediaSource` for the sound):
+WebGL 2, container queries, `color-mix()`, the ES2023 array methods, and on iPhone
+`ManagedMediaSource` for the sound):
 
-| Browser               | From | Notes                                                             |
-| --------------------- | ---- | ----------------------------------------------------------------- |
-| Chrome, Edge desktop  | 107  | HEVC is decoded in hardware from this version on (Linux: VA-API). |
-| Safari on macOS       | 16.4 |                                                                   |
-| Safari on iPhone/iPad | 17.1 | 16.4 to 17.0 play without sound, with a `warning` event.          |
+| Browser               | From | Notes                                                                                    |
+| --------------------- | ---- | ---------------------------------------------------------------------------------------- |
+| Chrome, Edge desktop  | 111  | The controls' colours need 111; HEVC is decoded in hardware from 107 on (Linux: VA-API). |
+| Safari on macOS       | 16.4 |                                                                                          |
+| Safari on iPhone/iPad | 17.1 | 16.4 to 17.0 play without sound, with a `warning` event.                                 |
 
 Firefox and Chrome on Android are untested: they play what their decoders accept.
 

@@ -29,3 +29,13 @@ a known variant. A camera writing an unknown variant fails with a typed error na
 How a lens is brought to the display follows the colour its track's bitstream declares (the VUI
 or a `colr` box, `TrackColour`), not the camera model and not the info record's capture mode
 ("Dolby_Vision" on the X6), ADR 0033.
+
+## Lens order of a split pair (2026-10-05)
+
+Which file of a split-file pair holds lens 0 was read from the names alone (`_00_` before
+`_10_`), and unnamed or renamed files kept the order they were given in: a pair served from
+opaque URLs `_10_` first was stitched with each lens in the other's place, without a warning. The
+data tells: an older camera writes the trailer to its back lens's file alone, and the player
+already reads the recording from whichever file has it. So where exactly one file of the pair
+ends with a trailer, that file is lens 0; the names decide only where the trailer does not, and
+the layout's evidence says when the trailer overrode a name.

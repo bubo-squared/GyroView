@@ -21,6 +21,10 @@ export const FOOTER_TRAILER_SIZE_OFFSET = FOOTER_RESERVED_SIZE;
 export const FOOTER_VERSION_OFFSET = FOOTER_TRAILER_SIZE_OFFSET + FOOTER_FIELD_SIZE;
 export const FOOTER_MAGIC_OFFSET = FOOTER_VERSION_OFFSET + FOOTER_FIELD_SIZE;
 export const FOOTER_MAGIC_SIZE = 32;
+/**
+ * The footer version every documented camera writes (docs/FORMAT.md).
+ */
+export const KNOWN_TRAILER_VERSION = 3;
 
 /**
  * Every record payload is followed by a 6-byte header: u8 format, u8 id, u32 LE payload size.

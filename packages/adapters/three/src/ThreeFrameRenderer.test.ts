@@ -21,7 +21,11 @@ import {
   type Vector3,
   type ViewState,
 } from '@gyroview/core';
-import { equirectangularPixelOf, MeiModel, parseOffsetString } from '@gyroview/core/testing';
+import {
+  equirectangularPixelOf,
+  parseOffsetString,
+  projectDirection,
+} from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { DRAW_AT_ONCE, type DrawSchedule } from './drawSchedules';
@@ -32,11 +36,13 @@ import {
   halvesFrame,
   solidFrame,
   stripesFrame,
+  stripFrame,
 } from './test/syntheticFrames';
 import {
   PACKED,
   MULTI_TRACK,
   setupAsRecorded,
+  syntheticCalibration,
   syntheticMeiCalibration,
 } from './test/syntheticStitching';
 import { ThreeFrameRenderer } from './ThreeFrameRenderer';
@@ -75,6 +81,11 @@ const GRADIENT_TOLERANCE = 2 / 255;
  */
 const OFFICE_MEI =
   '2_2.000000_4296.660_4295.450_2689.890_2681.940_-0.002_0.377_90.524_0.000000_0.000000_0.000000_0.18113680_2.16784811_-3.49636626_-0.00016818_-0.00010206_10752_5376_113_2.000000_4281.830_4282.190_8082.100_2679.470_0.289_0.043_89.987_-0.000907_-0.000055_-0.032061_0.18382449_2.06260586_-3.21479726_0.00075291_0.00063732_10752_5376_113_197632';
+
+/**
+ * The programs a renderer compiles when it opens: the three pictures' and the seam meter's.
+ */
+const RENDERER_PROGRAMS = 4;
 
 const NO_DISTORTION: MeiDistortion = { radial: [], tangential: [], thinPrism: [] };
 
@@ -282,7 +293,7 @@ describe('ThreeFrameRenderer', () => {
    * Gain matching composed over the renderer as the player composes it, measuring its seam.
    */
   function gainMatchingOver(renderer: ThreeFrameRenderer): GainMatchingFrameSink<VideoFrame> {
-    const matching = new GainMatchingFrameSink(renderer, renderer);
+    const matching = new GainMatchingFrameSink(renderer, renderer, 0);
     gainMatchers.push(matching);
     return matching;
   }
@@ -301,9 +312,9 @@ describe('ThreeFrameRenderer', () => {
   }
 
   /**
-   * Draws lens 0 of a Mei calibration over a gradient, lens 1 silenced so lens 0 alone fills the
-   * feather band, and holds each probe's sampled texel to the frame position the core model
-   * projects the probe's direction to, at the setup's radial scale.
+   * Draws lens 0 of a calibration over a gradient, lens 1 silenced so lens 0 alone fills the
+   * feather band, and holds each probe's sampled texel to the frame position the core projects
+   * the probe's direction to through the setup's lens, at its radial scale.
    */
   function expectLensZeroSampledWhereTheSetupDrawsIt(calibration: CalibrationSet): void {
     const setup = setupAsRecorded(MULTI_TRACK, calibration);
@@ -314,12 +325,11 @@ describe('ThreeFrameRenderer', () => {
     present(renderer, [gradientFrame(), solidFrame('#000000')]);
     const [lens] = setup.lenses;
     const [calibrated] = calibration.lenses;
-    if (!calibrated || lens?.projection.kind !== 'mei') throw new Error('no Mei lens');
-    const drawnModel = new MeiModel(lens.projection);
+    if (!calibrated || !lens) throw new Error('no lens 0');
     for (const [yaw, pitch] of PROBES_ON_LENS_ZERO) {
       const body = bodyDirectionAt(yaw, pitch);
       const sampled = pixelAt(renderer, equirectangularPixelOf(body, size), size);
-      const expected = drawnModel.project(transformVector(lensRotation(calibrated), body));
+      const expected = projectDirection(lens, transformVector(lensRotation(calibrated), body));
       if (!expected) throw new Error('direction outside lens 0');
       const u = (expected.x - lens.window.x) / lens.window.width;
       const v = (expected.y - lens.window.y) / lens.window.height;
@@ -409,6 +419,20 @@ describe('ThreeFrameRenderer', () => {
     const zenith = pixelAt(renderer, { column: 32, row: 2 }, size);
     expect(zenith.r).toBeGreaterThan(FAINT);
     expect(zenith.b).toBeGreaterThan(FAINT);
+    expect(pixelAt(renderer, { column: 32, row: 18 }, size).r).toBeGreaterThan(BRIGHT);
+  });
+
+  it('clears the bars a letterboxed panorama leaves, whatever was drawn there before', () => {
+    const size = { width: 64, height: 36 };
+    const renderer = open(undefined, size);
+    renderer.setViewMode('normal');
+    presentRedAndBlue(renderer);
+    expect(pixelAt(renderer, { column: 32, row: 0 }, size).r).toBeGreaterThan(BRIGHT);
+    renderer.setViewMode('equirectangular');
+    for (const row of [0, 1, 34, 35]) {
+      const bar = pixelAt(renderer, { column: 32, row }, size);
+      expect(bar.r + bar.g + bar.b).toBe(0);
+    }
     expect(pixelAt(renderer, { column: 32, row: 18 }, size).r).toBeGreaterThan(BRIGHT);
   });
 
@@ -594,6 +618,11 @@ describe('ThreeFrameRenderer', () => {
     });
   });
 
+  it('samples a radial-polynomial lens drawn at a radial scale where the scaled projection draws it', () => {
+    // A twentieth further out keeps the farthest probe inside the lens's square.
+    expectLensZeroSampledWhereTheSetupDrawsIt({ ...syntheticCalibration(), radialScale: 1.05 });
+  });
+
   for (const [term, distortion] of ONE_TERM_DISTORTIONS) {
     it(`samples a Mei lens with its ${term} alone where the core model projects`, () => {
       expectLensZeroSampledWhereTheSetupDrawsIt(syntheticMeiCalibration(distortion));
@@ -739,6 +768,31 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
   });
 
+  it('compiles its programs again once a lost context is restored, not at the next draw', async () => {
+    const schedule = new HeldDraws();
+    const renderer = open(undefined, SIZE, schedule);
+    presentRedAndBlue(renderer);
+    const canvas = canvases.at(-1);
+    const gl = canvas?.getContext('webgl2');
+    const loser = gl?.getExtension('WEBGL_lose_context');
+    if (!canvas || !gl || !loser) throw new Error('WEBGL_lose_context is unavailable');
+    const lost = eventOnce(canvas, 'webglcontextlost');
+    loser.loseContext();
+    await lost;
+    await afterNextTask();
+    let linked = 0;
+    const linkProgram = gl.linkProgram.bind(gl);
+    gl.linkProgram = (program: WebGLProgram): void => {
+      linked += 1;
+      linkProgram(program);
+    };
+    const restored = eventOnce(canvas, 'webglcontextrestored');
+    loser.restoreContext();
+    await restored;
+    expect(schedule.isPending).toBe(true);
+    expect(linked).toBe(RENDERER_PROGRAMS);
+  });
+
   it('takes the seam meters still in use with it when disposed; they measure nothing after', async () => {
     const renderer = open();
     const meter = renderer.createSeamMeter();
@@ -792,11 +846,35 @@ describe('ThreeFrameRenderer', () => {
     );
   });
 
+  it("refuses a canvas whose context is lost as the browser's failure, not its own", () => {
+    const canvas = document.createElement('canvas');
+    document.body.append(canvas);
+    canvases.push(canvas);
+    const loser = canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context');
+    if (!loser) throw new Error('WEBGL_lose_context is unavailable');
+    loser.loseContext();
+    expect(() => ThreeFrameRenderer.create(canvas, setupAsRecorded(MULTI_TRACK))).toThrow(
+      expect.objectContaining({ code: 'render-unavailable' }),
+    );
+  });
+
   it('refuses a layout with more decoded frames than the shader samples', () => {
     const setup = setupAsRecorded(MULTI_TRACK);
     expect(() => open({ ...setup, frameSlotCount: 3 })).toThrow(
       expect.objectContaining({ code: 'unsupported-layout' }),
     );
+  });
+
+  it('refuses a frame wider than the GPU holds as a texture, rather than shrinking it at every upload', () => {
+    const renderer = open();
+    const largest: unknown = canvases
+      .at(-1)
+      ?.getContext('webgl2')
+      ?.getParameter(WebGL2RenderingContext.MAX_TEXTURE_SIZE);
+    if (typeof largest !== 'number') throw new Error('no WebGL2 context');
+    expect(() => {
+      present(renderer, [stripFrame(largest + 1), solidFrame('#0000ff')]);
+    }).toThrow(expect.objectContaining({ code: 'render-unavailable' }));
   });
 
   it('refuses a pair that does not match the lens textures', () => {

@@ -70,7 +70,48 @@ const PLAYBACK_WITHIN_MS = 10_000;
  */
 const SEEK_BEYOND_THE_FIRST = 2;
 
+/**
+ * A playhead inside the first two seconds, which the evictions below take away.
+ */
+const EVICTED_PLAYHEAD = 1;
+const EVICTED_UP_TO = 2;
+
 type Segments = AsyncIterable<Uint8Array<ArrayBuffer>>;
+
+/**
+ * Takes buffered audio away, as a managed media source may at any time.
+ */
+async function evict(sourceBuffer: SourceBuffer, start: number, end: number): Promise<void> {
+  const done = new Promise((resolve) => {
+    sourceBuffer.addEventListener('updateend', resolve, { once: true });
+  });
+  sourceBuffer.remove(start, end);
+  await done;
+}
+
+function isBufferedAt(element: HTMLMediaElement, time: number): boolean {
+  const { buffered } = element;
+  for (let index = 0; index < buffered.length; index += 1) {
+    if (buffered.start(index) <= time && time < buffered.end(index)) return true;
+  }
+  return false;
+}
+
+/**
+ * The next append throws `error`, as a full source buffer does; the ones after go through.
+ */
+function refuseOnce(sourceBuffer: SourceBuffer, error: Error): void {
+  const append = sourceBuffer.appendBuffer.bind(sourceBuffer);
+  let hasRefused = false;
+  sourceBuffer.appendBuffer = (data): void => {
+    if (hasRefused) {
+      append(data);
+      return;
+    }
+    hasRefused = true;
+    throw error;
+  };
+}
 
 function everySegment(segments: Segments): Segments {
   return segments;
@@ -251,6 +292,73 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(element.error).not.toBeNull();
     expect(feeder.failure).toBeUndefined();
+    close();
+  });
+
+  it('feeds the playhead again when the audio there was evicted after the stream ended', async () => {
+    const { feeder, element, mediaSource, sourceBuffer, asked, close } =
+      await fixtureFeeder(everySegment);
+    feeder.restartFrom(seconds(0));
+    await waitUntil(() => mediaSource.readyState === 'ended');
+    element.currentTime = EVICTED_PLAYHEAD;
+    await evict(sourceBuffer, 0, EVICTED_UP_TO);
+    element.dispatchEvent(new Event('waiting'));
+    await waitUntil(() => isBufferedAt(element, EVICTED_PLAYHEAD));
+    expect(asked).toEqual([0, 0]);
+    expect(isBufferedAt(element, EVICTED_PLAYHEAD)).toBe(true);
+    expect(feeder.failure).toBeUndefined();
+    close();
+  });
+
+  it('asks for the playhead once only, however often the element waits there', async () => {
+    const { feeder, element, mediaSource, sourceBuffer, asked, close } = await fixtureFeeder(
+      (segments) => segments,
+    );
+    feeder.restartFrom(seconds(0));
+    await waitUntil(() => mediaSource.readyState === 'ended');
+    element.currentTime = EVICTED_PLAYHEAD;
+    await evict(sourceBuffer, 0, EVICTED_UP_TO);
+    element.dispatchEvent(new Event('waiting'));
+    await waitUntil(() => asked.length === 2);
+    await evict(sourceBuffer, 0, EVICTED_UP_TO);
+    element.dispatchEvent(new Event('waiting'));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(asked).toHaveLength(2);
+    close();
+  });
+
+  it('leaves alone a playhead waiting at the end of what is buffered, the run appending there', async () => {
+    const stalled = new Deferred<void>();
+    const { feeder, element, asked, close } = await fixtureFeeder(
+      stallingAfter(FIRST_SECOND, stalled),
+    );
+    feeder.restartFrom(seconds(0));
+    await stalled.promise;
+    element.currentTime = element.buffered.end(0);
+    element.dispatchEvent(new Event('waiting'));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(asked).toEqual([0]);
+    close();
+  });
+
+  it('makes room and appends again when the source buffer is full', async () => {
+    const { feeder, mediaSource, sourceBuffer, close } = await fixtureFeeder(everySegment);
+    refuseOnce(sourceBuffer, new DOMException('the buffer is full', 'QuotaExceededError'));
+    feeder.restartFrom(seconds(0));
+    await waitUntil(() => mediaSource.readyState === 'ended');
+    expect(mediaSource.readyState).toBe('ended');
+    expect(feeder.failure).toBeUndefined();
+    close();
+  });
+
+  it('fails when the source buffer stays full after making room', async () => {
+    const { feeder, sourceBuffer, close } = await fixtureFeeder(everySegment);
+    sourceBuffer.appendBuffer = (): void => {
+      throw new DOMException('the buffer is full', 'QuotaExceededError');
+    };
+    feeder.restartFrom(seconds(0));
+    await waitUntil(() => feeder.failure !== undefined);
+    expect(feeder.failure).toMatchObject({ code: 'decode' });
     close();
   });
 

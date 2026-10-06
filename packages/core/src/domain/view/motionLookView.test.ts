@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { followReading, MOTION_LOOK_VIEW, withoutRoll, type DeviceReading } from './motionLookView';
-import { rectilinearPicture } from './normalView';
 import { DEFAULT_VIEW, type ViewState } from './ViewState';
 import { degrees } from '../../shared/units/angle';
 import { milliseconds } from '../../shared/units/time';
@@ -141,7 +140,7 @@ describe('the normal view while the device holds it', () => {
     });
   });
 
-  it('changes only the view, and draws the normal picture with its roll', () => {
+  it('changes only the view', () => {
     for (const framing of [
       MOTION_LOOK_VIEW.pan(held, { x: 40, y: -30 }, SQUARE),
       MOTION_LOOK_VIEW.zoom(held, { steps: 2, focus: { x: 0.7, y: 0.3 } }, SQUARE),
@@ -150,7 +149,5 @@ describe('the normal view while the device holds it', () => {
       expect(framing.panorama).toEqual(EVERYTHING_MOVED.panorama);
       expect(framing.lenses).toEqual(EVERYTHING_MOVED.lenses);
     }
-    expect(MOTION_LOOK_VIEW.picture(held, SQUARE)).toEqual(rectilinearPicture(held));
-    expect(MOTION_LOOK_VIEW.isStabilized).toBe(true);
   });
 });

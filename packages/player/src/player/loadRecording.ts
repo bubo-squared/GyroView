@@ -1,6 +1,5 @@
 import type { PlayerWarning } from './PlayerEvents';
 import type { PlayerParts } from './PlayerOptions';
-import { DrawingBufferFit } from './DrawingBufferFit';
 import type { Pipeline } from '../composition/ports';
 import { Disposables } from '../composition/Disposables';
 import type { OpenedRecording } from '../composition/OpenedRecording';
@@ -48,30 +47,12 @@ export async function loadRecording(request: LoadRequest): Promise<LoadedRecordi
       built.dispose();
     });
     signal.throwIfAborted();
-    const fit = new DrawingBufferFit(parts.host.canvas, built.renderer);
-    disposables.add(() => {
-      fit.dispose();
-    });
-    const pipeline = withBufferQuality(built, fit);
-    const warnings = warningsOf(opened, pipeline);
-    return { opened, pipeline, warnings, dispose: disposables.toDisposer() };
+    const warnings = warningsOf(opened, built);
+    return { opened, pipeline: built, warnings, dispose: disposables.toDisposer() };
   } catch (error) {
     disposables.disposeAll();
     throw error;
   }
-}
-
-/**
- * The quality sets how many device pixels are drawn as well as how finely they are read.
- */
-function withBufferQuality(built: Pipeline, fit: DrawingBufferFit): Pipeline {
-  return {
-    ...built,
-    setQuality: (quality): void => {
-      built.setQuality(quality);
-      fit.setQuality(quality);
-    },
-  };
 }
 
 function warningsOf(opened: OpenedRecording, pipeline: Pipeline): PlayerWarning[] {

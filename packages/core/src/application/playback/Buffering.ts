@@ -26,13 +26,6 @@ export class Buffering {
 
   public constructor(private readonly lifecycle: SessionLifecycle) {}
 
-  /**
-   * The `play` waiting for buffering to end, if one is.
-   */
-  public get waitingStart(): Promise<void> | undefined {
-    return this.startAttempt?.promise;
-  }
-
   public enter(cause: BufferingCause): void {
     this.cause = cause;
     this.lifecycle.moveTo('buffering');
@@ -42,10 +35,18 @@ export class Buffering {
    * Buffers for the first frames of a start, which the promise waits for.
    */
   public enterForStart(): Promise<void> {
-    const attempt = new Deferred<void>();
-    this.startAttempt = attempt;
+    const started = this.awaitStart();
     this.enter('priming');
-    return attempt.promise;
+    return started;
+  }
+
+  /**
+   * Settles once buffering ends in a running clock: with the `play` already waiting, or as the
+   * first one, for buffering a seek or a starvation entered without one.
+   */
+  public awaitStart(): Promise<void> {
+    this.startAttempt ??= new Deferred<void>();
+    return this.startAttempt.promise;
   }
 
   /**

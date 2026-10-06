@@ -4,6 +4,7 @@
   "private": true,
   "description": "Blob adapter for GyroView core ports: RandomAccessSource over a Blob or File already in the browser.",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./src/index.ts",

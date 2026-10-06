@@ -78,3 +78,20 @@ Orientation integration runs on the main thread while loading: measured at 90 ms
 262 000 samples of a four-minute clip, so no worker is needed. Phase 6 added the buffering
 state (sound waits for the picture), key-frame scrubbing, per-channel gain matching along the
 seam and a `cors` diagnosis, all behind the same element and protocol surface.
+
+## Since the review of 2026-10-05
+
+What opening decides about the recording itself moved into the core's `readRecordingFiles`
+(`application/recording`): which file carries the trailer, the refusal of a lone `_10_` half as
+a missing second file, the other lens file looked for once, the lens layout, the calibration it
+requires and the duration of the shortest file. It was composition code, tested only in the
+browser and never mutated, while the format rules it applies are the core's. `openRecording`
+keeps what only the composition root has: the ports that open the inputs, the downloads, the
+decode probe and the timing.
+
+The embed protocol answers where it was silent. The frame says hello while its page loads, so a
+frame whose `load` event passes without one for ten seconds will not answer: the handle fails
+what waits on it, and what comes after, with `embed-unreachable` until a hello arrives
+(`HelloWatch`). The frame answers a well-formed command whose name it does not know, from a
+snippet of a later build than the frame, with `invalid-argument`, where it dropped it as
+malformed and the page's promise never settled.

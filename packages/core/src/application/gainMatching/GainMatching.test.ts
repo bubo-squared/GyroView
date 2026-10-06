@@ -36,8 +36,12 @@ function matching(): {
 } {
   const meter = new ControlledMeter();
   const applied: (readonly Vector3[])[] = [];
-  const subject = new GainMatching(meter, (gains) => {
-    applied.push(gains);
+  const subject = new GainMatching({
+    meter,
+    referenceLens: 0,
+    applyGains: (gains): void => {
+      applied.push(gains);
+    },
   });
   return { meter, applied, subject };
 }
@@ -85,8 +89,13 @@ describe('GainMatching', () => {
   it('stops matching when the meter fails, and reports that once', async () => {
     const meter = new ControlledMeter();
     const failures: unknown[] = [];
-    const subject = new GainMatching(meter, ignoreGains, (error) => {
-      failures.push(error);
+    const subject = new GainMatching({
+      meter,
+      referenceLens: 0,
+      applyGains: ignoreGains,
+      reportFailure: (error): void => {
+        failures.push(error);
+      },
     });
     subject.afterPresent(seconds(0));
     meter.pending[0]?.reject(new Error('read-back failed'));

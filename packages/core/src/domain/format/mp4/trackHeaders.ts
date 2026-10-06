@@ -60,6 +60,15 @@ export function movieTimescaleOf(movie: readonly Mp4Box[]): number {
   );
 }
 
+/**
+ * What a track's samples are (`vide`, `soun`, ...), read from its media before anything below it
+ * is walked: a track the player does not play may be malformed further down without harm.
+ */
+export function trackHandlerOf(trackBox: Mp4Box): string {
+  const track = boxesIn(trackBox.body);
+  return handlerTypeOf(boxesIn(requiredBox(track, Mp4BoxType.Media).body));
+}
+
 export function trackBoxesOf(trackBox: Mp4Box): TrackBoxes {
   const track = boxesIn(trackBox.body);
   const media = boxesIn(requiredBox(track, Mp4BoxType.Media).body);
@@ -98,11 +107,16 @@ function trackIdOf(track: readonly Mp4Box[]): number {
   return header.content.uint32BeAt(inVersion(header, TRACK_HEADER_ID, Mp4BoxType.TrackHeader));
 }
 
+/**
+ * Every time of the track is divided by it: a timescale of zero would make each one not a number.
+ */
 function mediaTimescaleOf(media: readonly Mp4Box[]): number {
   const header = fullBoxOf(requiredBox(media, Mp4BoxType.MediaHeader));
-  return header.content.uint32BeAt(
+  const timescale = header.content.uint32BeAt(
     inVersion(header, MEDIA_HEADER, Mp4BoxType.MediaHeader).timescale,
   );
+  if (timescale === 0) throw unreadableMovie('has a track whose times count in a timescale of 0');
+  return timescale;
 }
 
 function handlerTypeOf(media: readonly Mp4Box[]): string {

@@ -4,8 +4,11 @@ import {
   rotationAboutX,
   rotationAboutY,
   rotationAboutZ,
+  transformVector,
+  transposeMatrix,
   type Matrix3,
 } from '../../shared/math/Matrix3';
+import type { Vector3 } from '../../shared/math/Vector3';
 import {
   degrees,
   degreesToRadians,
@@ -13,6 +16,11 @@ import {
   QUARTER_TURN,
   type Degrees,
 } from '../../shared/units/angle';
+
+/**
+ * The optical axis in the lens frame the models project from.
+ */
+const OPTICAL_AXIS: Vector3 = [0, 0, 1];
 
 /**
  * The roll the rotation applies for a calibration roll: mirrored about the sensor's mounting,
@@ -44,4 +52,11 @@ export function lensRotation(lens: LensCalibration): Matrix3 {
   const faced = multiplyMatrices(facing, pitched);
   const rolled = rotationAboutZ(degreesToRadians(mirroredRoll(roll)));
   return multiplyMatrices(rolled, faced);
+}
+
+/**
+ * A lens's optical axis in the body frame, from its body-to-lens rotation.
+ */
+export function opticalAxisOf(rotation: Matrix3): Vector3 {
+  return transformVector(transposeMatrix(rotation), OPTICAL_AXIS);
 }

@@ -6,6 +6,11 @@ import type { Seconds } from '../../shared/units/time';
  * straight through. Pairs before the start exist only because decoding had to begin at a key
  * frame; of those the gate keeps the newest and releases it ahead of the first pair after the
  * start, because that is the frame on screen at the start. Older ones are closed.
+ *
+ * A pair within `tolerance` of the start counts as at the start: a decoder carries timestamps in
+ * whole microseconds, so the frame of a sample timed between two of them comes back a fraction
+ * of one early, and a seek to that sample must still show it at once. That pair is the one on
+ * screen at the start, so the pair held before it is closed rather than released.
  */
 export class StartGate<Handle> {
   private held: FramePair<Handle> | undefined;
@@ -13,6 +18,7 @@ export class StartGate<Handle> {
 
   public constructor(
     private readonly from: Seconds,
+    private readonly tolerance: Seconds,
     private readonly deliver: (pair: FramePair<Handle>) => void,
   ) {}
 
@@ -24,12 +30,13 @@ export class StartGate<Handle> {
   }
 
   public push(pair: FramePair<Handle>): void {
-    if (pair.timestamp >= this.from) {
-      this.release();
-      this.deliver(pair);
+    if (pair.timestamp < this.from - this.tolerance) {
+      this.hold(pair);
       return;
     }
-    this.hold(pair);
+    if (pair.timestamp <= this.from + this.tolerance) this.dropHeld();
+    else this.release();
+    this.deliver(pair);
   }
 
   /**
@@ -49,10 +56,17 @@ export class StartGate<Handle> {
   }
 
   private hold(pair: FramePair<Handle>): void {
-    if (this.held) {
-      closeFramePair(this.held);
-      this.droppedCount += 1;
-    }
+    this.dropHeld();
     this.held = pair;
+  }
+
+  /**
+   * Closes the held pair, superseded by a newer one before or at the start.
+   */
+  private dropHeld(): void {
+    if (!this.held) return;
+    closeFramePair(this.held);
+    this.held = undefined;
+    this.droppedCount += 1;
   }
 }

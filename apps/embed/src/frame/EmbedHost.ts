@@ -8,8 +8,10 @@ import {
   failedResult,
   FORWARDED_EVENT_NAMES,
   helloMessage,
+  isCommandName,
   okResult,
   type CommandMessage,
+  type CommandName,
   type ForwardedEventName,
   type ProtocolMessage,
   type SerializedError,
@@ -77,12 +79,26 @@ export class EmbedHost {
 
   private async run(command: CommandMessage): Promise<void> {
     try {
-      const value = await COMMAND_HANDLERS[command.name](this.element, command.parameters);
+      const value = await handlerOf(command.name)(this.element, command.parameters);
       this.endpoint.send(okResult(command.id, value));
     } catch (error) {
       this.endpoint.send(failedResult(command.id, serializeError(error)));
     }
   }
+}
+
+/**
+ * A command this frame cannot run is answered rather than ignored: the page's script may be of a
+ * later build than the frame, and its promise would otherwise wait forever.
+ */
+function handlerOf(name: string): (typeof COMMAND_HANDLERS)[CommandName] {
+  if (!isCommandName(name)) {
+    throw new GyroViewError(
+      'invalid-argument',
+      `the embed frame does not know the command "${name}": it is of an earlier build than the page's script`,
+    );
+  }
+  return COMMAND_HANDLERS[name];
 }
 
 /**

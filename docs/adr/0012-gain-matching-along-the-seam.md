@@ -36,7 +36,10 @@ keeps the recording as it was.
 
 One small extra render and an asynchronous read-back every half second while playing;
 measurements are skipped while one is in flight and a failed read-back (a lost context) is
-ignored until the next measurement, half a second of media later. Blown-out or black overlap bands leave the gains at one. The
+ignored until the next measurement, half a second of media later. Black channels keep unit gain;
+directions either lens shows blown out are left out of the means, and a band with nothing left to
+compare is not measured, the gains staying as they were (since 2026-10-05: before, only black
+was guarded, and flare in one lens's overlap re-exposed the other lens's whole hemisphere). The
 renderer's `setLensGains` also silences a lens for inspection: a gain of zero leaves the blend
 altogether, so the other lens fills the feather band alone and a lens-only render shows that lens
 as it is; the matcher overwrites the gains while it runs.
@@ -47,3 +50,13 @@ The seam meter reads each lens's exposure signal, where its exposure is a factor
 scales that signal before bringing it to the display: on an SDR camera the texel as recorded,
 as before; on the X6, HLG's scene light raised to the display's power, before the highlight
 roll-off, so one gain matches two lenses a stop apart in the shadows and in the sky alike.
+
+## Since ADR 0039 (2026-10-05)
+
+The reference was lens 0 because the view opened facing it. Since ADR 0039 the view opens a half
+turn from lens 0 on every camera whose lens axis lies level, and on every recording whose gravity
+cannot be read: lens 0 was behind the viewer, and the hemisphere in front of them was the one
+re-exposed, the first measurement applied whole and every later change of exposure pumping it.
+The reference is now the lens whose optical axis lies nearest the direction the view opens facing
+(`referenceLensOf`, from the mounting and the lenses' poses): lens 1 on those cameras, either on a
+lens-vertical one, whose view opens across both lenses.

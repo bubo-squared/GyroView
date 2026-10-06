@@ -12,7 +12,7 @@ import {
   FakeVideoTrack,
   type FakeFrameHandle,
 } from '@gyroview/core/testing';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { PlayerEvents } from './PlayerEvents';
 import { SessionRelay } from './SessionRelay';
@@ -32,10 +32,6 @@ function idleSession(): PlaybackSession<FakeFrameHandle> {
   });
 }
 
-function ignoreEnd(): void {
-  // The session is paused long before its end.
-}
-
 interface Relaying {
   readonly relay: SessionRelay;
   readonly events: TypedEmitter<PlayerEvents>;
@@ -52,10 +48,9 @@ function relaying(session: PlaybackSession<FakeFrameHandle>): Relaying {
     onState: (state): void => {
       states.push(state);
     },
-    onEnded: ignoreEnd,
   });
   relay.attach(session);
-  for (const name of ['play', 'waiting', 'pause'] as const) {
+  for (const name of ['play', 'waiting', 'pause', 'seeking', 'seeked', 'frame'] as const) {
     events.on(name, () => {
       relayed.push(name);
     });
@@ -85,6 +80,17 @@ describe('SessionRelay', () => {
     void session.play();
     expect(relayed).toEqual(['play']);
     expect(states).toEqual([]);
+    session.dispose();
+  });
+
+  it('relays a seek done once the session drew its picture, then the state after it', async () => {
+    const session = idleSession();
+    const { relayed, states } = relaying(session);
+    session.seek(seconds(0.5));
+    expect(relayed).toEqual(['seeking']);
+    await vi.waitUntil(() => relayed.includes('seeked'));
+    expect(relayed).toEqual(['seeking', 'frame', 'seeked']);
+    expect(states).toEqual(['seeking', 'paused', 'paused']);
     session.dispose();
   });
 });

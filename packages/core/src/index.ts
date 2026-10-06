@@ -20,6 +20,14 @@ export { timeRecording, type RecordingTiming } from './application/recording/tim
 export type { MotionSetup } from './application/recording/motionOf';
 export { locateOtherLensFile } from './application/recording/locateOtherLensFile';
 export { readSampleTable, type ReadSampleTable } from './application/recording/readSampleTable';
+export {
+  readRecordingFiles,
+  type FileContents,
+  type FileReading,
+  type ReadFile,
+  type RecordingFile,
+  type RecordingFiles,
+} from './application/recording/readRecordingFiles';
 
 // Ports and the values they exchange
 export type { RandomAccessSource } from './ports/RandomAccessSource';
@@ -95,7 +103,7 @@ export {
 } from './domain/optics/LensCalibration';
 export type { LensModel, LensModelKind, LensProjectionParameters } from './domain/optics/LensModel';
 export { lensRotation, mirroredRoll } from './domain/optics/lensPose';
-export { DEFAULT_MAX_GAIN, gainsMatching } from './domain/optics/gainMatch';
+export { DEFAULT_MAX_GAIN, gainsMatching } from './domain/colour/gainMatch';
 export { clampView, DEFAULT_VIEW, isSameView, type ViewState } from './domain/view/ViewState';
 export {
   DEFAULT_PICTURE_QUALITY,
@@ -108,6 +116,7 @@ export {
   VIEW_MODES,
   type ViewContext,
   type ViewMode,
+  type ViewGestureRules,
   type ViewModeRules,
 } from './domain/view/ViewMode';
 export { motionLookRulesFor, viewModeRulesFor } from './domain/view/viewModes';
@@ -121,12 +130,13 @@ export {
 export { DEFAULT_FRAMING, isSameFraming, type Framing } from './domain/view/Framing';
 export { aspectOfArea, planeHalfExtentOf } from './domain/view/rectilinear';
 export { MAX_MAGNIFICATION, type Magnification } from './domain/view/magnification';
-export type {
-  EquirectangularPicture,
-  LensTilesPicture,
-  Picture,
-  PictureKind,
-  RectilinearPicture,
+export {
+  shownAreaOf,
+  type EquirectangularPicture,
+  type LensTilesPicture,
+  type Picture,
+  type PictureKind,
+  type RectilinearPicture,
 } from './domain/view/Picture';
 export {
   aspectOf,
@@ -162,6 +172,7 @@ export {
   GainMatchingFrameSink,
   type GainRenderer,
 } from './application/gainMatching/GainMatchingFrameSink';
+export { referenceLensOf } from './application/gainMatching/referenceLensOf';
 export type { SeamMeter } from './ports/SeamMeter';
 export type { SeamMismatchMeter, SeamMismatchRequest } from './ports/SeamMismatchMeter';
 export {
@@ -277,7 +288,7 @@ export type { FrameSink, Presentation } from './ports/FrameSink';
 export type { PictureRenderer } from './ports/PictureRenderer';
 export { WallClock } from './application/playback/WallClock';
 export { isFlowing, type PlayerState } from './domain/playback/PlayerState';
-export { TypedEmitter } from './shared/events/TypedEmitter';
+export { TypedEmitter, type Listenable } from './shared/events/TypedEmitter';
 export {
   PlaybackSession,
   type PlaybackSessionEvents,

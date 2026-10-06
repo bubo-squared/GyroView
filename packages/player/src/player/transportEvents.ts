@@ -1,6 +1,6 @@
 import type { PlayerState } from '@gyroview/core';
 
-export type TransportEventName = 'seeking' | 'seeked' | 'play' | 'playing' | 'waiting' | 'pause';
+export type TransportEventName = 'seeking' | 'play' | 'playing' | 'waiting' | 'pause';
 
 const STOPPED_STATES: ReadonlySet<PlayerState> = new Set<PlayerState>(['ready', 'paused', 'ended']);
 
@@ -18,17 +18,18 @@ const FLOW_EVENTS: ReadonlyMap<PlayerState, TransportEventName> = new Map<
 /**
  * The transport events a session state change means to a listener who thinks in media-element
  * terms: `play` when playback is asked for, `waiting` while it holds for frames, `playing` when
- * frames flow, `pause` when it stops, and a seek bracketed by `seeking` and `seeked` without
- * repeating `play` or `pause`.
+ * frames flow, `pause` when it stops, at the end too, and `seeking` when a seek begins, without
+ * repeating `play` or `pause`. `seeked` is the session's own: a seek is done once its first
+ * picture is drawn (ADR 0042).
  */
 export function transportEventsFor(
   previous: PlayerState | undefined,
   next: PlayerState,
 ): readonly TransportEventName[] {
   if (next === 'seeking') return ['seeking'];
-  if (previous === 'seeking') return next === 'buffering' ? ['seeked', 'waiting'] : ['seeked'];
+  if (previous === 'seeking') return next === 'buffering' ? ['waiting'] : [];
   if (next === 'paused') return previous === 'ready' ? [] : ['pause'];
-  return flowEventsFor(previous, next);
+  return next === 'ended' ? ['pause'] : flowEventsFor(previous, next);
 }
 
 function flowEventsFor(

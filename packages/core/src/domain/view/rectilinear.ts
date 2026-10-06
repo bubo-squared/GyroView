@@ -1,8 +1,14 @@
 import type { ScreenPoint, ScreenRectangle } from './screenLayout';
-import { viewRotation, type ViewState } from './ViewState';
+import { viewRotation, WIDEST_FIELD_OF_VIEW, type ViewState } from './ViewState';
 import { transformVector } from '../../shared/math/Matrix3';
 import { magnitudeOf, scaleVector, type Vector3 } from '../../shared/math/Vector3';
-import { degrees, degreesToRadians, type Degrees } from '../../shared/units/angle';
+import {
+  degrees,
+  degreesToRadians,
+  radians,
+  radiansToDegrees,
+  type Degrees,
+} from '../../shared/units/angle';
 
 /**
  * Half the width of the image plane at unit distance, so that a rectilinear picture spans the
@@ -10,6 +16,20 @@ import { degrees, degreesToRadians, type Degrees } from '../../shared/units/angl
  */
 export function planeHalfExtentOf(fieldOfView: Degrees): number {
   return Math.tan(degreesToRadians(degrees(fieldOfView / 2)));
+}
+
+/**
+ * The field of view across a rectilinear picture of the given aspect: the view's own, narrowed
+ * on a picture taller than wide so that its height spans no more than the widest field either,
+ * where a rectilinear view stretches its edges more than it shows (a phone held upright would
+ * span 131 degrees from top to bottom at the default 90 across).
+ */
+export function shownFieldOfView(fieldOfView: Degrees, pictureAspect: number): Degrees {
+  // A picture as wide as tall or wider spans its widest across, where the field is bounded.
+  if (pictureAspect >= 1) return fieldOfView;
+  const widestHalfWidth = planeHalfExtentOf(WIDEST_FIELD_OF_VIEW) * pictureAspect;
+  const widestAcross = radiansToDegrees(radians(2 * Math.atan(widestHalfWidth)));
+  return degrees(Math.min(fieldOfView, widestAcross));
 }
 
 /**
@@ -42,8 +62,6 @@ export function rayThroughPicture(
  * viewport, so its points are the viewport's.
  */
 export function directionAt(view: ViewState, point: ScreenPoint, viewportAspect: number): Vector3 {
-  return transformVector(
-    viewRotation(view),
-    rayThroughPicture(view.fieldOfView, point, viewportAspect),
-  );
+  const fieldOfView = shownFieldOfView(view.fieldOfView, viewportAspect);
+  return transformVector(viewRotation(view), rayThroughPicture(fieldOfView, point, viewportAspect));
 }

@@ -76,6 +76,12 @@ describe('the H.265 keyframe rule', () => {
     rule = keyframeRuleFor({ sampleEntryType: 'hvc1', nalLengthSize: 4 });
   });
 
+  it('reads past an empty unit, which has no header, to the picture after it', () => {
+    const emptyUnit = Uint8Array.of(0, 0, 0, 0);
+    const sample = Uint8Array.from([...emptyUnit, ...sampleOf(4, [hevcUnit(19)])]);
+    expect(rule.isKeyframe(sample)).toBe(true);
+  });
+
   it('takes a sample whose first picture is an intra random access point for a keyframe', () => {
     expect(isKeyframeOf(rule, 4, [hevcUnit(32), hevcUnit(33), hevcUnit(34), hevcUnit(19)])).toBe(
       true,

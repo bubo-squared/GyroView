@@ -4,6 +4,7 @@
   "private": true,
   "description": "Audio clock adapter for GyroView core ports: an audio element fed through Media Source Extensions.",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./src/index.ts",

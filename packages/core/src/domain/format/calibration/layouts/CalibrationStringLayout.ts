@@ -21,6 +21,11 @@ export interface CalibrationStringLayout {
    */
   readonly radialScale: number;
   /**
+   * The lens tokens that give a lens its size on the canvas (a radius, focal lengths): positive in
+   * any calibration of a real lens.
+   */
+  readonly scaleTokens: readonly number[];
+  /**
    * A message when the version word contradicts this layout, undefined when it fits; a layout
    * whose last word is no version (the legacy string's) has nothing to check.
    */

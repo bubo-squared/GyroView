@@ -35,14 +35,14 @@ class FakeRenderer {
   }
 }
 
-function subject(): {
+function subject(referenceLens = 0): {
   sink: FakeFrameSink<string>;
   renderer: FakeRenderer;
   matching: GainMatchingFrameSink<string>;
 } {
   const sink = new FakeFrameSink<string>();
   const renderer = new FakeRenderer();
-  return { sink, renderer, matching: new GainMatchingFrameSink(sink, renderer) };
+  return { sink, renderer, matching: new GainMatchingFrameSink(sink, renderer, referenceLens) };
 }
 
 function presentAt(matching: GainMatchingFrameSink<string>, time: number): void {
@@ -66,6 +66,17 @@ describe('GainMatchingFrameSink', () => {
     await matching.matchNow();
     expect(renderer.applied).toHaveLength(1);
     expect(renderer.applied[0]?.[1]?.[0]).toBeGreaterThan(1);
+  });
+
+  it('matches the other lenses onto the reference lens it is given', async () => {
+    const { renderer, matching } = subject(1);
+    matching.enable();
+    presentAt(matching, 0);
+    await matching.matchNow();
+    expect(renderer.applied[0]).toEqual([
+      [0.5, 0.5, 0.5],
+      [1, 1, 1],
+    ]);
   });
 
   it('has nothing to match before the first pair', async () => {

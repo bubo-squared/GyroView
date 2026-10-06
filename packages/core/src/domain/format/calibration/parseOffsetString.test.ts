@@ -174,6 +174,20 @@ describe('parseOffsetString validation', () => {
     });
   });
 
+  it.each([
+    ['no lens, a string the legacy layout would take', '0_10752_5376_1137'],
+    ['a canvas without area', OFFICE_CALIBRATION.offset.replace('_10752_5376_', '_0_5376_')],
+    ['a lens of radius 0', OFFICE_CALIBRATION.offset.replace('2_2664.255_', '2_0_')],
+    [
+      'a lens of negative focal length',
+      OFFICE_CALIBRATION.offsetV6.replace(/^2_([^_]+)_[^_]+_/, '2_$1_-1_'),
+    ],
+  ])('rejects a string that parses but describes %s', (_case, text) => {
+    expect(captureError(() => parseOffsetString(text))).toMatchObject({
+      code: 'invalid-calibration',
+    });
+  });
+
   it('matches no layout among those it is given', () => {
     expect(
       captureError(() => parseOffsetString(OFFICE_CALIBRATION.offsetV6, [MEI_CALIBRATION_LAYOUT])),

@@ -41,6 +41,10 @@ export interface GyroSummary {
    */
   readonly damagedSamples: number;
   /**
+   * Slots the camera left all zero, as it leaves the first ones it never wrote; no damage.
+   */
+  readonly unwrittenSamples: number;
+  /**
    * Stamps put back where their neighbours say they belong: glitched stamps. A wrong stamp unit
    * scales them all alike and shows in the mean interval and the span instead.
    */

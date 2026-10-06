@@ -4,6 +4,7 @@
   "private": true,
   "description": "HTTP adapter for GyroView core ports: RandomAccessSource over fetch with Range requests.",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./src/index.ts",

@@ -44,3 +44,14 @@ server, so an embedder can tell a network that is gone from a bad file or a bug.
 
 A blink of the network costs a stalled picture of up to 1.25 s instead of the playback. A server
 that keeps failing is asked three times for the range that failed before the player reports it.
+
+## Since 2026-10-05: a range read ahead is asked for again when it is needed
+
+The download reads up to ten seconds ahead of the picture (ADR 0029), so the tries were spent at
+the moment of an outage, not when the bytes were needed: a phone that lost its network for two
+seconds while reading ahead failed that range, and the playback ended eight seconds later, when
+the picture reached it, although the network had long been back. `FileDownload` now tells a range
+that failed while a reader waited for it from one that failed while read ahead: the first fails
+the read, as before; the second is forgotten when a reader comes to it and asked for once more,
+and fails the read only if that fails too. A range gets at most two rounds of three tries, and an
+outage while reading ahead costs nothing once it is over.

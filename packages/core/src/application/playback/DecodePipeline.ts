@@ -3,11 +3,23 @@ import type { FramePairQueue } from './FramePairQueue';
 import { StartGate } from './StartGate';
 import type { VideoTrackReader } from '../../ports/VideoTrackReader';
 import type { EncodedVideoPacket } from '../../ports/VideoTrack';
-import type { VideoDecoderHandle, VideoDecoderPort } from '../../ports/VideoDecoderPort';
+import type {
+  DecodedFrame,
+  VideoDecoderHandle,
+  VideoDecoderPort,
+} from '../../ports/VideoDecoderPort';
 import { Deferred } from '../../shared/async/Deferred';
 import { RunStop, STOPPED } from '../../shared/async/RunStop';
 import { ensureInvariant, GyroViewError } from '../../shared/errors/GyroViewError';
 import type { Seconds } from '../../shared/units/time';
+
+/**
+ * Lens frames left without a partner for this much media time mean the tracks do not show the
+ * same instants (two files whose edit lists or timescales differ): no picture would ever come,
+ * and the whole file would be decoded waiting for one. A recording's lenses share the camera
+ * clock, and a lens that lost a few frames pairs again long before.
+ */
+const UNPAIRED_SPAN_LIMIT_SECONDS = 2;
 
 export interface DecodePipelineOptions {
   /**
@@ -44,6 +56,11 @@ interface RunTally {
 type PacketIterator = AsyncIterator<EncodedVideoPacket>;
 
 /**
+ * Takes what the decoder of one frame source hands out.
+ */
+type FrameReceiver<Handle> = (sourceIndex: number, frame: DecodedFrame<Handle>) => void;
+
+/**
  * Everything one run owns, built when the run opens and torn down when it ends.
  */
 interface Run<Handle> {
@@ -78,6 +95,11 @@ export class DecodePipeline<Handle = unknown> {
    * would go on reading until its awaits settle.
    */
   private iterators: readonly PacketIterator[] = [];
+  /**
+   * The run's decoders, which an abort closes at once too: the run a seek starts opens its own
+   * within a few microtasks, and a phone may have no more decoders than one run needs.
+   */
+  private decoders: readonly VideoDecoderHandle[] = [];
 
   public constructor(
     private readonly frameSources: readonly VideoTrackReader[],
@@ -111,19 +133,20 @@ export class DecodePipeline<Handle = unknown> {
   }
 
   /**
-   * Ends the run early: its packet reads are let go of at once, pending decodes discarded. Safe
-   * before, during and after the run.
+   * Ends the run early: its packet reads are let go of and its decoders closed at once, pending
+   * decodes discarded. Safe before, during and after the run.
    */
   public abort(): void {
     this.stop.stop();
     closeIterators(this.iterators);
+    closeDecoders(this.decoders);
   }
 
   private async openRun(from: Seconds, output: FramePairQueue<Handle>): Promise<Run<Handle>> {
     const { stop } = this;
     const failure = new Deferred<Error>();
     const tally: RunTally = { packets: 0, pairs: 0 };
-    const gate = new StartGate<Handle>(from, (pair) => {
+    const gate = new StartGate<Handle>(from, this.options.pairTolerance, (pair) => {
       tally.pairs += 1;
       output.push(pair);
     });
@@ -142,7 +165,7 @@ export class DecodePipeline<Handle = unknown> {
       stop.stop();
     };
     try {
-      const decoders = stop.wasStopped ? [] : await this.createDecoders(pairer, onError);
+      const decoders = await this.openDecoders(frameReceiver(pairer, onError), onError);
       return { output, stop, failure, tally, gate, pairer, iterators, decoders };
     } catch (error) {
       closeIterators(iterators);
@@ -151,17 +174,31 @@ export class DecodePipeline<Handle = unknown> {
   }
 
   /**
+   * The run's decoders, none for a run already aborted; an abort that comes while they open
+   * closes them as soon as they are there.
+   */
+  private async openDecoders(
+    receive: FrameReceiver<Handle>,
+    onError: (error: Error) => void,
+  ): Promise<readonly VideoDecoderHandle[]> {
+    const decoders = this.stop.wasStopped ? [] : await this.createDecoders(receive, onError);
+    this.decoders = decoders;
+    if (this.stop.wasStopped) closeDecoders(decoders);
+    return decoders;
+  }
+
+  /**
    * Opens one decoder per frame source; if any refuses, the ones already open are closed again.
    */
   private async createDecoders(
-    pairer: FramePairer<Handle>,
+    receive: FrameReceiver<Handle>,
     onError: (error: Error) => void,
   ): Promise<VideoDecoderHandle[]> {
     const results = await Promise.allSettled(
       this.frameSources.map(async (track, sourceIndex) =>
         this.decoderPort.create(await track.decoderConfiguration(), {
           onFrame: (frame) => {
-            pairer.push(sourceIndex, frame);
+            receive(sourceIndex, frame);
           },
           onError,
         }),
@@ -212,6 +249,27 @@ export class DecodePipeline<Handle = unknown> {
   }
 }
 
+/**
+ * Pairs the decoders' frames, failing the run once the lenses have gone unpaired for too long to
+ * be one recording.
+ */
+function frameReceiver<Handle>(
+  pairer: FramePairer<Handle>,
+  onError: (error: Error) => void,
+): FrameReceiver<Handle> {
+  return (sourceIndex, frame) => {
+    pairer.push(sourceIndex, frame);
+    if (pairer.unpairedSpan > UNPAIRED_SPAN_LIMIT_SECONDS) onError(unpairedLenses());
+  };
+}
+
+function unpairedLenses(): GyroViewError {
+  return new GyroViewError(
+    'unsupported-layout',
+    `the lens tracks showed no common instant for ${UNPAIRED_SPAN_LIMIT_SECONDS} seconds: their timestamps do not agree`,
+  );
+}
+
 function shouldStop<Handle>(run: Run<Handle>): boolean {
   return run.stop.wasStopped || run.output.isClosedForGood;
 }
@@ -241,10 +299,17 @@ async function drain(
 }
 
 function closeRun<Handle>(run: Run<Handle>): void {
-  for (const decoder of run.decoders) decoder.close();
+  closeDecoders(run.decoders);
   run.pairer.discardAll();
   run.gate.discard();
   closeIterators(run.iterators);
+}
+
+/**
+ * An abort and the run's own end may both close a decoder, which the port allows.
+ */
+function closeDecoders(decoders: readonly VideoDecoderHandle[]): void {
+  for (const decoder of decoders) decoder.close();
 }
 
 function closeIterators(iterators: readonly PacketIterator[]): void {

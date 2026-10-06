@@ -1,4 +1,4 @@
-import { hasErrorCode, lazy, locateOtherLensFile } from '@gyroview/core';
+import { locateOtherLensFile } from '@gyroview/core';
 
 import type { OpenedRecording } from './OpenedRecording';
 import type { OpenAttempt } from './OpenAttempt';
@@ -8,26 +8,17 @@ import { isUrlInput, type PlayerSource, type UrlInput } from '../PlayerSource';
 
 /**
  * Use case at the composition root: opens what a source names, following the data. A lone file
- * of a split-file pair fetches its sibling when the server has it. Only the recording itself
- * ever plays (ADR 0017). Aborting releases everything opened so far.
+ * named by URL has its other lens file looked for beside it, which the core asks for when the
+ * recording turns out split. Only the recording itself ever plays (ADR 0017). Aborting releases
+ * everything opened so far.
  */
-export async function openRecording(
+export function openRecording(
   source: PlayerSource,
   ports: RecordingPorts,
   signal: AbortSignal,
 ): Promise<OpenedRecording> {
-  const attempt = attemptFor(source, ports, signal);
   const inputs = source.second ? [source.main, source.second] : [source.main];
-  try {
-    return await openInputs(inputs, attempt);
-  } catch (error) {
-    const { findSecondFile } = attempt;
-    if (!findSecondFile || !hasErrorCode(error, 'missing-second-file')) throw error;
-    const second = await findSecondFile();
-    signal.throwIfAborted();
-    if (!second) throw error;
-    return openInputs([source.main, second], attempt);
-  }
+  return openInputs(inputs, attemptFor(source, ports, signal));
 }
 
 /**
@@ -36,13 +27,7 @@ export async function openRecording(
 function attemptFor(source: PlayerSource, ports: RecordingPorts, signal: AbortSignal): OpenAttempt {
   const { main } = source;
   return source.second === undefined && isUrlInput(main)
-    ? {
-        ports,
-        signal,
-        // Asked before the tracks are read and again once they fall short, the lookup would
-        // otherwise ask the server twice for a file that is not there.
-        findSecondFile: lazy(() => otherLensFileOf(main, ports)),
-      }
+    ? { ports, signal, findSecondFile: () => otherLensFileOf(main, ports) }
     : { ports, signal };
 }
 

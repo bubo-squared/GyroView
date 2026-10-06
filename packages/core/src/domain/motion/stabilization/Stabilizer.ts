@@ -2,14 +2,9 @@ import type { Matrix3 } from '../../../shared/math/Matrix3';
 import type { Quaternion } from '../../../shared/math/Quaternion';
 import type { Seconds } from '../../../shared/units/time';
 
-export type StabilizationMode = 'off' | 'lock' | 'horizon' | 'follow';
+export const STABILIZATION_MODES = ['off', 'lock', 'horizon', 'follow'] as const;
 
-export const STABILIZATION_MODES: readonly StabilizationMode[] = [
-  'off',
-  'lock',
-  'horizon',
-  'follow',
-];
+export type StabilizationMode = (typeof STABILIZATION_MODES)[number];
 
 /**
  * The world stays put: the most useful default for a camera carried around.

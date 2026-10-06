@@ -53,6 +53,11 @@ export interface ParsedGyroRecord {
    */
   readonly damagedSamples: number;
   /**
+   * Slots left all zero, as a camera leaves the first ones it never wrote: left out too, but no
+   * damage.
+   */
+  readonly unwrittenSamples: number;
+  /**
    * Stamps put back where their neighbours say they belong (see {@link repairedTimeline}).
    */
   readonly mendedStamps: number;
@@ -86,20 +91,27 @@ export function selectGyroSampleLayout(
 }
 
 /**
+ * A slot the camera never wrote, told apart from one whose bytes cannot be a reading.
+ */
+const UNWRITTEN = 'unwritten';
+
+/**
  * Decodes the gyro record payload into a {@link GyroTrack} with the given layout. Whole samples
  * only: a partial sample at the end is tolerated and reported, never rejected. So is a sample whose
  * bytes cannot be a reading (a stamp past the safe integers, a value no camera measures, a
- * component a flipped bit moved, a slot left all zero): each sample carries its own time, so the
- * others still count.
+ * component a flipped bit moved) and a slot left all zero: each sample carries its own time, so
+ * the others still count.
  * Stamps that stray from their neighbours are mended (see {@link repairedTimeline}).
  */
 export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): ParsedGyroRecord {
   const count = Math.floor(payload.byteLength / layout.sampleSize);
   const reader = new ByteReader(payload);
   const columns = new SampleColumns(count);
+  let unwritten = 0;
   for (let index = 0; index < count; index += 1) {
-    const sample = readableSampleAt(reader, layout, index * layout.sampleSize);
-    if (sample) columns.push(sample);
+    const slot = slotAt(reader, layout, index * layout.sampleSize);
+    if (slot === UNWRITTEN) unwritten += 1;
+    else if (slot) columns.push(slot);
   }
   columns.dropFlippedBits(layout.flipSteps);
   const timeline = repairedTimeline(columns.captureTimes());
@@ -107,20 +119,24 @@ export function parseGyroRecord(payload: Uint8Array, layout: GyroSampleLayout): 
     track: columns.toTrack(timeline.times),
     layout: layout.name,
     strayBytes: payload.byteLength % layout.sampleSize,
-    damagedSamples: count - columns.length,
+    damagedSamples: count - unwritten - columns.length,
+    unwrittenSamples: unwritten,
     mendedStamps: timeline.mended,
   };
 }
 
-function readableSampleAt(
+/**
+ * The reading in one slot; undefined when its bytes cannot be one.
+ */
+function slotAt(
   reader: ByteReader,
   layout: GyroSampleLayout,
   offset: number,
-): GyroSample | undefined {
+): GyroSample | typeof UNWRITTEN | undefined {
   try {
     const captureTime = layout.timestampAt(reader, offset);
     if (captureTime === 0 && isUnwritten(reader.bytesAt(offset, layout.sampleSize)))
-      return undefined;
+      return UNWRITTEN;
     const sample = {
       captureTime,
       acceleration: layout.accelerationAt(reader, offset),

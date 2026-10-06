@@ -17,7 +17,7 @@ import {
   type EventSink,
   type ViewContext,
   type ViewMode,
-  type ViewModeRules,
+  type ViewGestureRules,
   type ViewportSize,
   type ViewState,
 } from '@gyroview/core';
@@ -161,7 +161,7 @@ export class PlayerView {
     return { viewport: this.measureViewport(), lensCount: this.lensCount };
   }
 
-  private rules(): ViewModeRules {
+  private rules(): ViewGestureRules {
     const held = this.previous === undefined ? undefined : motionLookRulesFor(this.mode);
     return held ?? viewModeRulesFor(this.mode);
   }

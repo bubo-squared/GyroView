@@ -1,15 +1,14 @@
-import { pixelAtRadius, toPolar } from './lensGeometry';
 import type { LensModel, LensProjectionParameters } from './LensModel';
 import type { PixelPoint } from './PixelPoint';
-import type { Vector3 } from '../../shared/math/Vector3';
 import type { Radians } from '../../shared/units/angle';
 import { HALF_FIELD_OF_VIEW } from './opticsConstants';
 
 export interface EquidistantParameters {
   /**
-   * The radius, in canvas pixels, of the direction `radiusAngle` from the axis.
+   * The radius, in canvas pixels, of the direction `radiusAngle` from the axis: not the field
+   * edge's on the legacy string (ADR 0023).
    */
-  readonly edgeRadius: number;
+  readonly radius: number;
   readonly radiusAngle: Radians;
   readonly principalPoint: PixelPoint;
 }
@@ -36,14 +35,7 @@ export class EquidistantModel implements LensModel {
     };
   }
 
-  public project(direction: Vector3): PixelPoint | undefined {
-    const { theta, radialUnit } = toPolar(direction);
-    return theta > this.halfFieldOfView
-      ? undefined
-      : pixelAtRadius(this.principalPoint, this.pixelsPerRadian * theta, radialUnit);
-  }
-
   private get pixelsPerRadian(): number {
-    return this.parameters.edgeRadius / this.parameters.radiusAngle;
+    return this.parameters.radius / this.parameters.radiusAngle;
   }
 }

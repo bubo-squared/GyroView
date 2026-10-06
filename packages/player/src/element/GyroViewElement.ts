@@ -1,4 +1,10 @@
-import type { PictureQuality, ScreenPoint, StabilizationMode, ViewMode } from '@gyroview/core';
+import {
+  GyroViewError,
+  type PictureQuality,
+  type ScreenPoint,
+  type StabilizationMode,
+  type ViewMode,
+} from '@gyroview/core';
 
 import {
   OBSERVED_ATTRIBUTES,
@@ -37,12 +43,12 @@ import {
   propertyNameOf,
 } from './reflectedProperties';
 import { mirrorPlayerEvents } from './playerEventMirror';
+import { PlayerCanvas } from './PlayerCanvas';
 import { renderShadowTree } from './template';
 import { TypedEventElement } from './TypedEventElement';
 import { createBrowserPlayer } from '../browserPlayer';
 import { queryShadow } from '../controls/controlParts';
-import { bindControlsBar } from '../controls/controlsBar';
-import { togglePlayback } from '../controls/customControls';
+import { bindControlsBar, type ControlsBar } from '../controls/controlsBar';
 import type { ControlsHost } from '../controls/ControlsHost';
 import { bindKeyboard, type KeyboardHost } from '../controls/keyboard';
 import type { GyroViewMessageOverrides, GyroViewMessages } from '../controls/messages';
@@ -52,6 +58,7 @@ import { ensureFinite } from '../player/ensureFinite';
 import type { Player } from '../player/Player';
 import type { MotionLookState, PlayerStatus, PlayerWarning } from '../player/PlayerEvents';
 import type { ViewAngles } from '../player/PlayerOptions';
+import type { PipelineHost } from '../composition/ports';
 import type { PlayerMetadata } from '../PlayerMetadata';
 /**
  * Attributes whose properties mirror them, as `img.src` does: what to play and how to present
@@ -113,9 +120,14 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   private readonly player: Player;
   private readonly loads: ElementLoads;
   private readonly wording = new Wording();
-  private readonly fullscreen = new FullscreenToggle(this);
+  private readonly controlsBar: ControlsBar;
+  private readonly fullscreen = new FullscreenToggle(this, () => {
+    this.controlsBar.fullscreenChanged();
+  });
   private readonly idle: IdleWatcher;
   private readonly posterImage: HTMLImageElement;
+  private readonly canvas: PlayerCanvas;
+  private gestures: ViewGestures;
 
   public constructor() {
     super();
@@ -130,12 +142,13 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     const canvas = queryShadow(shadow, 'canvas', HTMLCanvasElement);
     const audio = queryShadow(shadow, 'audio', HTMLAudioElement);
     this.posterImage = queryShadow(shadow, '.poster', HTMLImageElement);
-    this.player = createBrowserPlayer({ canvas, audio });
-    this.loads = new ElementLoads(this, this.player);
+    this.canvas = new PlayerCanvas(canvas, this.onCanvasReplaced);
+    this.player = createBrowserPlayer(this.pipelineHost(audio));
+    this.loads = new ElementLoads(this, this.player, this.canvas);
     defineLiveSettings(this, this.player);
     const host = this.controlsHost();
-    bindControlsBar(shadow, host);
-    new ViewGestures(canvas, this.player, this.onPictureTap);
+    this.controlsBar = bindControlsBar(shadow, host);
+    this.gestures = new ViewGestures(canvas, this.player, this.onPictureTap);
     bindKeyboard(this, host);
     this.idle = new IdleWatcher(this, () => this.player.status === 'playing');
     const { idle, wording } = this;
@@ -246,11 +259,16 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   }
 
   /**
-   * Starts playing, waiting for a load in progress, or one the attributes set just now asked
-   * for; rejects when the browser refuses to start.
+   * Starts playing, waiting for a load in progress, one the attributes set just now asked for,
+   * or, out of the document, the connection; resolves once playback runs. Rejects when the
+   * browser refuses to start, with `no-source` without a recording, and with `play-interrupted`
+   * when the element left the document or its recording was replaced first.
    */
   public async play(): Promise<void> {
     await this.loads.settled();
+    if (!this.isConnected) {
+      throw new GyroViewError('play-interrupted', 'the element left the document before playing');
+    }
     await this.player.play();
   }
 
@@ -380,8 +398,27 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     await Promise.resolve();
     if (this.isConnected) return;
     this.loads.removed();
+    this.canvas.release();
     await this.fullscreen.exit();
   }
+
+  /**
+   * The canvas is read at each load, since a fresh one replaces one whose context is gone.
+   */
+  private pipelineHost(audio: HTMLAudioElement): PipelineHost {
+    const { canvas } = this;
+    return {
+      get canvas(): HTMLCanvasElement {
+        return canvas.current;
+      },
+      audio,
+    };
+  }
+
+  private readonly onCanvasReplaced = (canvas: HTMLCanvasElement): void => {
+    this.gestures.detach();
+    this.gestures = new ViewGestures(canvas, this.player, this.onPictureTap);
+  };
 
   /**
    * What the controls and the keyboard ask of the element. They live as long as the element:
@@ -414,14 +451,18 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     this.togglePlayback();
   };
 
-  /**
-   * Pauses, or starts playing and reports a refused start as a warning.
-   */
   private readonly togglePlayback = (): void => {
-    togglePlayback(this.player);
+    this.player.togglePlayback();
   };
 
+  /**
+   * Queued, as a media element queues its events: an attribute in the markup is read as the
+   * element is defined, and a property before it, both before a page's script after the
+   * definition adds its listener.
+   */
   private readonly warn = (warning: PlayerWarning): void => {
-    this.dispatchEvent(new CustomEvent('warning', { detail: warning, composed: true }));
+    queueMicrotask(() => {
+      this.dispatchEvent(new CustomEvent('warning', { detail: warning, composed: true }));
+    });
   };
 }

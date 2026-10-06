@@ -166,7 +166,8 @@ describe('playing the real X5 recordings in the browser', () => {
       'a frame at the seek target',
       DECODE_TIMEOUT_MS,
     );
-    expect(session.state).toBe('playing');
+    // The seek's first picture comes before the clock starts again (ADR 0042).
+    await waitFor(() => session.state === 'playing', 'playing again', DECODE_TIMEOUT_MS);
     expect(clock.currentTime).toBeGreaterThanOrEqual(SEEK_TARGET);
     expect(clock.currentTime).toBeLessThan(SEEK_TARGET + 2);
   });

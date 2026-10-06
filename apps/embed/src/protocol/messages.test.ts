@@ -17,6 +17,8 @@ describe('isProtocolMessage', () => {
       { protocol: PROTOCOL, kind: 'hello' },
       commandMessage(1, 'seek', [12]),
       { ...commandMessage(2, 'play', []), oldestUnanswered: 1 },
+      // A command of a later build, which a frame answers as one it cannot run.
+      { protocol: PROTOCOL, kind: 'command', id: 3, name: 'teleport', parameters: [] },
       okResult(1, undefined),
       failedResult(2, { code: 'decode', message: 'no' }),
       eventMessage('timeupdate', 3.5),
@@ -35,7 +37,7 @@ describe('isProtocolMessage', () => {
       expect(isProtocolMessage({ protocol: PROTOCOL, kind })).toBe(false);
     }
     expect(
-      isProtocolMessage({ protocol: PROTOCOL, kind: 'command', id: 1, name: 'rm', parameters: [] }),
+      isProtocolMessage({ protocol: PROTOCOL, kind: 'command', id: 1, name: 7, parameters: [] }),
     ).toBe(false);
     expect(
       isProtocolMessage({

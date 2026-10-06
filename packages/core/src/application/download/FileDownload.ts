@@ -31,6 +31,11 @@ export interface FileDownloadParts {
 interface FailedRange {
   readonly range: ByteRange;
   readonly error: Error;
+  /**
+   * A reader waited for the range when it failed. One read ahead that failed is asked for once
+   * more when a reader comes to it (ADR 0019).
+   */
+  readonly wasNeeded: boolean;
 }
 
 /**
@@ -39,8 +44,10 @@ interface FailedRange {
  * ask for, give up and let go of when a cursor opens, closes or waits for bytes no transfer
  * brings, once the cursors have moved on by the policy's replan bytes (ADR 0036), when a range
  * comes whole or fails, and when reading ahead starts; it hands each waiting cursor its sample
- * once the bytes have come. A range that failed is not asked for again until a cursor opens, a
- * seek or a replay, lest a failing server be asked without end.
+ * once the bytes have come. A range that failed while a cursor waited for it is not asked for
+ * again until a cursor opens, a seek or a replay, lest a failing server be asked without end; one
+ * that failed while read ahead is asked for once more when a cursor comes to it, and fails the
+ * read only if that fails too, so an outage while reading ahead costs nothing once it is over.
  */
 export class FileDownload implements MediaBuffer {
   private readonly store = new BlockStore();
@@ -133,8 +140,7 @@ export class FileDownload implements MediaBuffer {
   private cursorHost(): CursorHost {
     return {
       bytesOf: (range): Uint8Array | undefined => this.store.bytesOf(range),
-      failureOf: (range): Error | undefined =>
-        this.failures.find((failed) => failed.range.overlaps(range))?.error,
+      failureOf: (range): Error | undefined => this.failureWhenNeeded(range),
       movedOn: (length): void => {
         this.takenSincePlan += length;
         if (this.takenSincePlan >= this.parts.policy.replanBytes) this.schedulePlan();
@@ -149,6 +155,17 @@ export class FileDownload implements MediaBuffer {
         this.schedulePlan();
       },
     };
+  }
+
+  /**
+   * Why `range`, which a cursor needs now, cannot be read: a failure while it was needed. One
+   * while it was read ahead is forgotten, so the cursor's wait asks for it again.
+   */
+  private failureWhenNeeded(range: ByteRange): Error | undefined {
+    const failed = this.failures.find((failure) => failure.range.overlaps(range));
+    if (failed === undefined || failed.wasNeeded) return failed?.error;
+    this.failures = this.failures.filter((failure) => failure !== failed);
+    return undefined;
   }
 
   private schedulePlan(): void {
@@ -177,7 +194,7 @@ export class FileDownload implements MediaBuffer {
    */
   private failEveryRead(cause: unknown): void {
     const error = asGyroViewError(cause, 'invariant-violation', 'the download could not plan');
-    this.failures.push({ range: EVERY_BYTE, error });
+    this.failures.push({ range: EVERY_BYTE, error, wasNeeded: true });
     for (const cursor of this.cursors) cursor.fail(EVERY_BYTE, error);
   }
 
@@ -221,8 +238,9 @@ export class FileDownload implements MediaBuffer {
       'source-unreadable',
       'a range of the recording could not be read',
     );
-    this.failures.push({ range, error });
-    for (const cursor of this.cursors) cursor.fail(range, error);
+    let wasNeeded = false;
+    for (const cursor of this.cursors) wasNeeded = cursor.fail(range, error) || wasNeeded;
+    this.failures.push({ range, error, wasNeeded });
     this.schedulePlan();
   }
 }

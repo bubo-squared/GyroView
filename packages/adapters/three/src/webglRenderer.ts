@@ -25,6 +25,11 @@ export function createRenderer(canvas: HTMLCanvasElement, options: ContextOption
   if (!context) {
     throw new GyroViewError('render-unavailable', 'this browser has no WebGL2 context');
   }
+  // A canvas keeps its context once lost: nothing restores one whose loss nobody prevented, and
+  // three cannot read a lost context's attributes.
+  if (context.isContextLost()) {
+    throw new GyroViewError('render-unavailable', "the canvas's WebGL2 context has been lost");
+  }
   const renderer = new WebGLRenderer({ canvas, context });
   renderer.setPixelRatio(1);
   renderer.debug.onShaderError = (gl, program, ...shaders): void => {

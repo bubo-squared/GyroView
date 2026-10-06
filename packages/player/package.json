@@ -4,6 +4,7 @@
   "private": true,
   "description": "The <gyro-view> web component: composition root wiring the GyroView core and adapters into a player for raw Insta360 recordings.",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./src/index.ts",

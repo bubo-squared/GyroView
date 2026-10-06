@@ -21,9 +21,11 @@ function pairAt(time: number): CountingPair {
   return { timestamp: seconds(time), frames, closedFrames: () => closed };
 }
 
+const TOLERANCE = seconds(0.0005);
+
 function gateAt(from: number): { gate: StartGate<string>; delivered: FramePair<string>[] } {
   const delivered: FramePair<string>[] = [];
-  const gate = new StartGate<string>(seconds(from), (pair) => {
+  const gate = new StartGate<string>(seconds(from), TOLERANCE, (pair) => {
     delivered.push(pair);
   });
   return { gate, delivered };
@@ -37,6 +39,31 @@ describe('StartGate', () => {
     gate.push(after);
     expect(delivered).toEqual([atStart, after]);
     expect(gate.dropped).toBe(0);
+  });
+
+  it('takes a pair a decoder timed a fraction of a microsecond early for the pair at the start', () => {
+    const sampleTime = 2002 / 30_000;
+    const { gate, delivered } = gateAt(sampleTime);
+    const decoded = pairAt(Math.round(sampleTime * 1_000_000) / 1_000_000);
+    gate.push(decoded);
+    expect(delivered).toEqual([decoded]);
+  });
+
+  it('closes the held pair when the pair at the start comes, since that one is on screen', () => {
+    const sampleTime = 2002 / 30_000;
+    const { gate, delivered } = gateAt(sampleTime);
+    const [before, decoded] = [pairAt(1001 / 30_000), pairAt(sampleTime - TOLERANCE / 2)];
+    gate.push(before);
+    gate.push(decoded);
+    expect(delivered).toEqual([decoded]);
+    expect(before.closedFrames()).toBe(2);
+    expect(gate.dropped).toBe(1);
+  });
+
+  it('still holds a pair one frame before the start', () => {
+    const { gate, delivered } = gateAt(2002 / 30_000);
+    gate.push(pairAt(1001 / 30_000));
+    expect(delivered).toEqual([]);
   });
 
   it('holds the newest pair before the start and releases it ahead of the first pair after it', () => {

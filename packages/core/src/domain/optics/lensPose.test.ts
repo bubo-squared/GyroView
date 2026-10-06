@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { EquidistantModel } from './EquidistantModel';
 import { HALF_FIELD_OF_VIEW } from './opticsConstants';
 import type { LensCalibration } from './LensCalibration';
-import { lensRotation } from './lensPose';
+import { lensRotation, opticalAxisOf } from './lensPose';
 import {
   multiplyMatrices,
   rotationAboutX,
@@ -25,7 +25,7 @@ function rotationOf(pose: Pose): Matrix3 {
   const lens: LensCalibration = {
     lensIndex: pose.lensIndex,
     model: new EquidistantModel({
-      edgeRadius: 500,
+      radius: 500,
       radiusAngle: HALF_FIELD_OF_VIEW,
       principalPoint: { x: 500, y: 500 },
     }),
@@ -108,5 +108,17 @@ describe('lensRotation', () => {
     const pitched = rotationOf({ lensIndex: 0, pitch: 90 });
     expectVector(transformVector(yawed, FORWARD), RIGHT);
     expectVector(transformVector(pitched, FORWARD), [0, -1, 0]);
+  });
+});
+
+describe('opticalAxisOf', () => {
+  it("is the lens's axis in the body frame: lens 0 forward, lens 1 backward", () => {
+    expectVector(opticalAxisOf(rotationOf({ lensIndex: 0 })), FORWARD);
+    expectVector(opticalAxisOf(rotationOf({ lensIndex: 1 })), BACKWARD);
+  });
+
+  it('follows the yaw the calibration gives both lenses', () => {
+    const diagonal = Math.SQRT1_2;
+    expectVector(opticalAxisOf(rotationOf({ lensIndex: 0, yaw: 45 })), [-diagonal, 0, diagonal]);
   });
 });

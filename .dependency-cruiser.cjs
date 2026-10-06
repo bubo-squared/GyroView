@@ -258,7 +258,7 @@ module.exports = {
       severity: 'error',
       from: { path: '^apps/embed/src/(snippet|protocol|bridge)/', pathNot: '\\.test\\.ts$' },
       to: {
-        path: '^apps/embed/src/(frame/|pages/|component\\.ts$)',
+        path: '^apps/embed/src/(frame/|pages/)',
         dependencyTypesNot: ['type-only'],
       },
     },
@@ -281,8 +281,9 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
-    // The npm package's consumer check and type stub import the built package, not the sources.
-    exclude: { path: ['(^|/)dist/', '^apps/library/(consumer|types)/'] },
+    // The npm package's consumer check and type stub import the built package, not the sources;
+    // Stryker's sandbox is a copy of the core outside every rule's paths.
+    exclude: { path: ['(^|/)dist/', '^apps/library/(consumer|types)/', '(^|/)\\.stryker-tmp/'] },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.base.json' },
     enhancedResolveOptions: {

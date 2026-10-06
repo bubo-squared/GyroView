@@ -33,17 +33,26 @@ export class GainMatchingFrameSink<Handle = unknown> implements FrameSink<Handle
   private active: ActiveMatching | undefined;
   private lastMediaTime: Seconds | undefined;
 
+  /**
+   * @param referenceLens the lens the others are matched to, by its place among the renderer's
+   * lenses (`referenceLensOf`)
+   */
   public constructor(
     private readonly sink: FrameSink<Handle>,
     private readonly renderer: GainRenderer<Handle>,
+    private readonly referenceLens: number,
   ) {}
 
   public enable(): void {
     if (this.active) return;
-    const { renderer } = this;
+    const { renderer, referenceLens } = this;
     const meter = renderer.createSeamMeter();
-    const matching = new GainMatching(meter, (gains) => {
-      renderer.setLensGains(gains);
+    const matching = new GainMatching({
+      meter,
+      referenceLens,
+      applyGains: (gains): void => {
+        renderer.setLensGains(gains);
+      },
     });
     this.active = { meter, matching };
   }

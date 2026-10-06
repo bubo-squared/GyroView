@@ -218,7 +218,9 @@ describe('Player over the synthetic X5 recording', () => {
 
     player.stop();
     expect(player.currentTime).toBe(0);
-    expect(player.status).toBe('paused');
+    expect(player.status).toBe('seeking');
+    expect(player.isPaused).toBe(true);
+    await waitFor(() => player.status === 'paused', 'the picture at the start');
     // Whether play found the preloaded frames already primed decides if a `waiting` precedes
     // `playing`, and a slow machine may stall again later; the transport sequence around them
     // does not depend on decode timing.
@@ -236,16 +238,34 @@ describe('Player over the synthetic X5 recording', () => {
     expect(events.indexOf('playing')).toBeGreaterThan(events.indexOf('play'));
   });
 
-  it('ends at the end of the clip and, when looping, starts over', async () => {
+  it('pauses and then ends at the end of the clip, as a media element does', async () => {
+    const { player, events } = open();
+    await player.load(sourceOf(X5_RECORDING_URL));
+    player.seek(seconds(2.7));
+
+    await player.play();
+    await waitFor(() => events.includes('ended'), 'the end of the clip');
+    expect(events.slice(-2)).toEqual(['pause', 'ended']);
+    expect(player.status).toBe('ended');
+  });
+
+  it('when looping, seeks back to the start and plays on without ending', async () => {
     const { player, events } = open();
     await player.load(sourceOf(X5_RECORDING_URL));
     player.setLooping(true);
     player.seek(seconds(2.7));
 
     await player.play();
-    await waitFor(() => events.includes('ended'), 'the end of the clip');
+    const seeksBeforeTheLoop = events.filter((name) => name === 'seeked').length;
+    await waitFor(
+      () => events.filter((name) => name === 'seeked').length > seeksBeforeTheLoop,
+      'the loop',
+    );
     await waitFor(() => player.status === 'playing' && player.currentTime < 1, 'the restart');
     expect(player.isLooping).toBe(true);
+    const looped = events.slice(events.lastIndexOf('play'));
+    expect(looped).not.toContain('ended');
+    expect(looped.filter((name) => name === 'play' || name === 'pause')).toEqual(['play']);
   });
 
   it('announces a change of volume or mute, whoever made it', async () => {
@@ -455,6 +475,58 @@ describe('Player over the synthetic X5 recording', () => {
     expect(player.currentTime).toBeCloseTo(1.5, 1);
   });
 
+  it('refuses to play with nothing loaded or loading', async () => {
+    const { player } = open();
+    await expect(player.play()).rejects.toMatchObject({ code: 'no-source' });
+  });
+
+  it('toggles playback as a tap does, a refused start a warning', async () => {
+    const { player, warnings } = open();
+    player.togglePlayback();
+    await waitFor(() => warnings.length > 0, 'the refused start');
+    expect(warnings).toEqual([
+      {
+        code: 'playback-failed',
+        message: 'playback could not start: there is no recording to play',
+      },
+    ]);
+
+    await player.load(sourceOf(X5_RECORDING_URL));
+    player.togglePlayback();
+    await waitFor(() => !player.isPaused, 'playing');
+    player.togglePlayback();
+    expect(player.isPaused).toBe(true);
+  });
+
+  it('gives its listeners no way to emit or silence its events, at compile time', () => {
+    const { player } = open();
+    const reachForEmitting = (): unknown[] => [
+      // @ts-expect-error -- a page listens to the player; only the player and its parts emit
+      player.events.emit,
+      // @ts-expect-error -- nor does a page take the other listeners away
+      player.events.removeAll,
+    ];
+    expect(reachForEmitting).toBeTypeOf('function');
+  });
+
+  it('rejects a play waiting for a load that a newer load replaced, and plays nothing', async () => {
+    const { player } = open();
+    const first = player.load(sourceOf(X5_RECORDING_URL));
+    const playing = player.play();
+    const second = player.load(sourceOf(X5_RECORDING_URL));
+    await expect(playing).rejects.toMatchObject({ code: 'play-interrupted' });
+    await Promise.all([first, second]);
+    expect(player.isPaused).toBe(true);
+  });
+
+  it('rejects a play waiting for a load that an unload let go of', async () => {
+    const { player } = open();
+    void player.load(sourceOf(X5_RECORDING_URL));
+    const playing = player.play();
+    player.unload();
+    await expect(playing).rejects.toMatchObject({ code: 'play-interrupted' });
+  });
+
   it('refuses to play after a failed load with that failure', async () => {
     const { player } = open();
     await expect(player.load(sourceOf(`${X5_RECORDING_URL}.missing`))).rejects.toThrow();
@@ -612,7 +684,7 @@ describe('Player over the synthetic X5 recording', () => {
 
   it('lets a newer load supersede an older one quietly and ignores transport before a load', async () => {
     const { player, events, errors } = open();
-    await player.play();
+    await expect(player.play()).rejects.toMatchObject({ code: 'no-source' });
     player.pause();
     player.seek(seconds(1));
     expect(player.status).toBe('idle');

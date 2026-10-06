@@ -7,10 +7,10 @@ must do; `pnpm --filter @gyroview/embed build` produces the files in `apps/embed
 
 | File                      | Purpose                                                                       |
 | ------------------------- | ----------------------------------------------------------------------------- |
-| `gyro-view.js`            | The `<gyro-view>` element as one ES module, for pages that use it directly.   |
+| `gyro-view.js`            | The npm package's standalone file: the element and the package's API, with    |
+|                           | Three.js and mediabunny inside, as one ES module for pages without a bundler. |
 | `embed.html` + `assets/*` | The iframe target; configured by query parameters, driven over `postMessage`. |
 | `embed.js`                | The snippet exposing `GyroView.embed` for pages that embed the iframe.        |
-| `index.html` + `assets/*` | The developer page; leave it out of a production deployment.                  |
 
 The bundles are plain files: any static host, object store or CDN serves them. Serve them
 with long cache lifetimes under a versioned path; `embed.html` should be revalidated so it
@@ -123,15 +123,40 @@ needs no `'unsafe-inline'` styles: the element adopts stylesheets it constructs,
 (`require-trusted-types-for 'script'`) allows the policy the element parses its own markup
 through: `trusted-types gyroview`, with `'allow-duplicates'` if two copies of the player load.
 
+### The embed page's own headers
+
+`embed.html` is a page other sites frame, and it fetches whatever recording its query names, so
+its own response headers matter:
+
+- **Framing must be allowed.** No `X-Frame-Options`, and a `frame-ancestors` that names the
+  sites that may embed it, or `*`. A host or CDN preset that adds `X-Frame-Options: SAMEORIGIN`
+  or `frame-ancestors 'self'` breaks every embed; the snippet's handle then reports
+  `embed-unreachable`.
+- **A strict Content Security Policy.** The page needs its own scripts and stylesheet, the
+  recordings' and posters' hosts, and `blob:` for the sound; everything else can be refused.
+  This policy, one header line wrapped here, plays a recording in Chromium and WebKit with no
+  violation; narrow `connect-src` and `img-src` to the hosts that serve recordings and posters
+  where they are known:
+
+  ```
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self';
+    connect-src 'self' https:; img-src 'self' https: data:; media-src blob:; base-uri 'none';
+    form-action 'none'; frame-ancestors *; require-trusted-types-for 'script';
+    trusted-types gyroview
+  ```
+
+- **`X-Content-Type-Options: nosniff`**, and a `Permissions-Policy`, if any, that does not refuse
+  the page `fullscreen`, `autoplay`, `accelerometer`, `gyroscope` or `magnetometer`.
+
 ## Error codes
 
 Every failure is a `GyroViewError` with a stable `code` and a `category`; the README's "When a
 recording cannot play" lists the codes of each category. A failed load or playback arrives as
 the `error` event (and as the rejection of `load()`); the rest arrive where they happen:
-`playback-blocked` rejects `play()`, and becomes a `warning` event when autoplay, a tap or the
-loop meets it; `invalid-argument` is thrown by the call that got the value, or rejects its
-promise when it returns one (`scrub()`, every embed handle method); `embed-destroyed` rejects
-the embed handle's promises.
+`playback-blocked`, `no-source` and `play-interrupted` reject `play()`, and the first becomes a
+`warning` event when autoplay or a tap meets it; `invalid-argument` is thrown by the call that
+got the value, or rejects its promise when it returns one (`scrub()`, every embed handle
+method); `embed-destroyed` and `embed-unreachable` reject the embed handle's promises.
 
 | Code                    | Meaning and what to do                                                       |
 | ----------------------- | ---------------------------------------------------------------------------- |
@@ -162,6 +187,13 @@ the embed handle's promises.
 |                         | could not be drawn during playback (a GPU that gave up).                     |
 | `invalid-argument`      | A property, method or embed command got a value it does not accept.          |
 | `embed-destroyed`       | A command reached an embed handle after `destroy()`.                         |
+| `embed-unreachable`     | The iframe loaded but never answered: `embed.html` is not at `embedPageUrl`, |
+|                         | its host refuses to be framed (`X-Frame-Options`, `frame-ancestors`), or the |
+|                         | page has no origin (`origin=null`). Commands reject ten seconds after the    |
+|                         | iframe's `load` event, and at once after that, until the frame answers.      |
+| `no-source`             | `play()` with no recording loaded or loading.                                |
+| `play-interrupted`      | A newer `src`, an unload or the element's removal came before `play()` could |
+|                         | start the recording it waited for, as a video's `play()` rejects.            |
 | `invariant-violation`   | A failure the player did not expect, the original error as its cause.        |
 
 Other codes (`invalid-*`, `unsupported-*`, `binary-*`, `index-out-of-range`) come from a

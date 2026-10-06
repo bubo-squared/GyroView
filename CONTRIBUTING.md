@@ -28,7 +28,7 @@ run in headless Chromium and WebKit through Playwright; `pnpm --filter
 
 ```sh
 pnpm --filter @gyroview/embed dev               # developer page at http://localhost:5180 with the local samples
-pnpm --filter @gyroview/embed build             # static site, embed.js and gyro-view.js in apps/embed/dist
+pnpm --filter @gyroview/embed... build          # the npm package, then the static site in apps/embed/dist
 pnpm --filter @bubo-squared/gyroview build      # the npm package in apps/library/dist
 pnpm inspect <file.insv>                        # what inspectRecording reads, for a file on disk
 pnpm fixtures:build                             # regenerate the synthetic recordings in test/fixtures
@@ -73,8 +73,13 @@ secure contexts, with a certificate the phone trusts. With [mkcert](https://gith
 ```sh
 mkcert -install                                   # a local certificate authority, once
 mkcert -cert-file dev-cert.pem -key-file dev-key.pem "$(scutil --get LocalHostName).local" localhost
-GYROVIEW_DEV_CERT=dev-cert.pem GYROVIEW_DEV_KEY=dev-key.pem pnpm --filter @gyroview/embed dev
+GYROVIEW_DEV_CERT=dev-cert.pem GYROVIEW_DEV_KEY=dev-key.pem GYROVIEW_DEV_SHARE_SAMPLES=1 pnpm --filter @gyroview/embed dev
 ```
+
+With the certificate the server listens on every network interface, so anyone on the same
+network can open it. It lists and streams the samples only with `GYROVIEW_DEV_SHARE_SAMPLES=1`,
+since every sample is private (ADR 0031): without it, the samples and their catalogue are
+answered as missing. Share them only on a network you trust, and stop the server after.
 
 Keep the two files outside the repository, and give the dev command their full paths. On an
 iPhone, install the authority's `rootCA.pem` (in the folder `mkcert -CAROOT` prints, sent over
@@ -134,7 +139,7 @@ describes the components layer by layer:
 - `packages/player`: the composition root (`openRecording`, `buildPipeline`), the headless
   `Player` and the `<gyro-view>` element with its controls and gestures.
 - `apps/embed`: the static site: embed page, `embed.js` snippet with the postMessage bridge,
-  `gyro-view.js` bundle, developer page. Apps import the player, never the adapters.
+  the npm package's standalone file as `gyro-view.js`, developer page. Apps import the player, never the adapters.
 - `apps/library`: the npm package `@bubo-squared/gyroview` (ADR 0020); its public API is
   `src/index.ts`.
 - `tools/*`: developer CLIs (`insv-inspect`), the fixture builder (`fixtures`) and the
@@ -157,9 +162,14 @@ describes the components layer by layer:
 a version tag is pushed:
 
 1. Set the new version in `apps/library/package.json` (semantic versioning, 0.x while the API
-   settles) and commit it.
-2. Tag that commit `v<version>` and push the tag (`git push origin v<version>`). The workflow
-   checks that the tag names the version, runs `pnpm verify` and publishes with provenance.
+   settles), turn the changelog's `## Unreleased` into `## <version> (<date>)`, and merge both
+   into main.
+2. Tag main's commit `v<version>` and push the tag (`git push origin v<version>`). A first job
+   checks that the tag names the version, that main holds the tagged commit and that the
+   changelog has a heading for the version, then runs `pnpm verify` and packs the package; it
+   has no right to publish, though every dev dependency runs in it. Once it passes, a second
+   job waits for the `npm` environment's approval and publishes that tarball with provenance,
+   installing nothing.
 
 Once, for the first version: npm trusts a workflow only for a package that already exists.
 

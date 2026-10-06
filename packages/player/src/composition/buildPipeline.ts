@@ -7,6 +7,7 @@ import {
   messageOf,
   milliseconds,
   PlaybackSession,
+  referenceLensOf,
   seconds,
   stabilizerFor,
   StabilizingFrameSink,
@@ -20,6 +21,7 @@ import {
 
 import { AnimationFrameDraws } from './AnimationFrameDraws';
 import { Disposables } from './Disposables';
+import { DrawingBufferFit } from './DrawingBufferFit';
 import type { OpenedRecording } from './OpenedRecording';
 import type { Pipeline, PipelineParts } from './ports';
 
@@ -78,6 +80,10 @@ export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
 
 interface Drawing {
   readonly renderer: ThreeFrameRenderer;
+  /**
+   * The drawing buffer kept to the canvas's size, as many device pixels as the quality allows.
+   */
+  readonly fit: DrawingBufferFit;
   readonly stabilizing: StabilizingFrameSink<VideoFrame> | undefined;
   /**
    * The front of the chain the session presents to.
@@ -91,18 +97,28 @@ interface Drawing {
  * drawn once at the next animation frame, where a frame presented in it draws it anyway.
  */
 function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
-  const renderer = ThreeFrameRenderer.create(parts.host.canvas, stitchingSetupOf(parts.opened), {
+  const setup = stitchingSetupOf(parts.opened);
+  const renderer = ThreeFrameRenderer.create(parts.host.canvas, setup, {
     drawSchedule: new AnimationFrameDraws(),
   });
   disposables.add(() => {
     renderer.dispose();
   });
+  const fit = new DrawingBufferFit(parts.host.canvas, renderer);
+  disposables.add(() => {
+    fit.dispose();
+  });
   const { sink, stabilizing } = sinkOver(renderer, parts.opened);
-  const gainMatching = new GainMatchingFrameSink(sink, renderer);
+  const mounting = parts.opened.motion?.mounting ?? UPRIGHT_MOUNTING;
+  const gainMatching = new GainMatchingFrameSink(
+    sink,
+    renderer,
+    referenceLensOf(setup.lenses, mounting),
+  );
   disposables.add(() => {
     gainMatching.dispose();
   });
-  return { renderer, stabilizing, gainMatching };
+  return { renderer, fit, stabilizing, gainMatching };
 }
 
 /**
@@ -118,9 +134,10 @@ function pictureSettingsOf(
       drawing.stabilizing?.setStabilizer(stabilizerFor(mode));
       session.redraw();
     },
-    // Only the sampling half; loadRecording's withBufferQuality adds the drawing buffer's half.
+    // How finely the lenses are read, and how many device pixels are drawn.
     setQuality: (quality): void => {
       drawing.renderer.setQuality(quality);
+      drawing.fit.setQuality(quality);
     },
     setGainMatching: (isEnabled): void => {
       if (isEnabled) drawing.gainMatching.enable();

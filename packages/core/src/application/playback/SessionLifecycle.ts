@@ -11,6 +11,10 @@ export interface PlaybackSessionEvents {
    * The sink has drawn a new pair; the media time it was drawn at.
    */
   readonly present: Seconds;
+  /**
+   * The latest seek drew its first picture, or its decode ended without one: the time sought.
+   */
+  readonly seeked: Seconds;
   readonly ended: undefined;
   readonly error: GyroViewError;
 }

@@ -16,6 +16,7 @@ import { isSameVersion, versionOf, type RecordingVersion } from './recordingVers
 
 const HTTP_OK = 200;
 const HTTP_PARTIAL_CONTENT = 206;
+const HTTP_TOO_MANY_REQUESTS = 429;
 const HTTP_SERVER_ERROR = 500;
 /**
  * The waits before asking again for a range that failed on the way: a blink of a mobile network
@@ -160,7 +161,7 @@ export class HttpResource {
       );
     }
     const message = `${this.url} answered ${status} to a byte range`;
-    return status >= HTTP_SERVER_ERROR
+    return isPassingStatus(status)
       ? passing(new GyroViewError('source-unreadable', message))
       : new GyroViewError('source-unreadable', message);
   }
@@ -229,6 +230,14 @@ export class HttpResource {
   private request(method: HttpMethod, headers?: Record<string, string>): Promise<Response> {
     return httpRequest(this.url, { method, ...(headers && { headers }) }, this.options);
   }
+}
+
+/**
+ * A server error, or a server asking the player to slow down (429, as rate-limited APIs answer):
+ * both may pass by the time the range is asked for again. Any other refusal stands.
+ */
+function isPassingStatus(status: number): boolean {
+  return status >= HTTP_SERVER_ERROR || status === HTTP_TOO_MANY_REQUESTS;
 }
 
 /**

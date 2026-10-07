@@ -196,6 +196,14 @@ describe('HttpRangeSource', () => {
     expect(refusing.ranges()).toBe(1);
   });
 
+  it('asks again after a server that asks it to slow down, as rate-limited APIs answer', async () => {
+    const server = await serve(content);
+    const limited = firstRangeAnswered(429);
+    const source = sourceAt(server.url, { fetch: limited.fetch, retryDelaysMs: NO_WAIT });
+    await expect(source.read(ByteRange.of(0, 10))).resolves.toEqual(content.subarray(0, 10));
+    expect(limited.ranges()).toBe(2);
+  });
+
   it('fails at once with cors when the first range is refused, asking only once', async () => {
     const server = await serve(content);
     let ranges = 0;
@@ -226,7 +234,7 @@ describe('HttpRangeSource', () => {
     let isSized = false;
     const source = sourceAt(server.url, {
       fetch: (input, init): Promise<Response> => {
-        if (init?.mode === 'no-cors') probes += 1;
+        if (init.mode === 'no-cors') probes += 1;
         return isSized ? answered(input, init) : fetch(input, init);
       },
       retryDelaysMs: NO_WAIT,
@@ -253,7 +261,7 @@ describe('HttpRangeSource', () => {
     let probes = 0;
     const source = sourceAt(server.url, {
       fetch: (input, init): Promise<Response> => {
-        if (init?.mode === 'no-cors') probes += 1;
+        if (init.mode === 'no-cors') probes += 1;
         return hasReadOnce ? answered(input, init) : fetch(input, init);
       },
       retryDelaysMs: NO_WAIT,

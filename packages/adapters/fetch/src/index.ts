@@ -2,4 +2,4 @@ export { HttpByteStream } from './HttpByteStream';
 export { HttpRangeSource } from './HttpRangeSource';
 export { HttpResource, type HttpResourceOptions } from './HttpResource';
 export { HttpResourceLocator } from './HttpResourceLocator';
-export type { HttpRequestOptions } from './httpRequest';
+export type { HttpFetch, HttpRequestOptions } from './httpRequest';

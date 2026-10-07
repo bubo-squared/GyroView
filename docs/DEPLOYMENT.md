@@ -130,8 +130,8 @@ Access-Control-Max-Age: 3600
 A token that has run out is answered with `401`, which the player reports as `source-unreadable`
 at once, as any refusal, provided the host sends its CORS headers on error answers too (nginx's
 `add_header … always`): without them the browser hides the answer, and the player reports `cors`
-before a range has come through. A byte range answered `429` while the recording plays is asked
-for again twice first (ADR 0019); the first size request is not. The `poster` loads as an image
+before a range has come through. Any byte range answered `429` but the first size request is
+asked for again twice first (ADR 0019). The `poster` loads as an image
 does, without the function, and the iframe embed never takes one.
 
 ## Embedding

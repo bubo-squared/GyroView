@@ -174,6 +174,9 @@ useEffect(() => {
 return <gyro-view ref={player} src={url} stabilization="lock" controls muted />;
 ```
 
+A `fetch` for recordings behind a token is a property only, with no attribute: set it on the
+element through the ref, as `player.current.fetch = …`, before or with its `src`.
+
 **Vue 3** is told the tag is a custom element (`isCustomElement: (tag) => tag === 'gyro-view'`
 in the template compiler options), then binds as usual: `<gyro-view :src="url" controls
 @ready="onReady" />`.
@@ -218,8 +221,11 @@ recording draws on a fresh canvas at its next load.
   adds the header the host asks for.
 
   ```js
-  player.fetch = (url, init) =>
-    fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${token()}` } });
+  player.fetch = (url, init) => {
+    const headers = new Headers(init.headers);
+    headers.set('Authorization', `Bearer ${token()}`);
+    return fetch(url, { ...init, headers });
+  };
   ```
 
 - **A hardware HEVC decoder.** 5.7K plays on recent laptops and phones; 8K needs a Level 6

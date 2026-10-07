@@ -109,8 +109,11 @@ recording plays is used from the next request on; setting another function loads
 again.
 
 ```js
-player.fetch = (url, init) =>
-  fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${token()}` } });
+player.fetch = (url, init) => {
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', `Bearer ${token()}`);
+  return fetch(url, { ...init, headers });
+};
 ```
 
 A request with `Authorization` is always preflighted, so the host must allow the header, and a
@@ -125,8 +128,11 @@ Access-Control-Max-Age: 3600
 ```
 
 A token that has run out is answered with `401`, which the player reports as `source-unreadable`
-at once, as any refusal; a `429` is asked again a few times first. The `poster` loads as an
-image does, without the function, and the iframe embed never takes one.
+at once, as any refusal, provided the host sends its CORS headers on error answers too (nginx's
+`add_header … always`): without them the browser hides the answer, and the player reports `cors`
+before a range has come through. A byte range answered `429` while the recording plays is asked
+for again twice first (ADR 0019); the first size request is not. The `poster` loads as an image
+does, without the function, and the iframe embed never takes one.
 
 ## Embedding
 
@@ -189,43 +195,43 @@ the `error` event (and as the rejection of `load()`); the rest arrive where they
 got the value, or rejects its promise when it returns one (`scrub()`, every embed handle
 method); `embed-destroyed` and `embed-unreachable` reject the embed handle's promises.
 
-| Code                    | Meaning and what to do                                                       |
-| ----------------------- | ---------------------------------------------------------------------------- |
-| `cors`                  | The media server answered but forbade this origin: add the CORS headers.     |
-| `source-unreadable`     | The URL could not be fetched (network, DNS, wrong URL). A range read that    |
-|                         | failed on the way (no connection, a body broken off, a 5xx) was asked for    |
-|                         | twice more first (ADR 0019); the first size request is not. Also when the    |
-|                         | first frames did not arrive before the decode check's deadline.              |
-| `range-unsupported`     | The server ignores `Range`: enable byte-range serving.                       |
-| `source-changed`        | The recording at the URL was replaced while it played: its `ETag`, or its    |
-|                         | `Last-Modified` and size, changed. Load it again.                            |
-| `source-truncated`      | Fewer bytes came back than asked: the server misbehaves, or the file changed |
-|                         | where the server does not tell its version.                                  |
-| `codec-unsupported`     | This browser cannot decode the tracks: no HEVC hardware, or on Linux no      |
-|                         | VA-API driver that offers HEVC.                                              |
-| `webcodecs-unavailable` | This browser has no WebCodecs: the page is not served over HTTPS, or the     |
-|                         | browser is too old.                                                          |
-| `missing-second-file`   | One lens of a split-file pair without the other lens's file: set `src2`.     |
-| `no-calibration`        | The file carries no lens calibration; it cannot be stitched.                 |
-| `invalid-trailer`       | Not an Insta360 recording (a plain MP4, a Studio export), or one cut short.  |
-| `no-info-record`        | The trailer holds no info record: a damaged or unusual recording.            |
-| `no-key-frame`          | A video track has no key frame to start decoding from.                       |
-| `unsupported-container` | The Insta360 trailer reads, but the demuxer cannot read the media tracks.    |
-| `unsupported-layout`    | The tracks do not form two lens images the player understands.               |
-| `playback-blocked`      | The browser wants a user gesture before sound starts (autoplay policy).      |
-| `decode`                | A decoder or the audio buffer failed mid-stream.                             |
-| `render-unavailable`    | No WebGL2 context, a shader did not compile or link, or the picture          |
-|                         | could not be drawn during playback (a GPU that gave up).                     |
-| `invalid-argument`      | A property, method or embed command got a value it does not accept.          |
-| `embed-destroyed`       | A command reached an embed handle after `destroy()`.                         |
-| `embed-unreachable`     | The iframe loaded but never answered: `embed.html` is not at `embedPageUrl`, |
-|                         | its host refuses to be framed (`X-Frame-Options`, `frame-ancestors`), or the |
-|                         | page has no origin (`origin=null`). Commands reject ten seconds after the    |
-|                         | iframe's `load` event, and at once after that, until the frame answers.      |
-| `no-source`             | `play()` with no recording loaded or loading.                                |
-| `play-interrupted`      | A newer `src`, an unload or the element's removal came before `play()` could |
-|                         | start the recording it waited for, as a video's `play()` rejects.            |
-| `invariant-violation`   | A failure the player did not expect, the original error as its cause.        |
+| Code                    | Meaning and what to do                                                        |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `cors`                  | The media server answered but forbade this origin: add the CORS headers.      |
+| `source-unreadable`     | The URL could not be fetched (network, DNS, wrong URL). A range read that     |
+|                         | failed on the way (no connection, a body broken off, a 5xx, a 429) was asked  |
+|                         | for twice more first (ADR 0019); the first size request is not. Also when the |
+|                         | first frames did not arrive before the decode check's deadline.               |
+| `range-unsupported`     | The server ignores `Range`: enable byte-range serving.                        |
+| `source-changed`        | The recording at the URL was replaced while it played: its `ETag`, or its     |
+|                         | `Last-Modified` and size, changed. Load it again.                             |
+| `source-truncated`      | Fewer bytes came back than asked: the server misbehaves, or the file changed  |
+|                         | where the server does not tell its version.                                   |
+| `codec-unsupported`     | This browser cannot decode the tracks: no HEVC hardware, or on Linux no       |
+|                         | VA-API driver that offers HEVC.                                               |
+| `webcodecs-unavailable` | This browser has no WebCodecs: the page is not served over HTTPS, or the      |
+|                         | browser is too old.                                                           |
+| `missing-second-file`   | One lens of a split-file pair without the other lens's file: set `src2`.      |
+| `no-calibration`        | The file carries no lens calibration; it cannot be stitched.                  |
+| `invalid-trailer`       | Not an Insta360 recording (a plain MP4, a Studio export), or one cut short.   |
+| `no-info-record`        | The trailer holds no info record: a damaged or unusual recording.             |
+| `no-key-frame`          | A video track has no key frame to start decoding from.                        |
+| `unsupported-container` | The Insta360 trailer reads, but the demuxer cannot read the media tracks.     |
+| `unsupported-layout`    | The tracks do not form two lens images the player understands.                |
+| `playback-blocked`      | The browser wants a user gesture before sound starts (autoplay policy).       |
+| `decode`                | A decoder or the audio buffer failed mid-stream.                              |
+| `render-unavailable`    | No WebGL2 context, a shader did not compile or link, or the picture           |
+|                         | could not be drawn during playback (a GPU that gave up).                      |
+| `invalid-argument`      | A property, method or embed command got a value it does not accept.           |
+| `embed-destroyed`       | A command reached an embed handle after `destroy()`.                          |
+| `embed-unreachable`     | The iframe loaded but never answered: `embed.html` is not at `embedPageUrl`,  |
+|                         | its host refuses to be framed (`X-Frame-Options`, `frame-ancestors`), or the  |
+|                         | page has no origin (`origin=null`). Commands reject ten seconds after the     |
+|                         | iframe's `load` event, and at once after that, until the frame answers.       |
+| `no-source`             | `play()` with no recording loaded or loading.                                 |
+| `play-interrupted`      | A newer `src`, an unload or the element's removal came before `play()` could  |
+|                         | start the recording it waited for, as a video's `play()` rejects.             |
+| `invariant-violation`   | A failure the player did not expect, the original error as its cause.         |
 
 Other codes (`invalid-*`, `unsupported-*`, `binary-*`, `index-out-of-range`) come from a
 damaged or unusual file and name the record concerned.

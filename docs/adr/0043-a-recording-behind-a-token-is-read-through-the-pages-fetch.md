@@ -42,8 +42,8 @@ a function called in place of the platform's `fetch` for every request made for 
   with the element in its scope, so the property is hidden from it through
   `Symbol.unscopables`, as the DOM hides `append` and `remove`.
 
-With it, a range answered `429 Too Many Requests`, as rate-limited APIs answer, is asked for
-again after the same waits as a server error (ADR 0019), instead of failing the read at once.
+Such APIs limit how fast they answer; a range answered `429 Too Many Requests` is now asked for
+again as a server error is (ADR 0019, amended).
 
 ## Alternatives considered
 
@@ -62,7 +62,7 @@ again after the same waits as a server error (ADR 0019), instead of failing the 
 
 A page plays recordings from hosts that want a token or a signed request, with one property and
 the vocabulary of `fetch` it already knows. Nothing changes for a page that does not set it:
-each request is the one 0.7.0 made. The host must allow the header the page adds in its CORS
+each request is the one 0.7.0 made, apart from a range answered `429`, now asked for again. The host must allow the header the page adds in its CORS
 preflight (`Access-Control-Allow-Headers: Range, Authorization`); a request with
 `Authorization` is always preflighted, so a long `Access-Control-Max-Age` saves a round trip
 per range.

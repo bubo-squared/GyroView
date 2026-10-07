@@ -17,8 +17,9 @@ Added (ADR 0043, a recording behind a token is read through the page's fetch):
 
 Changed:
 
-- A byte range answered `429 Too Many Requests` is asked for again after the same waits as one
-  answered with a server error, instead of failing the read at once.
+- A byte range answered `429 Too Many Requests` while a recording plays is asked for again after
+  the same waits as one answered with a server error, instead of failing the read at once
+  (ADR 0019, amended). The first size request is still not asked again.
 - `createBrowserPlayer`'s `http.fetch` is typed by how the player calls it,
   `(url: string, init: RequestInit) => Promise<Response>`; `window.fetch` still fits it.
 

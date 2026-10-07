@@ -33,6 +33,7 @@ export type {
   PlayerSource,
   PlayerStatus,
   PlayerWarning,
+  RecordingFetch,
   SoundLevel,
   UrlInput,
   ViewAngles,

@@ -34,5 +34,6 @@ export const PUBLIC_PROPERTIES: readonly string[] = [
   ...LIVE_SETTING_NAMES,
   'currentTime',
   'messages',
+  'fetch',
 ];
 export const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);

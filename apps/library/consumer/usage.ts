@@ -18,8 +18,8 @@ import {
   type MotionLookState,
   type PictureQuality,
   type PlayerMetadata,
-  type RecordingFetch,
   type PlayerStatus,
+  type RecordingFetch,
   type RecordingInspection,
   type ViewMode,
   type WarningCode,
@@ -108,8 +108,11 @@ const yaw: number = player.view.yaw;
 element.preload = 'none';
 element.crossOrigin = 'use-credentials';
 const reading: 'anonymous' | 'use-credentials' | null = element.crossOrigin;
-const withToken: RecordingFetch = (url, init) =>
-  fetch(url, { ...init, headers: { ...init.headers, Authorization: 'Bearer token' } });
+const withToken: RecordingFetch = (url, init) => {
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', 'Bearer token');
+  return fetch(url, { ...init, headers });
+};
 element.fetch = withToken;
 element.fetch = null;
 await player.load({

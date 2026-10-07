@@ -38,12 +38,12 @@ import {
   X5_RECORDING_WITH_AUDIO_URL,
   type FakePortsParts,
 } from '../test/recordings';
+import { settle } from '../test/waiting';
 
 /**
  * A page's own fetch, sending each request as it is.
  */
 const pageFetch: RecordingFetch = (url, init) => fetch(url, init);
-import { settle } from '../test/waiting';
 
 const MAIN_URL = 'https://cdn.example/clips/VID_20260814_132640_00_013.insv';
 const SECOND_URL = 'https://cdn.example/clips/VID_20260814_132640_10_013.insv';

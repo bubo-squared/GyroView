@@ -2,16 +2,18 @@ import { Deferred } from '@gyroview/core';
 
 import { PlaybackAttribute } from './attributeNames';
 import { shouldPreload } from './attributes';
-import { elementSourceOf, type FileSource } from './elementSource';
+import { elementSourceOf, readThrough, type FileSource } from './elementSource';
 import type { PlayerCanvas } from './PlayerCanvas';
 import type { Player } from '../player/Player';
+import type { RecordingFetch } from '../PlayerSource';
 
 /**
- * The element whose recording is loaded: what its attributes name, and whether it is in the
- * document.
+ * The element whose recording is loaded: what its attributes name, how its recording is fetched,
+ * and whether it is in the document.
  */
 export interface LoadingElement extends HTMLElement {
   readonly autoplay: boolean;
+  readonly fetch: RecordingFetch | null;
 }
 
 /**
@@ -138,7 +140,7 @@ export class ElementLoads {
       return Promise.resolve();
     }
     this.canvas.prepare();
-    const loading = this.player.load(source, {
+    const loading = this.player.load(readThrough(source, this.element.fetch), {
       autoplay: this.element.autoplay,
       preload: shouldPreload(read(PlaybackAttribute.Preload)),
     });

@@ -8,6 +8,7 @@ import { GyroViewElement } from './GyroViewElement';
 import { queryShadow } from '../controls/controlParts';
 import { choiceMenuClasses, type ChoiceMenuName } from '../controls/controlsMarkup';
 import type { PlayerWarning } from '../player/PlayerEvents';
+import type { RecordingFetch } from '../PlayerSource';
 import { expectIconOnly, labelledName } from '../test/controls';
 import { fetchBytes, X5_RECORDING_URL, X5_RECORDING_WITH_AUDIO_URL } from '../test/recordings';
 import { nextEvent, settle, waitFor } from '../test/waiting';
@@ -32,6 +33,23 @@ const VIEWPORT_PROPORTION_TOLERANCE = 0.01;
 beforeAll(() => {
   defineGyroView();
 });
+
+/**
+ * A page's own fetch, sending each request as it is.
+ */
+const pageFetch: RecordingFetch = (url, init) => fetch(url, init);
+
+/**
+ * What setting a property threw, or undefined when it took the value.
+ */
+function refusalOf(element: GyroViewElement, name: string, value: unknown): unknown {
+  try {
+    Reflect.set(element, name, value);
+    return undefined;
+  } catch (error) {
+    return error;
+  }
+}
 
 function shadowOf(element: GyroViewElement): ShadowRoot {
   const { shadowRoot } = element;
@@ -266,6 +284,7 @@ describe('<gyro-view>', () => {
       muted: true,
       controls: true,
       crossOrigin: 'use-credentials',
+      fetch: pageFetch,
     });
     element.style.width = '256px';
     document.body.append(element);
@@ -277,6 +296,7 @@ describe('<gyro-view>', () => {
     expect(upgraded.getAttribute('crossorigin')).toBe('use-credentials');
     await nextEvent(upgraded, 'ready');
     expect(upgraded.muted).toBe(true);
+    expect(upgraded.fetch).toBe(pageFetch);
   });
 
   it('warns of a property set before definition that its setter refuses, and applies the rest', async () => {
@@ -931,6 +951,103 @@ describe('<gyro-view>', () => {
 
     expect(statuses).toEqual([]);
     expect(element.status).toBe('ready');
+  });
+
+  it("reads its recording again through the page's fetch, each request passed on whole", async () => {
+    const element = await createReady();
+    const recording = new URL(X5_RECORDING_URL, document.baseURI).href;
+    const sent: RequestInit[] = [];
+    const ready = nextEvent(element, 'ready');
+
+    element.fetch = (url, init): Promise<Response> => {
+      if (url === recording) sent.push(init);
+      return fetch(url, init);
+    };
+    await ready;
+
+    expect(sent.length).toBeGreaterThan(0);
+    expect(sent.every(({ cache }) => cache === 'no-store')).toBe(true);
+    expect(sent.every(({ signal }) => signal instanceof AbortSignal)).toBe(true);
+  });
+
+  it('loads once when a page sets fetch and src together', async () => {
+    const element = create({ controls: '' });
+    const statuses: string[] = [];
+    element.addEventListener('statuschange', (event) => {
+      statuses.push(event.detail);
+    });
+    const ready = nextEvent(element, 'ready');
+
+    element.fetch = pageFetch;
+    element.src = X5_RECORDING_URL;
+    await ready;
+
+    expect(statuses).toEqual(['loading', 'ready']);
+  });
+
+  it('plays on when the same fetch is set again, as a framework sets it on every render', async () => {
+    const element = create({ controls: '' });
+    const ready = nextEvent(element, 'ready');
+    element.fetch = pageFetch;
+    element.src = X5_RECORDING_URL;
+    await ready;
+    const statuses: string[] = [];
+    element.addEventListener('statuschange', (event) => {
+      statuses.push(event.detail);
+    });
+
+    element.fetch = pageFetch;
+    await settle();
+
+    expect(statuses).toEqual([]);
+  });
+
+  it("refuses a fetch that is no function, and takes null or undefined for the platform's own", () => {
+    const element = create();
+
+    expect(refusalOf(element, 'fetch', 'https://proxy.example/')).toMatchObject({
+      code: 'invalid-argument',
+    });
+    element.fetch = pageFetch;
+    expect(refusalOf(element, 'fetch', undefined)).toBeUndefined();
+    expect(element.fetch).toBeNull();
+  });
+
+  it('plays on the local files handed to it when fetch changes, as they are not fetched', async () => {
+    const element = create({ controls: '' });
+    const bytes = await fetchBytes(X5_RECORDING_URL);
+    const ready = nextEvent(element, 'ready');
+    element.loadFiles({ main: new File([bytes], 'VID_20260814_132640_00_013.insv') });
+    await ready;
+    const statuses: string[] = [];
+    element.addEventListener('statuschange', (event) => {
+      statuses.push(event.detail);
+    });
+
+    element.fetch = pageFetch;
+    await settle();
+
+    expect(statuses).toEqual([]);
+    expect(element.status).toBe('ready');
+  });
+
+  it("plays through the platform's fetch itself, which it calls on its own", async () => {
+    const element = create({ controls: '' });
+    const ready = nextEvent(element, 'ready');
+
+    element.fetch = globalThis.fetch;
+    element.src = X5_RECORDING_URL;
+
+    await expect(ready).resolves.toBeDefined();
+  });
+
+  it('leaves the global fetch to a handler written on it in markup', () => {
+    const element = create();
+    element.setAttribute('onclick', 'this.dataset.fetchSeen = typeof fetch');
+
+    element.click();
+
+    expect(element.dataset['fetchSeen']).toBe('function');
   });
 
   it('plays local files handed to it, reloads them, and plays src again once it changes', async () => {

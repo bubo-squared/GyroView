@@ -18,6 +18,7 @@ import {
   type MotionLookState,
   type PictureQuality,
   type PlayerMetadata,
+  type RecordingFetch,
   type PlayerStatus,
   type RecordingInspection,
   type ViewMode,
@@ -107,6 +108,13 @@ const yaw: number = player.view.yaw;
 element.preload = 'none';
 element.crossOrigin = 'use-credentials';
 const reading: 'anonymous' | 'use-credentials' | null = element.crossOrigin;
+const withToken: RecordingFetch = (url, init) =>
+  fetch(url, { ...init, headers: { ...init.headers, Authorization: 'Bearer token' } });
+element.fetch = withToken;
+element.fetch = null;
+await player.load({
+  main: { url: 'https://api.example/files/recording?alt=media', fetch: withToken },
+});
 const matching: 'on' | 'off' = element.gainMatch;
 const knownCodes: readonly GyroViewErrorCode[] = GYRO_VIEW_ERROR_CODES;
 const fromMessage = isGyroViewErrorCode('cors') ? 'cors' : undefined;

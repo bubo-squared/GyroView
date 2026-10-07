@@ -25,6 +25,7 @@ import { IdleWatcher } from './IdleWatcher';
 import { applyPlaybackAttribute } from './playbackAttributes';
 import { describeUnlessTheAuthorDid, renameUnlessTheAuthorDid } from './accessibleRegion';
 import { applyEarlyProperties, takeEarlyProperties } from './earlyProperties';
+import { defineFetchProperty } from './fetchProperty';
 import {
   defineLiveSettings,
   pictureQualityFrom,
@@ -56,6 +57,7 @@ import type { MotionLookState, PlayerStatus, PlayerWarning } from '../player/Pla
 import type { ViewAngles } from '../player/PlayerOptions';
 import type { PipelineHost } from '../composition/ports';
 import type { PlayerMetadata } from '../PlayerMetadata';
+import type { RecordingFetch } from '../PlayerSource';
 /**
  * `<gyro-view>`: the player as an element. Attributes name what to play and configure the
  * settings; the settings' properties report what is in effect now, as a media element's `muted`
@@ -83,6 +85,15 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   declare public muted: boolean;
   declare public loop: boolean;
   declare public volume: number;
+  /**
+   * How the recording's requests are sent: `null`, the default, for the platform's `fetch`, or a
+   * page's function in its place (`RecordingFetch`), to add a header such as `Authorization` or
+   * to sign each request. Set from script only; there is no attribute. Like `crossorigin`, a
+   * change loads a recording named by URL again, and local files play on; the same function set
+   * again changes nothing, so a framework may set it on every render. A function that reads its
+   * token afresh for each request goes on playing when the token is renewed.
+   */
+  declare public fetch: RecordingFetch | null;
   /**
    * Properties the page set before the element was defined, kept until it is connected.
    */
@@ -115,6 +126,9 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
     this.canvas = new PlayerCanvas(canvas, this.onCanvasReplaced);
     this.player = createBrowserPlayer(this.pipelineHost(audio));
     this.loads = new ElementLoads(this, this.player, this.canvas);
+    defineFetchProperty(this, () => {
+      this.loads.requestChanged();
+    });
     defineLiveSettings(this, this.player);
     const host = this.controlsHost();
     this.controlsBar = bindControlsBar(shadow, host);

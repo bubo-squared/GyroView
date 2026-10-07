@@ -15,7 +15,8 @@ import { isUrlInput, type BlobInput, type UrlInput } from '../PlayerSource';
 
 export interface BrowserPortsOptions {
   /**
-   * Shared by every request the player makes for the recording and its other lens file.
+   * Shared by every request the player makes for the recording and its other lens file. A
+   * recording's own `credentials` and `fetch` (`UrlInput`) take the place of theirs.
    */
   readonly http?: HttpRequestOptions;
   /**
@@ -64,14 +65,17 @@ function blobSource(input: BlobInput): OpenedSource {
 }
 
 /**
- * The shared request settings, with the input's own credentials in place of theirs when it names
- * any: how the element's `crossorigin` reaches every request for its recording (ADR 0027).
+ * The shared request settings, with the input's own credentials and fetch in place of theirs when
+ * it names any: how the element's `crossorigin` and `fetch` reach every request for its recording
+ * (ADR 0027, ADR 0043). An input that names neither is read with the shared settings themselves.
  */
 function requestOptionsFor(http: HttpRequestOptions, input: UrlInput): HttpRequestOptions {
-  const { credentials } = input;
-  return credentials === undefined
-    ? http
-    : { ...http, requestInit: { ...http.requestInit, credentials } };
+  const { credentials, fetch } = input;
+  const withCredentials =
+    credentials === undefined
+      ? http
+      : { ...http, requestInit: { ...http.requestInit, credentials } };
+  return fetch === undefined ? withCredentials : { ...withCredentials, fetch };
 }
 
 /**

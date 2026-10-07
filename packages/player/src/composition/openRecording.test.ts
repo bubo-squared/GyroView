@@ -24,7 +24,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { openRecording } from './openRecording';
 import type { OpenedRecording } from './OpenedRecording';
 import type { RecordingPorts } from './ports';
-import type { PlayerSource, UrlInput } from '../PlayerSource';
+import type { PlayerSource, RecordingFetch, UrlInput } from '../PlayerSource';
 import {
   codecReaderFor,
   fakePorts,
@@ -38,6 +38,11 @@ import {
   X5_RECORDING_WITH_AUDIO_URL,
   type FakePortsParts,
 } from '../test/recordings';
+
+/**
+ * A page's own fetch, sending each request as it is.
+ */
+const pageFetch: RecordingFetch = (url, init) => fetch(url, init);
 import { settle } from '../test/waiting';
 
 const MAIN_URL = 'https://cdn.example/clips/VID_20260814_132640_00_013.insv';
@@ -444,6 +449,26 @@ describe('openRecording', () => {
 
     expect(lookedBeside).toEqual([{ url: MAIN_URL, credentials: 'include' }]);
     expect(world.opener.inputs).toContainEqual({ url: SECOND_URL, credentials: 'include' });
+    opened.dispose();
+  });
+
+  it('looks for and reads the other lens file through the fetch of the main one', async () => {
+    const locator = new FakeResourceLocator([SECOND_URL]);
+    const world = await worldOf([x5Half(MAIN_URL), bareHalf(SECOND_URL)]);
+    const lookedBeside: UrlInput[] = [];
+    const ports = {
+      ...world.ports,
+      locatorFor: (input: UrlInput): FakeResourceLocator => {
+        lookedBeside.push(input);
+        return locator;
+      },
+    };
+    const source = sourceOf({ main: { url: MAIN_URL, fetch: pageFetch } });
+
+    const opened = await openRecording(source, ports, new AbortController().signal);
+
+    expect(lookedBeside).toEqual([{ url: MAIN_URL, fetch: pageFetch }]);
+    expect(world.opener.inputs).toContainEqual({ url: SECOND_URL, fetch: pageFetch });
     opened.dispose();
   });
 

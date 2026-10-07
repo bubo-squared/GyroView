@@ -1,4 +1,4 @@
-export type { BlobInput, MediaInput, PlayerSource, UrlInput } from './PlayerSource';
+export type { BlobInput, MediaInput, PlayerSource, RecordingFetch, UrlInput } from './PlayerSource';
 export type { ImuFrameSummary, PlayerMetadata } from './PlayerMetadata';
 export { choiceOf } from './choices';
 export { writeAttribute } from './element/reflectedProperties';

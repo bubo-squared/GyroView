@@ -6,20 +6,18 @@ import {
   type ViewMode,
 } from '@gyroview/core';
 
+import { OBSERVED_ATTRIBUTES } from './attributeNames';
+import { unreadableAngleWarning, viewAfterAttribute } from './attributes';
 import {
-  OBSERVED_ATTRIBUTES,
-  PlaybackAttribute,
-  RequestAttribute,
-  SourceAttribute,
-  ViewAttribute,
-} from './attributeNames';
-import {
-  CROSS_ORIGIN,
-  GAIN_MATCH,
-  PRELOAD,
-  unreadableAngleWarning,
-  viewAfterAttribute,
-} from './attributes';
+  BOOLEAN_ATTRIBUTES,
+  KEYWORD_ATTRIBUTES,
+  NULLABLE_KEYWORD_ATTRIBUTES,
+  PUBLIC_PROPERTIES,
+  REQUEST_ATTRIBUTES,
+  SOURCE_ATTRIBUTES,
+  STRING_ATTRIBUTES,
+  VIEW_ATTRIBUTES,
+} from './elementProperties';
 import { ElementLoads } from './ElementLoads';
 import type { FileSource } from './elementSource';
 import { FullscreenToggle } from './FullscreenToggle';
@@ -29,7 +27,6 @@ import { describeUnlessTheAuthorDid, renameUnlessTheAuthorDid } from './accessib
 import { applyEarlyProperties, takeEarlyProperties } from './earlyProperties';
 import {
   defineLiveSettings,
-  LIVE_SETTING_NAMES,
   pictureQualityFrom,
   stabilizationModeFrom,
   viewModeFrom,
@@ -40,7 +37,6 @@ import {
   defineKeywordProperties,
   defineNullableKeywordProperties,
   defineStringProperties,
-  propertyNameOf,
 } from './reflectedProperties';
 import { mirrorPlayerEvents } from './playerEventMirror';
 import { PlayerCanvas } from './PlayerCanvas';
@@ -60,32 +56,6 @@ import type { MotionLookState, PlayerStatus, PlayerWarning } from '../player/Pla
 import type { ViewAngles } from '../player/PlayerOptions';
 import type { PipelineHost } from '../composition/ports';
 import type { PlayerMetadata } from '../PlayerMetadata';
-/**
- * Attributes whose properties mirror them, as `img.src` does: what to play and how to present
- * it. The live settings (stabilization, view mode, view angles, sound, loop) have properties of
- * their own that report the player's current state.
- */
-const STRING_ATTRIBUTES = [...Object.values(SourceAttribute), PlaybackAttribute.Poster];
-const KEYWORD_ATTRIBUTES = [PRELOAD, GAIN_MATCH];
-const NULLABLE_KEYWORD_ATTRIBUTES = [CROSS_ORIGIN];
-const BOOLEAN_ATTRIBUTES = [PlaybackAttribute.Autoplay, PlaybackAttribute.Controls];
-const SOURCE_ATTRIBUTES: readonly string[] = Object.values(SourceAttribute);
-const REQUEST_ATTRIBUTES: readonly string[] = Object.values(RequestAttribute);
-/**
- * The properties a page may set before the element is defined, all kept for it.
- */
-const PUBLIC_PROPERTIES: readonly string[] = [
-  ...[
-    ...STRING_ATTRIBUTES,
-    ...KEYWORD_ATTRIBUTES.map(({ name }) => name),
-    ...BOOLEAN_ATTRIBUTES,
-  ].map((name) => propertyNameOf(name)),
-  ...NULLABLE_KEYWORD_ATTRIBUTES.map(({ property }) => property),
-  ...LIVE_SETTING_NAMES,
-  'currentTime',
-  'messages',
-];
-const VIEW_ATTRIBUTES: readonly string[] = Object.values(ViewAttribute);
 /**
  * `<gyro-view>`: the player as an element. Attributes name what to play and configure the
  * settings; the settings' properties report what is in effect now, as a media element's `muted`

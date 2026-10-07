@@ -23,13 +23,20 @@ export const EXPOSED_HEADERS_ADVICE =
 const ANONYMOUS_CORS_ADVICE = `Access-Control-Allow-Origin, ${EXPOSED_HEADERS_ADVICE}`;
 const CREDENTIALED_CORS_ADVICE = `Access-Control-Allow-Origin naming this page's origin, not *; Access-Control-Allow-Credentials: true; ${EXPOSED_HEADERS_ADVICE}`;
 
+/**
+ * How a request is sent: the platform's `fetch`, or a page's function in its place. Every
+ * request names its URL as a string and its settings in full, so a function in its place
+ * never meets a `Request` or a missing `init`.
+ */
+export type HttpFetch = (url: string, init: RequestInit) => Promise<Response>;
+
 export interface HttpRequestOptions {
   /**
    * Extra request settings, for example credentials or headers. `Range` is set by the caller.
    * Requests bypass the browser's HTTP cache unless these settings choose another `cache` mode.
    */
   readonly requestInit?: RequestInit;
-  readonly fetch?: typeof fetch;
+  readonly fetch?: HttpFetch;
 }
 
 interface HttpRequest {

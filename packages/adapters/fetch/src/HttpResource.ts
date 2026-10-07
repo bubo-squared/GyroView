@@ -84,8 +84,9 @@ export class HttpResource {
 
   /**
    * Runs `attempt`, and after a short wait again, a few times, while it fails on the way: one
-   * dropped connection must not end a long playback. What asking again cannot change (an abort,
-   * a refusal, a server ignoring ranges, CORS) fails at once.
+   * dropped connection must not end a long playback, nor a server's 5xx or its 429 asking the
+   * player to slow down. What asking again cannot change (an abort, any other refusal, a server
+   * ignoring ranges, CORS) fails at once.
    */
   public async askingAgain<T>(attempt: () => Promise<T>): Promise<T> {
     for (const delayMs of this.retryDelaysMs) {

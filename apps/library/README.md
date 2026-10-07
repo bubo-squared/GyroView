@@ -174,8 +174,21 @@ useEffect(() => {
 return <gyro-view ref={player} src={url} stabilization="lock" controls muted />;
 ```
 
-A `fetch` for recordings behind a token is a property only, with no attribute: set it on the
-element through the ref, as `player.current.fetch = …`, before or with its `src`.
+A `fetch` for recordings behind a token is a property only, with no attribute. Set it where
+React commits `src`, in a ref callback or `useLayoutEffect`, not in `useEffect`, which runs after
+the load has started without it; and keep the function stable (`useCallback`, or defined outside
+the component), since only setting the same function again leaves the recording playing:
+
+```tsx
+const withToken = useCallback<RecordingFetch>((url, init) => {
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', `Bearer ${token.current}`);
+  return fetch(url, { ...init, headers });
+}, []);
+useLayoutEffect(() => {
+  if (player.current) player.current.fetch = withToken;
+}, [withToken]);
+```
 
 **Vue 3** is told the tag is a custom element (`isCustomElement: (tag) => tag === 'gyro-view'`
 in the template compiler options), then binds as usual: `<gyro-view :src="url" controls

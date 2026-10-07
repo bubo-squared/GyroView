@@ -62,7 +62,7 @@ again as a server error is (ADR 0019, amended).
 
 A page plays recordings from hosts that want a token or a signed request, with one property and
 the vocabulary of `fetch` it already knows. Nothing changes for a page that does not set it:
-each request is the one 0.7.0 made, apart from a range answered `429`, now asked for again. The host must allow the header the page adds in its CORS
-preflight (`Access-Control-Allow-Headers: Range, Authorization`); a request with
-`Authorization` is always preflighted, so a long `Access-Control-Max-Age` saves a round trip
-per range.
+each request is the one 0.7.0 made, apart from a range answered `429`, now asked for again. The
+host must allow the header the page adds in its CORS preflight
+(`Access-Control-Allow-Headers: Range, Authorization`); a request with `Authorization` is always
+preflighted, so a long `Access-Control-Max-Age` saves a round trip per range.

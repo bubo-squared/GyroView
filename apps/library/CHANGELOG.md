@@ -3,6 +3,25 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+Added (ADR 0043, a recording behind a token is read through the page's fetch):
+
+- `<gyro-view>` takes a `fetch` property, set from script: a function called in place of the
+  platform's `fetch` for every request made for the recording and its other lens's file, to add
+  a header such as `Authorization` or to sign each request. `null`, the default, keeps the
+  platform's own; a change loads a recording named by URL again, the same function set again
+  changes nothing. Its type, `RecordingFetch`, is exported.
+- `UrlInput.fetch` does the same for a URL given to `createBrowserPlayer`'s `load`, in place of
+  the player's `http.fetch` for that recording.
+
+Changed:
+
+- A byte range answered `429 Too Many Requests` is asked for again after the same waits as one
+  answered with a server error, instead of failing the read at once.
+- `createBrowserPlayer`'s `http.fetch` is typed by how the player calls it,
+  `(url: string, init: RequestInit) => Promise<Response>`; `window.fetch` still fits it.
+
 ## 0.7.0 (2026-10-06)
 
 Changed (ADR 0042, the player keeps a media element's promises):

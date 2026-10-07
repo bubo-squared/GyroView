@@ -40,6 +40,34 @@ beforeAll(() => {
 const pageFetch: RecordingFetch = (url, init) => fetch(url, init);
 
 /**
+ * A page's fetch that notes the URL of each request it sends.
+ */
+function notingFetch(): { readonly fetch: RecordingFetch; readonly urls: string[] } {
+  const urls: string[] = [];
+  return {
+    urls,
+    fetch: (url, init): Promise<Response> => {
+      urls.push(url);
+      return fetch(url, init);
+    },
+  };
+}
+
+/**
+ * Whether the element got ready or failed, and with which code, as soon as either happens.
+ */
+function readyOrFailed(element: GyroViewElement): Promise<string> {
+  return new Promise((resolve) => {
+    element.addEventListener('ready', () => {
+      resolve('ready');
+    });
+    element.addEventListener('error', (event) => {
+      resolve(`error: ${event.detail.code}`);
+    });
+  });
+}
+
+/**
  * What setting a property threw, or undefined when it took the value.
  */
 function refusalOf(element: GyroViewElement, name: string, value: unknown): unknown {
@@ -279,12 +307,17 @@ describe('<gyro-view>', () => {
 
   it('keeps the properties a page set before the element was defined', async () => {
     const element = document.createElement('gyro-view-defined-late');
+    const noting = notingFetch();
+    const statuses: string[] = [];
+    element.addEventListener('statuschange', (event) => {
+      statuses.push((event as CustomEvent<string>).detail);
+    });
     Object.assign(element, {
       src: X5_RECORDING_URL,
       muted: true,
       controls: true,
       crossOrigin: 'use-credentials',
-      fetch: pageFetch,
+      fetch: noting.fetch,
     });
     element.style.width = '256px';
     document.body.append(element);
@@ -296,7 +329,10 @@ describe('<gyro-view>', () => {
     expect(upgraded.getAttribute('crossorigin')).toBe('use-credentials');
     await nextEvent(upgraded, 'ready');
     expect(upgraded.muted).toBe(true);
-    expect(upgraded.fetch).toBe(pageFetch);
+    expect(upgraded.fetch).toBe(noting.fetch);
+    // One load, read through the page's fetch from its first request.
+    expect(statuses).toEqual(['loading', 'ready']);
+    expect(noting.urls).toContain(new URL(X5_RECORDING_URL, document.baseURI).href);
   });
 
   it('warns of a property set before definition that its setter refuses, and applies the rest', async () => {
@@ -953,7 +989,7 @@ describe('<gyro-view>', () => {
     expect(element.status).toBe('ready');
   });
 
-  it("reads its recording again through the page's fetch, each request passed on whole", async () => {
+  it("reads its recording again through the page's fetch, with each request's method, range, cache mode and signal", async () => {
     const element = await createReady();
     const recording = new URL(X5_RECORDING_URL, document.baseURI).href;
     const sent: RequestInit[] = [];
@@ -966,23 +1002,45 @@ describe('<gyro-view>', () => {
     await ready;
 
     expect(sent.length).toBeGreaterThan(0);
+    expect(sent.every(({ method }) => method === 'HEAD' || method === 'GET')).toBe(true);
+    const ranges = sent.filter(({ method }) => method === 'GET');
+    expect(ranges.every(({ headers }) => new Headers(headers).has('range'))).toBe(true);
     expect(sent.every(({ cache }) => cache === 'no-store')).toBe(true);
     expect(sent.every(({ signal }) => signal instanceof AbortSignal)).toBe(true);
   });
 
-  it('loads once when a page sets fetch and src together', async () => {
+  it("loads once, through the page's fetch, when a page sets fetch and then src", async () => {
     const element = create({ controls: '' });
+    const noting = notingFetch();
     const statuses: string[] = [];
     element.addEventListener('statuschange', (event) => {
       statuses.push(event.detail);
     });
     const ready = nextEvent(element, 'ready');
 
-    element.fetch = pageFetch;
+    element.fetch = noting.fetch;
     element.src = X5_RECORDING_URL;
     await ready;
 
     expect(statuses).toEqual(['loading', 'ready']);
+    expect(noting.urls).toContain(new URL(X5_RECORDING_URL, document.baseURI).href);
+  });
+
+  it("loads once, through the page's fetch, when a page sets src and then fetch", async () => {
+    const element = create({ controls: '' });
+    const noting = notingFetch();
+    const statuses: string[] = [];
+    element.addEventListener('statuschange', (event) => {
+      statuses.push(event.detail);
+    });
+    const ready = nextEvent(element, 'ready');
+
+    element.src = X5_RECORDING_URL;
+    element.fetch = noting.fetch;
+    await ready;
+
+    expect(statuses).toEqual(['loading', 'ready']);
+    expect(noting.urls).toContain(new URL(X5_RECORDING_URL, document.baseURI).href);
   });
 
   it('plays on when the same fetch is set again, as a framework sets it on every render', async () => {
@@ -1005,10 +1063,11 @@ describe('<gyro-view>', () => {
   it("refuses a fetch that is no function, and takes null or undefined for the platform's own", () => {
     const element = create();
 
+    element.fetch = pageFetch;
     expect(refusalOf(element, 'fetch', 'https://proxy.example/')).toMatchObject({
       code: 'invalid-argument',
     });
-    element.fetch = pageFetch;
+    expect(element.fetch).toBe(pageFetch);
     expect(refusalOf(element, 'fetch', undefined)).toBeUndefined();
     expect(element.fetch).toBeNull();
   });
@@ -1033,12 +1092,12 @@ describe('<gyro-view>', () => {
 
   it("plays through the platform's fetch itself, which it calls on its own", async () => {
     const element = create({ controls: '' });
-    const ready = nextEvent(element, 'ready');
+    const outcome = readyOrFailed(element);
 
     element.fetch = globalThis.fetch;
     element.src = X5_RECORDING_URL;
 
-    await expect(ready).resolves.toBeDefined();
+    await expect(outcome).resolves.toBe('ready');
   });
 
   it('leaves the global fetch to a handler written on it in markup', () => {

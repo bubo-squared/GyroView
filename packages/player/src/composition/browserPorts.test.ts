@@ -155,6 +155,43 @@ describe('browserPorts', () => {
     ]);
   });
 
+  it("reads an input with the visitor's cookies as it always did, as an element with crossorigin does", async () => {
+    const sent: [string, RequestInit][] = [];
+    const platformFetch = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      sent.push([input instanceof Request ? input.url : input.toString(), init ?? {}]);
+      return Promise.resolve(answerTo(new Headers(init?.headers).get('range')));
+    });
+    try {
+      const ports = browserPorts();
+      const input = { url: RECORDING_URL, credentials: 'include' as const };
+      const { source } = ports.sources.open(input, new AbortController().signal);
+      await source.size();
+      await source.read(ByteRange.of(0, 4));
+      await ports.locatorFor(input).exists(RECORDING_URL);
+    } finally {
+      platformFetch.mockRestore();
+    }
+
+    const signal = expect.any(AbortSignal) as AbortSignal;
+    expect(sent).toStrictEqual([
+      [
+        RECORDING_URL,
+        { cache: 'no-store', credentials: 'include', signal, method: 'HEAD', headers: {} },
+      ],
+      [
+        RECORDING_URL,
+        {
+          cache: 'no-store',
+          credentials: 'include',
+          signal,
+          method: 'GET',
+          headers: { Range: 'bytes=0-3' },
+        },
+      ],
+      [RECORDING_URL, { cache: 'no-store', credentials: 'include', method: 'HEAD', headers: {} }],
+    ]);
+  });
+
   it('streams a recording with the credentials its input names, its size looked up once', async () => {
     const server = recordingServer();
     const ports = browserPorts({ http: { fetch: server.fetch } });

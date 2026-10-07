@@ -97,6 +97,37 @@ third-party cookies may still hold them back. The `poster` loads as an image doe
 cookies whatever `crossorigin` says, and local files handed to `loadFiles` are not fetched at
 all.
 
+## Recordings behind a token
+
+A host that answers only a request carrying a token in a header (a cloud drive's download API,
+a media server behind an API gateway) is read through the page's own function in the element's
+`fetch` property (or `fetch` on a URL given to `createBrowserPlayer`'s `load`). It is called in
+place of `fetch` for every request made for the recording: its size, its byte ranges and the look
+for the other lens's file (ADR 0043). It must pass the request's settings on as given, adding
+only its own header, and read the token afresh on each call, so that a token renewed while the
+recording plays is used from the next request on; setting another function loads the recording
+again.
+
+```js
+player.fetch = (url, init) =>
+  fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${token()}` } });
+```
+
+A request with `Authorization` is always preflighted, so the host must allow the header, and a
+long `Access-Control-Max-Age` spares a preflight per range:
+
+```
+Access-Control-Allow-Origin: https://your-site.example
+Access-Control-Allow-Methods: GET, HEAD
+Access-Control-Allow-Headers: Range, Authorization
+Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges, ETag
+Access-Control-Max-Age: 3600
+```
+
+A token that has run out is answered with `401`, which the player reports as `source-unreadable`
+at once, as any refusal; a `429` is asked again a few times first. The `poster` loads as an
+image does, without the function, and the iframe embed never takes one.
+
 ## Embedding
 
 The iframe needs `allow="fullscreen; autoplay; accelerometer; gyroscope; magnetometer"` to fill

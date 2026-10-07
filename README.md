@@ -118,6 +118,7 @@ Methods and properties:
 | `setQuality(quality)`                                 | As the attribute; an unknown quality is refused.                                                                  |
 | `volume`                                              | 0 to 1, where the platform lets a page set it.                                                                    |
 | `messages`                                            | Every word the element shows (below).                                                                             |
+| `fetch`                                               | A page's function in place of `fetch` for the recording's requests, to add a token (see "Serving recordings").    |
 | `toggleFullscreen()`                                  | Fills the screen through the Fullscreen API or, where it cannot, pins the element over the page in the top layer. |
 
 Events, each a `CustomEvent` with its payload in `detail`, typed in `GyroViewElementEventMap`:
@@ -268,7 +269,9 @@ the server hosting the recordings must answer `Range` requests with `206` (a `HE
 runs on another origin, which for the iframe form is the one serving `embed.html` (a refusal is
 reported as `cors`). A recording kept behind the visitor's cookies on another origin needs
 `crossorigin="use-credentials"`, and a host that names the page's origin (not `*`) with
-`Access-Control-Allow-Credentials: true`. The player page itself must be served over HTTPS,
+`Access-Control-Allow-Credentials: true`. One that wants a token in a header, as a cloud drive's
+download API does, takes the page's own function in the element's `fetch` property, which adds
+it to every request. The player page itself must be served over HTTPS,
 because WebCodecs exists only in secure contexts. [The deployment guide](docs/DEPLOYMENT.md) has
 the exact headers, the hosting layout and the error codes.
 

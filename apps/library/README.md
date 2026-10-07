@@ -213,6 +213,15 @@ recording draws on a fresh canvas at its next load.
   host that names the page's origin, never `*`, and adds
   `Access-Control-Allow-Credentials: true`.
 
+  Recordings behind a token take the page's own function in the element's `fetch` property, or
+  in `fetch` on a URL given to `load`: it is called in place of `fetch` for every request, and
+  adds the header the host asks for.
+
+  ```js
+  player.fetch = (url, init) =>
+    fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${token()}` } });
+  ```
+
 - **A hardware HEVC decoder.** 5.7K plays on recent laptops and phones; 8K needs a Level 6
   decoder (Apple Silicon, recent NVIDIA and Intel). On Linux, Chrome reaches the decoder only
   through VA-API: an Intel or AMD GPU whose driver offers HEVC, not NVIDIA's own driver or a

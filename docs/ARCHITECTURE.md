@@ -269,7 +269,8 @@ One package per external technology; none imports another.
   with distinct codes (`range-unsupported`, `cors`, `source-unreadable`). The resource also times
   its byte ranges' answers and keeps the shortest wait (`answerWait`), by which the file's download
   policy is chosen (ADR 0044). `HttpResourceLocator` answers "does it exist" with a HEAD, and a
-  one-byte GET where a server refuses HEAD.
+  one-byte GET where a server refuses HEAD, asked again after a server error or a 429; a server
+  that keeps failing fails the lookup rather than answer no.
 - **`blob`**: `BlobRandomAccessSource` slices a `File` from a picker or a drop.
 - **`mediabunny`**: `MediabunnyCodecReader` tells each track's decoder configuration from the
   movie bytes held in memory, and `MediabunnyAudioPackager` re-packages a sound track's samples

@@ -21,8 +21,8 @@ answer from what it knows of the file without reading it, and a refusal, which a
 answer at once, are not timed. Only the wait is measured, not the rate the bytes come at,
 which the player's own ranges share and would bend.
 
-The wait is known once the reads that open the file (its size, its trailer, its movie box) are
-answered, before its download starts. `downloadPolicyFor` takes it beside the file's size and
+The wait is known once the ranges that open the file (its trailer, its movie box) are answered,
+before its download starts. `downloadPolicyFor` takes it beside the file's size and
 duration, and the file keeps the policy it chose for as long as it plays:
 
 - **A server that waits 0.3 s or more is slow to answer.** A CDN waits about 0.05 s, Drive

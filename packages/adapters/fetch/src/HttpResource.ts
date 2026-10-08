@@ -18,30 +18,21 @@ import {
   type HttpMethod,
   type HttpRequestOptions,
 } from './httpRequest';
+import {
+  answerAskedAgain,
+  askingAgain,
+  DEFAULT_RETRY_DELAYS_MS,
+  type RetryOptions,
+} from './askingAgain';
 import { contentRangeOf } from './contentRange';
-import { isPassing, isUnreachable, passing, passingIfUnreachable } from './passingFailures';
+import { isPassingStatus, passing, passingIfUnreachable } from './passingFailures';
 import { isSameVersion, versionOf, type RecordingVersion } from './recordingVersion';
 
 const HTTP_OK = 200;
 const HTTP_PARTIAL_CONTENT = 206;
-const HTTP_TOO_MANY_REQUESTS = 429;
-const HTTP_SERVER_ERROR = 500;
-const HTTP_NOT_IMPLEMENTED = 501;
 const FIRST_BYTE_HEADERS = { Range: FIRST_BYTE_RANGE };
-/**
- * The waits before asking again for a request that failed on the way: a blink of a mobile network
- * or a restarting server passes within them, a network that is gone does not.
- */
-const FIRST_RETRY_DELAY_MS = 250;
-const SECOND_RETRY_DELAY_MS = 1000;
-const DEFAULT_RETRY_DELAYS_MS: readonly number[] = [FIRST_RETRY_DELAY_MS, SECOND_RETRY_DELAY_MS];
 
-export interface HttpResourceOptions extends HttpRequestOptions {
-  /**
-   * The waits before each new attempt at a request that failed on the way (a dropped
-   * connection, a server error); as many retries as waits. Default 250 ms, then 1 s.
-   */
-  readonly retryDelaysMs?: readonly number[];
+export interface HttpResourceOptions extends HttpRequestOptions, RetryOptions {
   /**
    * The clock its requests are timed by, in milliseconds (`answerWait`). Default
    * `performance.now`.
@@ -119,16 +110,8 @@ export class HttpResource {
    * player to slow down. What asking again cannot change (an abort, any other refusal, a server
    * ignoring ranges, CORS) fails at once.
    */
-  public async askingAgain<T>(attempt: () => Promise<T>): Promise<T> {
-    for (const delayMs of this.retryDelaysMs) {
-      try {
-        return await attempt();
-      } catch (error) {
-        if (!isPassing(error)) throw error;
-      }
-      await wait(delayMs, this.options.requestInit?.signal);
-    }
-    return attempt();
+  public askingAgain<T>(attempt: () => Promise<T>): Promise<T> {
+    return askingAgain(attempt, this.retryDelaysMs, this.options.requestInit?.signal);
   }
 
   /**
@@ -283,40 +266,16 @@ export class HttpResource {
   }
 
   /**
-   * The answer to a request for the size, asked for again while it fails on the way. Once the
-   * waits ran out the last answer, or failure, stands as any other would, so a reader that sizes
-   * inside its own retries does not ask a failing server again.
+   * The answer to a request for the size, asked for again while it fails on the way: the size is
+   * the first thing read, and a moment's 503 or a phone changing cells must not fail the
+   * recording.
    */
-  private async sizeAnswer(
-    method: HttpMethod,
-    headers?: Record<string, string>,
-  ): Promise<Response> {
-    for (const delayMs of this.retryDelaysMs) {
-      const response = await this.answerUnlessFailedOnTheWay(method, headers);
-      if (response !== undefined) return response;
-      await wait(delayMs, this.options.requestInit?.signal);
-    }
-    return this.request(method, headers);
-  }
-
-  /**
-   * The server's answer; undefined when the request failed on the way: a server error, a 429, or
-   * a network that did not carry it.
-   */
-  private async answerUnlessFailedOnTheWay(
-    method: HttpMethod,
-    headers?: Record<string, string>,
-  ): Promise<Response | undefined> {
-    let response: Response;
-    try {
-      response = await this.request(method, headers);
-    } catch (error) {
-      if (isUnreachable(error)) return undefined;
-      throw error;
-    }
-    if (!isPassingStatus(response.status)) return response;
-    discardBody(response);
-    return undefined;
+  private sizeAnswer(method: HttpMethod, headers?: Record<string, string>): Promise<Response> {
+    return answerAskedAgain(
+      () => this.request(method, headers),
+      this.retryDelaysMs,
+      this.options.requestInit?.signal,
+    );
   }
 
   private request(method: HttpMethod, headers?: Record<string, string>): Promise<Response> {
@@ -337,39 +296,4 @@ export class HttpResource {
     this.shortestAnswerMs = Math.min(waitMs, this.shortestAnswerMs ?? waitMs);
     return response;
   }
-}
-
-/**
- * A server error, or a server asking the player to slow down (429, as rate-limited APIs answer):
- * both may pass by the time the request is made again. Any other refusal stands, and so does a
- * 501, by which a server says it does not do what was asked: a HEAD it does not implement falls
- * back to a range at once.
- */
-function isPassingStatus(status: number): boolean {
-  const isServerError = status >= HTTP_SERVER_ERROR && status !== HTTP_NOT_IMPLEMENTED;
-  return isServerError || status === HTTP_TOO_MANY_REQUESTS;
-}
-
-/**
- * A pause before asking again, which an abort of the resource's requests ends at once.
- */
-function wait(ms: number, signal: AbortSignal | null | undefined): Promise<void> {
-  return new Promise((resolve, reject) => {
-    signal?.throwIfAborted();
-    const settled = new AbortController();
-    const timer = setTimeout(() => {
-      settled.abort();
-      resolve();
-    }, ms);
-    const onAbort = (): void => {
-      clearTimeout(timer);
-      reject(abortErrorOf(signal));
-    };
-    signal?.addEventListener('abort', onAbort, { once: true, signal: settled.signal });
-  });
-}
-
-function abortErrorOf(signal: AbortSignal | null | undefined): Error {
-  const reason: unknown = signal?.reason;
-  return reason instanceof Error ? reason : new DOMException('the read was aborted', 'AbortError');
 }

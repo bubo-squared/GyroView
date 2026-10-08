@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { embed } from './embedSnippet';
-import { waitFor } from '../test/waiting';
+import { FRAME_TEST_TIMEOUT_MS, waitFor } from '../test/waiting';
 import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
 
 const EMBED_PAGE = `${location.origin}/embed.html`;
 
-describe('GyroView.embed', () => {
+/**
+ * A test that moves the frame waits for its hello after each of the embed page's two loads.
+ */
+describe('GyroView.embed', { timeout: FRAME_TEST_TIMEOUT_MS }, () => {
   const containers: HTMLElement[] = [];
 
   afterEach(() => {

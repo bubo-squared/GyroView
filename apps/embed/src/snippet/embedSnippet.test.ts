@@ -1,15 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { embed } from './embedSnippet';
-import { FRAME_TEST_TIMEOUT_MS, waitFor } from '../test/waiting';
+import { frameTestTimeout, waitFor } from '../test/waiting';
 import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
 
 const EMBED_PAGE = `${location.origin}/embed.html`;
 
-/**
- * A test that moves the frame waits for its hello after each of the embed page's two loads.
- */
-describe('GyroView.embed', { timeout: FRAME_TEST_TIMEOUT_MS }, () => {
+describe('GyroView.embed', () => {
   const containers: HTMLElement[] = [];
 
   afterEach(() => {
@@ -44,24 +41,29 @@ describe('GyroView.embed', { timeout: FRAME_TEST_TIMEOUT_MS }, () => {
     await expect(embedded.handle.play()).rejects.toMatchObject({ code: 'embed-destroyed' });
   });
 
-  it('keeps driving the frame once the page moves it, which loads it anew', async () => {
-    const container = document.createElement('div');
-    const elsewhere = document.createElement('div');
-    document.body.append(container, elsewhere);
-    containers.push(container, elsewhere);
-    const embedded = embed(
-      container,
-      { src: recordingUrl, muted: true },
-      { embedPageUrl: EMBED_PAGE },
-    );
-    await embedded.handle.getState();
-    const firstWindow = embedded.iframe.contentWindow;
+  // It waits for the frame's hello after each of the embed page's two loads.
+  it(
+    'keeps driving the frame once the page moves it, which loads it anew',
+    { timeout: frameTestTimeout(2) },
+    async () => {
+      const container = document.createElement('div');
+      const elsewhere = document.createElement('div');
+      document.body.append(container, elsewhere);
+      containers.push(container, elsewhere);
+      const embedded = embed(
+        container,
+        { src: recordingUrl, muted: true },
+        { embedPageUrl: EMBED_PAGE },
+      );
+      await embedded.handle.getState();
+      const firstWindow = embedded.iframe.contentWindow;
 
-    elsewhere.append(container);
-    await waitFor(() => embedded.iframe.contentWindow !== firstWindow, 'the frame to load anew');
-    await expect(embedded.handle.getState()).resolves.toMatchObject({ isMuted: true });
-    embedded.destroy();
-  });
+      elsewhere.append(container);
+      await waitFor(() => embedded.iframe.contentWindow !== firstWindow, 'the frame to load anew');
+      await expect(embedded.handle.getState()).resolves.toMatchObject({ isMuted: true });
+      embedded.destroy();
+    },
+  );
 
   it('refuses a container outside the document and leaves no frame in it to load later', () => {
     const container = document.createElement('div');

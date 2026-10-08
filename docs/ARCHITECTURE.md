@@ -266,7 +266,9 @@ One package per external technology; none imports another.
   recording fails (`source-changed`). `HttpRangeSource` reads a range whole, `HttpByteStream`
   streams one as it comes, resuming from its next byte a range that broke off or stalled; both
   read past the browser's own cache (ADR 0013) and report the server's shortcomings with
-  distinct codes (`range-unsupported`, `cors`, `source-unreadable`). `HttpResourceLocator`
+  distinct codes (`range-unsupported`, `cors`, `source-unreadable`). The resource also times
+  its byte ranges' answers and keeps the shortest wait (`answerWait`), by which the file's
+  download policy is chosen (ADR 0044). `HttpResourceLocator`
   answers "does it exist" with a HEAD, and a one-byte GET where a server refuses HEAD.
 - **`blob`**: `BlobRandomAccessSource` slices a `File` from a picker or a drop.
 - **`mediabunny`**: `MediabunnyCodecReader` tells each track's decoder configuration from the

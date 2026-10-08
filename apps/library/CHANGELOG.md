@@ -3,6 +3,18 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+What a page may notice (ADR 0044, a server slow to answer is asked in fewer, larger ranges):
+
+- A recording on a server that takes 0.3 s or more to answer each byte range, as Google Drive's
+  API does, is downloaded a refill at a time (32 MiB for an X5), three ranges at a time for a
+  lone file, two for each file of a split pair; it plays at the rate of the link rather than of
+  the server's waits. Every other server is asked as before. The wait is the shortest a byte
+  range of the file took to be answered while it opened, so a CDN whose cache missed on every
+  opening read, or a long round trip, may count too; what is read before the first play is
+  unchanged.
+
 ## 0.8.0 (2026-10-08)
 
 Added (ADR 0043, a recording behind a token is read through the page's fetch):
@@ -14,15 +26,6 @@ Added (ADR 0043, a recording behind a token is read through the page's fetch):
   changes nothing. Its type, `RecordingFetch`, is exported.
 - `UrlInput.fetch` does the same for a URL given to `createBrowserPlayer`'s `load`, in place of
   the player's `http.fetch` for that recording.
-
-Changed (ADR 0044, a server slow to answer is asked in fewer, larger ranges):
-
-- A recording on a server that takes 0.3 s or more to answer each request, as Google Drive's API
-  does, is downloaded a refill at a time (32 MiB for an X5), three ranges at a time for a lone
-  file, two for each file of a split pair; it plays at the rate of the link rather than of the
-  server's waits. Every other server is asked as before. The wait is the shortest a byte range
-  of the file took to be answered while it opened, so a CDN whose cache missed on every opening
-  read, or a long round trip, may count too; what is read before the first play is unchanged.
 
 Changed:
 

@@ -1,4 +1,4 @@
-import { GyroViewError, hasErrorCode } from '@gyroview/core';
+import { GyroViewError } from '@gyroview/core';
 
 /**
  * The failures on the way, which asking again may cure; any other fails the read at once. They
@@ -20,8 +20,15 @@ export function isPassing(error: unknown): boolean {
  * A request that did not get through for want of a network is worth another try.
  */
 export function passingIfUnreachable(error: unknown): unknown {
-  const isUnreachable = hasErrorCode(error, 'source-unreadable') && error instanceof Error;
-  return isUnreachable
+  return isUnreachable(error)
     ? passing(new GyroViewError('source-unreadable', error.message, { cause: error.cause }))
     : error;
+}
+
+/**
+ * A request that did not get through for want of a network, as `httpRequest` diagnoses it: its
+ * server did not answer even a request that asks for no CORS answer.
+ */
+export function isUnreachable(error: unknown): error is GyroViewError {
+  return error instanceof GyroViewError && error.code === 'source-unreadable';
 }

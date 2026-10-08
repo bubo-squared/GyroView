@@ -191,7 +191,7 @@ describe('HttpByteStream', () => {
       message: expect.stringContaining('answered 503 to a byte range') as string,
     });
     const methods = server.requests.map((request) => request.method);
-    expect(methods).toEqual(['HEAD', 'HEAD', 'HEAD', 'GET', 'GET', 'GET']);
+    expect(methods).toEqual(['HEAD', 'HEAD', 'HEAD', 'GET']);
   });
 
   it('fails with source-changed once the recording at the URL is replaced', async () => {

@@ -1,5 +1,6 @@
 import {
   GyroViewError,
+  hasErrorCode,
   isAbortError,
   milliseconds,
   millisecondsToSeconds,
@@ -18,7 +19,7 @@ import {
   type HttpRequestOptions,
 } from './httpRequest';
 import { contentRangeOf } from './contentRange';
-import { isPassing, passing, passingIfUnreachable } from './passingFailures';
+import { isPassing, isUnreachable, passing, passingIfUnreachable } from './passingFailures';
 import { isSameVersion, versionOf, type RecordingVersion } from './recordingVersion';
 
 const HTTP_OK = 200;
@@ -26,6 +27,7 @@ const HTTP_PARTIAL_CONTENT = 206;
 const HTTP_TOO_MANY_REQUESTS = 429;
 const HTTP_SERVER_ERROR = 500;
 const HTTP_NOT_IMPLEMENTED = 501;
+const FIRST_BYTE_HEADERS = { Range: FIRST_BYTE_RANGE };
 /**
  * The waits before asking again for a request that failed on the way: a blink of a mobile network
  * or a restarting server passes within them, a network that is gone does not.
@@ -95,9 +97,8 @@ export class HttpResource {
 
   /**
    * One HEAD request (or a one-byte range where HEAD is refused or gives no length), each asked
-   * for again as a range is while its server fails or asks the player to slow down (ADR 0019);
-   * cached for the lifetime of the resource once it succeeded; a failed lookup is retried on the
-   * next call.
+   * for again as a range is while it fails on the way (ADR 0019); cached for the lifetime of the
+   * resource once it succeeded; a failed lookup is retried on the next call.
    */
   public size(): Promise<number> {
     this.sizePromise ??= this.rememberSize();
@@ -211,9 +212,9 @@ export class HttpResource {
   private async fetchSize(): Promise<number> {
     const response = await this.sizeAnswer('HEAD');
     discardBody(response);
-    // A refused HEAD (a 405, or a 403 from a URL signed for GET alone), or one its server still
-    // failed when asked again, says nothing about the file: the byte range the player needs
-    // anyway answers, and names any real problem.
+    if (isPassingStatus(response.status)) return this.sizeDespiteFailingHead(response.status);
+    // A refused HEAD (a 405, a 403 from a URL signed for GET alone, a 501) says nothing about
+    // the file: the byte range the player needs anyway answers, and names any real problem.
     if (!response.ok) return this.sizeFromContentRange();
     this.ensureUnchanged(response);
     const contentLength = Number(response.headers.get('content-length'));
@@ -225,7 +226,27 @@ export class HttpResource {
    * Some servers omit Content-Length on HEAD or refuse HEAD; a one-byte range reveals the total.
    */
   private async sizeFromContentRange(): Promise<number> {
-    const response = await this.sizeAnswer('GET', { Range: FIRST_BYTE_RANGE });
+    return this.totalOfFirstByte(await this.sizeAnswer('GET', FIRST_BYTE_HEADERS));
+  }
+
+  /**
+   * Its server still failed the HEAD once the waits ran out: one byte range, asked once, as the
+   * server has had its waits, may yet tell the size, as from a server whose HEAD alone is broken.
+   * Where that range hides Content-Range, only the HEAD could have told the size, as on Google
+   * Drive's API, so the failing HEAD is named rather than the server's CORS headers.
+   */
+  private async sizeDespiteFailingHead(headStatus: number): Promise<number> {
+    const response = await this.request('GET', FIRST_BYTE_HEADERS);
+    try {
+      return this.totalOfFirstByte(response);
+    } catch (error) {
+      if (!hasErrorCode(error, 'cors')) throw error;
+      const message = `${this.url} answered ${headStatus} to HEAD each time, and its byte ranges hide Content-Range; cannot determine the file size`;
+      throw new GyroViewError('source-unreadable', message, { cause: error });
+    }
+  }
+
+  private totalOfFirstByte(response: Response): number {
     discardBody(response);
     // A whole-page 200 here is as often a missing file behind a fallback page as a server that
     // ignores ranges, so it stays unreadable; the status tells the host which.
@@ -262,22 +283,40 @@ export class HttpResource {
   }
 
   /**
-   * The answer to a request for the size, asked for again as a range is while its server fails
-   * or asks the player to slow down: the size is the first thing read, and a moment's 503 must
-   * not fail the recording. Once the waits ran out the last answer stands, for the caller to
-   * judge as any other, so the failure is not asked again by a reader's own retries.
+   * The answer to a request for the size, asked for again while it fails on the way. Once the
+   * waits ran out the last answer, or failure, stands as any other would, so a reader that sizes
+   * inside its own retries does not ask a failing server again.
    */
   private async sizeAnswer(
     method: HttpMethod,
     headers?: Record<string, string>,
   ): Promise<Response> {
     for (const delayMs of this.retryDelaysMs) {
-      const response = await this.request(method, headers);
-      if (!isPassingStatus(response.status)) return response;
-      discardBody(response);
+      const response = await this.answerUnlessFailedOnTheWay(method, headers);
+      if (response !== undefined) return response;
       await wait(delayMs, this.options.requestInit?.signal);
     }
     return this.request(method, headers);
+  }
+
+  /**
+   * The server's answer; undefined when the request failed on the way: a server error, a 429, or
+   * a network that did not carry it.
+   */
+  private async answerUnlessFailedOnTheWay(
+    method: HttpMethod,
+    headers?: Record<string, string>,
+  ): Promise<Response | undefined> {
+    let response: Response;
+    try {
+      response = await this.request(method, headers);
+    } catch (error) {
+      if (isUnreachable(error)) return undefined;
+      throw error;
+    }
+    if (!isPassingStatus(response.status)) return response;
+    discardBody(response);
+    return undefined;
   }
 
   private request(method: HttpMethod, headers?: Record<string, string>): Promise<Response> {

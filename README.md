@@ -52,7 +52,7 @@ a CDN or your own host; the site build's `gyro-view.js` is that file under anoth
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/@bubo-squared/gyroview@0.7/dist/standalone.js"
+  src="https://cdn.jsdelivr.net/npm/@bubo-squared/gyroview@0.8/dist/standalone.js"
 ></script>
 
 <gyro-view

@@ -27,18 +27,19 @@ export function openRecording(
 function attemptFor(source: PlayerSource, ports: RecordingPorts, signal: AbortSignal): OpenAttempt {
   const { main } = source;
   return source.second === undefined && isUrlInput(main)
-    ? { ports, signal, findSecondFile: () => otherLensFileOf(main, ports) }
+    ? { ports, signal, findSecondFile: () => otherLensFileOf(main, ports, signal) }
     : { ports, signal };
 }
 
 /**
  * The other lens file beside a lone one, when the server has it: one recording, so it is read
- * as the lone file is, with the same credentials.
+ * as the lone file is, with the same credentials, and looked for until the load ends.
  */
 async function otherLensFileOf(
   main: UrlInput,
   ports: RecordingPorts,
+  signal: AbortSignal,
 ): Promise<UrlInput | undefined> {
-  const url = await locateOtherLensFile(main.url, ports.locatorFor(main));
+  const url = await locateOtherLensFile(main.url, ports.locatorFor(main, signal));
   return url === undefined ? undefined : { ...main, url };
 }

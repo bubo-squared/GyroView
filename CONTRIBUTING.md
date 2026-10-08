@@ -162,8 +162,9 @@ describes the components layer by layer:
 a version tag is pushed:
 
 1. Set the new version in `apps/library/package.json` (semantic versioning, 0.x while the API
-   settles), turn the changelog's `## Unreleased` into `## <version> (<date>)`, and merge both
-   into main.
+   settles), turn the changelog's `## Unreleased` into `## <version> (<date>)`, and, on a new
+   minor version, move the jsDelivr pins (`@0.<minor>`) in `README.md` and
+   `apps/library/README.md`; merge them into main.
 2. Tag main's commit `v<version>` and push the tag (`git push origin v<version>`). A first job
    checks that the tag names the version, that main holds the tagged commit and that the
    changelog has a heading for the version, then runs `pnpm verify` and packs the package; it

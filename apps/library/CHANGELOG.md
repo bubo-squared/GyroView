@@ -8,12 +8,18 @@ the API.
 Fixed (ADR 0019, amended):
 
 - The requests for a recording's size, its HEAD and the one-byte range where HEAD is refused,
-  are asked for again after a server error or a `429`, with the same waits as a byte range,
-  instead of failing the recording at once. A HEAD that still fails falls back to the range, as
-  a refused one does. A server that hides `Content-Range` from the page, as Google Drive's API
-  does, no longer fails a recording with `cors` after a moment's error on its first request.
+  are asked for again after a server error, a `429` or a failure to reach the server, with the
+  same waits as a byte range, instead of failing the recording at once. A HEAD still failing
+  then is followed by one byte range: a server whose HEAD alone fails plays 1.25 s later than it
+  did. A server that hides `Content-Range` from the page, as Google Drive's API does, no longer
+  fails a recording with `cors` after an error on its first request; a HEAD that keeps failing
+  there is reported as `source-unreadable` with its status.
+
+Changed:
+
 - A request answered `501 Not Implemented` is not asked for again: a server that does not
-  implement HEAD falls back to a range at once, and a byte range answered `501` fails at once.
+  implement HEAD falls back to a range at once, as before, and a byte range answered `501` now
+  fails at once.
 
 ## 0.8.1 (2026-10-08)
 

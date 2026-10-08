@@ -3,7 +3,7 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
-## Unreleased
+## 0.8.1 (2026-10-08)
 
 What a page may notice (ADR 0044, a server slow to answer is asked in fewer, larger ranges):
 

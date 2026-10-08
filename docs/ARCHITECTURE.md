@@ -129,7 +129,8 @@ bytes start a keyframe.
 stand (ADR 0029): the window the picture reads in, what it wants within the budget, which
 ranges to ask for, which transfers to give up and which bytes to let go of; `isReadyToResume`
 and the resume threshold it and the plan share (ADR 0011); and the `DownloadPolicy` a file's
-size and duration give.
+size and duration give, and how long its server took to answer the reads that opened it
+(ADR 0044).
 
 **`playback`**: `PlayerStateMachine` with the exhaustive transition table
 (`ready`, `playing`, `buffering`, `paused`, `seeking`, `ended`, `error`, `disposed`).

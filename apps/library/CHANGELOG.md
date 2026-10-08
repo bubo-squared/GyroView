@@ -15,6 +15,13 @@ Added (ADR 0043, a recording behind a token is read through the page's fetch):
 - `UrlInput.fetch` does the same for a URL given to `createBrowserPlayer`'s `load`, in place of
   the player's `http.fetch` for that recording.
 
+Changed (ADR 0044, a server slow to answer is asked in fewer, larger ranges):
+
+- A recording on a server that takes 0.3 s or more to answer each request, as Google Drive's API
+  does, is downloaded a refill at a time (32 MiB for an X5), three ranges at a time for a lone
+  file, two for each file of a split pair; it plays at the rate of the link rather than of the
+  server's waits. Every other server is asked as before.
+
 Changed:
 
 - A byte range answered `429 Too Many Requests` is asked for again after the same waits as one

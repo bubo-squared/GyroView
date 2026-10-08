@@ -144,8 +144,20 @@ describe('HttpRangeSource', () => {
       attempts += 1;
       return attempts <= 2 ? Promise.reject(new Error('offline')) : fetch(input, init);
     };
-    const source = sourceAt(server.url, { fetch: flaky });
+    const source = sourceAt(server.url, { fetch: flaky, retryDelaysMs: [] });
     await expect(source.size()).rejects.toMatchObject({ code: 'source-unreadable' });
+    await expect(source.size()).resolves.toBe(5000);
+  });
+
+  it('asks again for the size after a request that did not get through', async () => {
+    const server = await serve(content);
+    let attempts = 0;
+    // The first HEAD and the no-CORS probe that diagnoses its failure both find the network down.
+    const flaky: typeof fetch = (input, init) => {
+      attempts += 1;
+      return attempts <= 2 ? Promise.reject(new Error('offline')) : fetch(input, init);
+    };
+    const source = sourceAt(server.url, { fetch: flaky, retryDelaysMs: NO_WAIT });
     await expect(source.size()).resolves.toBe(5000);
   });
 
@@ -201,15 +213,45 @@ describe('HttpRangeSource', () => {
     expect(busy.ranges()).toBe(2);
   });
 
-  it('names the status a size range still got when the waits ran out', async () => {
+  it('asks the range once after a HEAD still failing, and names its status', async () => {
     const server = await serve(content, { failsWith: 503 });
-    const counting = headsAnswered([]);
-    const source = sourceAt(server.url, { fetch: counting.fetch, retryDelaysMs: NO_WAIT });
-    await expect(source.read(ByteRange.of(0, 10))).rejects.toMatchObject({
+    const source = sourceAt(server.url, { retryDelaysMs: NO_WAIT });
+    await expect(source.size()).rejects.toMatchObject({
       code: 'source-unreadable',
       message: expect.stringContaining('answered 503 to a byte range') as string,
     });
-    expect(counting.asked()).toEqual({ heads: 3, ranges: 3 });
+    expect(server.requests.map((request) => request.method)).toEqual([
+      'HEAD',
+      'HEAD',
+      'HEAD',
+      'GET',
+    ]);
+  });
+
+  it('names a HEAD still failing, not cors, where the range that follows hides Content-Range', async () => {
+    const server = await serve(content);
+    const failing = headsAnswered([503, 503, 503], hidingRangeHeaders);
+    const source = sourceAt(server.url, { fetch: failing.fetch, retryDelaysMs: NO_WAIT });
+    await expect(source.size()).rejects.toMatchObject({
+      code: 'source-unreadable',
+      message: expect.stringContaining('answered 503 to HEAD') as string,
+    });
+  });
+
+  it('names the status a size range still got when the waits ran out', async () => {
+    const server = await serve(content, { answersHeadWith: 405 });
+    let ranges = 0;
+    const busy: typeof fetch = (input, init) => {
+      if (init?.method !== 'GET') return fetch(input, init);
+      ranges += 1;
+      return Promise.resolve(new Response(null, { status: 503 }));
+    };
+    const source = sourceAt(server.url, { fetch: busy, retryDelaysMs: NO_WAIT });
+    await expect(source.size()).rejects.toMatchObject({
+      code: 'source-unreadable',
+      message: expect.stringContaining('answered 503 to a byte range') as string,
+    });
+    expect(ranges).toBe(3);
   });
 
   it('ends a wait before asking again for the size as soon as its requests are aborted', async () => {
@@ -227,6 +269,7 @@ describe('HttpRangeSource', () => {
     });
     load.abort();
     await expect(sizing).rejects.toMatchObject({ name: 'AbortError' });
+    expect(busy.asked().heads).toBe(1);
   });
 
   it('names the status a size lookup got instead of a byte range', async () => {
@@ -253,7 +296,7 @@ describe('HttpRangeSource', () => {
   });
 
   it('reports network failures with the source-unreadable code and keeps the cause', async () => {
-    const source = sourceAt('http://127.0.0.1:1/unreachable.insv');
+    const source = sourceAt('http://127.0.0.1:1/unreachable.insv', { retryDelaysMs: NO_WAIT });
     await expect(source.size()).rejects.toMatchObject({
       code: 'source-unreadable',
       cause: expect.any(Error) as Error,
@@ -292,6 +335,17 @@ describe('HttpRangeSource', () => {
       code: 'source-unreadable',
     });
     expect(refusing.ranges()).toBe(1);
+  });
+
+  it('never asks again for a range a server does not implement (501)', async () => {
+    const server = await serve(content);
+    const unimplemented = firstRangeAnswered(501);
+    const source = sourceAt(server.url, { fetch: unimplemented.fetch, retryDelaysMs: NO_WAIT });
+    await source.size();
+    await expect(source.read(ByteRange.of(0, 10))).rejects.toMatchObject({
+      code: 'source-unreadable',
+    });
+    expect(unimplemented.ranges()).toBe(1);
   });
 
   it('asks again after a server that asks it to slow down, as rate-limited APIs answer', async () => {

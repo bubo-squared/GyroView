@@ -71,7 +71,9 @@ export class HttpResourceLocator implements ResourceLocator {
       if (REFUSED_HEAD.has(head.status)) return await this.answerAskedAgain(url, FIRST_BYTE);
       return isPassingStatus(head.status) ? await this.answer(url, FIRST_BYTE) : head;
     } catch (error) {
-      if (this.isAborted(error)) throw error;
+      // An abort ends the lookup whatever its reason, a timeout's included: it is no answer.
+      this.options.requestInit?.signal?.throwIfAborted();
+      if (isAbortError(error)) throw error;
       return undefined;
     }
   }
@@ -88,12 +90,5 @@ export class HttpResourceLocator implements ResourceLocator {
     const response = await plainHttpRequest(url, request, this.options);
     discardBody(response);
     return response;
-  }
-
-  /**
-   * An abort ends the lookup whatever its reason, a timeout's included: it is no answer.
-   */
-  private isAborted(error: unknown): boolean {
-    return isAbortError(error) || this.options.requestInit?.signal?.aborted === true;
   }
 }

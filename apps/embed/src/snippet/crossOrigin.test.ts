@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { commands } from 'vitest/browser';
 
 import { embed, type Embedded } from './embedSnippet';
-import { waitFor } from '../test/waiting';
+import { FRAME_LOAD_MS, frameTestTimeout, waitFor } from '../test/waiting';
 import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
 
 /**
@@ -12,14 +12,11 @@ import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-tr
  */
 const OTHER_HOST = 'gyro-view-embed.test';
 const OTHER_ORIGIN = `https://${OTHER_HOST}`;
-/**
- * The frame's page is the development page: some 350 modules, each request routed through the
- * browser command. About 6 s on CI, and more than 20 s on a runner the parallel suite loads.
- */
-const FRAME_LOAD_MS = 60_000;
-const TEST_TIMEOUT_MS = 90_000;
 
-describe('embedding across origins', { timeout: TEST_TIMEOUT_MS }, () => {
+/**
+ * Each of the frame page's modules is routed through the browser command, which slows its load.
+ */
+describe('embedding across origins', { timeout: frameTestTimeout(1) }, () => {
   const embedded: Embedded[] = [];
   const containers: HTMLElement[] = [];
 

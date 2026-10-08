@@ -1,5 +1,5 @@
 import { Deferred, seconds, type AudioSegmentSource } from '@gyroview/core';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import {
   attachMediaSource,
@@ -65,6 +65,15 @@ const ACROSS_THE_SEAM = 0.3;
  * Headless WebKit under load is slow to start playing.
  */
 const PLAYBACK_WITHIN_MS = 10_000;
+/**
+ * Playwright's Linux WebKit (GStreamer) now and then never finishes a seek within buffered audio,
+ * `seeking` for good: about one such seek in 22 when segments are appended and the stream ends
+ * while it is pending, as the player does, and one in 270 when they are not, in a Linux
+ * container; never in 90 tries on macOS. A test that plays across a seam is tried again when its
+ * seek was lost, and only then: audio that fails to decode at a seam fails at once.
+ */
+const LOST_SEEK = 'the seek was lost';
+const LOST_SEEK_RETRY = { count: 2, condition: new RegExp(LOST_SEEK, 'u') };
 /**
  * A time past the first second, which a run stalled after it has not appended.
  */
@@ -254,26 +263,31 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
   // A seek stops a run between any two of its segments: playing from the last run's audio into
   // the next run's must still decode, which only playing shows.
   for (const appended of [1, 2, 3]) {
-    it(`plays from one run's audio into the next after a seek stopped a run after ${appended} of its segments`, async () => {
-      const stalled = new Deferred<void>();
-      const { feeder, element, close } = await fixtureFeeder(stallingAfter(appended, stalled));
-      feeder.restartFrom(seconds(0));
-      await stalled.promise;
-      const seam = element.buffered.length > 0 ? element.buffered.end(0) : 0;
-      const from = Math.max(0, seam - ACROSS_THE_SEAM);
-      element.muted = true;
-      element.currentTime = from;
-      feeder.restartFrom(seconds(from));
-      await element.play();
-      await waitUntil(
-        () => element.error !== null || element.currentTime > seam + ACROSS_THE_SEAM,
-        PLAYBACK_WITHIN_MS,
-      );
-      expect(element.error).toBeNull();
-      expect(feeder.failure).toBeUndefined();
-      expect(element.currentTime).toBeGreaterThan(seam + ACROSS_THE_SEAM);
-      close();
-    });
+    it(
+      `plays from one run's audio into the next after a seek stopped a run after ${appended} of its segments`,
+      { retry: LOST_SEEK_RETRY },
+      async () => {
+        const stalled = new Deferred<void>();
+        const { feeder, element, close } = await fixtureFeeder(stallingAfter(appended, stalled));
+        onTestFinished(close);
+        feeder.restartFrom(seconds(0));
+        await stalled.promise;
+        const seam = element.buffered.length > 0 ? element.buffered.end(0) : 0;
+        const from = Math.max(0, seam - ACROSS_THE_SEAM);
+        element.muted = true;
+        element.currentTime = from;
+        feeder.restartFrom(seconds(from));
+        await element.play();
+        await waitUntil(
+          () => element.error !== null || element.currentTime > seam + ACROSS_THE_SEAM,
+          PLAYBACK_WITHIN_MS,
+        );
+        expect(element.error).toBeNull();
+        expect(feeder.failure).toBeUndefined();
+        expect(element.seeking, LOST_SEEK).toBe(false);
+        expect(element.currentTime).toBeGreaterThan(seam + ACROSS_THE_SEAM);
+      },
+    );
   }
 
   it("leaves a failed element's own error to say why, appending nothing more", async () => {
@@ -300,6 +314,7 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
       await fixtureFeeder(everySegment);
     feeder.restartFrom(seconds(0));
     await waitUntil(() => mediaSource.readyState === 'ended');
+    expect(mediaSource.readyState).toBe('ended');
     element.currentTime = EVICTED_PLAYHEAD;
     await evict(sourceBuffer, 0, EVICTED_UP_TO);
     element.dispatchEvent(new Event('waiting'));
@@ -316,10 +331,15 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
     );
     feeder.restartFrom(seconds(0));
     await waitUntil(() => mediaSource.readyState === 'ended');
+    expect(mediaSource.readyState).toBe('ended');
     element.currentTime = EVICTED_PLAYHEAD;
     await evict(sourceBuffer, 0, EVICTED_UP_TO);
     element.dispatchEvent(new Event('waiting'));
-    await waitUntil(() => asked.length === 2);
+    // The eviction reopened the stream; the run that feeds the playhead again ends it again, and
+    // until then it appends, while a source buffer refuses a removal.
+    await waitUntil(() => asked.length === 2 && mediaSource.readyState === 'ended');
+    expect(asked).toHaveLength(2);
+    expect(mediaSource.readyState).toBe('ended');
     await evict(sourceBuffer, 0, EVICTED_UP_TO);
     element.dispatchEvent(new Event('waiting'));
     await new Promise((resolve) => setTimeout(resolve, 100));

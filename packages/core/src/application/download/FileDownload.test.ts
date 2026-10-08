@@ -44,6 +44,23 @@ const NETWORK = { bytesPerTick: Math.round(1.5 * SLOT), latencyTicks: 2 };
  * A link far faster than playing takes, which fills the window at once and then waits on it.
  */
 const FAST_NETWORK = { bytesPerTick: 10 * SLOT, latencyTicks: 2 };
+/**
+ * A server slow to answer, as Google Drive's API: half a second before each answer, and each
+ * answer sent at a little more than playing takes, on a link with room for three (ADR 0044).
+ */
+const SLOW_TO_ANSWER = {
+  bytesPerTick: 3 * SLOT,
+  latencyTicks: 30,
+  bytesPerTickPerRequest: Math.round(1.2 * SLOT),
+};
+/**
+ * The policy for such a server: each top-up one range, three ranges coming at a time.
+ */
+const SLOW_SERVER_POLICY: DownloadPolicy = {
+  ...POLICY,
+  requestSize: POLICY.refillBytes,
+  requestsInFlight: 3,
+};
 const STALLED = Symbol('stalled');
 
 async function stalled(): Promise<typeof STALLED> {
@@ -210,6 +227,21 @@ describe('FileDownload', () => {
     await play({ ...context, readers }, 3, 1300);
     expect(readers.handedOutBytes).toBe(RECORDING.fileSize);
   });
+
+  it('keeps up with playing from a server slow to answer, where two ranges of the usual size fall behind', async () => {
+    const frames = 400;
+    const handedOut = async (policy: DownloadPolicy): Promise<number> => {
+      const context = setup(policy, SLOW_TO_ANSWER);
+      const readers = openReaders(context.download, 0);
+      context.download.startReadingAhead();
+      await play({ ...context, readers }, 0, frames);
+      return readers.handedOutBytes;
+    };
+    const dueBytes = frames * SLOT;
+
+    expect(await handedOut(SLOW_SERVER_POLICY)).toBeGreaterThan(0.9 * dueBytes);
+    expect(await handedOut(POLICY)).toBeLessThan(0.6 * dueBytes);
+  }, 20_000);
 
   it('fetches about each byte it hands out once, playing the recording through', async () => {
     const context = setup();

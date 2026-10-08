@@ -75,14 +75,34 @@ const REPLANS_PER_REFILL = 16;
  * frame, short enough that the wait does not feel like a stop.
  */
 const RESUME_SECONDS = 4;
+/**
+ * A server that takes this long to answer a request is slow to answer: Google Drive's API
+ * answered each range after 0.75 to 0.95 s (measured 2026-10-08), where a CDN answers in about
+ * 0.05 s (ADR 0044).
+ */
+const SLOW_ANSWER_SECONDS = 0.3;
+/**
+ * From a server slow to answer, a lone file keeps three ranges coming: with each top-up one
+ * range, Drive's then come at about 42 MiB/s, against 13 MiB/s from two of 8 MiB, and an X5
+ * plays at 25 MiB/s. The files of a split pair keep two each, so the pair stays at four
+ * requests, within what a browser opens to an HTTP/1.1 host.
+ */
+const SLOW_SERVER_REQUESTS_IN_FLIGHT = 3;
 
 /**
- * The policy for one file of a recording of `fileCount` files, by its bit rate.
+ * What the policy is chosen by: the file's size and length, and how long its server took to
+ * answer the requests that opened it, where it was measured.
  */
-export function downloadPolicyFor(
-  file: { readonly size: number; readonly duration: Seconds },
-  fileCount: number,
-): DownloadPolicy {
+export interface DownloadedFileFacts {
+  readonly size: number;
+  readonly duration: Seconds;
+  readonly answerWait?: Seconds | undefined;
+}
+
+/**
+ * The policy for one file of a recording of `fileCount` files, by its bit rate and its server.
+ */
+export function downloadPolicyFor(file: DownloadedFileFacts, fileCount: number): DownloadPolicy {
   const bytesPerSecond = file.size / file.duration;
   const aheadBytes = Math.min(
     Math.round(AHEAD_SECONDS * bytesPerSecond),
@@ -97,11 +117,35 @@ export function downloadPolicyFor(
       (MOST_KEPT_BEHIND_MEBIBYTES * MEBIBYTE) / fileCount,
     ),
     keepBehindSeconds: seconds(KEEP_BEHIND_SECONDS),
-    requestSize: REQUEST_MEBIBYTES * MEBIBYTE,
-    requestsInFlight: REQUESTS_IN_FLIGHT,
+    ...requestsFor({ answerWait: file.answerWait, refillBytes, fileCount }),
     bridgedGap: BRIDGED_GAP_MEBIBYTES * MEBIBYTE,
     refillBytes,
     replanBytes: Math.round(refillBytes / REPLANS_PER_REFILL),
     resumeSeconds: seconds(RESUME_SECONDS),
   };
+}
+
+interface RequestFacts {
+  readonly answerWait: Seconds | undefined;
+  readonly refillBytes: number;
+  readonly fileCount: number;
+}
+
+/**
+ * How large and how many the ranges asked for at once are (ADR 0044): from a server slow to
+ * answer, a top-up is one range, since each range waits as long for its answer, and a lone file
+ * keeps a third coming; from any other, as before.
+ */
+function requestsFor(
+  facts: RequestFacts,
+): Pick<DownloadPolicy, 'requestSize' | 'requestsInFlight'> {
+  const baseSize = REQUEST_MEBIBYTES * MEBIBYTE;
+  const isSlowToAnswer = (facts.answerWait ?? 0) >= SLOW_ANSWER_SECONDS;
+  const isAlone = facts.fileCount === 1;
+  return isSlowToAnswer
+    ? {
+        requestSize: Math.max(baseSize, facts.refillBytes),
+        requestsInFlight: isAlone ? SLOW_SERVER_REQUESTS_IN_FLIGHT : REQUESTS_IN_FLIGHT,
+      }
+    : { requestSize: baseSize, requestsInFlight: REQUESTS_IN_FLIGHT };
 }

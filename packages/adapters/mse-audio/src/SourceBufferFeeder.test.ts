@@ -79,6 +79,21 @@ const EVICTED_UP_TO = 2;
 type Segments = AsyncIterable<Uint8Array<ArrayBuffer>>;
 
 /**
+ * The target's next `name` event.
+ */
+function nextEvent(target: EventTarget, name: string): Promise<void> {
+  return new Promise((resolve) => {
+    target.addEventListener(
+      name,
+      () => {
+        resolve();
+      },
+      { once: true },
+    );
+  });
+}
+
+/**
  * Takes buffered audio away, as a managed media source may at any time.
  */
 async function evict(sourceBuffer: SourceBuffer, start: number, end: number): Promise<void> {
@@ -262,7 +277,12 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
       const seam = element.buffered.length > 0 ? element.buffered.end(0) : 0;
       const from = Math.max(0, seam - ACROSS_THE_SEAM);
       element.muted = true;
+      // Linux WebKit (GStreamer) leaves a seek pending for good, `seeking` with no `seeked`, when
+      // segments are appended before it completes; a seek to audio already buffered completes
+      // without them, one to audio not yet buffered only once they come.
+      const seeked = nextEvent(element, 'seeked');
       element.currentTime = from;
+      if (isBufferedAt(element, from)) await seeked;
       feeder.restartFrom(seconds(from));
       await element.play();
       await waitUntil(
@@ -318,8 +338,12 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
     await waitUntil(() => mediaSource.readyState === 'ended');
     element.currentTime = EVICTED_PLAYHEAD;
     await evict(sourceBuffer, 0, EVICTED_UP_TO);
+    // The run that feeds the playhead again ends the stream again; until then it appends, and a
+    // source buffer refuses a removal while it appends.
+    const fedAgain = nextEvent(mediaSource, 'sourceended');
     element.dispatchEvent(new Event('waiting'));
-    await waitUntil(() => asked.length === 2);
+    await fedAgain;
+    expect(asked).toHaveLength(2);
     await evict(sourceBuffer, 0, EVICTED_UP_TO);
     element.dispatchEvent(new Event('waiting'));
     await new Promise((resolve) => setTimeout(resolve, 100));

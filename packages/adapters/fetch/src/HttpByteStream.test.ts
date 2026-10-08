@@ -183,6 +183,17 @@ describe('HttpByteStream', () => {
     expect(rangesAskedOf(server)).toEqual(['bytes=0-99']);
   });
 
+  it('asks no more for a size whose lookup still failed once its own waits ran out', async () => {
+    const server = await serve(BODY, { failsWith: 503 });
+    const stream = streamOf(server.url, { retryDelaysMs: NO_WAIT });
+    await expect(bytesOf(stream, ByteRange.of(10, 20))).rejects.toMatchObject({
+      code: 'source-unreadable',
+      message: expect.stringContaining('answered 503 to a byte range') as string,
+    });
+    const methods = server.requests.map((request) => request.method);
+    expect(methods).toEqual(['HEAD', 'HEAD', 'HEAD', 'GET']);
+  });
+
   it('fails with source-changed once the recording at the URL is replaced', async () => {
     const server = await serve(BODY, {
       validators: { lastModified: 'Wed, 30 Sep 2026 10:00:00 GMT' },

@@ -35,8 +35,8 @@ bucket) hosting the `.insv` files must:
   when `HEAD` gave no length either (a `200` to the one-byte range is as often a fallback page
   as a server that ignores ranges);
 - answer `HEAD` with `Content-Length`, which saves a request; a server that refuses `HEAD` (a
-  `405`, or a `403` from a URL signed for `GET` alone) or omits the length is asked for a
-  one-byte range instead;
+  `405`, a `403` from a URL signed for `GET` alone, or a `501`) or omits the length is asked for
+  a one-byte range instead;
 - when the player runs on another origin than the recordings, send CORS headers on every
   response. The player's origin is the page's for the element form, and for the iframe form
   the origin serving `embed.html`, whichever site embeds it:
@@ -130,7 +130,7 @@ Access-Control-Max-Age: 3600
 A token that has run out is answered with `401`, which the player reports as `source-unreadable`
 at once, as any refusal, provided the host sends its CORS headers on error answers too (nginx's
 `add_header … always`): without them the browser hides the answer, and the player reports `cors`
-before a range has come through. Any byte range answered `429` but the first size request is
+before a range has come through. A request answered `429` or a server error other than `501` is
 asked for again twice first (ADR 0019). The `poster` loads as an image does, without the
 function, and the iframe embed never takes one.
 

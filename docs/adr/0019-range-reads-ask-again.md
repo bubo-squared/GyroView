@@ -4,7 +4,9 @@ Status: accepted (2026-09-27); amended (2026-09-30): while a recording plays, it
 through `HttpByteStream`, which asks for the rest of a range that broke off from its next byte,
 and gives up and asks again for one that brought no byte for 10 s, under the same rules; a
 recording replaced meanwhile is `source-changed` (ADR 0029); amended (2026-10-08): a range
-answered `429 Too Many Requests`, as rate-limited APIs answer, is asked for again as a 5xx is
+answered `429 Too Many Requests`, as rate-limited APIs answer, is asked for again as a 5xx is;
+amended (2026-10-08): so are the requests for the file's size, and a `501 Not Implemented` is
+not asked again
 
 ## Context
 
@@ -26,9 +28,10 @@ reads waiting on a failed slice, and the audio feeder's failure is sticky.
   on the way even when the browser's diagnosis says CORS: an error page without CORS headers
   (nginx's `add_header` without `always`, a CDN's own 502) looks exactly like a CORS refusal,
   and CORS was already proven for this source.
-- **Failed at once:** an abort, any other 4xx, a 200 to a range (`range-unsupported`), a CORS
-  refusal before any range came through, and a short body (`source-truncated`). Asking again
-  cannot change these: a short body repeats on the next try (ADR 0013).
+- **Failed at once:** an abort, any other 4xx, a `501 Not Implemented` (the server does not do
+  what was asked, however often), a 200 to a range (`range-unsupported`), a CORS refusal before
+  any range came through, and a short body (`source-truncated`). Asking again cannot change
+  these: a short body repeats on the next try (ADR 0013).
 
 The failure after the retries keeps its code: `source-unreadable` for the network and the
 server, so an embedder can tell a network that is gone from a bad file or a bug.
@@ -47,6 +50,24 @@ server, so an embedder can tell a network that is gone from a bad file or a bug.
 
 A blink of the network costs a stalled picture of up to 1.25 s instead of the playback. A server
 that keeps failing is asked three times for the range that failed before the player reports it.
+
+## Since 2026-10-08: the size is asked for again
+
+The file's size is the first thing read: a HEAD, or a one-byte range where the server refuses
+HEAD or gives it no length. Both were made once, and a HEAD answered with a server error or a
+429 fell back to the range at once. A moment's 503 then failed the recording, and on a server
+that hides `Content-Range` from the page, as Google Drive's API does, the range that took over
+failed it as `cors`, blaming the server's headers.
+
+Each of the two requests is now asked for again as a range is, after a 5xx, a 429, or a failure
+to reach the server, with the same waits. Once they run out, the last answer or failure stands as
+if it were the first, so a byte stream that sizes inside its own retries does not ask a failing
+server again. A HEAD still failing is followed by one byte range, asked once, since the server
+has had its waits: a server whose HEAD alone is broken still plays, 1.25 s later, and one that
+fails from its first request is asked three HEADs and a range before the player reports it.
+Where that range hides `Content-Range`, only the HEAD could have told the size, so the failure
+names the HEAD's status as `source-unreadable` rather than blame CORS. A 501 is a refusal: a
+server that does not implement HEAD falls back to the range at once, as it did.
 
 ## Since 2026-10-05: a range read ahead is asked for again when it is needed
 

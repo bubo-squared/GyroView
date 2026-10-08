@@ -131,8 +131,8 @@ A token that has run out is answered with `401`, which the player reports as `so
 at once, as any refusal, provided the host sends its CORS headers on error answers too (nginx's
 `add_header … always`): without them the browser hides the answer, and the player reports `cors`
 before a range has come through. Any byte range answered `429` but the first size request is
-asked for again twice first (ADR 0019). The `poster` loads as an image
-does, without the function, and the iframe embed never takes one.
+asked for again twice first (ADR 0019). The `poster` loads as an image does, without the
+function, and the iframe embed never takes one.
 
 ## Embedding
 

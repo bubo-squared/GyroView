@@ -340,7 +340,10 @@ The composition root and the user-facing element, in three layers.
   life with a recording is one `PlayerPhase`. The element drives it; the embed bridge drives the element.
 - **`element`** and **`controls`**: `GyroViewElement` is `<gyro-view>`: attributes parsed by
   pure functions in `attributes.ts` (names in `attributeNames.ts`, published as
-  `@gyroview/player/attributes`), settings properties live over the player (`liveSettings`),
+  `@gyroview/player/attributes`; which of them reload it and which properties a page may set
+  before it is defined, in `elementProperties.ts`), a `fetch` property a page sets from script,
+  read at each load and put on every URL input (`fetchProperty.ts`, ADR 0043), settings
+  properties live over the player (`liveSettings`),
   events re-dispatched as `CustomEvent`s and typed for listeners (`GyroViewElementEventMap`, over
   the pass-through `TypedEventElement`), a shadow tree with the canvas, the audio element,
   poster and overlays. `ElementLoads` decides when the element loads and what: the attributes

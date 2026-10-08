@@ -133,7 +133,9 @@ split recording; paused, it reads on to that budget and stops. A seek ends the o
 requests at once. When the network falls behind the recording, playback waits until the next
 4 s are downloaded, and plays on in stretches rather than a frame at a time. A range that
 breaks off or stalls for 10 s is asked for again from its next byte, and a recording replaced at
-its URL while it plays fails with `source-changed`.
+its URL while it plays fails with `source-changed`. A server slow to answer each request, such
+as a cloud drive's download API, is asked in fewer, larger ranges, so its waits do not slow
+playback.
 
 `@bubo-squared/gyroview` also exports `GyroViewError`, the list of its codes
 (`GYRO_VIEW_ERROR_CODES`, with `isGyroViewErrorCode` to check a string against it), and the

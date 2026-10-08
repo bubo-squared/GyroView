@@ -1,20 +1,15 @@
-import {
-  readRecordingFiles,
-  type ByteStream,
-  type RecordingFile,
-  type RecordingFiles,
-} from '@gyroview/core';
+import { readRecordingFiles, type RecordingFile, type RecordingFiles } from '@gyroview/core';
 
 import type { OpenAttempt } from './OpenAttempt';
+import type { OpenedSource } from './ports';
 import { inputName, type MediaInput } from '../PlayerSource';
 
 /**
  * One input of a recording as the core reads it, with the stream its download reads while it
- * plays (ADR 0029): both read one file, so they know one size and one version.
+ * plays (ADR 0029): both read one file, so they know one size and one version; and how long its
+ * server took to answer the reads that opened it (ADR 0044).
  */
-export interface InputFile extends RecordingFile {
-  readonly stream: ByteStream;
-}
+export interface InputFile extends RecordingFile, Pick<OpenedSource, 'stream' | 'answerWait'> {}
 
 /**
  * Opens the given inputs through the ports and reads them as one recording; the other lens file

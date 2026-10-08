@@ -192,6 +192,22 @@ describe('browserPorts', () => {
     ]);
   });
 
+  it('tells how long the server took to answer once the file was read, and nothing of a local file', async () => {
+    const server = recordingServer();
+    const ports = browserPorts({ http: { fetch: server.fetch } });
+    const opened = ports.sources.open({ url: RECORDING_URL }, new AbortController().signal);
+    expect(opened.answerWait?.()).toBeUndefined();
+
+    await opened.source.size();
+
+    expect(opened.answerWait?.()).toBeGreaterThanOrEqual(0);
+    const local = ports.sources.open(
+      { blob: new Blob([new Uint8Array(8)]), name: 'VID_20260814_132640_00_013.insv' },
+      new AbortController().signal,
+    );
+    expect(local.answerWait).toBeUndefined();
+  });
+
   it('streams a recording with the credentials its input names, its size looked up once', async () => {
     const server = recordingServer();
     const ports = browserPorts({ http: { fetch: server.fetch } });

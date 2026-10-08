@@ -8,6 +8,7 @@ import type {
   RandomAccessSource,
   ResourceLocator,
   Deferred,
+  Seconds,
   StabilizationMode,
   VideoDecoderPort,
 } from '@gyroview/core';
@@ -22,6 +23,11 @@ import type { MediaInput, UrlInput } from '../PlayerSource';
 export interface OpenedSource {
   readonly source: RandomAccessSource;
   readonly stream: ByteStream;
+  /**
+   * How long the source's server has taken to answer a request, once the reads that open the
+   * file have asked it (ADR 0044); none for a source that has no server, such as a local file.
+   */
+  readonly answerWait?: (() => Seconds | undefined) | undefined;
 }
 
 /**

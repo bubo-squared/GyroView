@@ -9,6 +9,7 @@ import {
   type AudioPackager,
   type AudioSegmentSource,
   type DownloadedFile,
+  type DownloadPolicy,
   type FrameSourceKey,
   type ReadFile,
   type RecordingFiles,
@@ -52,22 +53,36 @@ export async function openInputs(
 }
 
 /**
- * One download a file, each with its share of the budget, and asking as its server answers: the
- * reads that opened the file have timed it (ADR 0044).
+ * One download a file, each with its share of the budget.
  */
 function startDownloads(
   inputs: readonly ReadFile<InputFile>[],
   disposables: Disposables,
 ): DownloadedFile[] {
-  return inputs.map(({ stream, table, codecs, size, answerWait }) => {
-    const facts = { size, duration: table.duration, answerWait: answerWait?.() };
-    const policy = downloadPolicyFor(facts, inputs.length);
+  return inputs.map((input) => {
+    const { stream, table, codecs } = input;
+    const policy = downloadPolicyOf(input, inputs.length);
     const file = startFileDownload({ table, stream, codecs, policy });
     disposables.add(() => {
       file.dispose();
     });
     return file;
   });
+}
+
+/**
+ * How a file of a recording of `fileCount` files is downloaded: by its size and length, and by
+ * how long its server took to answer the reads that opened it (ADR 0044).
+ */
+export function downloadPolicyOf(
+  file: Pick<ReadFile<InputFile>, 'size' | 'table' | 'answerWait'>,
+  fileCount: number,
+): DownloadPolicy {
+  const { size, table, answerWait } = file;
+  return downloadPolicyFor(
+    { size, duration: table.duration, answerWait: answerWait?.() },
+    fileCount,
+  );
 }
 
 function trackAt(files: readonly DownloadedFile[], key: FrameSourceKey): VideoTrackReader {

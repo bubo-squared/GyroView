@@ -192,13 +192,14 @@ describe('browserPorts', () => {
     ]);
   });
 
-  it('tells how long the server took to answer once the file was read, and nothing of a local file', async () => {
+  it('tells how long the server took to answer a range once one was read, and nothing of a local file', async () => {
     const server = recordingServer();
     const ports = browserPorts({ http: { fetch: server.fetch } });
     const opened = ports.sources.open({ url: RECORDING_URL }, new AbortController().signal);
+    await opened.source.size();
     expect(opened.answerWait?.()).toBeUndefined();
 
-    await opened.source.size();
+    await opened.source.read(ByteRange.of(0, 4));
 
     expect(opened.answerWait?.()).toBeGreaterThanOrEqual(0);
     const local = ports.sources.open(

@@ -83,7 +83,8 @@ const RESUME_SECONDS = 4;
 const SLOW_ANSWER_SECONDS = 0.3;
 /**
  * From a server slow to answer, a lone file keeps three ranges coming: with each top-up one
- * range, Drive's then come at about 42 MiB/s, against 13 MiB/s from two of 8 MiB, and an X5
+ * range, Drive's should then come at about 42 MiB/s (estimated from its measured waits and
+ * rates, to be confirmed in a browser), against 13 MiB/s measured from two of 8 MiB, and an X5
  * plays at 25 MiB/s. The files of a split pair keep two each, so the pair stays at four
  * requests, within what a browser opens to an HTTP/1.1 host.
  */
@@ -117,7 +118,7 @@ export function downloadPolicyFor(file: DownloadedFileFacts, fileCount: number):
       (MOST_KEPT_BEHIND_MEBIBYTES * MEBIBYTE) / fileCount,
     ),
     keepBehindSeconds: seconds(KEEP_BEHIND_SECONDS),
-    ...requestsFor({ answerWait: file.answerWait, refillBytes, fileCount }),
+    ...rangesAtOnceFor({ answerWait: file.answerWait, refillBytes, fileCount }),
     bridgedGap: BRIDGED_GAP_MEBIBYTES * MEBIBYTE,
     refillBytes,
     replanBytes: Math.round(refillBytes / REPLANS_PER_REFILL),
@@ -136,7 +137,7 @@ interface RequestFacts {
  * answer, a top-up is one range, since each range waits as long for its answer, and a lone file
  * keeps a third coming; from any other, as before.
  */
-function requestsFor(
+function rangesAtOnceFor(
   facts: RequestFacts,
 ): Pick<DownloadPolicy, 'requestSize' | 'requestsInFlight'> {
   const baseSize = REQUEST_MEBIBYTES * MEBIBYTE;

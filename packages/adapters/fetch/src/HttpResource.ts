@@ -241,7 +241,7 @@ export class HttpResource {
       return this.totalOfFirstByte(response);
     } catch (error) {
       if (!hasErrorCode(error, 'cors')) throw error;
-      const message = `${this.url} answered ${headStatus} to HEAD each time, and its byte ranges hide Content-Range; cannot determine the file size`;
+      const message = `${this.url} still answered ${headStatus} to HEAD, and its byte ranges hide Content-Range; cannot determine the file size`;
       throw new GyroViewError('source-unreadable', message, { cause: error });
     }
   }

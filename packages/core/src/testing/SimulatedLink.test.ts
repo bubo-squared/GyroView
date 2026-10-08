@@ -58,6 +58,21 @@ describe('SimulatedLink', () => {
     expect(link.requests.map((request) => request.deliveredBytes)).toEqual([100, 100]);
   });
 
+  it('carries no request faster than a server that paces each answer sends it', () => {
+    const link = new SimulatedLink(FILE, {
+      bytesPerTick: 100,
+      latencyTicks: 0,
+      bytesPerTickPerRequest: 30,
+    });
+    for (const range of [ByteRange.of(0, 200), ByteRange.of(200, 200)]) {
+      link.stream(range)[Symbol.asyncIterator]();
+    }
+
+    link.advance();
+
+    expect(link.requests.map((request) => request.deliveredBytes)).toEqual([30, 30]);
+  });
+
   it('logs a request given up midway, and carries no more of it', () => {
     const link = new SimulatedLink(FILE, { bytesPerTick: 100, latencyTicks: 0 });
     const chunks = link.stream(ByteRange.of(0, 500))[Symbol.asyncIterator]();

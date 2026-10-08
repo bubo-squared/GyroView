@@ -4,11 +4,13 @@ import type { ByteRange } from '../shared/binary/ByteRange';
 
 /**
  * How the simulated network carries bytes: so many a tick, shared evenly by the requests
- * streaming, each starting only after its latency.
+ * streaming, each starting only after its latency, and none faster than `bytesPerTickPerRequest`
+ * where a server sends each answer at its own pace, as Google Drive's API does.
  */
 export interface SimulatedNetwork {
   readonly bytesPerTick: number;
   readonly latencyTicks: number;
+  readonly bytesPerTickPerRequest?: number;
 }
 
 /**
@@ -94,7 +96,8 @@ export class SimulatedLink implements ByteStream {
     const latestStart = this.now - this.network.latencyTicks;
     const streaming = this.transfers.filter((transfer) => transfer.isStreamingSince(latestStart));
     if (streaming.length === 0) return;
-    const share = Math.max(1, Math.floor(this.network.bytesPerTick / streaming.length));
+    const evenShare = Math.max(1, Math.floor(this.network.bytesPerTick / streaming.length));
+    const share = Math.min(evenShare, this.network.bytesPerTickPerRequest ?? evenShare);
     for (const transfer of streaming) transfer.deliver(share);
   }
 }

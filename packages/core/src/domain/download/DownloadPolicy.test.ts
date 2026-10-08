@@ -51,4 +51,29 @@ describe('downloadPolicyFor', () => {
   it('resumes after starving once 4 s are downloaded', () => {
     expect(downloadPolicyFor(X5_OFFICE, 1).resumeSeconds).toBe(4);
   });
+
+  it('asks a server that answers within 0.3 s as it always did', () => {
+    const fast = downloadPolicyFor({ ...X5_OFFICE, answerWait: seconds(0.05) }, 1);
+    expect(fast).toEqual(downloadPolicyFor(X5_OFFICE, 1));
+    expect(downloadPolicyFor({ ...X5_OFFICE, answerWait: undefined }, 1)).toEqual(
+      downloadPolicyFor(X5_OFFICE, 1),
+    );
+  });
+
+  it('asks a server slow to answer for a refill in one range, three at a time for a lone file', () => {
+    const slow = downloadPolicyFor({ ...X5_OFFICE, answerWait: seconds(0.85) }, 1);
+    expect(slow.requestSize).toBe(32 * MEBIBYTE);
+    expect(slow.requestsInFlight).toBe(3);
+  });
+
+  it('keeps each file of a split pair from a slow server to two ranges at a time, four in all', () => {
+    const slow = downloadPolicyFor({ ...X5_OFFICE, answerWait: seconds(0.85) }, 2);
+    expect(slow.requestSize).toBe(16 * MEBIBYTE);
+    expect(slow.requestsInFlight).toBe(2);
+  });
+
+  it('asks a slow server for no less than 8 MiB at once, whatever a slow recording refills', () => {
+    const slowRecording = { size: 120_000_000, duration: seconds(60), answerWait: seconds(0.85) };
+    expect(downloadPolicyFor(slowRecording, 1).requestSize).toBe(8 * MEBIBYTE);
+  });
 });

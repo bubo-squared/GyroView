@@ -234,7 +234,7 @@ export {
   type DownloadedAudioTrack,
   type DownloadedFile,
 } from './application/download/startFileDownload';
-export { downloadPolicyFor } from './domain/download/DownloadPolicy';
+export { downloadPolicyFor, type DownloadedFileFacts } from './domain/download/DownloadPolicy';
 export { RecordingBuffer } from './application/download/RecordingBuffer';
 
 // The container's sample tables

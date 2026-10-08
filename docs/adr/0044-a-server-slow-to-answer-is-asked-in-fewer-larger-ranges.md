@@ -1,6 +1,7 @@
 # ADR 0044: A server slow to answer is asked in fewer, larger ranges
 
-Status: accepted (2026-10-08)
+Status: accepted (2026-10-08); the rate from Google Drive is to be confirmed in a browser
+(insv-player, over HTTP/2)
 
 ## Context
 

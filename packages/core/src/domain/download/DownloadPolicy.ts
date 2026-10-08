@@ -92,7 +92,7 @@ const SLOW_SERVER_REQUESTS_IN_FLIGHT = 3;
 
 /**
  * What the policy is chosen by: the file's size and length, and how long its server took to
- * answer the requests that opened it, where it was measured.
+ * answer the byte ranges that opened it, where it was measured.
  */
 export interface DownloadedFileFacts {
   readonly size: number;

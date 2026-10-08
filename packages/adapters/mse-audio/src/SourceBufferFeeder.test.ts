@@ -66,13 +66,14 @@ const ACROSS_THE_SEAM = 0.3;
  */
 const PLAYBACK_WITHIN_MS = 10_000;
 /**
- * Linux WebKit's media backend (GStreamer, as Playwright's WebKit is) now and then never finishes a
- * seek within buffered audio, `seeking` for good: about one play in 20 when segments are appended
- * and the stream ends while the seek is pending, as the player does, and one in 270 when they are
- * not, in a Linux container; never in 90 tries on macOS. The tests that play across a seam are
- * tried again; audio that fails to decode at a seam fails every try.
+ * Playwright's Linux WebKit (GStreamer) now and then never finishes a seek within buffered audio,
+ * `seeking` for good: about one such seek in 22 when segments are appended and the stream ends
+ * while it is pending, as the player does, and one in 270 when they are not, in a Linux
+ * container; never in 90 tries on macOS. A test that plays across a seam is tried again when its
+ * seek was lost, and only then: audio that fails to decode at a seam fails at once.
  */
-const LOST_SEEK_RETRIES = 2;
+const LOST_SEEK = 'the seek was lost';
+const LOST_SEEK_RETRY = { count: 2, condition: new RegExp(LOST_SEEK, 'u') };
 /**
  * A time past the first second, which a run stalled after it has not appended.
  */
@@ -264,7 +265,7 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
   for (const appended of [1, 2, 3]) {
     it(
       `plays from one run's audio into the next after a seek stopped a run after ${appended} of its segments`,
-      { retry: LOST_SEEK_RETRIES },
+      { retry: LOST_SEEK_RETRY },
       async () => {
         const stalled = new Deferred<void>();
         const { feeder, element, close } = await fixtureFeeder(stallingAfter(appended, stalled));
@@ -283,6 +284,7 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
         );
         expect(element.error).toBeNull();
         expect(feeder.failure).toBeUndefined();
+        expect(element.seeking, LOST_SEEK).toBe(false);
         expect(element.currentTime).toBeGreaterThan(seam + ACROSS_THE_SEAM);
       },
     );
@@ -312,6 +314,7 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
       await fixtureFeeder(everySegment);
     feeder.restartFrom(seconds(0));
     await waitUntil(() => mediaSource.readyState === 'ended');
+    expect(mediaSource.readyState).toBe('ended');
     element.currentTime = EVICTED_PLAYHEAD;
     await evict(sourceBuffer, 0, EVICTED_UP_TO);
     element.dispatchEvent(new Event('waiting'));
@@ -335,6 +338,7 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
     // The eviction reopened the stream; the run that feeds the playhead again ends it again, and
     // until then it appends, while a source buffer refuses a removal.
     await waitUntil(() => asked.length === 2 && mediaSource.readyState === 'ended');
+    expect(asked).toHaveLength(2);
     expect(mediaSource.readyState).toBe('ended');
     await evict(sourceBuffer, 0, EVICTED_UP_TO);
     element.dispatchEvent(new Event('waiting'));

@@ -54,7 +54,8 @@ const SLOW_TO_ANSWER = {
   bytesPerTickPerRequest: Math.round(1.2 * SLOT),
 };
 /**
- * The policy for such a server: each top-up one range, three ranges coming at a time.
+ * The shape `downloadPolicyFor` gives a lone file from such a server: refill-sized ranges, three
+ * at once.
  */
 const SLOW_SERVER_POLICY: DownloadPolicy = {
   ...POLICY,

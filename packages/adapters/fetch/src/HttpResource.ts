@@ -81,9 +81,11 @@ export class HttpResource {
   }
 
   /**
-   * How long its server took to answer, from asking to the answer's headers: the shortest wait
-   * of the requests answered so far, so a first one slowed by a new connection, a CORS preflight
-   * or a cold cache counts for nothing (ADR 0044). Undefined until one was answered.
+   * How long its server took to answer a byte range, from asking to the answer's headers: the
+   * shortest wait of the ranges answered so far, so a first one slowed by a new connection, a
+   * CORS preflight or a cold cache counts for nothing (ADR 0044). A HEAD, which a server may
+   * answer from what it knows of the file without reading it, and a refusal tell nothing.
+   * Undefined until a range was answered.
    */
   public answerWait(): Seconds | undefined {
     const shortest = this.shortestAnswerMs;
@@ -262,11 +264,13 @@ export class HttpResource {
   }
 
   /**
-   * The request, its wait for an answer noted; one that failed or was given up tells nothing.
+   * The request, its wait noted when it brought a range's bytes (206); one that failed, was
+   * given up or was refused tells nothing.
    */
   private async timed(send: () => Promise<Response>): Promise<Response> {
     const askedAt = this.now();
     const response = await send();
+    if (response.status !== HTTP_PARTIAL_CONTENT) return response;
     const waitMs = this.now() - askedAt;
     this.shortestAnswerMs = Math.min(waitMs, this.shortestAnswerMs ?? waitMs);
     return response;

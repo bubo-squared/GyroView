@@ -30,24 +30,61 @@ const server: HttpFetch = (_url, init) => {
   return Promise.resolve(new Response(new Uint8Array(last - first + 1), { status: 206, headers }));
 };
 
+/**
+ * Reads each range's answer and lets its body go, as a reader that took what it needed.
+ */
+async function readRanges(resource: HttpResource, ranges: readonly ByteRange[]): Promise<void> {
+  for (const range of ranges) {
+    const answer = await resource.askingAgain(() => resource.rangeAnswer(range));
+    await answer.body?.cancel();
+  }
+}
+
 describe('HttpResource', () => {
   it('knows no wait for an answer before a request was answered', () => {
     expect(new HttpResource(URL_OF_FILE, { fetch: server }).answerWait()).toBeUndefined();
   });
 
-  it('takes the shortest wait for an answer, so a first request slowed by a new connection counts for nothing', async () => {
+  it('takes the shortest wait for a range, so a first one slowed by a new connection counts for nothing', async () => {
     const resource = new HttpResource(URL_OF_FILE, {
       fetch: server,
-      now: clockReading([0, 1200, 2000, 2750, 3000, 3900]),
+      now: clockReading([0, 1200, 2000, 2750]),
+    });
+
+    await readRanges(resource, [ByteRange.of(0, 10), ByteRange.of(10, 10)]);
+
+    expect(resource.answerWait()).toBeCloseTo(0.75);
+  });
+
+  it('times no HEAD, which a server may answer without reading the file', async () => {
+    const resource = new HttpResource(URL_OF_FILE, {
+      fetch: server,
+      now: clockReading([0, 1000, 1850]),
     });
 
     await resource.size();
-    for (const range of [ByteRange.of(0, 10), ByteRange.of(10, 10)]) {
-      const answer = await resource.rangeAnswer(range);
-      await answer.body?.cancel();
-    }
+    await readRanges(resource, [ByteRange.of(0, 10)]);
 
-    expect(resource.answerWait()).toBeCloseTo(0.75);
+    expect(resource.answerWait()).toBeCloseTo(0.85);
+  });
+
+  it('times no refusal, which a gateway may answer at once', async () => {
+    let isBusy = true;
+    const resource = new HttpResource(URL_OF_FILE, {
+      fetch: (url, init): Promise<Response> => {
+        const answer = isBusy
+          ? Promise.resolve(new Response(null, { status: 503 }))
+          : server(url, init);
+        isBusy = false;
+        return answer;
+      },
+      now: clockReading([0, 1000, 1850]),
+      retryDelaysMs: [0],
+    });
+
+    await readRanges(resource, [ByteRange.of(0, 10)]);
+
+    expect(resource.answerWait()).toBeCloseTo(0.85);
   });
 
   it('times no request that failed', async () => {

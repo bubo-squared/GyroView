@@ -20,7 +20,9 @@ Changed (ADR 0044, a server slow to answer is asked in fewer, larger ranges):
 - A recording on a server that takes 0.3 s or more to answer each request, as Google Drive's API
   does, is downloaded a refill at a time (32 MiB for an X5), three ranges at a time for a lone
   file, two for each file of a split pair; it plays at the rate of the link rather than of the
-  server's waits. Every other server is asked as before.
+  server's waits. Every other server is asked as before. The wait is the shortest a byte range
+  of the file took to be answered while it opened, so a CDN whose cache missed on every opening
+  read, or a long round trip, may count too; what is read before the first play is unchanged.
 
 Changed:
 

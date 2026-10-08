@@ -7,17 +7,19 @@ Status: accepted (2026-10-08)
 A file downloads as it plays in ranges of at most 8 MiB, two at a time (ADR 0029). Each range
 costs its server's wait before the first byte, then the bytes themselves. A CDN or an object
 store answers in about 0.05 s, so the waits are lost in the bytes. Google Drive's API answered
-each range of a recording after 0.75 to 0.95 s (measured 2026-10-08, from one connection, with
-a token), and then sent its bytes at 22 to 43 MiB/s: two ranges of 8 MiB at a time came at
-about 13 MiB/s in all, while an X5 plays at 25 MiB/s. The same server sent two ranges of
-32 MiB at a time at about 27 MiB/s, each wait now a small part of each range.
+each range of a recording after 0.75 to 0.95 s (measured 2026-10-08 with curl, one connection
+a request, with a token), and then sent its bytes at 22 to 43 MiB/s: two ranges of 8 MiB at a
+time came at about 13 MiB/s in all, while an X5 plays at 25 MiB/s. One round of two 32 MiB
+ranges, its single wait included, came at about 27 MiB/s.
 
 ## Decision
 
-The player times every request it makes for a file, from asking to the answer's headers, and
-keeps the shortest wait (`HttpResource.answerWait`): the first request, slowed by a new
-connection, a CORS preflight or a cold cache, counts for nothing. Only the wait is measured,
-not the rate the bytes come at, which the player's own ranges share and would bend.
+The player times every byte range answered for a file (a 206), from asking to the answer's
+headers, and keeps the shortest wait (`HttpResource.answerWait`): the first range, slowed by a
+new connection, a CORS preflight or a cold cache, counts for nothing. A HEAD, which a server may
+answer from what it knows of the file without reading it, and a refusal, which a gateway may
+answer at once, are not timed. Only the wait is measured, not the rate the bytes come at,
+which the player's own ranges share and would bend.
 
 The wait is known once the reads that open the file (its size, its trailer, its movie box) are
 answered, before its download starts. `downloadPolicyFor` takes it beside the file's size and
@@ -28,10 +30,14 @@ duration, and the file keeps the policy it chose for as long as it plays:
 - **From a server slow to answer, each top-up is one range**: the request size is the refill
   (a quarter of the budget ahead), 8 MiB at least. A lone file keeps three ranges coming; each
   file of a split pair keeps two, so a pair stays at four requests, within the six a browser
-  opens to an HTTP/1.1 host. An X5 from Drive is then asked for 32 MiB three at a time, about
-  42 MiB/s on the measured link, half again what it plays at.
+  opens to an HTTP/1.1 host. An X5 from Drive is then asked for 32 MiB three at a time,
+  estimated at about 42 MiB/s from the measured waits and rates (to be confirmed in a browser,
+  where the ranges share one HTTP/2 connection), half again what it plays at.
 - **Any other server is asked as before**, so a seek's first frames, a slow mobile link and
-  every host that answers quickly are read as they were. A local file tells no wait.
+  every host that answers quickly are read as they were. A local file tells no wait. A CDN
+  whose every opening range missed its cache, or a viewer a long round trip away, can count as
+  slow too; each later range would wait as long, so the larger ranges serve it as well. What
+  is read before the first play is the same either way: only what the picture waits for.
 
 ## Alternatives considered
 
@@ -53,4 +59,6 @@ duration, and the file keeps the policy it chose for as long as it plays:
 A recording on a server slow to answer, such as Google Drive's API, plays at the rate of its
 link rather than of its waits, and costs that server fewer requests (one a second where there
 were three, at an X5's rate). Nothing changes for a server that answers quickly. A server whose
-wait first grows while the recording plays is still asked as its opening reads found it.
+wait first grows while the recording plays is still asked as its opening reads found it. From a
+slow server, playback that starved resumes once the budget less a request is held (ADR 0011):
+for an X5, 96 MiB, about 3.8 s, where it was 4 s.

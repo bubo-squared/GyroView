@@ -56,7 +56,11 @@ export function browserSources(http: HttpRequestOptions): SourceOpener {
 
 function urlSource(input: UrlInput, http: HttpRequestOptions, signal: AbortSignal): OpenedSource {
   const resource = new HttpResource(input.url, requestOptionsFor(http, input), signal);
-  return { source: new HttpRangeSource(resource), stream: new HttpByteStream(resource) };
+  return {
+    source: new HttpRangeSource(resource),
+    stream: new HttpByteStream(resource),
+    answerWait: () => resource.answerWait(),
+  };
 }
 
 function blobSource(input: BlobInput): OpenedSource {

@@ -52,14 +52,16 @@ export async function openInputs(
 }
 
 /**
- * One download a file, each with its share of the budget.
+ * One download a file, each with its share of the budget, and asking as its server answers: the
+ * reads that opened the file have timed it (ADR 0044).
  */
 function startDownloads(
   inputs: readonly ReadFile<InputFile>[],
   disposables: Disposables,
 ): DownloadedFile[] {
-  return inputs.map(({ stream, table, codecs, size }) => {
-    const policy = downloadPolicyFor({ size, duration: table.duration }, inputs.length);
+  return inputs.map(({ stream, table, codecs, size, answerWait }) => {
+    const facts = { size, duration: table.duration, answerWait: answerWait?.() };
+    const policy = downloadPolicyFor(facts, inputs.length);
     const file = startFileDownload({ table, stream, codecs, policy });
     disposables.add(() => {
       file.dispose();

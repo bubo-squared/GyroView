@@ -57,11 +57,16 @@ The file's size is the first thing read: a HEAD, or a one-byte range where the s
 HEAD or gives it no length. Both were made once, and a HEAD answered with a server error or a
 429 fell back to the range at once. A moment's 503 then failed the recording, and on a server
 that hides `Content-Range` from the page, as Google Drive's API does, the range that took over
-failed it as `cors`, blaming the server's headers. Each of the two requests is now asked for
-again after a 5xx or a 429, with the same waits; once they run out its last answer stands as if
-it were the first: a HEAD still failing falls back to the range, and a range still failing fails
-the lookup with its status. That failure is not asked for again: a byte stream that needs the
-size inside its own retries does not ask a failing server nine times. A 501 is a refusal: a
+failed it as `cors`, blaming the server's headers.
+
+Each of the two requests is now asked for again as a range is, after a 5xx, a 429, or a failure
+to reach the server, with the same waits. Once they run out, the last answer or failure stands as
+if it were the first, so a byte stream that sizes inside its own retries does not ask a failing
+server again. A HEAD still failing is followed by one byte range, asked once, since the server
+has had its waits: a server whose HEAD alone is broken still plays, 1.25 s later, and one that
+fails from its first request is asked three HEADs and a range before the player reports it.
+Where that range hides `Content-Range`, only the HEAD could have told the size, so the failure
+names the HEAD's status as `source-unreadable` rather than blame CORS. A 501 is a refusal: a
 server that does not implement HEAD falls back to the range at once, as it did.
 
 ## Since 2026-10-05: a range read ahead is asked for again when it is needed

@@ -47,8 +47,8 @@ download per file that is the only reader of the network while the recording pla
 - **One download per file, in file order.** A `FileDownload` knows where every consumer stands
   (the lenses' packet readers and the sound's sample reader, each a cursor) and requests, in
   file order, the ranges they need within a window ahead of the picture, in requests of at most
-  8 MiB, two at a time for each file (four for a split pair); from a server slow to answer,
-  in requests of a refill, three at a time for a lone file (ADR 0044). The sound's samples lie between
+  8 MiB, two at a time for each file (four for a split pair); from a server slow to answer, in
+  requests of a refill, three at a time for a lone file (ADR 0044). The sound's samples lie between
   the frames the picture needs and are served from the same bytes; the next sample of every
   reader waiting within the window is read wherever the file puts it.
 - **What no cursor needs any more is cancelled at once.** A seek releases the old cursors and

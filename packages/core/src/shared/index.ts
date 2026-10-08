@@ -41,6 +41,7 @@ export {
   microseconds,
   microsecondsToSeconds,
   milliseconds,
+  millisecondsToSeconds,
   seconds,
   secondsToMicroseconds,
   secondsToMilliseconds,

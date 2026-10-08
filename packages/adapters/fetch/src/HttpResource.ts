@@ -1,4 +1,11 @@
-import { GyroViewError, isAbortError, type ByteRange } from '@gyroview/core';
+import {
+  GyroViewError,
+  isAbortError,
+  milliseconds,
+  millisecondsToSeconds,
+  type ByteRange,
+  type Seconds,
+} from '@gyroview/core';
 
 import {
   discardBody,
@@ -32,6 +39,11 @@ export interface HttpResourceOptions extends HttpRequestOptions {
    * a server error); as many retries as waits. Default 250 ms, then 1 s.
    */
   readonly retryDelaysMs?: readonly number[];
+  /**
+   * The clock its requests are timed by, in milliseconds (`answerWait`). Default
+   * `performance.now`.
+   */
+  readonly now?: () => number;
 }
 
 /**
@@ -52,6 +64,8 @@ export class HttpResource {
    */
   private hasReadRange = false;
   private version: RecordingVersion | undefined;
+  private readonly now: () => number;
+  private shortestAnswerMs: number | undefined;
 
   /**
    * `signal` ends every request made for the resource, with the host's own `requestInit` signal.
@@ -63,6 +77,17 @@ export class HttpResource {
   ) {
     this.options = signal ? withAbortSignal(options, signal) : options;
     this.retryDelaysMs = options.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS;
+    this.now = options.now ?? ((): number => performance.now());
+  }
+
+  /**
+   * How long its server took to answer, from asking to the answer's headers: the shortest wait
+   * of the requests answered so far, so a first one slowed by a new connection, a CORS preflight
+   * or a cold cache counts for nothing (ADR 0044). Undefined until one was answered.
+   */
+  public answerWait(): Seconds | undefined {
+    const shortest = this.shortestAnswerMs;
+    return shortest === undefined ? undefined : millisecondsToSeconds(milliseconds(shortest));
   }
 
   /**
@@ -139,9 +164,11 @@ export class HttpResource {
     const headers = { Range: `bytes=${range.offset}-${range.end - 1}` };
     try {
       // Once CORS is proven, a failure needs no diagnosing request to the failing server.
-      return this.hasReadRange
-        ? await plainHttpRequest(this.url, { method: 'GET', headers }, options)
-        : await httpRequest(this.url, { method: 'GET', headers }, options);
+      return await this.timed(() =>
+        this.hasReadRange
+          ? plainHttpRequest(this.url, { method: 'GET', headers }, options)
+          : httpRequest(this.url, { method: 'GET', headers }, options),
+      );
     } catch (error) {
       throw this.hasReadRange ? this.passingOnceAnswered(error) : passingIfUnreachable(error);
     }
@@ -229,7 +256,20 @@ export class HttpResource {
   }
 
   private request(method: HttpMethod, headers?: Record<string, string>): Promise<Response> {
-    return httpRequest(this.url, { method, ...(headers && { headers }) }, this.options);
+    return this.timed(() =>
+      httpRequest(this.url, { method, ...(headers && { headers }) }, this.options),
+    );
+  }
+
+  /**
+   * The request, its wait for an answer noted; one that failed or was given up tells nothing.
+   */
+  private async timed(send: () => Promise<Response>): Promise<Response> {
+    const askedAt = this.now();
+    const response = await send();
+    const waitMs = this.now() - askedAt;
+    this.shortestAnswerMs = Math.min(waitMs, this.shortestAnswerMs ?? waitMs);
+    return response;
   }
 }
 

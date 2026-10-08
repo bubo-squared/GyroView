@@ -49,7 +49,7 @@ async function readAndLocate(
   input: UrlInput,
 ): Promise<void> {
   await ports.sources.open(input, new AbortController().signal).source.size();
-  await ports.locatorFor(input).exists(input.url);
+  await ports.locatorFor(input, new AbortController().signal).exists(input.url);
 }
 
 /**
@@ -115,7 +115,7 @@ describe('browserPorts', () => {
     expect(own.calls()).toBe(2);
   });
 
-  it('reads an input that names neither credentials nor fetch as it always did', async () => {
+  it('reads an input that names neither credentials nor fetch as it always did, the look beside it ending with the load', async () => {
     const signed = `${RECORDING_URL}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=abc`;
     const sent: [string, RequestInit][] = [];
     const platformFetch = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
@@ -127,7 +127,7 @@ describe('browserPorts', () => {
       const { source } = ports.sources.open({ url: signed }, new AbortController().signal);
       await source.size();
       await source.read(ByteRange.of(0, 4));
-      await ports.locatorFor({ url: signed }).exists(signed);
+      await ports.locatorFor({ url: signed }, new AbortController().signal).exists(signed);
     } finally {
       platformFetch.mockRestore();
     }
@@ -151,11 +151,19 @@ describe('browserPorts', () => {
           headers: { Range: 'bytes=0-3' },
         },
       ],
-      [signed, { cache: 'no-store', method: 'HEAD', headers: {} }],
+      [
+        signed,
+        {
+          cache: 'no-store',
+          signal: expect.any(AbortSignal) as AbortSignal,
+          method: 'HEAD',
+          headers: {},
+        },
+      ],
     ]);
   });
 
-  it("reads an input with the visitor's cookies as it always did, as an element with crossorigin does", async () => {
+  it("reads an input with the visitor's cookies as it always did, as an element with crossorigin does, the look beside it ending with the load", async () => {
     const sent: [string, RequestInit][] = [];
     const platformFetch = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
       sent.push([input instanceof Request ? input.url : input.toString(), init ?? {}]);
@@ -167,7 +175,7 @@ describe('browserPorts', () => {
       const { source } = ports.sources.open(input, new AbortController().signal);
       await source.size();
       await source.read(ByteRange.of(0, 4));
-      await ports.locatorFor(input).exists(RECORDING_URL);
+      await ports.locatorFor(input, new AbortController().signal).exists(RECORDING_URL);
     } finally {
       platformFetch.mockRestore();
     }
@@ -188,7 +196,10 @@ describe('browserPorts', () => {
           headers: { Range: 'bytes=0-3' },
         },
       ],
-      [RECORDING_URL, { cache: 'no-store', credentials: 'include', method: 'HEAD', headers: {} }],
+      [
+        RECORDING_URL,
+        { cache: 'no-store', credentials: 'include', signal, method: 'HEAD', headers: {} },
+      ],
     ]);
   });
 

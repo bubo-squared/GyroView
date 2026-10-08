@@ -49,9 +49,9 @@ export interface RecordingPorts<Handle = unknown> {
   readonly decoderPort: VideoDecoderPort<Handle>;
   /**
    * Looks for files beside `input` as `input` itself is read, so the other lens file of a split
-   * pair is asked for with the main file's credentials.
+   * pair is asked for with the main file's credentials; `signal` ends the look with the load.
    */
-  readonly locatorFor: (input: UrlInput) => ResourceLocator;
+  readonly locatorFor: (input: UrlInput, signal: AbortSignal) => ResourceLocator;
   /**
    * A fresh signal that fires when a decode probe has taken too long.
    */

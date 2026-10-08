@@ -39,7 +39,7 @@ export function browserPorts(options: BrowserPortsOptions = {}): RecordingPorts<
     codecReader: new MediabunnyCodecReader(),
     audioPackager: new MediabunnyAudioPackager(),
     decoderPort: new WebCodecsVideoDecoderPort(),
-    locatorFor: (input) => new HttpResourceLocator(requestOptionsFor(http, input)),
+    locatorFor: (input, signal) => new HttpResourceLocator(requestOptionsFor(http, input), signal),
     probeDeadline: () => deadlineIn(probeTimeoutMs),
   };
 }

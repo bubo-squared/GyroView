@@ -314,6 +314,35 @@ describe('openRecording', () => {
     expect(locator.asked).toEqual([SECOND_URL]);
   });
 
+  it('fails as unreadable, not as a missing file, when the server never answered the look for the other lens file', async () => {
+    const locator = new FakeResourceLocator([], { unanswered: [SECOND_URL] });
+    const { ports } = await worldOf([declaredSplitHalf(MAIN_URL)], { locator });
+
+    const failure = await captureRejection(
+      openRecording(sourceOf(), ports, new AbortController().signal),
+    );
+
+    expect(failure).toMatchObject({ code: 'source-unreadable' });
+  });
+
+  it('looks for the other lens file until the load ends', async () => {
+    const world = await worldOf([x5Half(MAIN_URL), bareHalf(SECOND_URL)]);
+    const signals: AbortSignal[] = [];
+    const ports = {
+      ...world.ports,
+      locatorFor: (_input: UrlInput, signal: AbortSignal): FakeResourceLocator => {
+        signals.push(signal);
+        return new FakeResourceLocator([SECOND_URL]);
+      },
+    };
+    const load = new AbortController();
+
+    const opened = await openRecording(sourceOf(), ports, load.signal);
+
+    expect(signals).toEqual([load.signal]);
+    opened.dispose();
+  });
+
   it('blames the network, not the browser, when the first frames do not arrive in time, and gives up its reads', async () => {
     const deadline = new Deferred<void>();
     const world = await worldOf([x5File()]);

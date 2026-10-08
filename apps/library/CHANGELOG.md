@@ -15,6 +15,12 @@ Fixed (ADR 0019, amended):
   fails a recording with `cors` after an error on its first request; a HEAD that keeps failing
   there is reported as `source-unreadable` with its status.
 
+- The look for the other lens's file beside a lone half of a split recording is asked for again
+  after a server error or a `429`, instead of taking the file for absent; a server still failing
+  then fails the recording with `source-unreadable`, not `missing-second-file`. A server whose
+  error answers lack CORS headers is still taken for one without the file. A HEAD answered `501`
+  there falls back to a one-byte GET, as a `405` does.
+
 Changed:
 
 - A request answered `501 Not Implemented` is not asked for again: a server that does not

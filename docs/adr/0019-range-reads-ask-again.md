@@ -6,7 +6,8 @@ and gives up and asks again for one that brought no byte for 10 s, under the sam
 recording replaced meanwhile is `source-changed` (ADR 0029); amended (2026-10-08): a range
 answered `429 Too Many Requests`, as rate-limited APIs answer, is asked for again as a 5xx is;
 amended (2026-10-08): so are the requests for the file's size, and a `501 Not Implemented` is
-not asked again
+not asked again; amended (2026-10-08): the look for the other lens's file is asked for again
+too, and fails as `source-unreadable` when its server keeps failing
 
 ## Context
 
@@ -68,6 +69,21 @@ fails from its first request is asked three HEADs and a range before the player 
 Where that range hides `Content-Range`, only the HEAD could have told the size, so the failure
 names the HEAD's status as `source-unreadable` rather than blame CORS. A 501 is a refusal: a
 server that does not implement HEAD falls back to the range at once, as it did.
+
+## Since 2026-10-08: the look for the other lens's file is asked for again
+
+The look for the other lens's file beside a lone half of a pair (a HEAD, or a one-byte GET where
+HEAD is refused) took any answer that was not OK for "not there", a 503 and a 429 included.
+The recording then failed with `missing-second-file`, and the page asked its visitor for a file
+that was there while its server was busy for a moment. The look is now asked for again as the
+size is: after a 5xx or a 429, with the same waits, a HEAD still failing followed by the GET,
+asked once. A server still failing once they run out fails the recording with
+`source-unreadable`: it never said the file is not there. An answer that it is not there, and a
+request that does not get through, still mean "not there", without asking again: a 404 without
+CORS headers looks to the page exactly like a network that failed, and asking again would make
+every visitor of such a host wait 1.25 s for the card that asks for the file. A busy server whose
+error answers lack CORS headers is therefore still taken for a missing file. The look ends with
+the load, waits included.
 
 ## Since 2026-10-05: a range read ahead is asked for again when it is needed
 

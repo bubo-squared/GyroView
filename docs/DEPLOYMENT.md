@@ -59,8 +59,11 @@ matters to CDNs but never to the browser: it must not answer a range from its ow
 
 The other lens's file of a split-file recording is looked for beside the recording under its
 camera name (`..._10_...insv` beside `..._00_...insv`) with a `HEAD` request, only when the
-recording turns out to be one half of a pair. The camera's `LRV` proxies need not be hosted:
-the player never plays them.
+recording turns out to be one half of a pair. A `404`, or an answer the browser hides for want of
+CORS headers, has the player report `missing-second-file`; a server error or a `429` is asked for
+again, and reported as `source-unreadable` if it lasts. Send the CORS headers on error answers
+too (nginx's `add_header … always`), or a moment's `503` is taken for a missing file. The
+camera's `LRV` proxies need not be hosted: the player never plays them.
 
 Object stores: enable byte-range serving (on by default for S3, GCS, R2 and Azure Blob) and
 add a CORS rule with the headers above. Recordings are large; a CDN in front caches ranges.

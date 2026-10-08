@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { commands } from 'vitest/browser';
 
 import { embed, type Embedded } from './embedSnippet';
-import { FRAME_LOAD_MS, FRAME_TEST_TIMEOUT_MS, waitFor } from '../test/waiting';
+import { FRAME_LOAD_MS, frameTestTimeout, waitFor } from '../test/waiting';
 import recordingUrl from '../../../../test/fixtures/synthetic/x5-trailer-dual-track-64px-10fps-3s.mp4?url';
 
 /**
@@ -16,7 +16,7 @@ const OTHER_ORIGIN = `https://${OTHER_HOST}`;
 /**
  * Each of the frame page's modules is routed through the browser command, which slows its load.
  */
-describe('embedding across origins', { timeout: FRAME_TEST_TIMEOUT_MS }, () => {
+describe('embedding across origins', { timeout: frameTestTimeout(1) }, () => {
   const embedded: Embedded[] = [];
   const containers: HTMLElement[] = [];
 

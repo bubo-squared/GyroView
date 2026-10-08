@@ -88,6 +88,37 @@ function firstRangeAnswered(status: number): CountingFetch {
   };
 }
 
+interface AnsweringHeads {
+  readonly fetch: typeof fetch;
+  /**
+   * How many HEAD requests and byte ranges were asked for.
+   */
+  readonly asked: () => { heads: number; ranges: number };
+}
+
+/**
+ * A fetch that answers the first HEAD requests with `statuses`, one each, and passes the rest on
+ * to `passOn`.
+ */
+function headsAnswered(statuses: readonly number[], passOn: typeof fetch = fetch): AnsweringHeads {
+  let heads = 0;
+  let ranges = 0;
+  return {
+    asked: (): { heads: number; ranges: number } => ({ heads, ranges }),
+    fetch: (input, init): Promise<Response> => {
+      if (init?.method !== 'HEAD') {
+        ranges += 1;
+        return passOn(input, init);
+      }
+      const status = statuses[heads];
+      heads += 1;
+      return status === undefined
+        ? passOn(input, init)
+        : Promise.resolve(new Response(null, { status }));
+    },
+  };
+}
+
 describe('HttpRangeSource', () => {
   const content = Uint8Array.from({ length: 5000 }, (_value, index) => index % 256);
 
@@ -130,6 +161,73 @@ describe('HttpRangeSource', () => {
       await expect(sourceAt(server.url).size()).resolves.toBe(5000);
     },
   );
+
+  it('asks again for the size after a server error or a rate limit, and reads it from HEAD', async () => {
+    const server = await serve(content);
+    const busy = headsAnswered([503, 429]);
+    const source = sourceAt(server.url, { fetch: busy.fetch, retryDelaysMs: NO_WAIT });
+    await expect(source.size()).resolves.toBe(5000);
+    expect(busy.asked()).toEqual({ heads: 3, ranges: 0 });
+  });
+
+  it('reads the size of a server that hides Content-Range from a HEAD asked again, not as cors', async () => {
+    const server = await serve(content);
+    const busy = headsAnswered([503], hidingRangeHeaders);
+    const source = sourceAt(server.url, { fetch: busy.fetch, retryDelaysMs: NO_WAIT });
+    await expect(source.size()).resolves.toBe(5000);
+  });
+
+  it('falls back to a one-byte range once a HEAD still fails when the waits ran out', async () => {
+    const server = await serve(content);
+    const failing = headsAnswered([503, 503, 503]);
+    const source = sourceAt(server.url, { fetch: failing.fetch, retryDelaysMs: NO_WAIT });
+    await expect(source.size()).resolves.toBe(5000);
+    expect(failing.asked()).toEqual({ heads: 3, ranges: 1 });
+  });
+
+  it('falls back to a one-byte range at once when the server does not implement HEAD', async () => {
+    const server = await serve(content);
+    const unimplemented = headsAnswered([501]);
+    const source = sourceAt(server.url, { fetch: unimplemented.fetch, retryDelaysMs: NO_WAIT });
+    await expect(source.size()).resolves.toBe(5000);
+    expect(unimplemented.asked()).toEqual({ heads: 1, ranges: 1 });
+  });
+
+  it('asks again for the one-byte size range after a server error', async () => {
+    const server = await serve(content, { answersHeadWith: 405 });
+    const busy = firstRangeAnswered(503);
+    const source = sourceAt(server.url, { fetch: busy.fetch, retryDelaysMs: NO_WAIT });
+    await expect(source.size()).resolves.toBe(5000);
+    expect(busy.ranges()).toBe(2);
+  });
+
+  it('names the status a size range still got when the waits ran out', async () => {
+    const server = await serve(content, { failsWith: 503 });
+    const counting = headsAnswered([]);
+    const source = sourceAt(server.url, { fetch: counting.fetch, retryDelaysMs: NO_WAIT });
+    await expect(source.read(ByteRange.of(0, 10))).rejects.toMatchObject({
+      code: 'source-unreadable',
+      message: expect.stringContaining('answered 503 to a byte range') as string,
+    });
+    expect(counting.asked()).toEqual({ heads: 3, ranges: 3 });
+  });
+
+  it('ends a wait before asking again for the size as soon as its requests are aborted', async () => {
+    const server = await serve(content);
+    const load = new AbortController();
+    const busy = headsAnswered([503]);
+    const source = sourceAt(
+      server.url,
+      { fetch: busy.fetch, retryDelaysMs: [60_000] },
+      load.signal,
+    );
+    const sizing = source.size();
+    await vi.waitFor(() => {
+      expect(busy.asked().heads).toBe(1);
+    });
+    load.abort();
+    await expect(sizing).rejects.toMatchObject({ name: 'AbortError' });
+  });
 
   it('names the status a size lookup got instead of a byte range', async () => {
     const server = await serve(content, { answersHeadWith: 405, ignoresRanges: true });

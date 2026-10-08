@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import type { ResourceLocator } from '../ports/ResourceLocator';
 
 /**
- * A locator under test with one URL that exists and one that does not.
+ * A locator under test with one URL that exists, one that does not, and one whose server never
+ * answers the lookup.
  */
 export interface LocatorUnderTest {
   readonly locator: ResourceLocator;
   readonly existing: string;
   readonly missing: string;
+  readonly unanswered: string;
 }
 
 /**
@@ -25,6 +27,13 @@ export function describeResourceLocatorContract(setup: () => Promise<LocatorUnde
     it('answers false for a resource that does not, without throwing', async () => {
       const { locator, missing } = await setup();
       await expect(locator.exists(missing)).resolves.toBe(false);
+    });
+
+    it('fails a lookup its server never answered rather than answer false', async () => {
+      const { locator, unanswered } = await setup();
+      await expect(locator.exists(unanswered)).rejects.toMatchObject({
+        code: 'source-unreadable',
+      });
     });
   });
 }

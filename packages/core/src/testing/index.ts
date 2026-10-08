@@ -21,7 +21,7 @@ export {
 } from './FakeVideoDecoderPort';
 export { FakeFrameSink } from './FakeFrameSink';
 export { describePlaybackClockContract, type ClockUnderTest } from './PlaybackClock.contract';
-export { FakeResourceLocator } from './FakeResourceLocator';
+export { FakeResourceLocator, type FakeResourceLocatorOptions } from './FakeResourceLocator';
 export { encodeBox, encodeFullBox, encodeLargeBox, type FullBoxHeader } from './encodeBox';
 export {
   buildMp4File,

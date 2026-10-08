@@ -7,6 +7,7 @@ import { CalibrationVersion } from '../../domain/format/calibration/CalibrationV
 import { InfoRecordFormat, RecordType } from '../../domain/format/constants';
 import { InfoField } from '../../domain/format/info/infoFields';
 import type { CodecReader, ContainerCodecs } from '../../ports/CodecReader';
+import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { FakeCodecReader } from '../../testing/FakeCodecReader';
 import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSource';
 import { minimalInfoFields, minimalInfoRecord } from '../../testing/minimalInfoRecord';
@@ -144,6 +145,13 @@ class SecondFileFinder {
   };
 }
 
+/**
+ * A look for the other lens file whose server never answered it.
+ */
+function unansweredLook(): Promise<RecordingFile | undefined> {
+  return Promise.reject(new GyroViewError('source-unreadable', 'the server answered 503'));
+}
+
 async function captureRejection(promise: Promise<unknown>): Promise<unknown> {
   try {
     await promise;
@@ -253,6 +261,20 @@ describe('readRecordingFiles', () => {
 
     expect(failure).toMatchObject({ code: 'missing-second-file' });
     expect(finder.asked).toBe(1);
+  });
+
+  it('fails with the look for the other lens file, not as a missing file, when the look itself failed', async () => {
+    const declaredSplit = readRecordingFiles([files.declared.file], {
+      codecReader,
+      findSecondFile: unansweredLook,
+    });
+    await expect(declaredSplit).rejects.toMatchObject({ code: 'source-unreadable' });
+
+    const fallingShort = readRecordingFiles([files.x5Back.file], {
+      codecReader: await codecReaderOf([files.x5Back]),
+      findSecondFile: unansweredLook,
+    });
+    await expect(fallingShort).rejects.toMatchObject({ code: 'source-unreadable' });
   });
 
   it('asks for nothing beside a pair given whole, even one its info record calls split', async () => {

@@ -39,7 +39,7 @@ export interface HttpRequestOptions {
   readonly fetch?: HttpFetch;
 }
 
-interface HttpRequest {
+export interface HttpRequest {
   readonly method: HttpMethod;
   readonly headers?: Record<string, string>;
 }

@@ -19,12 +19,16 @@ import {
 import {
   angleBetweenRotations,
   IDENTITY_MATRIX3,
+  rotationAboutX,
+  rotationAboutZ,
   transformVector,
+  transposeMatrix,
   type Matrix3,
 } from '../../../shared/math/Matrix3';
 import {
   multiplyQuaternions,
   quaternionFromAxisAngle,
+  rotateVector,
   type Quaternion,
 } from '../../../shared/math/Quaternion';
 import type { Vector3 } from '../../../shared/math/Vector3';
@@ -199,6 +203,66 @@ describe('smooth stabilization', () => {
     const smooth = stabilizerFor('smooth', rolling).nextRotation(rolling.orientationAt(time), time);
     const horizon = new HorizonStabilization().nextRotation(rolling.orientationAt(time));
     expectVector(transformVector(smooth, VIEW_UP), transformVector(horizon, VIEW_UP), 6);
+  });
+
+  it('holds a steady turn while the camera tumbles nearly upside down, where its twist spins', () => {
+    // Turning an eighth of a turn a second about the vertical, the camera pitches over to 179.5
+    // degrees, rolls a whole turn about its lens axis there in a fifth of a second, and pitches back. Nearly upside down,
+    // the roll swings the twist about the vertical by up to a half turn between samples. The
+    // accelerometer reads nothing, so the gyro alone turns the camera.
+    const turnRate = Math.PI / 8;
+    const flip = (179.5 * Math.PI) / 180;
+    const ease = (from: number, to: number, time: number): number =>
+      time <= from
+        ? 0
+        : time >= to
+          ? 1
+          : (1 - Math.cos((Math.PI * (time - from)) / (to - from))) / 2;
+    const easeRate = (from: number, to: number, time: number): number =>
+      time <= from || time >= to
+        ? 0
+        : ((Math.PI / (to - from)) * Math.sin((Math.PI * (time - from)) / (to - from))) / 2;
+    const pitchAt = (time: number): number => flip * (ease(7, 8, time) - ease(8.5, 9.5, time));
+    const pitchRateAt = (time: number): number =>
+      flip * (easeRate(7, 8, time) - easeRate(8.5, 9.5, time));
+    const rollAt = (time: number): number => 2 * Math.PI * ease(8, 8.2, time);
+    const rollRateAt = (time: number): number => 2 * Math.PI * easeRate(8, 8.2, time);
+    const tumbling = OrientationTrack.integrate({
+      gyro: syntheticGyroTrack(16, 1000, (time) => {
+        // The body turned about the vertical, then pitched about x, then rolled about z.
+        const roll = radians(rollAt(time));
+        const pitched = radians(pitchAt(time));
+        const unroll = transposeMatrix(rotationAboutZ(roll));
+        const unpitch = transposeMatrix(rotationAboutX(pitched));
+        const turn = transformVector(unroll, transformVector(unpitch, [0, turnRate, 0]));
+        const pitch = transformVector(unroll, [pitchRateAt(time), 0, 0]);
+        return {
+          acceleration: [0, 0, 0],
+          angularVelocity: [
+            turn[0] + pitch[0],
+            turn[1] + pitch[1],
+            turn[2] + pitch[2] + rollRateAt(time),
+          ],
+        };
+      }),
+      clock: SYNTHETIC_CLOCK,
+      frame: ALIGNED_IMU_FRAME,
+    });
+    const smooth = stabilizerFor('smooth', tumbling);
+    const facing = (time: number): number => {
+      const at = seconds(time);
+      const view = smooth.nextRotation(tumbling.orientationAt(at), at);
+      const ahead = rotateVector(tumbling.orientationAt(at), transformVector(view, FORWARD));
+      return Math.atan2(ahead[0], ahead[2]);
+    };
+    const wrapped = (angle: number): number => Math.atan2(Math.sin(angle), Math.cos(angle));
+    // Beyond the smoothing's reach of the tumble and of the ends, the view has turned as the
+    // camera did, and through the tumble it never spins.
+    expect(wrapped(facing(12.75) - facing(3.25))).toBeCloseTo(wrapped(9.5 * turnRate), 2);
+    for (let time = 5; time < 12; time += 0.1) {
+      const step = wrapped(facing(time + 0.1) - facing(time));
+      expect(Math.abs(step) / 0.1).toBeLessThan(3 * turnRate);
+    }
   });
 
   it('is horizon without a recording to look ahead in', () => {

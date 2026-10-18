@@ -125,8 +125,7 @@ const STABILIZERS: Readonly<
   horizon: () => new HorizonStabilization(),
   smooth: (orientations) => {
     const heading =
-      orientations &&
-      SmoothedHeading.of(orientations, headingOf, seconds(SMOOTH_HEADING_SPREAD_SECONDS));
+      orientations && SmoothedHeading.of(orientations, seconds(SMOOTH_HEADING_SPREAD_SECONDS));
     return heading ? new SmoothStabilization(heading) : new HorizonStabilization();
   },
   follow: () => new FollowStabilization(),

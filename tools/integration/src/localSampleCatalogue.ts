@@ -29,6 +29,10 @@ export interface LocalSampleEntry {
   readonly mounting?: string;
   readonly studio?: LocalStudioClip;
   /**
+   * The recording a clip trimmed in the Insta360 app was cut from, where this machine has it.
+   */
+  readonly trimmedFrom?: LocalTrimSource;
+  /**
    * Words of the recording that must never enter the repository, such as its file name and
    * serial number, which the privacy check looks for.
    */
@@ -61,6 +65,23 @@ export interface LocalStudioClip {
 }
 
 /**
+ * The original of a trimmed clip, and the frame of it the clip starts at, measured beforehand by
+ * matching the clip's frames against the original's rather than read from the trim record the
+ * timing is tested on.
+ */
+export interface LocalTrimSource {
+  /**
+   * The folder under `samples/` holding the original.
+   */
+  readonly folder: string;
+  readonly recording: string;
+  /**
+   * The original's frame, from its first encoded frame, that the clip's first frame shows.
+   */
+  readonly startFrame: number;
+}
+
+/**
  * A local sample as the browser tests receive it: its entry, and the URL Vite serves the
  * recording at.
  */
@@ -79,6 +100,7 @@ export function parseLocalCatalogue(json: unknown): LocalSampleEntry[] {
 
 function entryOf(fields: Fields): LocalSampleEntry {
   const studio = fields['studio'];
+  const trimmedFrom = fields['trimmedFrom'];
   return {
     slug: stringOf(fields, 'slug'),
     name: stringOf(fields, 'name'),
@@ -90,6 +112,9 @@ function entryOf(fields: Fields): LocalSampleEntry {
     imuRankingTimes: numbersOf(fields, 'imuRankingTimes'),
     ...(fields['mounting'] !== undefined && { mounting: stringOf(fields, 'mounting') }),
     ...(studio !== undefined && { studio: studioOf(objectOf(studio, 'studio')) }),
+    ...(trimmedFrom !== undefined && {
+      trimmedFrom: trimSourceOf(objectOf(trimmedFrom, 'trimmedFrom')),
+    }),
     privateTokens: stringsOf(fields, 'privateTokens'),
   };
 }
@@ -103,6 +128,14 @@ function studioOf(fields: Fields): LocalStudioClip {
     ...(fields['sdrFrameTimes'] !== undefined && {
       sdrFrameTimes: numbersOf(fields, 'sdrFrameTimes'),
     }),
+  };
+}
+
+function trimSourceOf(fields: Fields): LocalTrimSource {
+  return {
+    folder: stringOf(fields, 'folder'),
+    recording: stringOf(fields, 'recording'),
+    startFrame: numberOf(fields, 'startFrame'),
   };
 }
 

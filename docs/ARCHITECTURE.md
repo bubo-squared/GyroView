@@ -104,8 +104,8 @@ a time by its place on the track's frame grid, since the camera's clock drifts f
 record as a structure of arrays; `ImuFrame` says how the IMU's axes sit in the camera body
 (measured per camera, ADR 0009); `OrientationTrack.integrate` turns gyro and accelerometer
 into a body-to-world quaternion per sample (bias from the stillest window, gravity pull). The
-`Stabilizer` strategies (`off`, `lock`, `horizon`, `follow`) turn an orientation into the
-rotation the renderer applies.
+`Stabilizer` strategies (`off`, `lock`, `horizon`, `smooth`, `follow`) turn an orientation into
+the rotation the renderer applies; `smooth` looks ahead in the whole track (ADR 0047).
 
 **`stitching`**: `LensLayout` (where each lens's pixels are: which input, track and frame
 region) and `StitchingSetup`, which joins calibration, layout and each frame source's display

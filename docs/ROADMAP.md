@@ -42,7 +42,7 @@ than at every sample (ADR 0036); opening reads and integrates the gyro in two th
 time; the bundle leaves out mediabunny's demuxers of other formats.
 
 **Stabilization.** Gyro and accelerometer integrated into the camera's orientation, sampled at
-each frame's mid-exposure; lock, horizon and follow modes, or off, each drawn upright as the
+each frame's mid-exposure; lock, horizon, smooth (ADR 0047) and follow modes, or off, each drawn upright as the
 camera was mounted, on its side or with its lens axis vertical, where its IMU frame is measured
 (ADR 0038), and opening where Insta360 Studio centres the recording (ADR 0039).
 

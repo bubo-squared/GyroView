@@ -18,7 +18,7 @@ Nothing is uploaded, and there is nothing to install or embed.
 - Stitches through the factory calibration in one GPU pass, with a feathered seam and
   exposure matching between the lenses; a normal view to look around in, the whole sphere as
   an equirectangular panorama, or the two lens images raw, side by side or stacked.
-- Stabilizes from the gyro: lock, horizon or follow, sampled at each frame's mid-exposure.
+- Stabilizes from the gyro: lock, horizon, smooth or follow, sampled at each frame's mid-exposure.
 - On a phone or tablet, motion look turns the normal view as the device turns: the screen is a
   window into the recording, its horizon level with the real one.
 - Ships as the npm package `@bubo-squared/gyroview`, as an element (`gyro-view.js`) and as an
@@ -65,21 +65,21 @@ a CDN or your own host; the site build's `gyro-view.js` is that file under anoth
 
 Attributes:
 
-| Attribute                   | Values                                    | What it does                                                                                                              |
-| --------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `src`                       | URL                                       | The recording; a relative URL resolves against the page.                                                                  |
-| `src2`                      | URL                                       | The other lens's file of a split-file recording; found by itself when it sits beside `src` under the camera's name.       |
-| `crossorigin`               | `anonymous`, `use-credentials`            | As on a video element: `use-credentials` fetches the recording with the visitor's cookies (see "Serving recordings").     |
-| `autoplay`                  | boolean                                   | Starts once ready; a refusal is an `autoplay-blocked` warning.                                                            |
-| `muted`, `loop`, `controls` | boolean                                   | As on a video element; `controls` shows the bar.                                                                          |
-| `poster`                    | URL                                       | Shown until the first picture.                                                                                            |
-| `preload`                   | `auto`, `none`                            | `none` keeps the decoders idle until play; otherwise the first frame shows at once.                                       |
-| `gain-match`                | `on`, `off`                               | `off` leaves the lenses' exposure as recorded.                                                                            |
-| `stabilization`             | `off`, `lock`, `horizon`, `follow`        | How the gyro steadies the picture.                                                                                        |
-| `view-mode`                 | `raw-lenses`, `equirectangular`, `normal` | What the picture shows (below); the raw lenses until set.                                                                 |
-| `quality`                   | `fast`, `balanced`, `high`                | How finely the lens images are read and how many device pixels are drawn (below); `balanced` until set.                   |
-| `fov`                       | 30 to 120                                 | The normal view's horizontal field of view, in degrees; a taller player spans 120 top to bottom at most.                  |
-| `yaw`, `pitch`              | degrees                                   | Where the normal view looks: yaw positive to the right, pitch positive up; 0 where Insta360 Studio centres the recording. |
+| Attribute                   | Values                                       | What it does                                                                                                              |
+| --------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `src`                       | URL                                          | The recording; a relative URL resolves against the page.                                                                  |
+| `src2`                      | URL                                          | The other lens's file of a split-file recording; found by itself when it sits beside `src` under the camera's name.       |
+| `crossorigin`               | `anonymous`, `use-credentials`               | As on a video element: `use-credentials` fetches the recording with the visitor's cookies (see "Serving recordings").     |
+| `autoplay`                  | boolean                                      | Starts once ready; a refusal is an `autoplay-blocked` warning.                                                            |
+| `muted`, `loop`, `controls` | boolean                                      | As on a video element; `controls` shows the bar.                                                                          |
+| `poster`                    | URL                                          | Shown until the first picture.                                                                                            |
+| `preload`                   | `auto`, `none`                               | `none` keeps the decoders idle until play; otherwise the first frame shows at once.                                       |
+| `gain-match`                | `on`, `off`                                  | `off` leaves the lenses' exposure as recorded.                                                                            |
+| `stabilization`             | `off`, `lock`, `horizon`, `smooth`, `follow` | How the gyro steadies the picture.                                                                                        |
+| `view-mode`                 | `raw-lenses`, `equirectangular`, `normal`    | What the picture shows (below); the raw lenses until set.                                                                 |
+| `quality`                   | `fast`, `balanced`, `high`                   | How finely the lens images are read and how many device pixels are drawn (below); `balanced` until set.                   |
+| `fov`                       | 30 to 120                                    | The normal view's horizontal field of view, in degrees; a taller player spans 120 top to bottom at most.                  |
+| `yaw`, `pitch`              | degrees                                      | Where the normal view looks: yaw positive to the right, pitch positive up; 0 where Insta360 Studio centres the recording. |
 
 The element opens on `raw-lenses`, the decoded lens images side by side or stacked, whichever
 shows them larger, unstitched and as recorded; the camera records a square a little smaller

@@ -173,3 +173,8 @@ accelerometer.
   turned; a ONE RS recording that turns will rank it. "Insta360 OneRS" names the 360 lens module
   too, assumed alike. Gyroflow's table does not carry over: through the X5's arrangement, its
   entries for the ONE RS and the X3 put their down on another axis than the one measured.
+
+## Since ADR 0047 (2026-10-18)
+
+A fifth mode, `smooth`, keeps the horizon level as horizon does and faces the camera's heading
+smoothed both ways in time over the whole track.

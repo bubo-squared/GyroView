@@ -7,6 +7,10 @@ import {
   type MountedMotion,
 } from '../../domain/motion/mounting/Mounting';
 import { OrientationTrack } from '../../domain/motion/orientation/OrientationTrack';
+import {
+  rollingShutterFor,
+  type RollingShutter,
+} from '../../domain/motion/rollingShutter/RollingShutter';
 import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
 
 /**
@@ -16,6 +20,10 @@ import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
  */
 export interface MotionSetup extends MountedMotion {
   readonly imuFrame: ImuFrame;
+  /**
+   * The camera's rolling shutter, for a camera whose row order is measured (ADR 0046).
+   */
+  readonly rollingShutter: RollingShutter | undefined;
 }
 
 export interface MotionResolution {
@@ -41,7 +49,8 @@ export async function motionOf(
   const frame = uprightImuFrame(imuFrame, mounting);
   const orientations = OrientationTrack.integrate({ gyro: gyro.track, clock, frame });
   const warnings = [...unverifiedWarningsOf(imuFrame, recording), ...damageWarningsOf(gyro)];
-  return { setup: { orientations, mounting, imuFrame }, warnings };
+  const rollingShutter = rollingShutterFor(recording.info);
+  return { setup: { orientations, mounting, imuFrame, rollingShutter }, warnings };
 }
 
 function damageWarningsOf(gyro: ParsedGyroRecord): readonly string[] {

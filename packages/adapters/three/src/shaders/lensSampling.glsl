@@ -6,6 +6,10 @@ uniform mat3 uLensRotation[MAX_LENSES];
 uniform int uLensKind[MAX_LENSES];
 uniform float uLensHalfFov[MAX_LENSES];
 uniform vec4 uLensWindow[MAX_LENSES];
+// Rolling-shutter corrections (ADR 0046): the body as it was when each row was read, from the
+// body at the frame's time, for rows from the top of every lens's window to its bottom.
+uniform bool uRowCorrected;
+uniform mat3 uRowCorrection[ROW_CORRECTIONS];
 
 struct LensSample {
   bool isImaged;
@@ -29,12 +33,29 @@ vec2 canvasPixel(int i, vec3 d, float theta, out bool isKnown) {
   return uLensPrincipalPoint[i];
 }
 
+// The body direction as it was when lens i read the row it images the direction in: found by
+// where the direction lands at the frame's time, which the correction moves by a few rows at
+// most, so one step is enough.
+vec3 rowCorrected(int i, vec3 dirBody) {
+  if (!uRowCorrected) return dirBody;
+  vec3 d = uLensRotation[i] * dirBody;
+  float theta = atan(length(d.xy), d.z);
+  bool isKnown;
+  vec2 pixel = canvasPixel(i, d, theta, isKnown);
+  float row = clamp((pixel.y - uLensWindow[i].y) / uLensWindow[i].w, 0.0, 1.0);
+  float step = row * float(ROW_CORRECTIONS - 1);
+  int below = min(int(floor(step)), ROW_CORRECTIONS - 2);
+  vec3 above = uRowCorrection[below] * dirBody;
+  vec3 next = uRowCorrection[below + 1] * dirBody;
+  return normalize(mix(above, next, step - float(below)));
+}
+
 // What lens i shows in a body direction, read as `sampling` says, if it images it at all:
 // outside its field, or beyond the window the frame shows, nothing. The footprint is taken and
 // the texture read in every fragment before the gates: a read inside a branch that some pixels
 // of a 2x2 quad skip took a far too coarse footprint on Apple GPUs (rawLenses.frag.glsl).
 LensSample sampleLensWith(int i, vec3 dirBody, int sampling) {
-  vec3 d = uLensRotation[i] * dirBody;
+  vec3 d = uLensRotation[i] * rowCorrected(i, dirBody);
   // atan keeps its precision near the axis where acos loses it.
   float theta = atan(length(d.xy), d.z);
   bool isKnown;

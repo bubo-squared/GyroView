@@ -8,6 +8,7 @@ import {
   HorizonStabilization,
   LockStabilization,
 } from '../../domain/motion/stabilization/stabilizers';
+import { rowCorrectionsAt } from '../../domain/motion/rollingShutter/RollingShutter';
 import { FrameTimes } from '../../domain/motion/timing/FrameTimes';
 import type { Presentation } from '../../ports/FrameSink';
 import type { PictureRenderer } from '../../ports/PictureRenderer';
@@ -42,9 +43,17 @@ const LENS_0_UP: Mounting = {
   toBody: rotationAboutX(radians(-Math.PI / 2)),
 };
 
-class RecordingSink implements Pick<PictureRenderer<string>, 'present' | 'setStabilization'> {
+class RecordingSink implements Pick<
+  PictureRenderer<string>,
+  'present' | 'setStabilization' | 'setRowCorrections'
+> {
   public readonly rotations: Matrix3[] = [];
+  public readonly rowCorrections: (readonly Matrix3[] | undefined)[] = [];
   public readonly presented: Presentation<string>[] = [];
+
+  public setRowCorrections(corrections: readonly Matrix3[] | undefined): void {
+    this.rowCorrections.push(corrections);
+  }
 
   public setStabilization(rotation: Matrix3): void {
     this.rotations.push(rotation);
@@ -198,5 +207,31 @@ describe('StabilizingFrameSink', () => {
     sink.setStabilizer(new LockStabilization());
     sink.present(presentationAt(0.5));
     expect(forwardThrough(inner)[0]).toBeCloseTo(-1, 2);
+  });
+
+  it("turns each row by the camera's turn during the readout, at the frame's mid-exposure", () => {
+    const inner = new RecordingSink();
+    const rollingShutter = { readout: seconds(0.02), rowOrder: 'top-first' } as const;
+    const motion = { orientations, mounting: UNTURNED };
+    const sink = new StabilizingFrameSink({
+      sink: inner,
+      motion,
+      frameTimes: frameTimesAt([0, 3, 6], 2),
+      rollingShutter,
+    });
+    sink.setStabilizer(new LockStabilization());
+    sink.present(presentationAt(0.5));
+    expect(inner.rowCorrections).toEqual([rowCorrectionsAt(motion, seconds(1), rollingShutter)]);
+  });
+
+  it('leaves the rows uncorrected without a rolling shutter to correct', () => {
+    const inner = new RecordingSink();
+    const sink = new StabilizingFrameSink({
+      sink: inner,
+      motion: { orientations, mounting: UNTURNED },
+      frameTimes: undefined,
+    });
+    sink.present(presentationAt(1));
+    expect(inner.rowCorrections).toEqual([]);
   });
 });

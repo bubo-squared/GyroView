@@ -4,10 +4,12 @@
  * the lens (0 the back lens, 1 the screen-side lens) and the second marks a proxy (0 the
  * recording itself, 1 its low-resolution LRV). Seen on the X5 samples (`VID_..._00_` with
  * `LRV_..._01_`) and documented by the community for the `_00_`/`_10_` pairs of older cameras.
+ * A recording trimmed in the Insta360 app keeps the name with a suffix after the sequence number
+ * (`VID_..._00_002-trim.insv`, seen on ONE R files), which both lens files carry alike.
  * The name is only ever a hint: whatever it suggests is verified against the file's contents.
  */
 const FILE_NAME_PATTERN =
-  /^(?<prefix>[A-Za-z]+(?:_[A-Za-z]+)*)_(?<stamp>\d{8}_\d{6})_(?<lens>\d)(?<proxy>\d)_(?<sequence>\d{3})\.(?<extension>[A-Za-z0-9]+)$/u;
+  /^(?<prefix>[A-Za-z]+(?:_[A-Za-z]+)*)_(?<stamp>\d{8}_\d{6})_(?<lens>\d)(?<proxy>\d)_(?<sequence>\d{3})(?<suffix>-[^.]+)?\.(?<extension>[A-Za-z0-9]+)$/u;
 
 const BACK_LENS_DIGIT = 0;
 const SCREEN_LENS_DIGIT = 1;
@@ -20,6 +22,7 @@ interface RecordingFileNameParts {
   readonly lensDigit: number;
   readonly proxyDigit: number;
   readonly sequence: string;
+  readonly suffix: string;
   readonly extension: string;
 }
 
@@ -63,8 +66,8 @@ export class RecordingFileName {
   }
 
   public toString(): string {
-    const { prefix, captureStamp, lensDigit, proxyDigit, sequence, extension } = this.parts;
-    return `${prefix}_${captureStamp}_${lensDigit}${proxyDigit}_${sequence}.${extension}`;
+    const { prefix, captureStamp, lensDigit, proxyDigit, sequence, suffix, extension } = this.parts;
+    return `${prefix}_${captureStamp}_${lensDigit}${proxyDigit}_${sequence}${suffix}.${extension}`;
   }
 }
 
@@ -75,6 +78,7 @@ function partsOf(groups: Record<string, string | undefined>): RecordingFileNameP
     lensDigit: Number(groups['lens']),
     proxyDigit: Number(groups['proxy']),
     sequence: groups['sequence'] ?? '',
+    suffix: groups['suffix'] ?? '',
     extension: groups['extension'] ?? '',
   };
 }

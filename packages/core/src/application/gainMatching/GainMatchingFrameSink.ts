@@ -72,6 +72,15 @@ export class GainMatchingFrameSink<Handle = unknown> implements FrameSink<Handle
     await this.active?.matching.matchNow(this.lastMediaTime);
   }
 
+  /**
+   * Resolves once the measurement the last presentation started, if any, has applied its gains;
+   * at once while not enabled. A rendition awaits it between frames to be independent of the
+   * GPU's pace (ADR 0012).
+   */
+  public async settled(): Promise<void> {
+    await this.active?.matching.settled();
+  }
+
   public present(presentation: Presentation<Handle>): void {
     this.sink.present(presentation);
     this.lastMediaTime = presentation.mediaTime;

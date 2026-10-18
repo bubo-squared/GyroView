@@ -60,6 +60,19 @@ export class GainMatching {
     return this.inFlight;
   }
 
+  /**
+   * Resolves once the measurement under way, if any, has applied its gains or failed, a failure
+   * being reported as it is anyway. What a rendition waits on after each frame, so the gains a
+   * frame was measured for take effect from the next frame, whatever the GPU's pace.
+   */
+  public async settled(): Promise<void> {
+    try {
+      await this.inFlight;
+    } catch {
+      // Already reported once, by whoever started the measurement.
+    }
+  }
+
   public stop(): void {
     this.isStopped = true;
   }

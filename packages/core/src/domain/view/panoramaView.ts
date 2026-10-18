@@ -31,7 +31,7 @@ import {
 /**
  * An equirectangular picture spans a full turn across for a half turn from top to bottom.
  */
-const EQUIRECTANGULAR_ASPECT = 2;
+export const EQUIRECTANGULAR_ASPECT = 2;
 
 /**
  * The panorama fitted into the viewport, and its magnification as it may be shown there: within

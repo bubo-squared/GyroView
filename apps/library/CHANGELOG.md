@@ -3,6 +3,14 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+Fixed:
+
+- An Insta360 ONE R recording is stabilized in its own IMU frame. Its info record names it
+  "Insta360 OneR", which no entry matched, so it was stabilized under the aligned guess and lock
+  turned its picture more than leaving it alone; `ONE_R_IMU_FRAME` is measured (ADR 0009).
+
 ## 0.8.1 (2026-10-08)
 
 What a page may notice (ADR 0044, a server slow to answer is asked in fewer, larger ranges):

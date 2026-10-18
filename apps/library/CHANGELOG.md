@@ -21,6 +21,12 @@ Fixed (ADR 0019, amended):
   error answers lack CORS headers is still taken for one without the file. A HEAD answered `501`
   there falls back to a one-byte GET, as a `405` does.
 
+Fixed (ADR 0009):
+
+- An Insta360 ONE R recording is stabilized in its own IMU frame. Its info record names it
+  "Insta360 OneR", which no entry matched, so it was stabilized under the aligned guess and lock
+  turned its picture more than leaving it alone; `ONE_R_IMU_FRAME` is measured (ADR 0009).
+
 Changed:
 
 - A request answered `501 Not Implemented` is not asked for again: a server that does not

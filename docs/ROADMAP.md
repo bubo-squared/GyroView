@@ -87,6 +87,10 @@ One Insta360 ONE RS 1-inch 360 recording (an H.264 `_00_`/`_10_` pair on a tripo
 sample, ADR 0031): it plays and stitches; its IMU's down is measured and every mode draws it
 upright, the rest of its IMU frame assumed (ADR 0009).
 
+One Insta360 ONE R recording with the 5.7K 360 lens module (an H.264 `_00_`/`_10_` pair, a
+skydive, a local sample, ADR 0031): its IMU frame by the stillness ranking (ADR 0009), in Chromium
+and WebKit.
+
 ## Waiting on something only a user can supply
 
 - **An iPhone and an Android phone for motion look** (ADR 0040), over HTTPS: the permission prompt

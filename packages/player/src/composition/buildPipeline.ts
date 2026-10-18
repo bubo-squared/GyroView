@@ -9,7 +9,6 @@ import {
   PlaybackSession,
   referenceLensOf,
   seconds,
-  stabilizerFor,
   StabilizingFrameSink,
   UPRIGHT_MOUNTING,
   WallClock,
@@ -131,7 +130,7 @@ function pictureSettingsOf(
 ): Pick<Pipeline, 'setStabilization' | 'setGainMatching' | 'setQuality'> {
   return {
     setStabilization: (mode): void => {
-      drawing.stabilizing?.setStabilizer(stabilizerFor(mode));
+      drawing.stabilizing?.setStabilizationMode(mode);
       session.redraw();
     },
     // How finely the lenses are read, and how many device pixels are drawn.

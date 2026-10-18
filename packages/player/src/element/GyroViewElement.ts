@@ -326,7 +326,7 @@ export class GyroViewElement extends TypedEventElement implements LiveSettings {
   }
 
   /**
-   * Stabilizes the picture in `mode` (`off`, `lock`, `horizon`, `follow`); any other value,
+   * Stabilizes the picture in `mode` (`off`, `lock`, `horizon`, `smooth`, `follow`); any other value,
    * an unset one included, is refused.
    */
   public setStabilization(mode: StabilizationMode): void {

@@ -7,6 +7,7 @@ import { OrientationTrack } from '../../domain/motion/orientation/OrientationTra
 import {
   HorizonStabilization,
   LockStabilization,
+  stabilizerFor,
 } from '../../domain/motion/stabilization/stabilizers';
 import { FrameTimes } from '../../domain/motion/timing/FrameTimes';
 import type { Presentation } from '../../ports/FrameSink';
@@ -198,5 +199,21 @@ describe('StabilizingFrameSink', () => {
     sink.setStabilizer(new LockStabilization());
     sink.present(presentationAt(0.5));
     expect(forwardThrough(inner)[0]).toBeCloseTo(-1, 2);
+  });
+
+  it("builds a mode's strategy over the recording's orientations, which the smooth mode looks ahead in", () => {
+    const inner = new RecordingSink();
+    const sink = new StabilizingFrameSink({
+      sink: inner,
+      motion: { orientations, mounting: UNTURNED },
+      frameTimes: undefined,
+    });
+    sink.setStabilizationMode('smooth');
+    sink.present(presentationAt(2));
+    const expected = stabilizerFor('smooth', orientations).nextRotation(
+      orientations.orientationAt(seconds(2)),
+      seconds(2),
+    );
+    expect(inner.rotations).toEqual([expected]);
   });
 });

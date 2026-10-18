@@ -6,9 +6,22 @@ import {
   HorizonStabilization,
   LockStabilization,
   OffStabilization,
+  SmoothStabilization,
   stabilizerFor,
 } from './stabilizers';
-import { IDENTITY_MATRIX3, transformVector, type Matrix3 } from '../../../shared/math/Matrix3';
+import { ALIGNED_IMU_FRAME } from '../imu/ImuFrame';
+import { OrientationTrack } from '../orientation/OrientationTrack';
+import {
+  RESTING_UPRIGHT,
+  SYNTHETIC_CLOCK,
+  syntheticGyroTrack,
+} from '../../../../test/support/syntheticGyro';
+import {
+  angleBetweenRotations,
+  IDENTITY_MATRIX3,
+  transformVector,
+  type Matrix3,
+} from '../../../shared/math/Matrix3';
 import {
   multiplyQuaternions,
   quaternionFromAxisAngle,
@@ -111,11 +124,84 @@ describe('stabilizers', () => {
   });
 
   it('builds the strategy for each mode', () => {
-    expect(STABILIZATION_MODES.map((mode) => stabilizerFor(mode).constructor)).toEqual([
+    expect(STABILIZATION_MODES.map((mode) => stabilizerFor(mode, turning).constructor)).toEqual([
       OffStabilization,
       LockStabilization,
       HorizonStabilization,
+      SmoothStabilization,
       FollowStabilization,
     ]);
+  });
+});
+
+/**
+ * Ten seconds of a camera turning about the vertical at `rate` and shaking its heading by
+ * `shake` radians at four hertz on top.
+ */
+function headingTrack(rate: number, shake: number): OrientationTrack {
+  const shakeRate = 2 * Math.PI * 4;
+  return OrientationTrack.integrate({
+    gyro: syntheticGyroTrack(10, 1000, (time) => ({
+      acceleration: RESTING_UPRIGHT,
+      angularVelocity: [0, rate + shake * shakeRate * Math.cos(shakeRate * time), 0],
+    })),
+    clock: SYNTHETIC_CLOCK,
+    frame: ALIGNED_IMU_FRAME,
+  });
+}
+
+const turning = headingTrack(Math.PI / 2, 0);
+const MIDDLE = seconds(5);
+/**
+ * A quarter period of the shake after the middle: its heading furthest from the mean.
+ */
+const SHAKEN = seconds(5.0625);
+
+interface ModeRotations {
+  readonly smooth: Matrix3;
+  readonly horizon: Matrix3;
+  readonly lock: Matrix3;
+}
+
+function rotationsAt(track: OrientationTrack, time: ReturnType<typeof seconds>): ModeRotations {
+  const orientation = track.orientationAt(time);
+  return {
+    smooth: stabilizerFor('smooth', track).nextRotation(orientation, time),
+    horizon: new HorizonStabilization().nextRotation(orientation),
+    lock: new LockStabilization().nextRotation(orientation),
+  };
+}
+
+describe('smooth stabilization', () => {
+  it('follows a steady turn without lag, its heading continuous through a half turn', () => {
+    // A quarter turn a second passes a half turn every two seconds.
+    const { smooth, horizon } = rotationsAt(turning, MIDDLE);
+    expect(angleBetweenRotations(smooth, horizon)).toBeLessThan(1e-3);
+  });
+
+  it("takes the shake out of the camera's heading", () => {
+    const shaking = headingTrack(0, (5 * Math.PI) / 180);
+    const { smooth, horizon, lock } = rotationsAt(shaking, SHAKEN);
+    expect(angleBetweenRotations(smooth, lock)).toBeLessThan(2e-3);
+    expect(angleBetweenRotations(horizon, lock)).toBeGreaterThan(0.08);
+  });
+
+  it('keeps the horizon level, as horizon does', () => {
+    const rolling = OrientationTrack.integrate({
+      gyro: syntheticGyroTrack(4, 1000, () => ({
+        acceleration: RESTING_UPRIGHT,
+        angularVelocity: [0, Math.PI / 4, Math.PI / 8],
+      })),
+      clock: SYNTHETIC_CLOCK,
+      frame: ALIGNED_IMU_FRAME,
+    });
+    const time = seconds(2);
+    const smooth = stabilizerFor('smooth', rolling).nextRotation(rolling.orientationAt(time), time);
+    const horizon = new HorizonStabilization().nextRotation(rolling.orientationAt(time));
+    expectVector(transformVector(smooth, VIEW_UP), transformVector(horizon, VIEW_UP), 6);
+  });
+
+  it('is horizon without a recording to look ahead in', () => {
+    expect(stabilizerFor('smooth')).toBeInstanceOf(HorizonStabilization);
   });
 });

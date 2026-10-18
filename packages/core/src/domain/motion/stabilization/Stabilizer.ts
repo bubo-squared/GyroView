@@ -2,7 +2,7 @@ import type { Matrix3 } from '../../../shared/math/Matrix3';
 import type { Quaternion } from '../../../shared/math/Quaternion';
 import type { Seconds } from '../../../shared/units/time';
 
-export const STABILIZATION_MODES = ['off', 'lock', 'horizon', 'follow'] as const;
+export const STABILIZATION_MODES = ['off', 'lock', 'horizon', 'smooth', 'follow'] as const;
 
 export type StabilizationMode = (typeof STABILIZATION_MODES)[number];
 

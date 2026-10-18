@@ -10,6 +10,8 @@ import {
 import { radians, type Radians } from '../../../shared/units/angle';
 import { seconds, type Seconds } from '../../../shared/units/time';
 import { WORLD_DOWN } from '../orientation/gravity';
+import type { OrientationTrack } from '../orientation/OrientationTrack';
+import { SmoothedHeading } from './SmoothedHeading';
 
 /**
  * The picture moves with the camera, as recorded.
@@ -38,6 +40,29 @@ export class HorizonStabilization implements Stabilizer {
     return multiplyMatrices(
       quaternionToMatrix(conjugateQuaternion(orientation)),
       quaternionToMatrix(heading),
+    );
+  }
+}
+
+/**
+ * How far either way in time the smooth mode's heading is averaged: the standard deviation of its
+ * Gaussian. A head's shake, a few hertz, is gone; a turn of a few seconds is kept.
+ */
+const SMOOTH_HEADING_SPREAD_SECONDS = 1;
+
+/**
+ * The horizon stays level and the view faces the camera's heading smoothed both ways in time
+ * over the whole recording: turns are followed without lag, shake in the heading is gone.
+ * Stateless: the smoothing is done once, when the strategy is built.
+ */
+export class SmoothStabilization implements Stabilizer {
+  public constructor(private readonly heading: SmoothedHeading) {}
+
+  public nextRotation(orientation: Quaternion, videoTime: Seconds): Matrix3 {
+    const facing = quaternionFromAxisAngle(WORLD_DOWN, this.heading.at(videoTime));
+    return multiplyMatrices(
+      quaternionToMatrix(conjugateQuaternion(orientation)),
+      quaternionToMatrix(facing),
     );
   }
 }
@@ -92,18 +117,30 @@ export class FollowStabilization implements Stabilizer {
   }
 }
 
-const STABILIZERS: Readonly<Record<StabilizationMode, () => Stabilizer>> = {
+const STABILIZERS: Readonly<
+  Record<StabilizationMode, (orientations: OrientationTrack | undefined) => Stabilizer>
+> = {
   off: () => new OffStabilization(),
   lock: () => new LockStabilization(),
   horizon: () => new HorizonStabilization(),
+  smooth: (orientations) => {
+    const heading =
+      orientations &&
+      SmoothedHeading.of(orientations, headingOf, seconds(SMOOTH_HEADING_SPREAD_SECONDS));
+    return heading ? new SmoothStabilization(heading) : new HorizonStabilization();
+  },
   follow: () => new FollowStabilization(),
 };
 
 /**
- * A fresh strategy for the mode; stateful ones start from nothing.
+ * A fresh strategy for the mode; stateful ones start from nothing. The smooth mode looks ahead in
+ * the recording's `orientations`; without them it is horizon.
  */
-export function stabilizerFor(mode: StabilizationMode): Stabilizer {
-  return STABILIZERS[mode]();
+export function stabilizerFor(
+  mode: StabilizationMode,
+  orientations?: OrientationTrack,
+): Stabilizer {
+  return STABILIZERS[mode](orientations);
 }
 
 /**

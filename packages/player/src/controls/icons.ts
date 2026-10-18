@@ -51,6 +51,9 @@ export const STABILIZATION_ICONS: Readonly<Record<StabilizationMode, string>> = 
     '<rect x="4.5" y="9" width="11" height="8" rx="1.5"/><path d="M7 9V6.5a3 3 0 016 0V9"/>',
   ),
   horizon: fromTwentyUnitGrid('<circle cx="10" cy="10" r="7"/><path d="M3 10h14M8 13h4"/>'),
+  smooth: fromTwentyUnitGrid(
+    '<circle cx="10" cy="10" r="7"/><path d="M3 10h14"/><path d="M6 13.5c1.5-1 2.5-1 4 0s2.5 1 4 0"/>',
+  ),
   follow: fromTwentyUnitGrid(
     '<path d="M3 15c3.5 0 4-9 8.5-9 2 0 3 1 4.5 1"/><path d="M14 4.5L16.5 7 14 9.5"/>',
   ),

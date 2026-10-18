@@ -65,7 +65,10 @@ function stabilizedAt(
   time: Seconds,
 ): Matrix3 {
   const { orientations, mounting } = motionOf(opened);
-  const rotation = stabilizerFor(mode).nextRotation(orientations.orientationAt(time), time);
+  const rotation = stabilizerFor(mode, orientations).nextRotation(
+    orientations.orientationAt(time),
+    time,
+  );
   return rotationIntoBody(mounting, rotation);
 }
 

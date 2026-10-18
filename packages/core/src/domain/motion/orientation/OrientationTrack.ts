@@ -129,6 +129,18 @@ export class OrientationTrack {
   }
 
   /**
+   * The video times of the first and the last sample; undefined for an empty track.
+   */
+  public get span(): { readonly start: Seconds; readonly end: Seconds } | undefined {
+    return this.length === 0
+      ? undefined
+      : {
+          start: seconds(this.videoTimes[0] ?? 0),
+          end: seconds(this.videoTimes[this.length - 1] ?? 0),
+        };
+  }
+
+  /**
    * The orientation at a video time, interpolated between samples and held at the ends.
    */
   public orientationAt(videoTime: Seconds): Quaternion {

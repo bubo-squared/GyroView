@@ -106,6 +106,35 @@ describe('GainMatching', () => {
     expect(failures).toEqual([new Error('read-back failed')]);
   });
 
+  it('settles once the measurement a presentation started has applied its gains', async () => {
+    const { meter, applied, subject } = matching();
+    subject.afterPresent(seconds(0));
+    let hasSettled = false;
+    const settled = (async (): Promise<void> => {
+      await subject.settled();
+      hasSettled = true;
+    })();
+    await Promise.resolve();
+    expect(hasSettled).toBe(false);
+    meter.pending[0]?.resolve(BRIGHT_AND_DARK);
+    await settled;
+    expect(applied).toHaveLength(1);
+  });
+
+  it('settles at once with no measurement under way, and without rejecting when the meter fails', async () => {
+    const { meter, subject } = matching();
+    await subject.settled();
+    const failing = new GainMatching({
+      meter,
+      referenceLens: 0,
+      applyGains: ignoreGains,
+      reportFailure: ignoreGains,
+    });
+    failing.afterPresent(seconds(0));
+    meter.pending[0]?.reject(new Error('read-back failed'));
+    await expect(failing.settled()).resolves.toBeUndefined();
+  });
+
   it('ignores a measurement that lands after it stopped, and leaves the meter to its owner', async () => {
     const { meter, applied, subject } = matching();
     const measured = subject.matchNow(seconds(0));

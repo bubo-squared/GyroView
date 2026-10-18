@@ -61,6 +61,8 @@ second marks a proxy (0 the recording, 1 its low-resolution LRV, written as
 for finding the other lens file and ordering inputs; everything they suggest is verified against the
 file's contents (`RecordingFileName`, ADR 0004): of a pair where one file alone ends with the
 trailer, as an older camera writes it to `_00_`, that file is lens 0 whatever it is called.
+A clip trimmed in the Insta360 app keeps the name with a suffix after the sequence number,
+`VID_20260814_132640_00_013-trim.insv` on the ONE R, on both files of a pair.
 
 ## Trailer
 
@@ -89,7 +91,22 @@ start`; slot k describes record type k, so the index holds as many slots as its 
 Record ids seen or documented: 1 info, 2 thumbnail, 3 gyro, 4 exposure, 5 thumbnail extended,
 6 per-frame timestamps, 7 GPS, 0x09 0x0a 0x0b 0x0c 0x16 0x1b 0x1c 0x1d (X5, purpose unknown),
 0x34 and 0x36 (X6: 16-byte entries `u64 capture timestamp µs, f64 exposure s` at 25 Hz, likely
-the LRV proxy's per lens; not read).
+the LRV proxy's per lens; not read), and 0x39 and 0x80, which the Insta360 app adds to a clip it
+trims (see below).
+
+## Trim record (id 0x39)
+
+The Insta360 app trims a recording by writing a shorter video and copying the original's
+trailer: the info record keeps the original's `first_frame_timestamp`, duration and size, and
+the gyro and exposure records cover the whole original. It adds two records. Record 0x39 is 28
+bytes: ASCII `TEO1`, two u16 fields (1 on every clip seen, meaning unknown), a u32 LE frame
+index, zeros. The index is the original's frame, counted from its first encoded frame, that is
+the clip's first frame, as matched against the original's frames by content on two ONE R clips.
+Record 0x80 holds about 16 bytes per frame of the clip and begins with the same start as a
+float64 in milliseconds at the clip's frame rate; it looks like a per-frame map back to the
+original's timeline; not read. The capture clock of a trimmed clip starts at the exposure entry
+of its first frame (`originOfTrimmedClip`), or that many frames at the nominal rate past the
+original's first frame without an exposure record that reaches it.
 
 ## Info record (id 1, format 1 = protobuf)
 
@@ -127,7 +144,8 @@ u16 gx gy gz`; components are offset-binary around 32768 and scale by
 16-byte entries `u64 capture timestamp, f64 exposure s`, one per captured frame, the timestamp
 in the gyro layout's unit (microseconds raw, milliseconds float). Entries
 begin a few frames before `first_frame_timestamp` (six on the office file) and end a few after
-the last encoded frame. Frame k of the video is entry `indexAtOrAfter(first_frame_timestamp) + k`.
+the last encoded frame. Frame k of the video is entry `indexAtOrAfter(first_frame_timestamp) + k`,
+offset by the trim record's start frame on a clip the Insta360 app trimmed.
 
 ## Capture clock
 

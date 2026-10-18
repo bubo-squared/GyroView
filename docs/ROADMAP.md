@@ -44,7 +44,8 @@ time; the bundle leaves out mediabunny's demuxers of other formats.
 **Stabilization.** Gyro and accelerometer integrated into the camera's orientation, sampled at
 each frame's mid-exposure; lock, horizon and follow modes, or off, each drawn upright as the
 camera was mounted, on its side or with its lens axis vertical, where its IMU frame is measured
-(ADR 0038), and opening where Insta360 Studio centres the recording (ADR 0039).
+(ADR 0038), and opening where Insta360 Studio centres the recording (ADR 0039). Where a camera's
+row order is measured, each row is turned for the time its sensor read it (ADR 0046).
 
 **Motion look.** On a phone or tablet, a toggle in the normal view lets the device turn it as a
 window into the recording: its whole attitude, roll included, so the horizon stays level with the
@@ -88,8 +89,8 @@ sample, ADR 0031): it plays and stitches; its IMU's down is measured and every m
 upright, the rest of its IMU frame assumed (ADR 0009).
 
 One Insta360 ONE R recording with the 5.7K 360 lens module (an H.264 `_00_`/`_10_` pair, a
-skydive, a local sample, ADR 0031): its IMU frame by the stillness ranking (ADR 0009), in Chromium
-and WebKit.
+skydive, a local sample, ADR 0031): its IMU frame by the stillness ranking (ADR 0009), and its
+rolling shutter's row order by the same measure (ADR 0046), in Chromium and WebKit.
 
 ## Waiting on something only a user can supply
 

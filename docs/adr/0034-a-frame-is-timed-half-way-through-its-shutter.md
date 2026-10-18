@@ -79,3 +79,8 @@ added, and 0.032 and 0.062 without it.
   after its middle row: a fast turn still skews them by its rate times that, about a degree at
   100 degrees a second on the X5 at 8K30, and where a lens's rows run across the seam the two
   lenses can differ there by up to a whole readout. A per-row correction would remove it.
+
+## Since ADR 0046 (2026-10-18)
+
+The per-row correction is made where a camera's row order is measured: each row is turned by the
+camera's turn between the frame's time, still the middle row's, and the time the row was read.

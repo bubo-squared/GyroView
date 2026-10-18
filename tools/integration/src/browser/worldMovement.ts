@@ -12,6 +12,10 @@ export interface Renderable {
   readonly renderer: ThreeFrameRenderer;
   readonly first: FramePair<VideoFrame>;
   readonly later: FramePair<VideoFrame>;
+  /**
+   * Each pair's rolling-shutter corrections; every row turns with its frame without them.
+   */
+  readonly rowCorrectionsFor?: (pair: FramePair<VideoFrame>) => readonly Matrix3[] | undefined;
 }
 
 /**
@@ -53,8 +57,9 @@ function rowRangeOf(band: RowBand, canvas: HTMLCanvasElement): RowRange {
 }
 
 /**
- * How much the world moves between the two pairs when each is turned by `rotationFor` its time:
- * under lock with the camera's true orientation it stands nearly still.
+ * How much the world moves between the two pairs when each is turned by `rotationFor` its time,
+ * and each row by the renderable's `rowCorrectionsFor` it: under lock with the camera's true orientation it stands
+ * nearly still.
  */
 export function worldMovement(
   renderable: Renderable,
@@ -62,10 +67,13 @@ export function worldMovement(
   band: RowBand = WHOLE_RENDER,
 ): number {
   const { canvas, renderer, first, later } = renderable;
+  const rowCorrectionsFor = renderable.rowCorrectionsFor ?? ((): undefined => undefined);
   renderer.setStabilization(rotationFor(first));
+  renderer.setRowCorrections(rowCorrectionsFor(first));
   renderer.present({ pair: first, mediaTime: first.timestamp });
   const before = readPixels(canvas);
   renderer.setStabilization(rotationFor(later));
+  renderer.setRowCorrections(rowCorrectionsFor(later));
   renderer.present({ pair: later, mediaTime: later.timestamp });
   return difference(before, readPixels(canvas), rowRangeOf(band, canvas));
 }

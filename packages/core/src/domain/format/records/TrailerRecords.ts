@@ -7,7 +7,8 @@ import {
   type GyroLayoutHints,
   type ParsedGyroRecord,
 } from './gyro/parseGyroRecord';
-import { captureTimeOfStamp, firstFrameCaptureTime } from '../captureOrigin';
+import { parseTrimRecord, type TrimRecord } from './trim/parseTrimRecord';
+import { captureTimeOfStamp, firstFrameCaptureTime, originOfTrimmedClip } from '../captureOrigin';
 import { RecordType } from '../constants';
 import type { RecordingInfo } from '../info/RecordingInfo';
 import type { RecordLocation } from '../trailer/RecordLocation';
@@ -68,10 +69,26 @@ export class TrailerRecords {
 
   /**
    * When the first frame was captured, which the info record stamps in the gyro layout's unit;
-   * undefined when it does not say.
+   * undefined when it does not say. For a clip the Insta360 app trimmed, the stamp is still the
+   * original's, and the trim record says how many frames later the clip starts.
    */
   public async firstFrameCaptureTime(): Promise<Microseconds | undefined> {
-    return firstFrameCaptureTime(this.info, await this.gyroSampleLayout());
+    const origin = firstFrameCaptureTime(this.info, await this.gyroSampleLayout());
+    if (origin === undefined) return undefined;
+    const trim = await this.readTrim();
+    if (trim === undefined || trim.startFrame === 0) return origin;
+    const exposure = await this.readExposure();
+    return originOfTrimmedClip(origin, trim, { exposure, frameRate: this.info.frameRate });
+  }
+
+  /**
+   * Undefined when the file is no clip the Insta360 app trimmed, or its trim record is damaged.
+   */
+  private async readTrim(): Promise<TrimRecord | undefined> {
+    const location = this.trailer.locationOf(RecordType.Trim);
+    return location === undefined
+      ? undefined
+      : parseTrimRecord(await this.source.read(location.payload));
   }
 
   /**

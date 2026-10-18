@@ -45,7 +45,8 @@ export const INDEX_SLOT_SIZE_OFFSET = 2;
 export const INDEX_SLOT_OFFSET_OFFSET = 6;
 
 /**
- * Record type ids observed in X5 files and documented by telemetry-parser for older cameras.
+ * Record type ids observed in X5 files and documented by telemetry-parser for older cameras; the
+ * trim record is the one the Insta360 app adds to a clip it trims (seen on ONE R files).
  */
 export const RecordType = {
   Index: 0,
@@ -56,6 +57,7 @@ export const RecordType = {
   ThumbnailExtended: 5,
   FrameTimestamps: 6,
   Gps: 7,
+  Trim: 0x39,
 } as const;
 
 export type RecordType = (typeof RecordType)[keyof typeof RecordType];

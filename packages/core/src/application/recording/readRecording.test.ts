@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { microseconds } from '../../shared/units/time';
+import { microseconds, type Microseconds } from '../../shared/units/time';
 import { readRecording } from './readRecording';
+import type { Recording } from './Recording';
 import { InfoRecordFormat, RecordType } from '../../domain/format/constants';
 import { CalibrationVersion } from '../../domain/format/calibration/CalibrationVersion';
+import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
 import { InMemoryRandomAccessSource } from '../../testing/InMemoryRandomAccessSource';
 import { minimalInfoFields } from '../../testing/minimalInfoRecord';
 import { encodeProtobuf, stringField } from '../../testing/protobufWriter';
@@ -11,12 +13,27 @@ import { TrailerFixtureBuilder } from '../../testing/TrailerFixtureBuilder';
 import { v6CalibrationString } from '../../../test/support/calibrationStrings';
 import { loadFixture } from '../../../test/support/fixtures';
 import { minimalMp4Prefix } from '../../../test/support/mp4Prefix';
-import { officeRecording, officeRecords } from '../../../test/support/officeRecording';
+import {
+  officeRecording,
+  officeRecords,
+  type OfficeRecordingParts,
+} from '../../../test/support/officeRecording';
+import { trimRecord } from '../../../test/support/trimRecord';
 import {
   OFFICE_FIRST_GYRO_SAMPLE,
   RAW_FULL_SCALE,
   RAW_ZERO_POINT,
 } from '../../../test/support/officeGyroSample';
+
+async function officeClock(parts: OfficeRecordingParts): Promise<CaptureClock | undefined> {
+  const recording = await officeRecording(parts);
+  return recording.captureClock();
+}
+
+async function firstFrameOf(recording: Recording): Promise<Microseconds> {
+  const clock = await recording.captureClock();
+  return clock?.firstFrameCaptureTime ?? microseconds(0);
+}
 
 describe('readRecording on synthetic X5 files', () => {
   it('assembles the info and calibration from an inst-wrapped indexed file', async () => {
@@ -57,6 +74,33 @@ describe('readRecording on synthetic X5 files', () => {
     expect(clock?.firstFrameCaptureTime).toBe(921_751_839);
     expect(clock?.gyroOffset).toBe(1.6);
     expect(exposure?.indexAtOrAfter(clock?.firstFrameCaptureTime ?? microseconds(0))).toBe(6);
+  });
+
+  it('starts the clock of a clip trimmed in the Insta360 app at the exposure of the frame it was cut at', async () => {
+    const original = await officeRecording();
+    const exposure = await original.readExposureRecord();
+    const cutAt = (exposure?.indexAtOrAfter(await firstFrameOf(original)) ?? 0) + 3;
+    const clock = await officeClock({ trim: trimRecord(3) });
+    expect(clock?.firstFrameCaptureTime).toBe(exposure?.entryAt(cutAt).captureTime);
+    expect(clock?.gyroOffset).toBe(1.6);
+  });
+
+  it('starts the clock of a trimmed clip without an exposure record that many frames later at the nominal rate', async () => {
+    const original = await officeRecording({ hasExposure: false });
+    const frameRate = original.info.frameRate ?? 0;
+    expect(frameRate).toBeGreaterThan(0);
+    const clock = await officeClock({ hasExposure: false, trim: trimRecord(3) });
+    expect(clock?.firstFrameCaptureTime).toBe(
+      (await firstFrameOf(original)) + Math.round((3 / frameRate) * 1e6),
+    );
+  });
+
+  it('starts the clock of a clip trimmed at its first frame, or with a damaged trim record, where the original starts', async () => {
+    const original = await firstFrameOf(await officeRecording());
+    for (const trim of [trimRecord(0), trimRecord(3, 'XXXX')]) {
+      const clock = await officeClock({ trim });
+      expect(clock?.firstFrameCaptureTime).toBe(original);
+    }
   });
 
   it('reports missing gyro and exposure records as undefined rather than failing', async () => {

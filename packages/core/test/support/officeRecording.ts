@@ -2,7 +2,10 @@ import { readRecording } from '../../src/application/recording/readRecording';
 import type { Recording } from '../../src/application/recording/Recording';
 import { InfoRecordFormat, RecordType } from '../../src/domain/format/constants';
 import { InMemoryRandomAccessSource } from '../../src/testing/InMemoryRandomAccessSource';
-import { TrailerFixtureBuilder } from '../../src/testing/TrailerFixtureBuilder';
+import {
+  TrailerFixtureBuilder,
+  type FixtureRecordSpec,
+} from '../../src/testing/TrailerFixtureBuilder';
 import { loadFixture } from './fixtures';
 import { minimalMp4Prefix } from './mp4Prefix';
 
@@ -17,6 +20,10 @@ export interface OfficeRecordingParts {
   readonly gyro?: Uint8Array;
   readonly hasGyro?: boolean;
   readonly hasExposure?: boolean;
+  /**
+   * A trim record, as the Insta360 app adds to a clip it trims.
+   */
+  readonly trim?: Uint8Array;
 }
 
 /**
@@ -37,17 +44,16 @@ export function officeRecords(parts: OfficeRecordingParts = {}): TrailerFixtureB
     format: InfoRecordFormat.Protobuf,
     payload: parts.info ?? loadFixture('x5/office/record-01-info.bin'),
   });
-  if (parts.hasGyro ?? true) {
-    builder.addRecord({
-      id: RecordType.Gyro,
-      payload: parts.gyro ?? loadFixture('x5/office/record-03-gyro-first2000.bin'),
-    });
-  }
-  if (parts.hasExposure ?? true) {
-    builder.addRecord({
-      id: RecordType.Exposure,
-      payload: loadFixture('x5/office/record-04-exposure-first16.bin'),
-    });
-  }
+  for (const record of optionalRecords(parts)) builder.addRecord(record);
   return builder;
+}
+
+function optionalRecords(parts: OfficeRecordingParts): FixtureRecordSpec[] {
+  const gyro = parts.gyro ?? loadFixture('x5/office/record-03-gyro-first2000.bin');
+  const exposure = loadFixture('x5/office/record-04-exposure-first16.bin');
+  return [
+    ...((parts.hasGyro ?? true) ? [{ id: RecordType.Gyro, payload: gyro }] : []),
+    ...((parts.hasExposure ?? true) ? [{ id: RecordType.Exposure, payload: exposure }] : []),
+    ...(parts.trim ? [{ id: RecordType.Trim, payload: parts.trim }] : []),
+  ];
 }

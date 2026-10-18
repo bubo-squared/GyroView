@@ -23,6 +23,13 @@ describe('RecordingFileName', () => {
     );
   });
 
+  it('reads the name of a recording trimmed in the Insta360 app, and keeps its suffix for the other lens file', () => {
+    const name = RecordingFileName.parse('VID_20230101_090000_00_001-trim.insv');
+    expect(name).toMatchObject({ isBackLens: true, isProxy: false });
+    expect(name?.toString()).toBe('VID_20230101_090000_00_001-trim.insv');
+    expect(name?.otherLensName()).toBe('VID_20230101_090000_10_001-trim.insv');
+  });
+
   it('accepts prefixes with underscores and rejects names outside the convention', () => {
     expect(RecordingFileName.parse('PRO_VID_20230101_090000_00_001.insv')?.toString()).toBe(
       'PRO_VID_20230101_090000_00_001.insv',

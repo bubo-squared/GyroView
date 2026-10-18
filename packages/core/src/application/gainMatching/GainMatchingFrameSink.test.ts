@@ -79,6 +79,17 @@ describe('GainMatchingFrameSink', () => {
     ]);
   });
 
+  it('settles once the gains a presented pair asked for are applied, and at once when not enabled', async () => {
+    const { renderer, matching } = subject();
+    presentAt(matching, 0);
+    await matching.settled();
+    expect(renderer.applied).toEqual([]);
+    matching.enable();
+    presentAt(matching, 1);
+    await matching.settled();
+    expect(renderer.applied).toHaveLength(1);
+  });
+
   it('has nothing to match before the first pair', async () => {
     const { renderer, matching } = subject();
     matching.enable();

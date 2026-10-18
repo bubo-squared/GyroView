@@ -128,6 +128,7 @@ export {
   type DeviceReading,
 } from './domain/view/motionLookView';
 export { DEFAULT_FRAMING, isSameFraming, type Framing } from './domain/view/Framing';
+export { RenditionSpan, renditionSizeOf, type SpanRequest } from './domain/rendition/RenditionSpan';
 export { aspectOfArea, planeHalfExtentOf } from './domain/view/rectilinear';
 export { MAX_MAGNIFICATION, type Magnification } from './domain/view/magnification';
 export {

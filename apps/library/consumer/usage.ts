@@ -11,6 +11,7 @@ import {
   hasErrorCode,
   inspectRecording,
   isGyroViewErrorCode,
+  openRendition,
   PICTURE_QUALITIES,
   VIEW_MODES,
   type GyroViewErrorCategory,
@@ -21,6 +22,7 @@ import {
   type PlayerStatus,
   type RecordingFetch,
   type RecordingInspection,
+  type Rendition,
   type ViewMode,
   type WarningCode,
 } from '@bubo-squared/gyroview';
@@ -121,9 +123,20 @@ await player.load({
 const matching: 'on' | 'off' = element.gainMatch;
 const knownCodes: readonly GyroViewErrorCode[] = GYRO_VIEW_ERROR_CODES;
 const fromMessage = isGyroViewErrorCode('cors') ? 'cors' : undefined;
+const rendition: Rendition = await openRendition(
+  { main: { url: 'https://media.example/VID_20260814_132640_00_013.insv' } },
+  { width: 3840, from: 2, to: 10, stabilization: 'horizon', canvas: new OffscreenCanvas(1, 1) },
+);
+let renderedFrames = 0;
+for await (const frame of rendition.frames()) {
+  renderedFrames += frame.timestamp >= 0 ? 1 : 0;
+  frame.close();
+}
+rendition.dispose();
 
 export {
   playLabel,
+  renderedFrames,
   fromMessage,
   fromUrl,
   knownCategories,

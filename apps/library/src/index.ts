@@ -10,6 +10,7 @@ export {
   GYRO_VIEW_TAG,
   GyroViewElement,
   inspectRecording,
+  openRendition,
   Player,
 } from '@gyroview/player';
 export type {
@@ -33,6 +34,8 @@ export type {
   PlayerSource,
   PlayerStatus,
   PlayerWarning,
+  Rendition,
+  RenditionOptions,
   RecordingFetch,
   SoundLevel,
   UrlInput,

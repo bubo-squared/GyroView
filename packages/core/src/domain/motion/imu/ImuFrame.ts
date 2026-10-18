@@ -125,6 +125,14 @@ export const A1_IMU_FRAME = measuredImuFrame('A1', ['-z', '-x', 'y']);
 export const X3_IMU_FRAME = measuredImuFrame('X3', QUARTER_TURN_ABOUT_LATERAL);
 
 /**
+ * Measured on one ONE R recording with the 5.7K 360 lens module, a skydive that turns throughout
+ * (ADR 0009): the stillness ranking puts it first in Chromium and WebKit, 41.0 against 52.1
+ * unstabilized and 46.8 for the next. The X5's arrangement turned a half turn about the lateral
+ * axis. The ONE R names itself "Insta360 OneR", another model than the ONE RS.
+ */
+export const ONE_R_IMU_FRAME = measuredImuFrame('ONE R', ['x', '-z', 'y']);
+
+/**
  * Assumed for the ONE RS until a recording that turns is ranked (ADR 0009). On one tripod
  * recording of the 1-inch 360 edition, standing upright, gravity lies along the IMU's x, so the
  * body's down is the IMU's x; of the four arrangements that agree, the levelling ranking puts
@@ -156,6 +164,7 @@ const IMU_FRAMES_BY_MODEL: ReadonlyMap<string, ImuFrame> = new Map([
   ['Insta360 X4 Air', X4_AIR_IMU_FRAME],
   ['Insta360 X5', X5_IMU_FRAME],
   ['Insta360 X6', X6_IMU_FRAME],
+  ['Insta360 OneR', ONE_R_IMU_FRAME],
   ['Insta360 OneRS', ONE_RS_IMU_FRAME],
 ]);
 

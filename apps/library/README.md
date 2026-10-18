@@ -99,6 +99,43 @@ const fromFile = await inspectRecording(file);
 const fromUrl = await inspectRecording('https://media.example/VID_20260814_132640_00_013.insv');
 ```
 
+Render a recording into a stitched equirectangular video for an encoder, rather than playing
+it: `openRendition` yields every frame of the span once, in order, as a `VideoFrame` `width`
+pixels across and half as many down, whenever you ask for the next, so a slow encoder loses
+nothing. It needs no page: it draws on an `OffscreenCanvas` of its own, so it runs in a worker.
+The recording's sound is in its file as recorded, for the encoder to copy. With
+[Mediabunny](https://mediabunny.dev):
+
+```ts
+import { openRendition } from '@bubo-squared/gyroview';
+import {
+  BufferTarget,
+  Mp4OutputFormat,
+  Output,
+  Quality,
+  VideoSample,
+  VideoSampleSource,
+} from 'mediabunny';
+
+const rendition = await openRendition(
+  { main: { blob: file, name: file.name } },
+  { width: 3840, from: 12, to: 48, stabilization: 'horizon' },
+);
+const output = new Output({ format: new Mp4OutputFormat(), target: new BufferTarget() });
+const video = new VideoSampleSource({ codec: 'avc', quality: new Quality('high') });
+output.addVideoTrack(video, { frameRate: 30 });
+await output.start();
+for await (const frame of rendition.frames()) {
+  await video.add(new VideoSample(frame));
+  frame.close();
+}
+await output.finalize();
+rendition.dispose();
+```
+
+`width` is a multiple of four, so both sides are even as encoders take them; the other settings
+are the player's defaults unless given. A split-lens recording names its other file as `second`.
+
 For an interface of your own, `createBrowserPlayer` gives the player without the element: it
 draws on your canvas, sounds through your audio element and has the same events, which
 `player.events.on` listens to. `player.togglePlayback()` plays or pauses as the element's tap

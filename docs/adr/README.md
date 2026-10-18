@@ -49,3 +49,4 @@ new record takes the next number and a line here.
 - [ADR 0043](0043-a-recording-behind-a-token-is-read-through-the-pages-fetch.md): A recording behind a token is read through the page's fetch
 - [ADR 0044](0044-a-server-slow-to-answer-is-asked-in-fewer-larger-ranges.md): A server slow to answer is asked in fewer, larger ranges
 - [ADR 0045](0045-a-recording-is-rendered-frame-by-frame-at-the-pace-its-consumer-takes-the-frames.md): A recording is rendered frame by frame at the pace its consumer takes the frames
+- [ADR 0046](0046-each-row-is-turned-for-the-time-its-sensor-read-it.md): Each row is turned for the time its sensor read it

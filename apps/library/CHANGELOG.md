@@ -3,6 +3,15 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+Added (ADR 0046, each row is turned for the time its sensor read it):
+
+- An Insta360 ONE R recording has each row of its lenses turned by the camera's turn between the
+  frame's time and the time its sensor read that row, in every stabilization mode: a fast turn no
+  longer skews the top and bottom of the picture against its middle. Other cameras turn whole
+  until their sensors' row order is measured.
+
 ## 0.9.0 (2026-11-04)
 
 Added (ADR 0045, a recording is rendered frame by frame at the pace its consumer takes the frames):

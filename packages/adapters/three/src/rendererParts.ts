@@ -31,7 +31,7 @@ import {
 } from './rendererUniforms';
 import { SAMPLING_STRATEGIES } from './samplingStrategies';
 import { SeamMeterPass } from './seamMeter/SeamMeterPass';
-import { createRenderer, type ContextOptions } from './webglRenderer';
+import { createRenderer, type ContextOptions, type RenderCanvas } from './webglRenderer';
 
 export interface ThreeFrameRendererOptions extends ContextOptions {
   /**
@@ -123,7 +123,7 @@ export interface RendererParts {
  * rather than at the first frame, and a change of view mode is instant.
  */
 export function openRendererParts(
-  canvas: HTMLCanvasElement,
+  canvas: RenderCanvas,
   setup: StitchingSetup,
   opening: Opening,
 ): RendererParts {

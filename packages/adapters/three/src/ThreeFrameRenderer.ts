@@ -29,6 +29,7 @@ import {
 import { SAMPLING_STRATEGIES } from './samplingStrategies';
 import { scissorBoxOf } from './scissorBox';
 import { SeamMeterPass } from './seamMeter/SeamMeterPass';
+import type { RenderCanvas } from './webglRenderer';
 import {
   applyLensGain,
   applyPicture,
@@ -65,14 +66,14 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
 
   protected constructor(
     private readonly parts: RendererParts,
-    private readonly canvas: HTMLCanvasElement,
+    private readonly canvas: RenderCanvas,
   ) {
     this.applyFraming();
     canvas.addEventListener('webglcontextrestored', this.onContextRestored);
   }
 
   public static create(
-    canvas: HTMLCanvasElement,
+    canvas: RenderCanvas,
     setup: StitchingSetup,
     options: ThreeFrameRendererOptions = {},
   ): ThreeFrameRenderer {

@@ -1,6 +1,14 @@
 import { GyroViewError } from '@gyroview/core';
 import { WebGLRenderer } from 'three';
 
+/**
+ * What a picture renderer draws on: a canvas element on a page, or an `OffscreenCanvas`, in a
+ * worker or wherever no picture is shown, as when a recording is rendered for an encoder. The
+ * renderer touches neither as a DOM element: it sizes the drawing buffer itself and listens
+ * only for the WebGL context events, which both fire.
+ */
+export type RenderCanvas = HTMLCanvasElement | OffscreenCanvas;
+
 export interface ContextOptions {
   /**
    * Keep the drawing buffer after a frame, so tests can read it back and captures can save it;
@@ -13,7 +21,7 @@ export interface ContextOptions {
  * The WebGL 2 context a picture renderer draws on, wrapped by three, with every shader failure
  * made an error.
  */
-export function createRenderer(canvas: HTMLCanvasElement, options: ContextOptions): WebGLRenderer {
+export function createRenderer(canvas: RenderCanvas, options: ContextOptions): WebGLRenderer {
   // The context attributes must be given here: three keeps a context it is handed as it is.
   const context = canvas.getContext('webgl2', {
     preserveDrawingBuffer: options.preserveDrawingBuffer ?? false,

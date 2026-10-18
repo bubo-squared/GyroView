@@ -3,6 +3,17 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+Fixed:
+
+- A clip trimmed in the Insta360 app is stabilized with the gyro of its own frames. The app keeps
+  the original's timing records, so every frame was timed as the original's frame of the same
+  number, as far off as the cut was from the start; the trim record the app adds now says where
+  the clip begins.
+- The two files of a split-lens clip trimmed in the Insta360 app (`VID_..._00_002-trim.insv`) are
+  found as a pair: the name's suffix after the sequence number is kept for the other lens's file.
+
 ## 0.8.2 (2026-10-21)
 
 Fixed (ADR 0019, amended):

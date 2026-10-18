@@ -20,13 +20,17 @@ const ENTRY = {
 const STUDIO = { start: 0.5, frameTimes: [1, 2], comparedTimes: [2], steadinessStart: 1.5 };
 
 describe('parseLocalCatalogue', () => {
-  it('reads an entry field by field, its mounting and Studio clip only when it has them', () => {
+  it('reads an entry field by field, its mounting, Studio clip and original only when it has them', () => {
     expect(parseLocalCatalogue({ samples: [ENTRY] })).toEqual([ENTRY]);
     expect(parseLocalCatalogue({ samples: [{ ...ENTRY, mounting: 'upright' }] })).toEqual([
       { ...ENTRY, mounting: 'upright' },
     ]);
     expect(parseLocalCatalogue({ samples: [{ ...ENTRY, studio: STUDIO }] })).toEqual([
       { ...ENTRY, studio: STUDIO },
+    ]);
+    const trimmedFrom = { folder: 'invented originals', recording: 'original.insv', startFrame: 7 };
+    expect(parseLocalCatalogue({ samples: [{ ...ENTRY, trimmedFrom }] })).toEqual([
+      { ...ENTRY, trimmedFrom },
     ]);
     const withSdr = { ...STUDIO, sdrFrameTimes: [2] };
     expect(parseLocalCatalogue({ samples: [{ ...ENTRY, studio: withSdr }] })).toEqual([

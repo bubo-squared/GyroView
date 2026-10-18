@@ -203,6 +203,7 @@ function sinkOver(renderer: ThreeFrameRenderer, opened: OpenedRecording): SinkCh
     sink: renderer,
     motion: opened.motion,
     frameTimes: opened.frameTimes,
+    rollingShutter: opened.motion.rollingShutter,
   });
   return { sink: stabilizing, stabilizing };
 }

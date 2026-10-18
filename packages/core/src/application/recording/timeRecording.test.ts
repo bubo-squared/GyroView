@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { timeRecording } from './timeRecording';
-import { PtsType } from '../../domain/format/info/infoFields';
+import { InfoField, PtsType } from '../../domain/format/info/infoFields';
 import { RAW_SAMPLE_SIZE } from '../../domain/format/records/gyro/gyroLayouts';
 import { GYRO_LAYOUT_PROBE_SIZE } from '../../domain/format/records/gyro/parseGyroRecord';
 import { GyroViewError } from '../../shared/errors/GyroViewError';
 import { FakeVideoTrack } from '../../testing/FakeVideoTrack';
-import { minimalInfoRecord } from '../../testing/minimalInfoRecord';
+import { minimalInfoFields, minimalInfoRecord } from '../../testing/minimalInfoRecord';
+import { doubleField, encodeProtobuf } from '../../testing/protobufWriter';
 import { seconds, type Seconds } from '../../shared/units/time';
 import { loadFixture } from '../../../test/support/fixtures';
 import { officeRecording } from '../../../test/support/officeRecording';
@@ -111,6 +112,8 @@ describe('timeRecording', () => {
   it('integrates the gyro under the verified X5 frame', async () => {
     const timing = await timeRecording(await officeRecording(), trackOf(10));
     expect(timing.motion?.imuFrame.name).toBe('X5');
+    // The X5's row order is not measured: its frames turn whole.
+    expect(timing.motion?.rollingShutter).toBeUndefined();
     expect(timing.motion?.orientations.length).toBe(2000);
     expect(timing.warnings).toEqual([]);
   });
@@ -131,6 +134,15 @@ describe('timeRecording', () => {
     const timing = await timeRecording(await officeRecording({ gyro }), trackOf(10));
     expect(timing.motion?.orientations.length).toBe(2000);
     expect(timing.warnings).toEqual(['gyro stamps off their neighbours mended: 1']);
+  });
+
+  it('corrects the rolling shutter of a camera whose row order is measured, over its readout', async () => {
+    const info = encodeProtobuf([
+      ...minimalInfoFields({ model: 'Insta360 OneR', firstFrameTimestamp: 1_000_000 }),
+      doubleField(InfoField.RollingShutterTimeMs, 22.5),
+    ]);
+    const timing = await timeRecording(await officeRecording({ info }), trackOf(10));
+    expect(timing.motion?.rollingShutter).toEqual({ readout: 0.0225, rowOrder: 'top-first' });
   });
 
   it('still stabilizes an unknown camera but warns that its IMU frame is a guess', async () => {

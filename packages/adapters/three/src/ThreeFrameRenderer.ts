@@ -26,6 +26,7 @@ import {
   type RendererParts,
   type ThreeFrameRendererOptions,
 } from './rendererParts';
+import { applyRowCorrections } from './rowCorrections';
 import { SAMPLING_STRATEGIES } from './samplingStrategies';
 import { scissorBoxOf } from './scissorBox';
 import { SeamMeterPass } from './seamMeter/SeamMeterPass';
@@ -145,6 +146,15 @@ export class ThreeFrameRenderer implements PictureRenderer<VideoFrame> {
   public setStabilization(rotation: CoreMatrix3): void {
     this.ensureLive();
     applyStabilization(this.parts.uniforms, rotation);
+  }
+
+  /**
+   * Turns each lens row by its rolling-shutter correction, or every row with the frame. Does not
+   * redraw by itself, as {@link setStabilization} does not.
+   */
+  public setRowCorrections(corrections: readonly CoreMatrix3[] | undefined): void {
+    this.ensureLive();
+    applyRowCorrections(this.parts.uniforms, corrections);
   }
 
   public present(presentation: Presentation<VideoFrame>): void {

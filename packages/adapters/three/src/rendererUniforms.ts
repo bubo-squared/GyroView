@@ -5,6 +5,7 @@ import {
   IDENTITY_MATRIX3,
   MEI_TERM_CAPACITY,
   planeHalfExtentOf,
+  ROW_CORRECTION_COUNT,
   type LensProjectionParameters,
   type LensStitch,
   type MeiDistortion,
@@ -58,6 +59,7 @@ export const SHADER_DEFINES: ShaderDefines = Object.fromEntries([
   ['MEI_RADIAL_TERMS', MEI_TERM_CAPACITY.radial],
   ['MEI_TANGENTIAL_ORDERS', MEI_TERM_CAPACITY.tangential],
   ['MEI_THIN_PRISM_ORDERS', MEI_TERM_CAPACITY.thinPrism],
+  ['ROW_CORRECTIONS', ROW_CORRECTION_COUNT],
   ...CONVERSION_DEFINES,
   ['SAMPLING_BILINEAR', SAMPLING_BILINEAR],
   ['SAMPLING_TRILINEAR', SAMPLING_TRILINEAR],
@@ -73,6 +75,8 @@ export interface RendererUniforms extends ConversionUniforms {
   readonly uLensCount: IUniform<number>;
   readonly uViewRotation: IUniform<Matrix3>;
   readonly uStabilization: IUniform<Matrix3>;
+  readonly uRowCorrected: IUniform<boolean>;
+  readonly uRowCorrection: IUniform<Matrix3[]>;
   readonly uPlaneHalfExtent: IUniform<number>;
   readonly uPictureAspect: IUniform<number>;
   readonly uScreenArea: IUniform<Vector4[]>;
@@ -118,6 +122,8 @@ function viewUniforms(
   | 'uLensCount'
   | 'uViewRotation'
   | 'uStabilization'
+  | 'uRowCorrected'
+  | 'uRowCorrection'
   | 'uPlaneHalfExtent'
   | 'uPictureAspect'
   | 'uScreenArea'
@@ -127,6 +133,8 @@ function viewUniforms(
     uLensCount: { value: setup.lenses.length },
     uViewRotation: { value: new Matrix3() },
     uStabilization: { value: new Matrix3() },
+    uRowCorrected: { value: false },
+    uRowCorrection: { value: Array.from({ length: ROW_CORRECTION_COUNT }, () => new Matrix3()) },
     uPlaneHalfExtent: { value: 1 },
     uPictureAspect: { value: 1 },
     uScreenArea: { value: Array.from({ length: MAX_LENSES }, () => new Vector4(0, 0, 1, 1)) },

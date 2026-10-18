@@ -20,6 +20,13 @@ export interface PictureRenderer<Handle = unknown> extends FrameSink<Handle> {
    */
   setStabilization(rotation: Matrix3): void;
   /**
+   * Turns each row of every lens's image by its own correction, for the time the sensor read it
+   * (`rowCorrectionsAt`): the corrections run from the first row of a lens's window to its last
+   * at even steps, applied after the stabilization. Undefined turns every row with the frame.
+   * Takes effect with the next presentation.
+   */
+  setRowCorrections(corrections: readonly Matrix3[] | undefined): void;
+  /**
    * How the picture is framed in every view mode; the mode in effect reads its part.
    */
   setFraming(framing: Framing): void;

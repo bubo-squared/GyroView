@@ -4,10 +4,12 @@ import {
   degrees,
   degreesToRadians,
   GainMatchingFrameSink,
+  IDENTITY_MATRIX3,
   lensRotation,
   MAX_MAGNIFICATION,
   quaternionFromAxisAngle,
   radians,
+  ROW_CORRECTION_COUNT,
   seconds,
   stabilizerFor,
   transformVector,
@@ -217,6 +219,16 @@ function afterNextTask(): Promise<void> {
 
 function pixelTowards(renderer: ThreeFrameRenderer, direction: Vector3, size = SIZE): Rgb {
   return pixelAt(renderer, equirectangularPixelOf(direction, size), size);
+}
+
+/**
+ * Two renders' pixels show the same texels: each channel within a few steps of the gradient, the
+ * probes rounding to neighbouring pixels.
+ */
+function expectColoursClose(actual: Rgb, expected: Rgb): void {
+  for (const channel of ['r', 'g', 'b'] as const) {
+    expect(Math.abs(actual[channel] - expected[channel])).toBeLessThan(24);
+  }
 }
 
 interface BlockStats {
@@ -596,6 +608,60 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelAt(renderer, { column: WIDTH / 2, row: HEIGHT - 1 }).b).toBeGreaterThan(BRIGHT);
     expect(pixelAt(renderer, { column: WIDTH / 2, row: HEIGHT / 2 - 1 }).r).toBeGreaterThan(BRIGHT);
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
+  });
+
+  it('turns every row alike as a stabilization does, when every row has the same correction', () => {
+    const renderer = open();
+    renderer.setViewMode('equirectangular');
+    const turnedAround = stabilizerFor('lock').nextRotation(
+      quaternionFromAxisAngle([0, 1, 0], radians(Math.PI)),
+      seconds(0),
+    );
+    renderer.setRowCorrections(Array.from({ length: ROW_CORRECTION_COUNT }, () => turnedAround));
+    presentRedAndBlue(renderer);
+    expect(pixelTowards(renderer, [0, 0, 1]).b).toBeGreaterThan(BRIGHT);
+    expect(pixelTowards(renderer, [0, 0, -1]).r).toBeGreaterThan(BRIGHT);
+  });
+
+  it('turns each row of a lens by its own correction: the top rows show the turned direction', () => {
+    const turn = stabilizerFor('lock').nextRotation(
+      quaternionFromAxisAngle([0, 1, 0], radians(Math.PI / 18)),
+      seconds(0),
+    );
+    // Lens 0's top rows are turned by ten degrees; its middle and bottom ones are not.
+    const corrections = Array.from({ length: ROW_CORRECTION_COUNT }, (_, index) =>
+      index < (ROW_CORRECTION_COUNT - 1) / 2 ? turn : IDENTITY_MATRIX3,
+    );
+    const uncorrected = open();
+    uncorrected.setViewMode('equirectangular');
+    present(uncorrected, [gradientFrame(), gradientFrame()]);
+    const corrected = open();
+    corrected.setViewMode('equirectangular');
+    corrected.setRowCorrections(corrections);
+    present(corrected, [gradientFrame(), gradientFrame()]);
+    // Up from ahead lies in lens 0's top rows (the body's y is down), down from ahead in its
+    // bottom ones.
+    const up: Vector3 = [0, -Math.SQRT1_2, Math.SQRT1_2];
+    const down: Vector3 = [0, Math.SQRT1_2, Math.SQRT1_2];
+    expectColoursClose(
+      pixelTowards(corrected, up),
+      pixelTowards(uncorrected, transformVector(turn, up)),
+    );
+    expectColoursClose(pixelTowards(corrected, down), pixelTowards(uncorrected, down));
+    expect(pixelTowards(corrected, up)).not.toEqual(pixelTowards(uncorrected, up));
+  });
+
+  it('turns every row with the frame again once the corrections are taken away', () => {
+    const renderer = open();
+    renderer.setViewMode('equirectangular');
+    const turnedAround = stabilizerFor('lock').nextRotation(
+      quaternionFromAxisAngle([0, 1, 0], radians(Math.PI)),
+      seconds(0),
+    );
+    renderer.setRowCorrections(Array.from({ length: ROW_CORRECTION_COUNT }, () => turnedAround));
+    renderer.setRowCorrections(undefined);
+    presentRedAndBlue(renderer);
+    expect(pixelTowards(renderer, [0, 0, 1]).r).toBeGreaterThan(BRIGHT);
   });
 
   it('draws both halves of a packed frame as the two lenses', () => {

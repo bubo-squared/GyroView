@@ -52,6 +52,10 @@ real one; drags then turn the heading alone, and a zoom narrows about the centre
 Tested with emulated sensors and synthetic events in Chromium and WebKit; a real phone is still
 to come (below).
 
+**Rendering for an encoder.** `openRendition` renders a recording frame by frame, every frame
+of a span once and in order, into equirectangular `VideoFrame`s at the pace its consumer takes
+them, in a page or a dedicated worker (ADR 0045).
+
 **Embedding.** `<gyro-view>` as an element (`gyro-view.js`) with attributes, properties,
 events and controls; `embed.html` in an iframe driven by `embed.js` over a validated,
 origin-checked message protocol; a developer page.
@@ -198,17 +202,19 @@ In rough order of value:
    fewer sub-samples, a coarse-to-fine slide, a measurement every few frames.
 4. WebGPU external textures for the frame upload, once WebGPU video import is broad enough.
 5. Multi-segment recordings played as one.
-6. `.insp` photos through the same stitcher.
-7. The decode pipeline in a worker, if main-thread scheduling ever shows in profiles (it did
+6. A reframed rendition: the normal view following a path of views over time, for a flat clip
+   from a 360 recording (ADR 0045).
+7. `.insp` photos through the same stitcher.
+8. The decode pipeline in a worker, if main-thread scheduling ever shows in profiles (it did
    not on an M4 Pro).
-8. For decoders that fall behind, decoding the base temporal layer alone, at half the frame
+9. For decoders that fall behind, decoding the base temporal layer alone, at half the frame
    rate, if a slower picture is wanted over a waiting one: in the X5 5.7K60 recording and the
    X4 Air recording examined, every other frame is a sub-layer non-reference picture (HEVC
    `TSA_N`, temporal id 1) that nothing else refers to, so skipping those halves the decode load.
    In the X5 8K30 recordings and the X6 recording examined, every frame is a reference.
-9. The gyro integrated after the first frame, in slices between frames: the raw lenses, the
-   default view, need no orientation, and the stitched views could wait for it.
-10. A quality that follows the device, if the page's choice may be overruled: `fast` when frames
+10. The gyro integrated after the first frame, in slices between frames: the raw lenses, the
+    default view, need no orientation, and the stitched views could wait for it.
+11. A quality that follows the device, if the page's choice may be overruled: `fast` when frames
     are presented late while decoded ones wait, which only the GPU explains. Both lens frames are uploaded whole at every frame (two
     3840-pixel squares at 8K, about 120 MB of texels), which a phone's memory bandwidth feels
     first.

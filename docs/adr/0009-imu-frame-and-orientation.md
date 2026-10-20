@@ -63,9 +63,8 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
 
 ## Consequences
 
-Cameras without a measured frame (all but the X5, the X6, the X4 Air, the A1, the X3 and the ONE
-R) stabilize
-with an unverified frame until a recording is measured; the player must surface
+Cameras without a measured frame (all but the X5, the X6, the X4 Air, the A1, the X3 and the
+ONE R) stabilize with an unverified frame until a recording is measured; the player must surface
 `ImuFrame.isVerified` as a warning and offer `off`, which draws such a camera's body as recorded: a
 guessed frame reads no mounting (ADR 0038). A new camera is measured by adding its recording to the
 ranking and running `pnpm measure`; every test run keeps a cheaper guard, that lock keeps the
@@ -187,4 +186,4 @@ rotation between frames against the rotation of tracked features on lens 0, carr
 by lens 0's calibrated pose, gives the same arrangement within 1.7 degrees, its rate's magnitude
 correlating with the picture's at 0.998. `ONE_R_IMU_FRAME` is that arrangement, measured: the X5's
 turned a half turn about the lateral axis. It is not the ONE RS's assumed `-y,x,z`; the two names
-stay separate entries.
+stay separate entries. Provisional until a second unit confirms it (ADR 0031).

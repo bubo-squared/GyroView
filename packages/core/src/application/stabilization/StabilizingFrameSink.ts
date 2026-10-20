@@ -1,4 +1,8 @@
 import { rotationIntoBody, type MountedMotion } from '../../domain/motion/mounting/Mounting';
+import {
+  rowCorrectionsAt,
+  type RollingShutter,
+} from '../../domain/motion/rollingShutter/RollingShutter';
 import type { Stabilizer } from '../../domain/motion/stabilization/Stabilizer';
 import { OffStabilization } from '../../domain/motion/stabilization/stabilizers';
 import type { FrameTimes } from '../../domain/motion/timing/FrameTimes';
@@ -10,7 +14,10 @@ export interface StabilizingParts<Handle> {
   /**
    * What draws the picture, turned as each presentation's orientation says.
    */
-  readonly sink: Pick<PictureRenderer<Handle>, 'present' | 'setStabilization'>;
+  readonly sink: Pick<
+    PictureRenderer<Handle>,
+    'present' | 'setStabilization' | 'setRowCorrections'
+  >;
   /**
    * The orientation of the camera's upright frame, which the stabilizer turns the picture by, and
    * the mounting that turns the stabilizer's rotation from that frame into the body the lenses are
@@ -21,11 +28,17 @@ export interface StabilizingParts<Handle> {
    * Gives each frame its mid-exposure time; without it the frame's track timestamp stands in.
    */
   readonly frameTimes: FrameTimes | undefined;
+  /**
+   * The camera's rolling shutter, when its row order is measured: each row is then turned by the
+   * camera's turn between the frame's time and the row's (ADR 0046).
+   */
+  readonly rollingShutter?: RollingShutter | undefined;
 }
 
 /**
  * Use case: before every presentation, looks up the camera's orientation at the frame's
- * exposure and tells the sink how to turn the picture for the current stabilization mode.
+ * exposure and tells the sink how to turn the picture for the current stabilization mode, and,
+ * for a camera whose rolling shutter is known, how to turn each row for the time it was read.
  */
 export class StabilizingFrameSink<Handle = unknown> implements FrameSink<Handle> {
   private stabilizer: Stabilizer = new OffStabilization();
@@ -41,6 +54,10 @@ export class StabilizingFrameSink<Handle = unknown> implements FrameSink<Handle>
     const { orientations, mounting } = this.parts.motion;
     const rotation = this.stabilizer.nextRotation(orientations.orientationAt(time), time);
     this.parts.sink.setStabilization(rotationIntoBody(mounting, rotation));
+    const { rollingShutter } = this.parts;
+    if (rollingShutter) {
+      this.parts.sink.setRowCorrections(rowCorrectionsAt(this.parts.motion, time, rollingShutter));
+    }
     this.parts.sink.present(presentation);
   }
 

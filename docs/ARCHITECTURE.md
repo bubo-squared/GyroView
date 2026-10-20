@@ -203,7 +203,9 @@ Use cases that orchestrate the domain through ports.
   `GainMatchingFrameSink` puts it in front of the sink chain: it measures after each
   presentation while enabled, with a meter the renderer creates over what it draws.
 - `stabilization/StabilizingFrameSink` wraps the renderer and sets the
-  stabilization rotation for each frame's mid-exposure orientation before presenting it.
+  stabilization rotation for each frame's mid-exposure orientation before presenting it, and, for
+  a camera whose rolling shutter is known, each row's correction for the time it was read
+  (ADR 0046).
 
 ### Ports: `core/src/ports`
 

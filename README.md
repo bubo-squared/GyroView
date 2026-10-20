@@ -1,6 +1,6 @@
 # GyroView
 
-Browser player for raw `.insv` recordings of Insta360 cameras (X3, X4, X5, X6, ONE RS) and the
+Browser player for raw `.insv` recordings of Insta360 cameras (X3, X4, X5, X6, ONE R, ONE RS) and the
 Antigravity A1. It plays the camera's dual-fisheye files directly as a 360 video, stitched and
 gyro-stabilized on the GPU, and embeds on any website as a `<gyro-view>` web component or an
 iframe. No Insta360 Studio export step.
@@ -24,9 +24,9 @@ Nothing is uploaded, and there is nothing to install or embed.
 - Ships as the npm package `@bubo-squared/gyroview`, as an element (`gyro-view.js`) and as an
   iframe (`embed.html` plus `embed.js`) with the same API and events.
 
-Verified on Insta360 X5 recordings and one recording each of the X3, X4 Air, X6, ONE RS and
-Antigravity A1; other cameras' format variants are implemented from documentation and covered by
-synthetic fixtures. [The roadmap](docs/ROADMAP.md) says exactly what is verified, what is waiting
+Verified on Insta360 X5 recordings and one recording each of the X3, X4 Air, X6, ONE R, ONE RS
+and Antigravity A1; other cameras' format variants are implemented from documentation and covered
+by synthetic fixtures. [The roadmap](docs/ROADMAP.md) says exactly what is verified, what is waiting
 on real files or devices, and what could come next.
 
 ## Using the player

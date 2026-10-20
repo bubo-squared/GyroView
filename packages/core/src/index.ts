@@ -87,6 +87,13 @@ export {
   type Stabilizer,
 } from './domain/motion/stabilization/Stabilizer';
 export { stabilizerFor } from './domain/motion/stabilization/stabilizers';
+export {
+  ROW_CORRECTION_COUNT,
+  rollingShutterFor,
+  rowCorrectionsAt,
+  type RollingShutter,
+  type RowOrder,
+} from './domain/motion/rollingShutter/RollingShutter';
 export { ExposureRecord, type ExposureEntry } from './domain/motion/exposure/ExposureRecord';
 export { CaptureClock } from './domain/motion/timing/CaptureClock';
 export { FrameTimes } from './domain/motion/timing/FrameTimes';

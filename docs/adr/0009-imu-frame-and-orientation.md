@@ -1,8 +1,8 @@
 # ADR 0009: IMU frame, orientation integration and stabilization modes
 
 Status: accepted (2026-09-20), verified on the X5 office and sailing recordings; the X6, the
-X4 Air, the Antigravity A1 and the X3 on one recording each; the ONE RS's down measured, the
-rest of its frame assumed
+X4 Air, the Antigravity A1, the X3 and the ONE R on one recording each; the ONE RS's down
+measured, the rest of its frame assumed
 
 ## Context
 
@@ -63,7 +63,8 @@ axes lie in the camera body, and Insta360 does not document it. Gyroflow keeps a
 
 ## Consequences
 
-Cameras without a measured frame (all but the X5, the X6, the X4 Air, the A1 and the X3) stabilize
+Cameras without a measured frame (all but the X5, the X6, the X4 Air, the A1, the X3 and the ONE
+R) stabilize
 with an unverified frame until a recording is measured; the player must surface
 `ImuFrame.isVerified` as a warning and offer `off`, which draws such a camera's body as recorded: a
 guessed frame reads no mounting (ADR 0038). A new camera is measured by adding its recording to the
@@ -173,3 +174,17 @@ accelerometer.
   turned; a ONE RS recording that turns will rank it. "Insta360 OneRS" names the 360 lens module
   too, assumed alike. Gyroflow's table does not carry over: through the X5's arrangement, its
   entries for the ONE RS and the X3 put their down on another axis than the one measured.
+
+## On the ONE R (2026-10-18)
+
+One ONE R recording with the 5.7K 360 lens module, a local sample (ADR 0031) written as one file
+per lens: a skydive filmed from a helmet, turning throughout. The info record names the camera
+"Insta360 OneR", which no entry matched, so it stabilized under the aligned guess, and lock drew
+its world moving more than no stabilization did. The stillness ranking at 30, 50, 70, 90 and 110
+seconds puts `x,-z,y` first in Chromium and WebKit alike, 41.0 against 52.1 unstabilized and 46.8
+for the next; the aligned guess comes 21st of 24 at 56.4. Fitted outside the renderer, the gyro's
+rotation between frames against the rotation of tracked features on lens 0, carried into the body
+by lens 0's calibrated pose, gives the same arrangement within 1.7 degrees, its rate's magnitude
+correlating with the picture's at 0.998. `ONE_R_IMU_FRAME` is that arrangement, measured: the X5's
+turned a half turn about the lateral axis. It is not the ONE RS's assumed `-y,x,z`; the two names
+stay separate entries.

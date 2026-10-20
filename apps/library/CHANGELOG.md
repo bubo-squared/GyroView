@@ -23,9 +23,12 @@ Fixed (ADR 0019, amended):
 
 Fixed (ADR 0009):
 
-- An Insta360 ONE R recording is stabilized in its own IMU frame. Its info record names it
-  "Insta360 OneR", which no entry matched, so it was stabilized under the aligned guess and lock
-  turned its picture more than leaving it alone; `ONE_R_IMU_FRAME` is measured (ADR 0009).
+- An Insta360 ONE R recording is stabilized about the right axes: its IMU frame is measured.
+  Its info record names it "Insta360 OneR", which no entry matched, so it was stabilized under
+  the aligned guess and lock turned its picture more than leaving it alone. The `ready` event's
+  `imuFrame` is `{ name: 'ONE R', isVerified: true }` where it was the unverified aligned frame,
+  the load no longer warns (`recording-degraded`) that the IMU frame has not been verified on a
+  recording, and `off` and `follow` stand the picture as the camera was mounted (ADR 0038).
 
 Changed:
 

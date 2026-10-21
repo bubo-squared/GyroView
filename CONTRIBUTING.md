@@ -60,8 +60,9 @@ steadiness is measured from if there is one, and its
 `privateTokens` (the file name, the serial). The tests pick it up from there, and
 `pnpm privacy:check` (part of `pnpm verify`, and of the commit hooks) refuses any of those words
 in tracked files, staged changes or a commit message. Its bytes and its numbers never enter the
-repository: tests of its camera use synthetic fixtures, and ADRs report measurements on it as
-aggregates.
+repository, beyond the constants every unit of its camera model shares, such as the rolling
+shutter's readout time: tests of its camera use synthetic fixtures, and ADRs report measurements
+on it as aggregates.
 
 ## On a phone
 

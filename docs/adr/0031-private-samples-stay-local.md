@@ -1,6 +1,7 @@
 # ADR 0031: A recording shared privately stays local; the tests learn it from a git-ignored catalogue
 
-Status: accepted (2026-09-30); every sample private from 2026-10-03
+Status: accepted (2026-09-30); every sample private from 2026-10-03; camera-model constants
+documented from 2026-10-21
 
 ## Context
 
@@ -59,3 +60,12 @@ aggregates. The X3 and ONE RS recordings measured since entered that way, and th
 name, spelled in `tools/integration` before, left it. The X5 recordings and their trailer
 slices, committed before the decision, stay as they are for now; their names and values are in
 the repository's history either way.
+
+## Camera-model constants (2026-10-21)
+
+A value the info record states that every unit of the camera model shares in the same mode,
+such as the rolling shutter's readout time, may be documented even when it was read from a
+private recording: it says nothing about the unit or the recording. What does still stays out:
+the serial, the unit's calibration, the file names and the catalogue's private words. A
+recording shared on the condition that it goes no further, as the X6's was, keeps every value of
+it out.

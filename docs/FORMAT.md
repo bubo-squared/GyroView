@@ -105,8 +105,9 @@ the clip's first frame, as matched against the original's frames by content on t
 Record 0x80 holds about 16 bytes per frame of the clip and begins with the same start as a
 float64 in milliseconds at the clip's frame rate; it looks like a per-frame map back to the
 original's timeline; not read. The capture clock of a trimmed clip starts at the exposure entry
-of its first frame (`originOfTrimmedClip`), or that many frames at the nominal rate past the
-original's first frame without an exposure record that reaches it.
+of its first frame (`originOfTrimmedClip`); without an exposure record, that many of the track's
+frame durations past the original's first frame. A start the exposure record does not reach is
+taken for a bad trim record and ignored.
 
 ## Info record (id 1, format 1 = protobuf)
 

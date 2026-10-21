@@ -36,10 +36,15 @@ const STAGED: Scope = { grepArgument: '--cached', pathArguments: ['ls-files', '-
 
 /**
  * A recording's private words: those its entry lists, and its file name with and without its
- * extension, so that a name left off the list still counts.
+ * extension, so that a name left off the list still counts; for a trimmed clip, its original's
+ * file name too, whose stem the clip's `-trim` stem does not hold.
  */
 function privateWordsOf(entry: LocalSampleEntry): string[] {
-  return [...entry.privateTokens, entry.recording, path.parse(entry.recording).name];
+  const recordings = [entry.recording, ...(entry.trimmedFrom ? [entry.trimmedFrom.recording] : [])];
+  return [
+    ...entry.privateTokens,
+    ...recordings.flatMap((recording) => [recording, path.parse(recording).name]),
+  ];
 }
 
 /**

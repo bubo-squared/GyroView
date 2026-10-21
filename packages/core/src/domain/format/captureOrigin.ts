@@ -6,6 +6,7 @@ import {
   secondsToMicroseconds,
   seconds,
   type Microseconds,
+  type Seconds,
 } from '../../shared/units/time';
 import type { ExposureRecord } from '../motion/exposure/ExposureRecord';
 
@@ -34,29 +35,42 @@ export function firstFrameCaptureTime(
 }
 
 /**
- * What times the frames of the recording a clip was trimmed from: its exposure record, and its
- * nominal frame rate for where that record does not reach.
+ * What times the frames of the recording a clip was trimmed from: its exposure record, and the
+ * video track's frame duration for when there is no such record.
  */
 export interface OriginalFrameTiming {
   readonly exposure: ExposureRecord | undefined;
-  readonly frameRate: number | undefined;
+  readonly frameDuration: Seconds | undefined;
 }
 
 /**
  * The capture-clock time of the first frame of a clip the Insta360 app trimmed, which keeps the
  * original's first-frame stamp: the exposure of the frame the clip was cut at, counted from the
- * original's first encoded frame, or that many frames at the nominal rate where the exposure
- * record does not reach it. The original's origin where neither can tell.
+ * original's first encoded frame, or that many frame durations later without an exposure record.
+ * The original's origin where neither can tell, including an exposure record the cut lies past:
+ * the app copies the whole record, so only a bad trim record points there.
  */
 export function originOfTrimmedClip(
   originalOrigin: Microseconds,
   trim: TrimRecord,
   timing: OriginalFrameTiming,
 ): Microseconds {
-  const { exposure, frameRate } = timing;
-  const cutAt = exposure ? exposure.indexAtOrAfter(originalOrigin) + trim.startFrame : Infinity;
-  if (exposure && cutAt < exposure.length) return exposure.entryAt(cutAt).captureTime;
-  if (frameRate === undefined || frameRate <= 0) return originalOrigin;
-  const cutAfter = secondsToMicroseconds(seconds(trim.startFrame / frameRate));
+  const { exposure, frameDuration } = timing;
+  if (exposure) return exposureAtCut(exposure, originalOrigin, trim) ?? originalOrigin;
+  if (frameDuration === undefined) return originalOrigin;
+  const cutAfter = secondsToMicroseconds(seconds(trim.startFrame * frameDuration));
   return microseconds(Math.round(originalOrigin + cutAfter));
+}
+
+/**
+ * The capture time of the frame the clip was cut at; undefined when the exposure record ends
+ * before it.
+ */
+function exposureAtCut(
+  exposure: ExposureRecord,
+  originalOrigin: Microseconds,
+  trim: TrimRecord,
+): Microseconds | undefined {
+  const cutAt = exposure.indexAtOrAfter(originalOrigin) + trim.startFrame;
+  return cutAt < exposure.length ? exposure.entryAt(cutAt).captureTime : undefined;
 }

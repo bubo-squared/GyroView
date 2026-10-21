@@ -281,8 +281,9 @@ One package per external technology; none imports another.
 - **`mse-audio`**: `MediaSourceAudioClock`, a hidden audio element fed through Media Source
   Extensions (`ManagedMediaSource` where it exists), so the recording's own sound is the master
   clock; `SourceBufferFeeder` keeps a window buffered and evicts behind the playhead.
-- **`three`**: `ThreeFrameRenderer`, one fullscreen pass per frame with the program of the
-  picture the view mode asks for (`pictureMaterials`); a changed setting is drawn when its
+- **`three`**: `ThreeFrameRenderer`, on a canvas element or an `OffscreenCanvas` (`RenderCanvas`),
+  one fullscreen pass per frame with the program of the picture the view mode asks for
+  (`pictureMaterials`); a changed setting is drawn when its
   `DrawSchedule` says, at once (`DRAW_AT_ONCE`, the tests' and the lab's) or as the composition
   schedules it (ADR 0035). The stitch (`stitch.frag.glsl` with the
   `rectilinearRays` or `equirectangularRays` chunk) turns every pixel of the picture's area into
@@ -323,7 +324,10 @@ The composition root and the user-facing element, in three layers.
   adapters or the sinks: it sets the stabilization mode and gain matching as commands, which
   the pipeline routes to its sinks and shows at once; `createBrowserPlayer` joins the browser's ports and `buildPipeline` into a `Player`,
   for the element and for pages that want the player alone. `inspectRecording` reads a URL or a
-  blob through the same sources into the core's `RecordingInspection`, without playing it. Dependency rules keep the adapters
+  blob through the same sources into the core's `RecordingInspection`, without playing it.
+  `openRendition` opens a recording the same way and `renditionOf` renders it frame by frame for
+  an encoder, with no clock: the decode pipeline's pairs taken in order through the player's
+  sinks into an equirectangular `VideoFrame` each, on an `OffscreenCanvas` (ADR 0045). Dependency rules keep the adapters
   inside the composition and the composition below the player, and the player below the
   element and the controls.
 - **`composition`, the attitude sensor**: `AttitudeSensor` is the player's port for the device's
@@ -394,7 +398,7 @@ The composition root and the user-facing element, in three layers.
 ## The npm package: `apps/library`
 
 - `src/index.ts` is the package's public API: the element, `createBrowserPlayer` and `Player`,
-  `inspectRecording`, `GyroViewError`, the view and stabilization modes, and the types of the
+  `inspectRecording`, `openRendition`, `GyroViewError`, the view and stabilization modes, and the types of the
   metadata, settings, events and inspection. The player types `<gyro-view>` in
   `HTMLElementTagNameMap`, and its events in `GyroViewElementEventMap`. `src/define.ts` registers the
   element when imported (`@bubo-squared/gyroview/define`).
@@ -437,6 +441,15 @@ clock → on each
 animation frame `tick` takes the pair due, the stabilizing sink sets the rotation for its
 mid-exposure orientation, the renderer uploads the frames and draws one stitched pass; every
 half second the gain-match pass measures the seam and adjusts the lens gains.
+
+**Rendering a recording for an encoder.** `openRendition` → `openRecording` → `renditionOf`
+checks the span and size, makes a `ThreeFrameRenderer` on an `OffscreenCanvas` in the
+equirectangular view behind the stabilizing and gain-matching sinks, and starts a
+`DecodePipeline` → each `next()` takes the queue's head pair, presents it, wraps the canvas in a
+`VideoFrame` timed from the span's start, closes the pair and waits for any gain measurement under
+way → the pipeline refills the queue as pairs are taken; the end of the run, of the span, or
+`dispose` stops it, an aborted signal rejects it with its reason and a lost WebGL context fails it,
+and however it ends the renderer and the opened recording are let go (ADR 0045).
 
 **Embedding.** `GyroView.embed` builds the frame URL from the options and this page's origin,
 creates the iframe and an `EmbedHandle` listening only to the frame; the frame's `EmbedHost`

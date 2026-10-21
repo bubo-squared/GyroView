@@ -180,7 +180,10 @@ function wallClock(warning: string): ChosenClock {
   return { clock: new WallClock(() => milliseconds(performance.now())), warnings: [warning] };
 }
 
-function stitchingSetupOf(opened: OpenedRecording): StitchingSetup {
+/**
+ * How the recording's lenses are stitched: what every renderer of it draws with.
+ */
+export function stitchingSetupOf(opened: OpenedRecording): StitchingSetup {
   return buildStitchingSetup({
     calibration: opened.calibration,
     layout: opened.layout,
@@ -188,12 +191,16 @@ function stitchingSetupOf(opened: OpenedRecording): StitchingSetup {
   });
 }
 
-interface SinkChoice {
+export interface SinkChoice {
   readonly sink: FrameSink<VideoFrame>;
   readonly stabilizing: StabilizingFrameSink<VideoFrame> | undefined;
 }
 
-function sinkOver(renderer: ThreeFrameRenderer, opened: OpenedRecording): SinkChoice {
+/**
+ * The sink a renderer of the recording is presented through: the stabilizing sink when there is
+ * a gyro, the renderer itself, drawing the body upright, when there is none.
+ */
+export function sinkOver(renderer: ThreeFrameRenderer, opened: OpenedRecording): SinkChoice {
   if (!opened.motion) {
     // Without a gyro the body is drawn as recorded, facing where an upright camera faces.
     renderer.setStabilization(UPRIGHT_MOUNTING.toBody);

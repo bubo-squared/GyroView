@@ -27,8 +27,9 @@ nothing is dropped or repeated.
 - **The span** (`RenditionSpan`): every frame from `from` up to, not including, `to`, timed in
   whole microseconds from `from`. The pipeline's start gate also hands over the frame on screen
   at `from` when `from` falls between frames; the span leaves it out, so the first frame is the
-  first at or after `from`. An end past the recording's ends with it; a span that would hold no
-  frame is refused as `invalid-argument` before anything is decoded.
+  first at or after `from`. An end past the recording's ends with it; an empty, reversed or
+  out-of-range span is refused as `invalid-argument` before anything is decoded. A span shorter
+  than a frame that falls between two frames yields none.
 - **The picture**: the equirectangular view, `width` pixels across and half as many down, so
   the panorama fills it without bars. Both sides must be even, as encoders of 4:2:0 video take
   them, so the width is a multiple of four (`renditionSizeOf`).
@@ -39,9 +40,16 @@ nothing is dropped or repeated.
   depends on the GPU. A rendition awaits `GainMatchingFrameSink.settled()` after each frame: the
   gains measured on a frame apply from the next one, and two renditions of a recording are the
   same pixels.
-- **It draws on an `OffscreenCanvas` of its own** unless given a canvas, and touches no DOM, so
-  it runs in a dedicated worker beside the encoder. `ThreeFrameRenderer` takes an
+- **It draws on an `OffscreenCanvas` of its own**, and touches no DOM, so it runs in a
+  dedicated worker beside the encoder. A caller's canvas is not taken: the rendition would resize
+  it and hold its WebGL2 context, and the option is easier to add later than to take back. `ThreeFrameRenderer` takes an
   `OffscreenCanvas` as it takes a canvas element (`RenderCanvas`).
+- **A file cannot be mended, so the rendition fails where the player recovers.** An aborted
+  signal rejects `frames()` with its reason rather than ending the loop as if every frame had
+  been taken; a lost WebGL context fails it with `render-unavailable` rather than drawing blank
+  frames; a drawing buffer smaller than the picture, as WebGL may give for 8K on a phone, is
+  refused rather than cropped. However the loop ends, the frames, the renderer and the
+  recording are let go.
 - **Sound is the page's.** The recording's audio track is in the file as recorded, for an
   encoding library to copy; the rendition draws pictures only.
 - **The composition owns the loop** (`renditionOf`), beside `buildPipeline`, whose stitching

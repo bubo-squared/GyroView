@@ -448,7 +448,8 @@ equirectangular view behind the stabilizing and gain-matching sinks, and starts 
 `DecodePipeline` → each `next()` takes the queue's head pair, presents it, wraps the canvas in a
 `VideoFrame` timed from the span's start, closes the pair and waits for any gain measurement under
 way → the pipeline refills the queue as pairs are taken; the end of the run, of the span, or
-`dispose` stops it (ADR 0045).
+`dispose` stops it, an aborted signal rejects it with its reason and a lost WebGL context fails it,
+and however it ends the renderer and the opened recording are let go (ADR 0045).
 
 **Embedding.** `GyroView.embed` builds the frame URL from the options and this page's origin,
 creates the iframe and an `EmbedHandle` listening only to the frame; the frame's `EmbedHost`

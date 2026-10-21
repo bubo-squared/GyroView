@@ -37,7 +37,8 @@ export class RenditionSpan {
 
   /**
    * The span asked for within a recording of `duration`. An end past the recording's ends with
-   * it; a span that would hold no frame is refused as `invalid-argument`.
+   * it; an empty or reversed span, or one outside the recording, is refused as
+   * `invalid-argument`. A span shorter than a frame that falls between two frames holds none.
    */
   public static of(request: SpanRequest, duration: Seconds): RenditionSpan {
     const from = request.from ?? seconds(0);

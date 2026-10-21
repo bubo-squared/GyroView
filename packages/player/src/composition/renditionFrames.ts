@@ -1,4 +1,4 @@
-import { ThreeFrameRenderer, type RenderCanvas } from '@gyroview/adapter-three';
+import { ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   DecodePipeline,
   DEFAULT_PICTURE_QUALITY,
@@ -6,6 +6,7 @@ import {
   Deferred,
   ensureInvariant,
   FramePairQueue,
+  GyroViewError,
   GainMatchingFrameSink,
   messageOf,
   referenceLensOf,
@@ -28,6 +29,7 @@ import {
   sinkOver,
   stitchingSetupOf,
 } from './buildPipeline';
+import { Disposables } from './Disposables';
 import type { OpenedRecording } from './OpenedRecording';
 
 /**
@@ -44,17 +46,13 @@ export interface RenditionRequest extends SpanRequest {
 export interface RenditionParts {
   readonly opened: OpenedRecording;
   readonly decoderPort: VideoDecoderPort<VideoFrame>;
-  /**
-   * Where the picture is drawn, sized by the rendition; an `OffscreenCanvas` of its own if none.
-   */
-  readonly canvas?: RenderCanvas;
 }
 
 /**
  * A recording rendered frame by frame for an encoder (ADR 0045): every frame of the span exactly
  * once, in order, as fast as the consumer takes them and no faster.
  */
-export interface Rendition {
+export interface RenditionFrames {
   readonly span: RenditionSpan;
   readonly size: ViewportSize;
   /**
@@ -80,35 +78,47 @@ interface RunOutcome {
  * Renders the opened recording frame by frame. The span and size are checked before anything is
  * built, so a request that holds no picture decodes nothing.
  */
-export function renditionOf(parts: RenditionParts, request: RenditionRequest): Rendition {
+export function renditionOf(parts: RenditionParts, request: RenditionRequest): RenditionFrames {
   const span = RenditionSpan.of(request, seconds(parts.opened.duration));
   const size = renditionSizeOf(request.width);
   return new RenditionRun(parts, request, { span, size });
 }
 
-class RenditionRun implements Rendition {
+class RenditionRun implements RenditionFrames {
   public readonly span: RenditionSpan;
   public readonly size: ViewportSize;
-  private readonly canvas: RenderCanvas;
+  private readonly canvas: OffscreenCanvas;
+  private readonly disposables = new Disposables();
   private readonly renderer: ThreeFrameRenderer;
   private readonly gainMatching: GainMatchingFrameSink<VideoFrame>;
   private readonly queue: FramePairQueue<VideoFrame>;
   private readonly pipeline: DecodePipeline<VideoFrame>;
   private wake = new Deferred<void>();
   private outcome: RunOutcome | undefined;
+  /**
+   * Why the rendering cannot go on although decoding could: the WebGL context was lost, and the
+   * frames drawn from then on would be blank.
+   */
+  private renderFailure: Error | undefined;
   private hasStarted = false;
   private isDisposed = false;
 
   public constructor(
     private readonly parts: RenditionParts,
     request: RenditionRequest,
-    shape: Pick<Rendition, 'span' | 'size'>,
+    shape: Pick<RenditionFrames, 'span' | 'size'>,
   ) {
     this.span = shape.span;
     this.size = shape.size;
-    this.canvas = parts.canvas ?? new OffscreenCanvas(this.size.width, this.size.height);
-    this.renderer = this.equirectangularRenderer(request.quality ?? DEFAULT_PICTURE_QUALITY);
-    this.gainMatching = this.sinksOver(request);
+    this.canvas = new OffscreenCanvas(this.size.width, this.size.height);
+    try {
+      this.renderer = this.equirectangularRenderer(request.quality ?? DEFAULT_PICTURE_QUALITY);
+      this.gainMatching = this.sinksOver(request);
+    } catch (error) {
+      this.disposables.disposeAll();
+      throw error;
+    }
+    this.listenForContextLoss();
     this.queue = new FramePairQueue(PAIR_QUEUE_CAPACITY, () => {
       this.wake.resolve();
     });
@@ -141,16 +151,17 @@ class RenditionRun implements Rendition {
     this.isDisposed = true;
     this.pipeline.abort();
     this.queue.close();
-    this.gainMatching.dispose();
-    this.renderer.dispose();
+    this.disposables.disposeAll();
     this.wake.resolve();
   }
 
   private equirectangularRenderer(quality: PictureQuality): ThreeFrameRenderer {
-    this.canvas.width = this.size.width;
-    this.canvas.height = this.size.height;
     const renderer = ThreeFrameRenderer.create(this.canvas, stitchingSetupOf(this.parts.opened));
+    this.disposables.add(() => {
+      renderer.dispose();
+    });
     renderer.resize(this.size);
+    this.ensureDrawingBufferHolds();
     renderer.setViewMode('equirectangular');
     renderer.setQuality(quality);
     return renderer;
@@ -171,8 +182,45 @@ class RenditionRun implements Rendition {
       this.renderer,
       referenceLensOf(lenses, mounting),
     );
+    this.disposables.add(() => {
+      matching.dispose();
+    });
     if (request.gainMatching ?? true) matching.enable();
     return matching;
+  }
+
+  /**
+   * WebGL may give a drawing buffer smaller than asked, as an 8K one on a phone, and the picture
+   * would then be cropped without a word; such a size is refused instead.
+   */
+  private ensureDrawingBufferHolds(): void {
+    const gl = this.canvas.getContext('webgl2');
+    ensureInvariant(gl !== null, 'the renderer holds the WebGL2 context of the canvas');
+    const { drawingBufferWidth: width, drawingBufferHeight: height } = gl;
+    if (width >= this.size.width && height >= this.size.height) return;
+    throw new GyroViewError(
+      'render-unavailable',
+      `this GPU draws at most ${width} x ${height} pixels; the rendition is ${this.size.width} x ${this.size.height}`,
+    );
+  }
+
+  /**
+   * A player redraws after a GPU reset, but a written file cannot be mended: a lost context fails
+   * the rendition.
+   */
+  private listenForContextLoss(): void {
+    const onLost = (): void => {
+      this.renderFailure ??= new GyroViewError(
+        'render-unavailable',
+        'the WebGL context was lost while rendering',
+      );
+      this.pipeline.abort();
+      this.wake.resolve();
+    };
+    this.canvas.addEventListener('webglcontextlost', onLost);
+    this.disposables.add(() => {
+      this.canvas.removeEventListener('webglcontextlost', onLost);
+    });
   }
 
   /**
@@ -180,14 +228,20 @@ class RenditionRun implements Rendition {
    * from the next frame on whatever the GPU's pace.
    */
   private async render(pair: FramePair<VideoFrame>): Promise<VideoFrame> {
-    this.gainMatching.present({ pair, mediaTime: pair.timestamp });
-    const picture = new VideoFrame(this.canvas, {
-      timestamp: this.span.timestampOf(pair.timestamp),
-      ...durationOf(pair),
-    });
-    closePair(pair);
+    let picture: VideoFrame;
+    try {
+      this.gainMatching.present({ pair, mediaTime: pair.timestamp });
+      picture = new VideoFrame(this.canvas, {
+        timestamp: this.span.timestampOf(pair.timestamp),
+        ...durationOf(pair),
+      });
+    } finally {
+      closePair(pair);
+    }
     await this.gainMatching.settled();
-    return picture;
+    if (this.renderFailure === undefined) return picture;
+    picture.close();
+    throw this.renderFailure;
   }
 
   /**
@@ -196,6 +250,7 @@ class RenditionRun implements Rendition {
    */
   private async nextPair(): Promise<FramePair<VideoFrame> | undefined> {
     for (;;) {
+      if (this.renderFailure !== undefined) throw this.renderFailure;
       const head = this.queue.peekTimestamp();
       if (head !== undefined) return this.queue.takePairAt(head);
       if (this.isDisposed) return undefined;

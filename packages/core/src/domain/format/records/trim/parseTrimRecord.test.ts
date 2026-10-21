@@ -12,6 +12,10 @@ describe('parseTrimRecord', () => {
     expect(parseTrimRecord(trimRecord(0))).toEqual({ startFrame: 0 });
   });
 
+  it('reads a record cut short just after the start frame', () => {
+    expect(parseTrimRecord(trimRecord(120).subarray(0, 12))).toEqual({ startFrame: 120 });
+  });
+
   it('reads no trim from a record of another kind or one cut short', () => {
     expect(parseTrimRecord(trimRecord(120, 'XXXX'))).toBeUndefined();
     expect(parseTrimRecord(trimRecord(120).subarray(0, 11))).toBeUndefined();

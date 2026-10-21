@@ -62,7 +62,7 @@ for finding the other lens file and ordering inputs; everything they suggest is 
 file's contents (`RecordingFileName`, ADR 0004): of a pair where one file alone ends with the
 trailer, as an older camera writes it to `_00_`, that file is lens 0 whatever it is called.
 A clip trimmed in the Insta360 app keeps the name with a suffix after the sequence number,
-`VID_20260814_132640_00_013-trim.insv` on the ONE R, on both files of a pair.
+`VID_<stamp>_00_<seq>-trim.insv`, on both files of a pair.
 
 ## Trailer
 

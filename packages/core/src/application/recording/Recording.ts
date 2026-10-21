@@ -3,6 +3,7 @@ import type { RecordingInfo } from '../../domain/format/info/RecordingInfo';
 import type { ParsedGyroRecord } from '../../domain/format/records/gyro/parseGyroRecord';
 import type { ExposureRecord } from '../../domain/motion/exposure/ExposureRecord';
 import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
+import type { Seconds } from '../../shared/units/time';
 
 /**
  * Everything known about one `.insv` file after reading its metadata, plus on-demand access to
@@ -18,9 +19,11 @@ export interface Recording {
   readonly listsExposureRecord: boolean;
   /**
    * The camera's capture clock related to video time; undefined when the info record does not
-   * say when the first frame was captured, the one field everything time-related hangs on.
+   * say when the first frame was captured, the one field everything time-related hangs on. The
+   * video track's `frameDuration` times a clip trimmed in the Insta360 app that has no exposure
+   * record; without it, such a clip is timed from the original's first frame.
    */
-  captureClock(): Promise<CaptureClock | undefined>;
+  captureClock(frameDuration?: Seconds): Promise<CaptureClock | undefined>;
   /**
    * Undefined when the camera wrote no gyro record.
    */

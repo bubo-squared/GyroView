@@ -56,8 +56,9 @@ stitch or the colour, and compared after it, they show what the change moved.
 A recording someone shared privately stays local (ADR 0031). Describe it in
 `samples/catalogue.json`, git-ignored with the samples: its folder and file, frame rate, the
 moments the tests render and rank at, its Studio export's frames and the moment its seam
-steadiness is measured from if there is one, and its
-`privateTokens` (the file name, the serial). The tests pick it up from there, and
+steadiness is measured from if there is one, for a clip trimmed in the Insta360 app the
+original it was cut from and the frame it starts at (`trimmedFrom`), and its `privateTokens` (the
+file name, the serial). The file names of the recording and its original are guarded as well. The tests pick it up from there, and
 `pnpm privacy:check` (part of `pnpm verify`, and of the commit hooks) refuses any of those words
 in tracked files, staged changes or a commit message. Its bytes and its numbers never enter the
 repository: tests of its camera use synthetic fixtures, and ADRs report measurements on it as

@@ -1,12 +1,13 @@
 import { frameTimesOf, type FrameTimeline } from './frameTimesOf';
 import { motionOf, type MotionSetup } from './motionOf';
 import type { Recording } from './Recording';
+import type { KeyframeTime } from '../../ports/VideoTrack';
 import type { VideoTrackReader } from '../../ports/VideoTrackReader';
 import type { CaptureClock } from '../../domain/motion/timing/CaptureClock';
 import type { FrameTimeSourceName } from '../../domain/motion/timing/FrameTimeSource';
 import type { FrameTimes } from '../../domain/motion/timing/FrameTimes';
 import { hasErrorCode, messageOf } from '../../shared/errors/GyroViewError';
-import { seconds } from '../../shared/units/time';
+import { seconds, type Seconds } from '../../shared/units/time';
 
 /**
  * Everything time-related a player needs from a recording, each part optional: the recording
@@ -47,10 +48,11 @@ async function timeByTheClock(
   recording: Recording,
   frameSource: VideoTrackReader | undefined,
 ): Promise<RecordingTiming> {
-  const recordingClock = await recording.captureClock();
+  const { firstKey, frameDuration } = await firstKeyOf(frameSource);
+  const recordingClock = await recording.captureClock(frameDuration);
   if (!recordingClock) return withoutTiming([NO_CLOCK_WARNING]);
   if (!frameSource) return withoutTiming([NO_FRAME_SOURCE_WARNING]);
-  const timeline = await timelineOf(recordingClock, frameSource);
+  const timeline = timelineOf(recordingClock, firstKey, frameDuration);
   const [frames, motion] = await Promise.all([
     frameTimesOf(recording, frameSource, timeline),
     motionOf(recording, timeline.clock),
@@ -64,19 +66,30 @@ async function timeByTheClock(
 }
 
 /**
- * Where the frame source's frames lie in time: the first shows where the first key frame does
- * (a track without one does not decode), and the rest follow at that frame's duration, the
- * cameras recording at a constant rate.
+ * The frame source's first key frame, and its duration where it has one: what every other frame
+ * follows at, the cameras recording at a constant rate.
  */
-async function timelineOf(
-  recordingClock: CaptureClock,
-  frameSource: VideoTrackReader,
-): Promise<FrameTimeline> {
-  const firstKey = await frameSource.firstKeyframe();
+async function firstKeyOf(frameSource: VideoTrackReader | undefined): Promise<{
+  readonly firstKey: KeyframeTime | undefined;
+  readonly frameDuration: Seconds | undefined;
+}> {
+  const firstKey = await frameSource?.firstKeyframe();
   const hasDuration = firstKey !== undefined && firstKey.duration > 0;
+  return { firstKey, frameDuration: hasDuration ? firstKey.duration : undefined };
+}
+
+/**
+ * Where the frame source's frames lie in time: the first shows where the first key frame does
+ * (a track without one does not decode), and the rest follow at that frame's duration.
+ */
+function timelineOf(
+  recordingClock: CaptureClock,
+  firstKey: KeyframeTime | undefined,
+  frameDuration: Seconds | undefined,
+): FrameTimeline {
   return {
     clock: recordingClock.withFirstFrameAt(firstKey?.timestamp ?? seconds(0)),
-    frameDuration: hasDuration ? firstKey.duration : undefined,
+    frameDuration,
   };
 }
 

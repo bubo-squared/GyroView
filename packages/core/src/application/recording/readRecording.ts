@@ -5,6 +5,7 @@ import { readInfoRecord } from '../../domain/format/info/readInfoRecord';
 import { TrailerRecords } from '../../domain/format/records/TrailerRecords';
 import { readTrailer } from '../../domain/format/trailer/readTrailer';
 import { CaptureClock } from '../../domain/motion/timing/CaptureClock';
+import type { Seconds } from '../../shared/units/time';
 
 /**
  * Use case: open a source and read everything needed to describe the recording, with the
@@ -21,8 +22,8 @@ export async function readRecording(source: RandomAccessSource): Promise<Recordi
     info,
     calibration: selectCalibration(info.calibration),
     listsExposureRecord: records.listsExposure,
-    captureClock: async (): Promise<CaptureClock | undefined> => {
-      const origin = await records.firstFrameCaptureTime();
+    captureClock: async (frameDuration?: Seconds): Promise<CaptureClock | undefined> => {
+      const origin = await records.firstFrameCaptureTime(frameDuration);
       return origin === undefined ? undefined : new CaptureClock(origin, info.gyroOffset);
     },
     readGyroRecord: () => records.readGyro(),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { microseconds, type Microseconds } from '../../shared/units/time';
+import { microseconds, seconds, type Microseconds } from '../../shared/units/time';
 import { readRecording } from './readRecording';
 import type { Recording } from './Recording';
 import { InfoRecordFormat, RecordType } from '../../domain/format/constants';
@@ -24,6 +24,9 @@ import {
   RAW_FULL_SCALE,
   RAW_ZERO_POINT,
 } from '../../../test/support/officeGyroSample';
+
+// 29.97 fps, whose info record says 30.
+const NTSC_FRAME_DURATION = seconds(1001 / 30_000);
 
 async function officeClock(parts: OfficeRecordingParts): Promise<CaptureClock | undefined> {
   const recording = await officeRecording(parts);
@@ -85,14 +88,29 @@ describe('readRecording on synthetic X5 files', () => {
     expect(clock?.gyroOffset).toBe(1.6);
   });
 
-  it('starts the clock of a trimmed clip without an exposure record that many frames later at the nominal rate', async () => {
-    const original = await officeRecording({ hasExposure: false });
-    const frameRate = original.info.frameRate ?? 0;
-    expect(frameRate).toBeGreaterThan(0);
+  it('starts the clock of a trimmed clip without an exposure record that many frame durations later', async () => {
+    const original = await firstFrameOf(await officeRecording({ hasExposure: false }));
+    const trimmed = await officeRecording({ hasExposure: false, trim: trimRecord(3) });
+    const clock = await trimmed.captureClock(NTSC_FRAME_DURATION);
+    expect(clock?.firstFrameCaptureTime).toBe(original + Math.round(3 * NTSC_FRAME_DURATION * 1e6));
+  });
+
+  it('starts the clock of a trimmed clip without an exposure record or a frame duration where the original starts', async () => {
+    const original = await firstFrameOf(await officeRecording({ hasExposure: false }));
     const clock = await officeClock({ hasExposure: false, trim: trimRecord(3) });
-    expect(clock?.firstFrameCaptureTime).toBe(
-      (await firstFrameOf(original)) + Math.round((3 / frameRate) * 1e6),
+    expect(clock?.firstFrameCaptureTime).toBe(original);
+  });
+
+  it('starts the clock of a clip cut past the end of its exposure record where the original starts', async () => {
+    const original = await officeRecording();
+    const exposure = await original.readExposureRecord();
+    const firstFrame = await firstFrameOf(original);
+    expect((exposure?.indexAtOrAfter(firstFrame) ?? 0) + 10).toBeGreaterThanOrEqual(
+      exposure?.length ?? 0,
     );
+    const trimmed = await officeRecording({ trim: trimRecord(10) });
+    const clock = await trimmed.captureClock(NTSC_FRAME_DURATION);
+    expect(clock?.firstFrameCaptureTime).toBe(firstFrame);
   });
 
   it('starts the clock of a clip trimmed at its first frame, or with a damaged trim record, where the original starts', async () => {

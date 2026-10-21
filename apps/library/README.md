@@ -123,14 +123,21 @@ const rendition = await openRendition(
 );
 const output = new Output({ format: new Mp4OutputFormat(), target: new BufferTarget() });
 const video = new VideoSampleSource({ codec: 'avc', quality: new Quality('high') });
-output.addVideoTrack(video, { frameRate: 30 });
+// No frameRate: the frames' own timestamps stand, whatever the recording's rate.
+output.addVideoTrack(video);
 await output.start();
-for await (const frame of rendition.frames()) {
-  await video.add(new VideoSample(frame));
-  frame.close();
+try {
+  for await (const frame of rendition.frames()) {
+    try {
+      await video.add(new VideoSample(frame));
+    } finally {
+      frame.close();
+    }
+  }
+  await output.finalize();
+} finally {
+  rendition.dispose();
 }
-await output.finalize();
-rendition.dispose();
 ```
 
 `width` is a multiple of four, so both sides are even as encoders take them; the other settings

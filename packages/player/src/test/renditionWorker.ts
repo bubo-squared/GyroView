@@ -1,8 +1,17 @@
+import { GyroViewError, messageOf } from '@gyroview/core';
+
 import { openRendition } from '../rendition';
 
 /**
+ * The error's code, which the test skips on where the browser lacks what the rendition needs.
+ */
+function codeOf(error: unknown): string | undefined {
+  return error instanceof GyroViewError ? error.code : undefined;
+}
+
+/**
  * A dedicated worker that renders the recording it is sent and answers with the count and size
- * of the frames, or the error's message: what a page encoding off the main thread does.
+ * of the frames, or the error's message and code: what a page encoding off the main thread does.
  */
 globalThis.addEventListener('message', (event: MessageEvent<{ url: string; width: number }>) => {
   void (async (): Promise<void> => {
@@ -22,7 +31,7 @@ globalThis.addEventListener('message', (event: MessageEvent<{ url: string; width
       }
       globalThis.postMessage({ count, size });
     } catch (error) {
-      globalThis.postMessage({ error: error instanceof Error ? error.message : String(error) });
+      globalThis.postMessage({ error: messageOf(error), code: codeOf(error) });
     }
   })();
 });

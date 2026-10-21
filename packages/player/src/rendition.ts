@@ -3,7 +3,7 @@ import { seconds, type PictureQuality, type StabilizationMode } from '@gyroview/
 import { browserPorts, type BrowserPortsOptions } from './composition/browserPorts';
 import { openRecording } from './composition/openRecording';
 import type { OpenedRecording } from './composition/OpenedRecording';
-import { renditionOf, type Rendition as FrameRendition } from './composition/renditionFrames';
+import { renditionOf, type RenditionFrames } from './composition/renditionFrames';
 import type { PlayerMetadata } from './PlayerMetadata';
 import type { PlayerSource } from './PlayerSource';
 
@@ -29,11 +29,8 @@ export interface RenditionOptions extends Pick<BrowserPortsOptions, 'http'> {
   readonly gainMatching?: boolean;
   readonly quality?: PictureQuality;
   /**
-   * Where the picture is drawn; an `OffscreenCanvas` of the rendition's own if none.
-   */
-  readonly canvas?: HTMLCanvasElement | OffscreenCanvas;
-  /**
-   * Stops the opening, or the rendering, as `dispose` does.
+   * Stops the opening, or the rendering: `frames()` then rejects with the signal's reason, so an
+   * encoder does not take a cut-short rendition for a finished one.
    */
   readonly signal?: AbortSignal;
 }
@@ -47,9 +44,16 @@ export interface RenditionOptions extends Pick<BrowserPortsOptions, 'http'> {
  * @example
  * ```ts
  * const rendition = await openRendition({ main: { blob: file, name: file.name } }, { width: 3840 });
- * for await (const frame of rendition.frames()) {
- *   await videoSource.add(new VideoSample(frame)); // a Mediabunny VideoSampleSource
- *   frame.close();
+ * try {
+ *   for await (const frame of rendition.frames()) {
+ *     try {
+ *       await videoSource.add(new VideoSample(frame)); // a Mediabunny VideoSampleSource
+ *     } finally {
+ *       frame.close();
+ *     }
+ *   }
+ * } finally {
+ *   rendition.dispose();
  * }
  * ```
  */
@@ -62,10 +66,17 @@ export interface Rendition {
    */
   readonly duration: number;
   /**
-   * One `VideoFrame` per frame of the span, its timestamp in microseconds from the span's start,
-   * which the consumer closes. Iterated once; leaving the loop early stops the rendering.
+   * What the recording lacks, or has damaged, that the rendition works around, as the player's
+   * `recording-degraded` warnings say: a damaged gyro record renders unstabilized.
    */
-  frames(): AsyncGenerator<VideoFrame, void, undefined>;
+  readonly warnings: readonly string[];
+  /**
+   * One `VideoFrame` per frame of the span, its timestamp in microseconds from the span's start,
+   * which the consumer closes. Iterated once; ending the loop, leaving it early or a failure
+   * stops the rendering and lets go of the recording. Rejects when the signal is aborted, and
+   * with `render-unavailable` when the WebGL context is lost.
+   */
+  frames(): AsyncIterable<VideoFrame>;
   /**
    * Stops the rendering and lets go of the recording.
    */
@@ -85,10 +96,8 @@ export async function openRendition(
   const ports = browserPorts({ ...(options.http && { http: options.http }) });
   const opened = await openRecording(source, ports, signal);
   try {
-    const frames = renditionOf(
-      { opened, decoderPort: ports.decoderPort, ...(options.canvas && { canvas: options.canvas }) },
-      requestOf(options),
-    );
+    signal.throwIfAborted();
+    const frames = renditionOf({ opened, decoderPort: ports.decoderPort }, requestOf(options));
     return renditionOver(opened, frames, signal);
   } catch (error) {
     opened.dispose();
@@ -110,10 +119,11 @@ function requestOf(options: RenditionOptions): Parameters<typeof renditionOf>[1]
 
 function renditionOver(
   opened: OpenedRecording,
-  frames: FrameRendition,
+  frames: RenditionFrames,
   signal: AbortSignal,
 ): Rendition {
   const dispose = (): void => {
+    signal.removeEventListener('abort', dispose);
     frames.dispose();
     opened.dispose();
   };
@@ -122,7 +132,25 @@ function renditionOver(
     metadata: opened.metadata,
     ...frames.size,
     duration: frames.span.duration,
-    frames: () => frames.frames(),
+    warnings: opened.warnings,
+    frames: () => framesUntilAborted(frames, signal, dispose),
     dispose,
   };
+}
+
+/**
+ * The rendition's frames, ended by a rejection when the signal stops them part way, and letting go
+ * of everything however the loop ends.
+ */
+async function* framesUntilAborted(
+  frames: RenditionFrames,
+  signal: AbortSignal,
+  dispose: () => void,
+): AsyncGenerator<VideoFrame, void, undefined> {
+  try {
+    yield* frames.frames();
+    signal.throwIfAborted();
+  } finally {
+    dispose();
+  }
 }

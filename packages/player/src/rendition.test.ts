@@ -18,6 +18,10 @@ async function countFrames(frames: AsyncIterable<VideoFrame>): Promise<number> {
   return count;
 }
 
+function isRefusal(answer: unknown, code: string): boolean {
+  return typeof answer === 'object' && answer !== null && 'code' in answer && answer.code === code;
+}
+
 describe('openRendition', () => {
   it('renders a recording named by URL, and tells what it is', async () => {
     const rendition = await openRendition({ main: { url: X5_RECORDING_URL } }, { width: WIDTH });
@@ -43,20 +47,21 @@ describe('openRendition', () => {
     ).rejects.toMatchObject({ code: 'invalid-argument' });
   });
 
-  it('stops when its signal is aborted', async () => {
+  it('rejects with the reason its signal is aborted for, rather than ending as if finished', async () => {
     const controller = new AbortController();
     const rendition = await openRendition(
       { main: { url: X5_RECORDING_URL } },
       { width: WIDTH, signal: controller.signal },
     );
-    const frames = rendition.frames();
+    const frames = rendition.frames()[Symbol.asyncIterator]();
     const first = await frames.next();
     if (!first.done) first.value.close();
-    controller.abort();
-    expect(await frames.next()).toEqual({ done: true, value: undefined });
+    const reason = new Error('the encoder was cancelled');
+    controller.abort(reason);
+    await expect(frames.next()).rejects.toBe(reason);
   });
 
-  it('renders in a dedicated worker, drawing on an OffscreenCanvas of its own', async () => {
+  it('renders in a dedicated worker, drawing on an OffscreenCanvas of its own', async (context) => {
     const worker = new Worker(new URL('test/renditionWorker.ts', import.meta.url), {
       type: 'module',
     });
@@ -67,6 +72,8 @@ describe('openRendition', () => {
         });
         worker.postMessage({ url: new URL(X5_RECORDING_URL, location.href).href, width: WIDTH });
       });
+      // WebKit on Linux gives a worker's OffscreenCanvas no WebGL2 context.
+      if (isRefusal(answer, 'render-unavailable')) context.skip('no WebGL2 in a worker here');
       expect(answer).toEqual({ count: FRAME_COUNT, size: { width: 64, height: 32 } });
     } finally {
       worker.terminate();

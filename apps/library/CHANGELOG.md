@@ -3,7 +3,7 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
-## Unreleased
+## 0.9.0 (2026-11-04)
 
 Added (ADR 0045, a recording is rendered frame by frame at the pace its consumer takes the frames):
 

@@ -18,9 +18,7 @@ globalThis.addEventListener('message', (event: MessageEvent<{ url: string; width
     try {
       const rendition = await openRendition(
         { main: { url: event.data.url } },
-        {
-          width: event.data.width,
-        },
+        { view: { mode: 'equirectangular', width: event.data.width } },
       );
       let count = 0;
       let size = { width: 0, height: 0 };

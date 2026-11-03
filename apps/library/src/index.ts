@@ -36,6 +36,7 @@ export type {
   PlayerWarning,
   Rendition,
   RenditionOptions,
+  RenditionView,
   RecordingFetch,
   SoundLevel,
   UrlInput,

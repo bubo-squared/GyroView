@@ -25,6 +25,11 @@ interface ActiveMatching {
 const UNIT_GAIN: Vector3 = [1, 1, 1];
 
 /**
+ * The player matches the lenses' exposure unless told not to (ADR 0012).
+ */
+export const IS_GAIN_MATCHED_BY_DEFAULT = true;
+
+/**
  * Use case: while enabled, keeps the lenses' exposure matched along the seam of the pictures the
  * sink draws, measuring after presentations. Off until enabled; disabled, the lenses show their
  * exposure as recorded (ADR 0012).

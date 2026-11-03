@@ -42,7 +42,12 @@ describe.skipIf(LOCAL_SAMPLES.length === 0)('rendering the local recordings fram
         const from = local.renderMoment;
         const rendition = await openRendition(
           { main: { url: local.url } },
-          { width: WIDTH, from, to: from + SPAN_SECONDS, stabilization: 'horizon' },
+          {
+            view: { mode: 'equirectangular', width: WIDTH },
+            from,
+            to: from + SPAN_SECONDS,
+            stabilization: 'horizon',
+          },
         );
         const timestamps: number[] = [];
         const started = performance.now();

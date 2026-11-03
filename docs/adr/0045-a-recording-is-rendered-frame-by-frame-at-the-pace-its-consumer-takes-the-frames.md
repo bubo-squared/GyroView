@@ -30,9 +30,12 @@ nothing is dropped or repeated.
   first at or after `from`. An end past the recording's ends with it; an empty, reversed or
   out-of-range span is refused as `invalid-argument` before anything is decoded. A span shorter
   than a frame that falls between two frames yields none.
-- **The picture**: the equirectangular view, `width` pixels across and half as many down, so
-  the panorama fills it without bars. Both sides must be even, as encoders of 4:2:0 video take
-  them, so the width is a multiple of four (`renditionSizeOf`).
+- **The picture** is named as the player's views are: `view: { mode: 'equirectangular', width }`,
+  `width` pixels across and half as many down, so the panorama fills it without bars. Both sides
+  must be even, as encoders of 4:2:0 video take them, so the width is a multiple of four
+  (`renditionSizeOf`). A view object rather than a top-level `width` leaves room for a flat view
+  with options of its own, without moving the width and breaking callers (issue #41); until
+  then, another mode is refused as `invalid-argument` before anything is read.
 - **The settings** are the player's defaults unless given: its stabilization mode, gain
   matching on, its quality.
 - **Gain matching waits between frames.** It measures the seam every half second of media time
@@ -42,14 +45,17 @@ nothing is dropped or repeated.
   same pixels.
 - **It draws on an `OffscreenCanvas` of its own**, and touches no DOM, so it runs in a
   dedicated worker beside the encoder. A caller's canvas is not taken: the rendition would resize
-  it and hold its WebGL2 context, and the option is easier to add later than to take back. `ThreeFrameRenderer` takes an
-  `OffscreenCanvas` as it takes a canvas element (`RenderCanvas`).
+  it and hold its WebGL2 context, and the option is easier to add later than to take back.
+  `ThreeFrameRenderer` takes an `OffscreenCanvas` as it takes a canvas element (`RenderCanvas`).
 - **A file cannot be mended, so the rendition fails where the player recovers.** An aborted
-  signal rejects `frames()` with its reason rather than ending the loop as if every frame had
-  been taken; a lost WebGL context fails it with `render-unavailable` rather than drawing blank
-  frames; a drawing buffer smaller than the picture, as WebGL may give for 8K on a phone, is
-  refused rather than cropped. However the loop ends, the frames, the renderer and the
-  recording are let go.
+  signal rejects `frames()` with its reason, and a dispose part way with an `AbortError`, rather
+  than ending the loop as if every frame had been taken. A lost WebGL context fails it with
+  `render-unavailable` rather than drawing blank frames; the context is asked after each frame,
+  since its `webglcontextlost` event comes a task after the loss. A drawing buffer smaller than
+  the picture, as WebGL may give for 8K on a phone, is refused rather than cropped. However the
+  loop ends, the frames, the renderer, the recording and the WebGL context are let go: the
+  context at once, so that a page rendering one clip after another does not pile them up until
+  the browser takes the oldest away.
 - **Sound is the page's.** The recording's audio track is in the file as recorded, for an
   encoding library to copy; the rendition draws pictures only.
 - **The composition owns the loop** (`renditionOf`), beside `buildPipeline`, whose stitching
@@ -75,4 +81,5 @@ M-series Mac, two seconds of a ONE R 5.7K recording rendered at 3840 x 1920 came
 a second in Chrome and 27 in Safari (2026-10-18), about real time for 29.97 fps; the encoder's
 own time comes on top. The frames are those of the player's picture, so whatever the player gets
 wrong about a camera, the rendition gets wrong too. Reframing, a rectilinear view following a path
-of views over time, is the same loop with the normal view and a view per frame, left for later.
+of views over time, is the same loop with the normal view and a view per frame, left for later
+as a `normal` mode of `view`.

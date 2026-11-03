@@ -170,6 +170,7 @@ export {
 export type { PixelPoint } from './domain/optics/PixelPoint';
 export { MEI_TERM_CAPACITY, type MeiDistortion } from './domain/optics/MeiDistortion';
 export {
+  IS_GAIN_MATCHED_BY_DEFAULT,
   GainMatchingFrameSink,
   type GainRenderer,
 } from './application/gainMatching/GainMatchingFrameSink';

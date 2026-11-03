@@ -8,10 +8,10 @@ import {
   FramePairQueue,
   GyroViewError,
   GainMatchingFrameSink,
+  IS_GAIN_MATCHED_BY_DEFAULT,
   messageOf,
   referenceLensOf,
   RenditionSpan,
-  renditionSizeOf,
   seconds,
   stabilizerFor,
   UPRIGHT_MOUNTING,
@@ -33,11 +33,12 @@ import { Disposables } from './Disposables';
 import type { OpenedRecording } from './OpenedRecording';
 
 /**
- * What a rendition draws: the equirectangular picture `width` pixels across, of the span asked
- * for, with the picture settings the player opens with unless given.
+ * What a rendition draws: the equirectangular picture of the size asked for, checked as
+ * `renditionSizeOf` checks it, of the span asked for, with the picture settings the player opens
+ * with unless given.
  */
 export interface RenditionRequest extends SpanRequest {
-  readonly width: number;
+  readonly size: ViewportSize;
   readonly stabilization?: StabilizationMode;
   readonly gainMatching?: boolean;
   readonly quality?: PictureQuality;
@@ -57,8 +58,9 @@ export interface RenditionFrames {
   readonly size: ViewportSize;
   /**
    * The stitched pictures, one `VideoFrame` per frame of the recording, timed in microseconds
-   * from the span's start; the consumer closes each. Iterated once; leaving the loop early, or
-   * {@link dispose}, stops the decoding.
+   * from the span's start; the consumer closes each. Iterated once; leaving the loop early stops
+   * the decoding, and {@link dispose} or a lost context part way rejects it, so a cut-short run
+   * never reads as finished.
    */
   frames(): AsyncGenerator<VideoFrame, void, undefined>;
   /**
@@ -75,13 +77,12 @@ interface RunOutcome {
 }
 
 /**
- * Renders the opened recording frame by frame. The span and size are checked before anything is
- * built, so a request that holds no picture decodes nothing.
+ * Renders the opened recording frame by frame. The span is checked before anything is built, so a
+ * span that holds no picture decodes nothing.
  */
 export function renditionOf(parts: RenditionParts, request: RenditionRequest): RenditionFrames {
   const span = RenditionSpan.of(request, seconds(parts.opened.duration));
-  const size = renditionSizeOf(request.width);
-  return new RenditionRun(parts, request, { span, size });
+  return new RenditionRun(parts, request, { span, size: request.size });
 }
 
 class RenditionRun implements RenditionFrames {
@@ -111,6 +112,9 @@ class RenditionRun implements RenditionFrames {
     this.span = shape.span;
     this.size = shape.size;
     this.canvas = new OffscreenCanvas(this.size.width, this.size.height);
+    this.disposables.add(() => {
+      releaseContextOf(this.canvas);
+    });
     try {
       this.renderer = this.equirectangularRenderer(request.quality ?? DEFAULT_PICTURE_QUALITY);
       this.gainMatching = this.sinksOver(request);
@@ -124,6 +128,17 @@ class RenditionRun implements RenditionFrames {
     });
     const { frameSources } = parts.opened;
     this.pipeline = new DecodePipeline(frameSources, parts.decoderPort, DECODE_PIPELINE_OPTIONS);
+  }
+
+  /**
+   * Frames that stop part way reject, so that an encoder never takes a cut-short run for a
+   * finished one: an abort as `AbortSignal` reports one, a lost context as `render-unavailable`.
+   */
+  private get stopReason(): Error | undefined {
+    if (this.renderFailure !== undefined) return this.renderFailure;
+    return this.isDisposed
+      ? new DOMException('the rendition was disposed before its last frame', 'AbortError')
+      : undefined;
   }
 
   public async *frames(): AsyncGenerator<VideoFrame, void, undefined> {
@@ -185,7 +200,7 @@ class RenditionRun implements RenditionFrames {
     this.disposables.add(() => {
       matching.dispose();
     });
-    if (request.gainMatching ?? true) matching.enable();
+    if (request.gainMatching ?? IS_GAIN_MATCHED_BY_DEFAULT) matching.enable();
     return matching;
   }
 
@@ -210,12 +225,7 @@ class RenditionRun implements RenditionFrames {
    */
   private listenForContextLoss(): void {
     const onLost = (): void => {
-      this.renderFailure ??= new GyroViewError(
-        'render-unavailable',
-        'the WebGL context was lost while rendering',
-      );
-      this.pipeline.abort();
-      this.wake.resolve();
+      this.failOnLostContext();
     };
     this.canvas.addEventListener('webglcontextlost', onLost);
     this.disposables.add(() => {
@@ -223,37 +233,63 @@ class RenditionRun implements RenditionFrames {
     });
   }
 
+  private failOnLostContext(): void {
+    this.renderFailure ??= new GyroViewError(
+      'render-unavailable',
+      'the WebGL context was lost while rendering',
+    );
+    this.pipeline.abort();
+    this.wake.resolve();
+  }
+
+  /**
+   * WebGL marks the context lost at once but fires `webglcontextlost` a task later, and a picture
+   * taken in between is blank.
+   */
+  private noticeLostContext(): void {
+    if (this.isDisposed) return;
+    if (this.canvas.getContext('webgl2')?.isContextLost() ?? true) this.failOnLostContext();
+  }
+
   /**
    * Draws the pair and takes the picture, then waits for the gains measured on it, so they show
-   * from the next frame on whatever the GPU's pace.
+   * from the next frame on whatever the GPU's pace. A picture taken as the run stopped is closed.
    */
   private async render(pair: FramePair<VideoFrame>): Promise<VideoFrame> {
-    let picture: VideoFrame;
+    const picture = this.pictureOf(pair);
+    await this.gainMatching.settled();
+    this.noticeLostContext();
+    const stop = this.stopReason;
+    if (stop === undefined) return picture;
+    picture.close();
+    throw stop;
+  }
+
+  private pictureOf(pair: FramePair<VideoFrame>): VideoFrame {
     try {
       this.gainMatching.present({ pair, mediaTime: pair.timestamp });
-      picture = new VideoFrame(this.canvas, {
+      return new VideoFrame(this.canvas, {
         timestamp: this.span.timestampOf(pair.timestamp),
         ...durationOf(pair),
       });
+    } catch (error) {
+      this.noticeLostContext();
+      throw this.renderFailure ?? error;
     } finally {
       closePair(pair);
     }
-    await this.gainMatching.settled();
-    if (this.renderFailure === undefined) return picture;
-    picture.close();
-    throw this.renderFailure;
   }
 
   /**
    * The next pair in decode order, waiting for the pipeline when the queue is empty; undefined
-   * once the run has ended with every pair taken, or the rendition was disposed.
+   * once the run has ended with every pair taken.
    */
   private async nextPair(): Promise<FramePair<VideoFrame> | undefined> {
     for (;;) {
-      if (this.renderFailure !== undefined) throw this.renderFailure;
+      const stop = this.stopReason;
+      if (stop !== undefined) throw stop;
       const head = this.queue.peekTimestamp();
       if (head !== undefined) return this.queue.takePairAt(head);
-      if (this.isDisposed) return undefined;
       if (this.outcome) {
         if (this.outcome.failure !== undefined) throw this.outcome.failure;
         return undefined;
@@ -287,4 +323,13 @@ function durationOf(pair: FramePair<VideoFrame>): { duration?: number } {
 
 function closePair(pair: FramePair<VideoFrame>): void {
   for (const frame of pair.frames) frame.close();
+}
+
+/**
+ * Gives the context and its drawing buffer back at once rather than when the canvas is
+ * collected: a page that renders one clip after another would otherwise pile contexts up until
+ * the browser takes the oldest away, its own player's perhaps (as `PlayerCanvas.release` does).
+ */
+function releaseContextOf(canvas: OffscreenCanvas): void {
+  canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();
 }

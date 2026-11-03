@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "26.6.1",
-    "@vitest/coverage-istanbul": "4.1.11",
+    "@vitest/coverage-istanbul": "4.1.12",
     "dependency-cruiser": "18.3.1",
     "eslint": "10.10.0",
     "eslint-config-prettier": "10.1.8",
@@ -41,7 +41,7 @@
     "prettier-plugin-glsl": "^0.3.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.70.0",
-    "vitest": "4.1.11"
+    "vitest": "4.1.12"
   },
   "type": "module"
 }

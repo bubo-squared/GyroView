@@ -11,7 +11,12 @@ export {
 } from './controls/customControls';
 export { createBrowserPlayer } from './browserPlayer';
 export { inspectRecording, type InspectOptions } from './inspectRecording';
-export { openRendition, type Rendition, type RenditionOptions } from './rendition';
+export {
+  openRendition,
+  type Rendition,
+  type RenditionOptions,
+  type RenditionView,
+} from './rendition';
 export { Player } from './player/Player';
 export type { LoadOptions, PlayerParts, ViewAngles } from './player/PlayerOptions';
 export type {

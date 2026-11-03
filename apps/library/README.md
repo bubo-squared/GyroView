@@ -100,11 +100,10 @@ const fromUrl = await inspectRecording('https://media.example/VID_20260814_13264
 ```
 
 Render a recording into a stitched equirectangular video for an encoder, rather than playing
-it: `openRendition` yields every frame of the span once, in order, as a `VideoFrame` `width`
-pixels across and half as many down, whenever you ask for the next, so a slow encoder loses
-nothing. It needs no page: it draws on an `OffscreenCanvas` of its own, so it runs in a worker.
-The recording's sound is in its file as recorded, for the encoder to copy. With
-[Mediabunny](https://mediabunny.dev):
+it: `openRendition` yields every frame of the span once, in order, as an equirectangular
+`VideoFrame`, whenever you ask for the next, so a slow encoder loses nothing. It needs no page:
+it draws on an `OffscreenCanvas` of its own, so it runs in a worker. The recording's sound is in
+its file as recorded, for the encoder to copy. With [Mediabunny](https://mediabunny.dev):
 
 ```ts
 import { openRendition } from '@bubo-squared/gyroview';
@@ -119,7 +118,7 @@ import {
 
 const rendition = await openRendition(
   { main: { blob: file, name: file.name } },
-  { width: 3840, from: 12, to: 48, stabilization: 'horizon' },
+  { view: { mode: 'equirectangular', width: 3840 }, from: 12, to: 48, stabilization: 'horizon' },
 );
 const output = new Output({ format: new Mp4OutputFormat(), target: new BufferTarget() });
 const video = new VideoSampleSource({ codec: 'avc', quality: new Quality('high') });
@@ -140,8 +139,11 @@ try {
 }
 ```
 
-`width` is a multiple of four, so both sides are even as encoders take them; the other settings
-are the player's defaults unless given. A split-lens recording names its other file as `second`.
+The picture is `width` pixels across and half as many down. The width is a multiple of four, so
+both sides are even as encoders take them; the other settings are the player's defaults unless
+given. A split-lens recording names its other file as `second`. The MP4 carries no 360 metadata,
+since Mediabunny writes none: until a tool adds it, sites such as YouTube show it as a flat 2:1
+video.
 
 For an interface of your own, `createBrowserPlayer` gives the player without the element: it
 draws on your canvas, sounds through your audio element and has the same events, which

@@ -1,4 +1,5 @@
 import {
+  renditionSizeOf,
   seconds,
   type VideoDecoderConfiguration,
   type VideoDecoderCallbacks,
@@ -19,6 +20,7 @@ import { X5_RECORDING_URL } from '../test/recordings';
 const FRAME_COUNT = 30;
 const FRAME_MICROSECONDS = 100_000;
 const WIDTH = 64;
+const SIZE = renditionSizeOf(WIDTH);
 
 /**
  * A decoder port that counts the decoders it made and how many are still open.
@@ -120,7 +122,7 @@ describe('renditionOf', () => {
 
   it('renders every frame of the recording once, in order, as 2:1 panoramas timed from its start', async () => {
     const { recording } = await openSynthetic();
-    const frames = await framesOf(recording, { width: WIDTH });
+    const frames = await framesOf(recording, { size: SIZE });
     expect(frames).toHaveLength(FRAME_COUNT);
     expect(frames.map((frame) => frame.timestamp)).toEqual(
       Array.from({ length: FRAME_COUNT }, (_unused, index) => index * FRAME_MICROSECONDS),
@@ -138,7 +140,7 @@ describe('renditionOf', () => {
     for (let run = 0; run < 2; run += 1) {
       const rendition = renditionOf(
         { opened: recording, decoderPort: browserPorts().decoderPort },
-        { width: WIDTH },
+        { size: SIZE },
       );
       const pictures: Uint8ClampedArray[] = [];
       for await (const frame of rendition.frames()) {
@@ -155,7 +157,7 @@ describe('renditionOf', () => {
 
   it('renders only the frames of the span asked for, timed from its start', async () => {
     const { recording } = await openSynthetic();
-    const frames = await framesOf(recording, { width: WIDTH, from: seconds(1.05), to: seconds(2) });
+    const frames = await framesOf(recording, { size: SIZE, from: seconds(1.05), to: seconds(2) });
     expect(frames.map((frame) => frame.timestamp)).toEqual(
       Array.from({ length: 9 }, (_unused, index) => (index + 1) * FRAME_MICROSECONDS - 50_000),
     );
@@ -165,7 +167,7 @@ describe('renditionOf', () => {
     const { recording } = await openSynthetic();
     const rendition = renditionOf(
       { opened: recording, decoderPort: browserPorts().decoderPort },
-      { width: WIDTH },
+      { size: SIZE },
     );
     let count = 0;
     for await (const frame of rendition.frames()) {
@@ -180,7 +182,7 @@ describe('renditionOf', () => {
 
   it('lets go of its decoders when the consumer stops part way, and when it reaches the end', async () => {
     const { recording, decoders } = await openSynthetic();
-    const rendition = renditionOf({ opened: recording, decoderPort: decoders }, { width: WIDTH });
+    const rendition = renditionOf({ opened: recording, decoderPort: decoders }, { size: SIZE });
     let count = 0;
     for await (const frame of rendition.frames()) {
       frame.close();
@@ -190,36 +192,35 @@ describe('renditionOf', () => {
     expect(decoders.created).toBeGreaterThan(0);
     expect(decoders.open).toBe(0);
 
-    await framesOf(recording, { width: WIDTH }, decoders);
+    await framesOf(recording, { size: SIZE }, decoders);
     expect(decoders.open).toBe(0);
   });
 
-  it('stops at once when disposed while the consumer waits, yielding nothing more', async () => {
+  it('rejects at once when disposed while the consumer waits, never ending as if finished', async () => {
     const { recording } = await openSynthetic();
     const rendition = renditionOf(
       { opened: recording, decoderPort: browserPorts().decoderPort },
-      { width: WIDTH },
+      { size: SIZE },
     );
     const frames = rendition.frames();
     const first = await frames.next();
     if (!first.done) first.value.close();
     rendition.dispose();
-    expect(await frames.next()).toEqual({ done: true, value: undefined });
+    await expect(frames.next()).rejects.toMatchObject({ name: 'AbortError' });
   });
 
-  it('refuses a size or span that holds no picture before it decodes anything', async () => {
+  it('refuses a span that holds no picture before it decodes anything', async () => {
     const { recording, decoders } = await openSynthetic();
-    for (const request of [{ width: 66 }, { width: WIDTH, from: seconds(3) }]) {
-      expect(() => renditionOf({ opened: recording, decoderPort: decoders }, request)).toThrow(
-        expect.objectContaining({ code: 'invalid-argument' }),
-      );
-    }
+    const request = { size: SIZE, from: seconds(3) };
+    expect(() => renditionOf({ opened: recording, decoderPort: decoders }, request)).toThrow(
+      expect.objectContaining({ code: 'invalid-argument' }),
+    );
     expect(decoders.created).toBe(0);
   });
 
   it('renders a recording without a gyro as recorded, every frame still there', async () => {
     const { recording } = await openSynthetic();
-    const frames = await framesOf({ ...recording, motion: undefined }, { width: WIDTH });
+    const frames = await framesOf({ ...recording, motion: undefined }, { size: SIZE });
     expect(frames).toHaveLength(FRAME_COUNT);
   });
 });

@@ -1,4 +1,12 @@
-import { seconds, type PictureQuality, type StabilizationMode } from '@gyroview/core';
+import {
+  GyroViewError,
+  renditionSizeOf,
+  seconds,
+  type PictureQuality,
+  type StabilizationMode,
+  type ViewMode,
+  type ViewportSize,
+} from '@gyroview/core';
 
 import { browserPorts, type BrowserPortsOptions } from './composition/browserPorts';
 import { openRecording } from './composition/openRecording';
@@ -7,12 +15,23 @@ import { renditionOf, type RenditionFrames } from './composition/renditionFrames
 import type { PlayerMetadata } from './PlayerMetadata';
 import type { PlayerSource } from './PlayerSource';
 
-export interface RenditionOptions extends Pick<BrowserPortsOptions, 'http'> {
+/**
+ * What a rendition draws, named as the player's view modes are: the equirectangular view for
+ * now. A flat view can join it as another mode, with options of its own (ADR 0045).
+ */
+export interface RenditionView {
+  readonly mode: Extract<ViewMode, 'equirectangular'>;
   /**
-   * How many pixels across the equirectangular picture is; half as many down. A multiple of
-   * four, so that both sides are even as encoders take them.
+   * How many pixels across the picture is; half as many down. A multiple of four, so that both
+   * sides are even as encoders take them.
    */
   readonly width: number;
+}
+
+const EQUIRECTANGULAR: RenditionView['mode'] = 'equirectangular';
+
+export interface RenditionOptions extends Pick<BrowserPortsOptions, 'http'> {
+  readonly view: RenditionView;
   /**
    * Where the rendition starts, in the recording's seconds; its start by default.
    */
@@ -43,7 +62,10 @@ export interface RenditionOptions extends Pick<BrowserPortsOptions, 'http'> {
  *
  * @example
  * ```ts
- * const rendition = await openRendition({ main: { blob: file, name: file.name } }, { width: 3840 });
+ * const rendition = await openRendition(
+ *   { main: { blob: file, name: file.name } },
+ *   { view: { mode: 'equirectangular', width: 3840 } },
+ * );
  * try {
  *   for await (const frame of rendition.frames()) {
  *     try {
@@ -72,9 +94,11 @@ export interface Rendition {
   readonly warnings: readonly string[];
   /**
    * One `VideoFrame` per frame of the span, its timestamp in microseconds from the span's start,
-   * which the consumer closes. Iterated once; ending the loop, leaving it early or a failure
-   * stops the rendering and lets go of the recording. Rejects when the signal is aborted, and
-   * with `render-unavailable` when the WebGL context is lost.
+   * which the consumer closes. Iterated once, a second call throwing `invalid-argument`; ending
+   * the loop, leaving it early or a failure stops the rendering and lets go of the recording.
+   * Stopped part way, it rejects: with the signal's reason when the signal is aborted, with an
+   * `AbortError` when the rendition is disposed, and with `render-unavailable` when the WebGL
+   * context is lost.
    */
   frames(): AsyncIterable<VideoFrame>;
   /**
@@ -85,19 +109,21 @@ export interface Rendition {
 
 /**
  * Opens a recording, as the player would, to render it frame by frame (see {@link Rendition}).
- * Rejects with the `GyroViewError` a load would meet, and with `invalid-argument` for a width or
- * span that holds no picture.
+ * Rejects with the `GyroViewError` a load would meet, with `invalid-argument` for a view it does
+ * not draw, or a width or span that holds no picture, and with `render-unavailable` when the GPU
+ * cannot draw a picture of that size.
  */
 export async function openRendition(
   source: PlayerSource,
   options: RenditionOptions,
 ): Promise<Rendition> {
+  const request = requestOf(options);
   const signal = options.signal ?? new AbortController().signal;
   const ports = browserPorts({ ...(options.http && { http: options.http }) });
   const opened = await openRecording(source, ports, signal);
   try {
     signal.throwIfAborted();
-    const frames = renditionOf({ opened, decoderPort: ports.decoderPort }, requestOf(options));
+    const frames = renditionOf({ opened, decoderPort: ports.decoderPort }, request);
     return renditionOver(opened, frames, signal);
   } catch (error) {
     opened.dispose();
@@ -106,15 +132,27 @@ export async function openRendition(
 }
 
 function requestOf(options: RenditionOptions): Parameters<typeof renditionOf>[1] {
-  const { width, from, to, stabilization, gainMatching, quality } = options;
+  const { view, from, to, stabilization, gainMatching, quality } = options;
   return {
-    width,
+    size: equirectangularSizeOf(view),
     ...(from !== undefined && { from: seconds(from) }),
     ...(to !== undefined && { to: seconds(to) }),
     ...(stabilization && { stabilization }),
     ...(gainMatching !== undefined && { gainMatching }),
     ...(quality && { quality }),
   };
+}
+
+/**
+ * Refuses another mode, or a width encoders cannot take, before anything is downloaded: the types
+ * stop another mode in TypeScript, but not in a page's plain JavaScript.
+ */
+function equirectangularSizeOf(view: RenditionView): ViewportSize {
+  const mode: string = view.mode;
+  if (mode !== EQUIRECTANGULAR) {
+    throw new GyroViewError('invalid-argument', `a rendition cannot draw the ${mode} view`);
+  }
+  return renditionSizeOf(view.width);
 }
 
 function renditionOver(
@@ -128,19 +166,27 @@ function renditionOver(
     opened.dispose();
   };
   signal.addEventListener('abort', dispose, { once: true });
+  let isIterated = false;
   return {
     metadata: opened.metadata,
     ...frames.size,
     duration: frames.span.duration,
     warnings: opened.warnings,
-    frames: () => framesUntilAborted(frames, signal, dispose),
+    frames: (): AsyncIterable<VideoFrame> => {
+      // Refused before the generator starts, so that the loop already running goes on.
+      if (isIterated) {
+        throw new GyroViewError('invalid-argument', 'a rendition yields its frames once');
+      }
+      isIterated = true;
+      return framesUntilAborted(frames, signal, dispose);
+    },
     dispose,
   };
 }
 
 /**
- * The rendition's frames, ended by a rejection when the signal stops them part way, and letting go
- * of everything however the loop ends.
+ * The rendition's frames, rejecting with the signal's reason when the signal stopped them part
+ * way, and letting go of everything however the loop ends.
  */
 async function* framesUntilAborted(
   frames: RenditionFrames,
@@ -149,7 +195,9 @@ async function* framesUntilAborted(
 ): AsyncGenerator<VideoFrame, void, undefined> {
   try {
     yield* frames.frames();
+  } catch (error) {
     signal.throwIfAborted();
+    throw error;
   } finally {
     dispose();
   }

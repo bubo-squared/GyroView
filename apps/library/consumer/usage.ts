@@ -23,6 +23,7 @@ import {
   type RecordingFetch,
   type RecordingInspection,
   type Rendition,
+  type RenditionView,
   type ViewMode,
   type WarningCode,
 } from '@bubo-squared/gyroview';
@@ -123,9 +124,10 @@ await player.load({
 const matching: 'on' | 'off' = element.gainMatch;
 const knownCodes: readonly GyroViewErrorCode[] = GYRO_VIEW_ERROR_CODES;
 const fromMessage = isGyroViewErrorCode('cors') ? 'cors' : undefined;
+const equirectangularView: RenditionView = { mode: 'equirectangular', width: 3840 };
 const rendition: Rendition = await openRendition(
   { main: { url: 'https://media.example/VID_20260814_132640_00_013.insv' } },
-  { width: 3840, from: 2, to: 10, stabilization: 'horizon', canvas: new OffscreenCanvas(1, 1) },
+  { view: equirectangularView, from: 2, to: 10, stabilization: 'horizon' },
 );
 let renderedFrames = 0;
 for await (const frame of rendition.frames()) {

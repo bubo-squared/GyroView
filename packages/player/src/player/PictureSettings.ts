@@ -1,6 +1,7 @@
 import {
   DEFAULT_PICTURE_QUALITY,
   DEFAULT_STABILIZATION_MODE,
+  IS_GAIN_MATCHED_BY_DEFAULT,
   type EventSink,
   type PictureQuality,
   type StabilizationMode,
@@ -21,7 +22,7 @@ export type PictureTarget = Pick<Pipeline, 'setStabilization' | 'setGainMatching
  */
 export class PictureSettings {
   private mode: StabilizationMode = DEFAULT_STABILIZATION_MODE;
-  private isMatching = true;
+  private isMatching = IS_GAIN_MATCHED_BY_DEFAULT;
   private qualityValue: PictureQuality = DEFAULT_PICTURE_QUALITY;
   private target: PictureTarget | undefined;
 

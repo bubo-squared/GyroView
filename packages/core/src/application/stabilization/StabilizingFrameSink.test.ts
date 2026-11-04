@@ -50,17 +50,21 @@ class RecordingSink implements Pick<
   public readonly rotations: Matrix3[] = [];
   public readonly rowCorrections: (readonly Matrix3[] | undefined)[] = [];
   public readonly presented: Presentation<string>[] = [];
+  public readonly calls: string[] = [];
 
   public setRowCorrections(corrections: readonly Matrix3[] | undefined): void {
     this.rowCorrections.push(corrections);
+    this.calls.push('setRowCorrections');
   }
 
   public setStabilization(rotation: Matrix3): void {
     this.rotations.push(rotation);
+    this.calls.push('setStabilization');
   }
 
   public present(presentation: Presentation<string>): void {
     this.presented.push(presentation);
+    this.calls.push('present');
   }
 }
 
@@ -228,9 +232,11 @@ describe('StabilizingFrameSink', () => {
     sink.setStabilizer(new LockStabilization());
     sink.present(presentationAt(0.5));
     expect(inner.rowCorrections).toEqual([rowCorrectionsAt(motion, seconds(1), rollingShutter)]);
+    // Set before the frame they belong to is drawn, not with the next one.
+    expect(inner.calls).toEqual(['setStabilization', 'setRowCorrections', 'present']);
   });
 
-  it('leaves the rows uncorrected without a rolling shutter to correct', () => {
+  it('turns every row with its frame without a rolling shutter to correct', () => {
     const inner = new RecordingSink();
     const sink = new StabilizingFrameSink({
       sink: inner,
@@ -239,6 +245,6 @@ describe('StabilizingFrameSink', () => {
       rollingShutter: undefined,
     });
     sink.present(presentationAt(1));
-    expect(inner.rowCorrections).toEqual([]);
+    expect(inner.rowCorrections).toEqual([undefined]);
   });
 });

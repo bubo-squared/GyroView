@@ -56,9 +56,9 @@ export class StabilizingFrameSink<Handle = unknown> implements FrameSink<Handle>
     const rotation = this.stabilizer.nextRotation(orientations.orientationAt(time), time);
     this.parts.sink.setStabilization(rotationIntoBody(mounting, rotation));
     const { rollingShutter } = this.parts;
-    if (rollingShutter) {
-      this.parts.sink.setRowCorrections(rowCorrectionsAt(this.parts.motion, time, rollingShutter));
-    }
+    this.parts.sink.setRowCorrections(
+      rollingShutter && rowCorrectionsAt(this.parts.motion, time, rollingShutter),
+    );
     this.parts.sink.present(presentation);
   }
 

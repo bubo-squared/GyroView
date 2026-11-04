@@ -240,6 +240,7 @@ describe('rendering the real recordings', () => {
       const motion = motionOf(opened);
       if (!motion.imuFrame.isVerified) context.skip('its IMU frame is assumed, not measured');
       const { canvas, renderer } = panoramaOf(opened);
+      // The stabilization alone, at the pair's own timestamp: no frame times, no row corrections.
       const sink = new StabilizingFrameSink({
         sink: renderer,
         motion,

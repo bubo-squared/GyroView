@@ -50,8 +50,9 @@ export interface ReferenceClip {
    */
   readonly steadinessStart: number;
   /**
-   * An HDR recording's frames of Studio's SDR export of the same stitch, the colour reference
-   * (ADR 0033); none for an SDR recording, whose export is its own.
+   * An HDR or log recording's frames of Studio's SDR export of the same stitch, its LUT applied
+   * for a log one: the colour reference (ADR 0033, ADR 0047); none for an SDR recording, whose
+   * export is its own.
    */
   readonly sdrFrames: readonly ReferenceFrame[];
 }

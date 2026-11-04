@@ -58,8 +58,9 @@ export interface LocalStudioClip {
    */
   readonly steadinessStart: number;
   /**
-   * For an HDR recording, the frames of Studio's SDR export of the same stitch, extracted as
-   * `studio-<slug>-sdr-<time>s.png`: the reference of the player's colour (ADR 0033).
+   * For an HDR or log recording, the frames of Studio's SDR export of the same stitch, its LUT
+   * applied for a log one, extracted as `studio-<slug>-sdr-<time>s.rgb`: the reference of the
+   * player's colour (ADR 0033, ADR 0047).
    */
   readonly sdrFrameTimes?: readonly number[];
 }

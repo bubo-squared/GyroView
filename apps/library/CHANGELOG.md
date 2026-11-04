@@ -3,7 +3,7 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
-## Unreleased
+## 0.10.0 (2026-11-04)
 
 Added (ADR 0047, I-Log is shown as Insta360 Studio's I-Log LUT shows it):
 

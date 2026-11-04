@@ -240,7 +240,12 @@ describe('rendering the real recordings', () => {
       const motion = motionOf(opened);
       if (!motion.imuFrame.isVerified) context.skip('its IMU frame is assumed, not measured');
       const { canvas, renderer } = panoramaOf(opened);
-      const sink = new StabilizingFrameSink({ sink: renderer, motion, frameTimes: undefined });
+      const sink = new StabilizingFrameSink({
+        sink: renderer,
+        motion,
+        frameTimes: undefined,
+        rollingShutter: undefined,
+      });
       const rendered = new Map<StabilizationMode, Uint8ClampedArray>();
       for (const mode of COMPARED_MODES) {
         sink.setStabilizer(stabilizerFor(mode));

@@ -121,6 +121,7 @@ describe('StabilizingFrameSink', () => {
       sink: inner,
       motion: { orientations, mounting: UNTURNED },
       frameTimes: undefined,
+      rollingShutter: undefined,
     });
     sink.present(presentationAt(1));
     expect(inner.rotations).toEqual([IDENTITY_MATRIX3]);
@@ -133,6 +134,7 @@ describe('StabilizingFrameSink', () => {
       sink: inner,
       motion: { orientations, mounting: UNTURNED },
       frameTimes: undefined,
+      rollingShutter: undefined,
     });
     sink.setStabilizer(new LockStabilization());
     sink.present(presentationAt(1));
@@ -147,6 +149,7 @@ describe('StabilizingFrameSink', () => {
       sink: inner,
       motion: { orientations, mounting: LENS_0_UP },
       frameTimes: undefined,
+      rollingShutter: undefined,
     });
     sink.present(presentationAt(1));
     sink.setStabilizer(new LockStabilization());
@@ -172,6 +175,7 @@ describe('StabilizingFrameSink', () => {
         mounting,
       },
       frameTimes: undefined,
+      rollingShutter: undefined,
     });
     sink.setStabilizer(new HorizonStabilization());
     sink.present(presentationAt(2.5));
@@ -189,6 +193,7 @@ describe('StabilizingFrameSink', () => {
       sink: inner,
       motion: { orientations, mounting: UNTURNED },
       frameTimes,
+      rollingShutter: undefined,
     });
     sink.setStabilizer(new LockStabilization());
     sink.present(presentationAt(1));
@@ -203,6 +208,7 @@ describe('StabilizingFrameSink', () => {
       sink: inner,
       motion: { orientations, mounting: UNTURNED },
       frameTimes,
+      rollingShutter: undefined,
     });
     sink.setStabilizer(new LockStabilization());
     sink.present(presentationAt(0.5));
@@ -230,6 +236,7 @@ describe('StabilizingFrameSink', () => {
       sink: inner,
       motion: { orientations, mounting: UNTURNED },
       frameTimes: undefined,
+      rollingShutter: undefined,
     });
     sink.present(presentationAt(1));
     expect(inner.rowCorrections).toEqual([]);

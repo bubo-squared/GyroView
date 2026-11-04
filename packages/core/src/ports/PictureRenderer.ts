@@ -23,7 +23,8 @@ export interface PictureRenderer<Handle = unknown> extends FrameSink<Handle> {
    * Turns each row of every lens's image by its own correction, for the time the sensor read it
    * (`rowCorrectionsAt`): the corrections run from the first row of a lens's window to its last
    * at even steps, applied after the stabilization. Undefined turns every row with the frame.
-   * Takes effect with the next presentation.
+   * Takes effect with the next presentation; the stabilizing sink sets it before every one, as it
+   * sets the stabilization.
    */
   setRowCorrections(corrections: readonly Matrix3[] | undefined): void;
   /**

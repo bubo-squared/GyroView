@@ -10,9 +10,8 @@ readout before and after, and a fast turn skews them by its rate times that. ADR
 correction for later. On a ONE R skydive with the 5.7K 360 lens module, whose info record states a
 22.3 ms readout, features tracked frame to frame in three bands of lens 0's rows line up with the
 gyro about 11 ms apart between the top band and the bottom one, the top read first; that is about
-the 12.9 ms the stated readout gives for the bands' spread. Bands of columns
-show no such trend: the sensor reads the coded image's rows. No rotation of the whole frame
-removes the skew.
+the 12.9 ms the stated readout gives for the bands' spread. Bands of columns show no such trend:
+the sensor reads the coded image's rows. No rotation of the whole frame removes the skew.
 
 ## Decisions
 
@@ -27,15 +26,16 @@ removes the skew.
   odd, so the middle row, at the frame's time, is not turned. Every stabilization mode turns the
   picture at the frame's time, so the corrections apply after the stabilization in any mode.
 - **The sink** (`StabilizingFrameSink`) hands them to the renderer before each presentation
-  (`PictureRenderer.setRowCorrections`) when the recording's motion carries a rolling shutter.
+  (`PictureRenderer.setRowCorrections`), as it does the stabilization, and none when the
+  recording's motion carries no rolling shutter.
 - **The shader** (`lensSampling.glsl`): each lens finds the row of its window that images the
   direction at the frame's time, takes the two nearest corrections in proportion, and reads the
   corrected direction. One step is enough: a turn of 500 degrees a second moves a direction by
-  some 80 rows of a ONE R's lens, which leaves the row found off by about 5 percent of the
-  correction.
-  Each lens is corrected by its own rows, so the two sides of the seam each take their own time.
-  The rows run down the lens's window on the calibration canvas, as the sensor's do. The raw lens
-  view draws the images as decoded, uncorrected.
+  up to some 80 rows of a ONE R's lens, at the window's top and bottom, which leaves the row found
+  off by about 5 to 6 percent of the correction, some 0.3 degrees there. Each lens is corrected by
+  its own rows, so the two sides of the seam each take their own time. The rows run down the
+  lens's window on the calibration canvas, as the sensor's do. The raw lens view draws the images
+  as decoded, uncorrected.
 
 ## Evidence
 
@@ -75,8 +75,13 @@ removes the skew.
   frame's time.
 - The ONE R's order rests on one recording of one unit with one lens module, and on lens 0's
   rows: lens 1 is taken to read in the same order, which the whole-picture measures favour but
-  cannot show for one lens alone. Provisional until a recording that can be shared confirms it
-  (ADR 0031), ranked one lens at a time, the other silenced through its gain (ADR 0012).
+  cannot show for one lens alone. Its frame's time is taken as its middle row's, as ADR 0034
+  measured on the X5 and the X6: the ranking turns the rows about the frame's time, so it cannot
+  tell a frame timed elsewhere. Provisional until a recording that can be shared confirms it
+  (ADR 0031), ranked one lens at a time, the other silenced through its gain (ADR 0012), and
+  timed against the gyro as ADR 0034 timed the X5's.
 - Every other camera turns whole until a recording of it ranks its row order: add it to the local
   catalogue (ADR 0031) with the moments it turns at and run `pnpm measure`.
-- Each lens projects a direction once more a pixel to find its row; no texture is read twice.
+- Each lens projects a direction once more, to find the row it images it in; no texture is read
+  twice. Only a recording whose rows are corrected pays for it: for any other the shader returns
+  before the projection.

@@ -229,7 +229,10 @@ export {
   type DisplayConversion,
   type DisplayConversionChoice,
   type ToneCurve,
+  type ToningConversion,
 } from './domain/colour/DisplayConversion';
+export { LOG_CURVE_POINTS, logEncodingOf } from './domain/colour/LogEncoding';
+export type { LogEncodingHints } from './domain/colour/LogEncoding';
 export { matrixCorrectionOf } from './domain/colour/matrixCorrection';
 
 // Shared vocabulary

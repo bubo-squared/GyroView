@@ -13,6 +13,7 @@ import {
   HLG_TO_SDR_BT709,
   shownOf,
   toDisplay,
+  X6_I_LOG_TO_SDR_BT709,
 } from '@gyroview/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -44,6 +45,24 @@ const PAINTED: readonly (readonly [name: string, css: string, texel: Vector3])[]
   ['a saturated green', 'rgb(40, 200, 60)', [40, 200, 60]],
 ];
 
+/**
+ * The conversions that bring a signal to scene light and tone it, by the signal's name, each
+ * with a saturated orange short of white in it for the seam meter, which leaves out what is
+ * blown out: I-Log's highlights lie lower in its signal than HLG's.
+ */
+const TONING: readonly (readonly [
+  signal: string,
+  conversion: DisplayConversion,
+  orange: Vector3,
+])[] = [
+  ['HLG', HLG_TO_SDR_BT709, [230, 128, 40]],
+  ['I-Log', X6_I_LOG_TO_SDR_BT709, [180, 128, 90]],
+];
+
+function cssOf([red, green, blue]: Vector3): string {
+  return `rgb(${red}, ${green}, ${blue})`;
+}
+
 function unitTexel(texel: Vector3): Vector3 {
   const [red, green, blue] = texel;
   return [red / CHANNEL_MAX, green / CHANNEL_MAX, blue / CHANNEL_MAX];
@@ -61,8 +80,8 @@ function expectWithin(shown: readonly number[], reference: readonly number[]): v
 
 /**
  * The shader's display conversion against the core's, on painted frames drawn as the raw lenses
- * and as the stitched panorama, gained and metered (ADR 0033): every pass that reads a lens's
- * texels brings them to the display, or to its exposure signal, the same way.
+ * and as the stitched panorama, gained and metered (ADR 0033, ADR 0047): every pass that reads a
+ * lens's texels brings them to the display, or to its exposure signal, the same way.
  */
 describe('the display conversion', () => {
   const cleanups: (() => void)[] = [];
@@ -72,10 +91,12 @@ describe('the display conversion', () => {
   });
 
   /**
-   * Both lenses painted `css` and shown through `conversion`, gained by `gain`, drawn once.
+   * Both lenses painted `css` and shown through `conversion`, lens 1 through `secondLens` where
+   * given, gained by `gain`, drawn once.
    */
   interface Drawing {
     readonly conversion: DisplayConversion;
+    readonly secondLens?: DisplayConversion;
     readonly css: string;
     readonly viewMode: ViewMode;
     readonly gain?: Vector3;
@@ -91,7 +112,7 @@ describe('the display conversion', () => {
     const setup = buildStitchingSetup({
       calibration: syntheticCalibration(),
       layout: MULTI_TRACK,
-      displayConversions: [drawing.conversion, drawing.conversion],
+      displayConversions: [drawing.conversion, drawing.secondLens ?? drawing.conversion],
     });
     const renderer = ThreeFrameRenderer.create(canvas, setup, { preserveDrawingBuffer: true });
     const frames: DecodedFrame<VideoFrame>[] = [solidFrame(drawing.css), solidFrame(drawing.css)];
@@ -116,34 +137,61 @@ describe('the display conversion', () => {
     return [pixels[offset] ?? -1, pixels[offset + 1] ?? -1, pixels[offset + 2] ?? -1];
   }
 
-  for (const viewMode of ['raw-lenses', 'equirectangular'] as const) {
-    it.each(PAINTED)(
-      `converts %s from HLG as the core does, drawn ${viewMode}`,
-      (_name, css, texel) => {
-        const reference = inLevels(toDisplay(HLG_TO_SDR_BT709, unitTexel(texel)));
-        expectWithin(drawnAhead({ conversion: HLG_TO_SDR_BT709, css, viewMode }), reference);
-      },
-    );
+  for (const [signal, conversion, orange] of TONING) {
+    for (const viewMode of ['raw-lenses', 'equirectangular'] as const) {
+      it.each(PAINTED)(
+        `converts %s from ${signal} as the core does, drawn ${viewMode}`,
+        (_name, css, texel) => {
+          const reference = inLevels(toDisplay(conversion, unitTexel(texel)));
+          expectWithin(drawnAhead({ conversion, css, viewMode }), reference);
+        },
+      );
+    }
+
+    it(`gains an ${signal} lens before its highlights roll off, as the core does`, () => {
+      const gain: Vector3 = [1.6, 1.6, 1.6];
+      const [red, green, blue] = exposureSignalOf(conversion, unitTexel([128, 128, 128]));
+      const gained: Vector3 = [red * gain[0], green * gain[1], blue * gain[2]];
+      const reference = inLevels(shownOf(conversion, gained));
+      const shown = drawnAhead({
+        conversion,
+        css: 'rgb(128, 128, 128)',
+        viewMode: 'equirectangular',
+        gain,
+      });
+      expectWithin(shown, reference);
+    });
+
+    it(`meters an ${signal} lens's exposure signal along the seam, as the core does`, async () => {
+      const { renderer } = rendererOf({
+        conversion,
+        css: cssOf(orange),
+        viewMode: 'equirectangular',
+      });
+      const meter = renderer.createSeamMeter();
+      cleanups.push(() => {
+        meter.dispose();
+      });
+      const means = await meter.measure();
+      const reference = exposureSignalOf(conversion, unitTexel(orange));
+      expect(means).toHaveLength(2);
+      const measured = means ?? [];
+      for (const mean of measured) {
+        for (const [channel, value] of mean.entries()) {
+          expect(Math.abs(value - (reference[channel] ?? NaN))).toBeLessThanOrEqual(
+            METER_TOLERANCE,
+          );
+        }
+      }
+    });
   }
 
-  it('gains an HLG lens before its highlights roll off, as the core does', () => {
-    const gain: Vector3 = [1.6, 1.6, 1.6];
-    const [red, green, blue] = exposureSignalOf(HLG_TO_SDR_BT709, unitTexel([128, 128, 128]));
-    const gained: Vector3 = [red * gain[0], green * gain[1], blue * gain[2]];
-    const reference = inLevels(shownOf(HLG_TO_SDR_BT709, gained));
-    const shown = drawnAhead({
-      conversion: HLG_TO_SDR_BT709,
-      css: 'rgb(128, 128, 128)',
-      viewMode: 'equirectangular',
-      gain,
-    });
-    expectWithin(shown, reference);
-  });
-
-  it("meters an HLG lens's exposure signal along the seam, as the core does", async () => {
+  it("meters each lens through its own conversion, lens 1's log curve its own", async () => {
+    const orange: Vector3 = [180, 128, 90];
     const { renderer } = rendererOf({
-      conversion: HLG_TO_SDR_BT709,
-      css: 'rgb(230, 128, 40)',
+      conversion: AS_RECORDED,
+      secondLens: X6_I_LOG_TO_SDR_BT709,
+      css: cssOf(orange),
       viewMode: 'equirectangular',
     });
     const meter = renderer.createSeamMeter();
@@ -151,12 +199,15 @@ describe('the display conversion', () => {
       meter.dispose();
     });
     const means = await meter.measure();
-    const reference = exposureSignalOf(HLG_TO_SDR_BT709, unitTexel([230, 128, 40]));
+    const references = [AS_RECORDED, X6_I_LOG_TO_SDR_BT709].map((conversion) =>
+      exposureSignalOf(conversion, unitTexel(orange)),
+    );
     expect(means).toHaveLength(2);
     const measured = means ?? [];
-    for (const mean of measured) {
+    for (const [lens, mean] of measured.entries()) {
       for (const [channel, value] of mean.entries()) {
-        expect(Math.abs(value - (reference[channel] ?? NaN))).toBeLessThanOrEqual(METER_TOLERANCE);
+        const reference = references[lens]?.[channel] ?? NaN;
+        expect(Math.abs(value - reference)).toBeLessThanOrEqual(METER_TOLERANCE);
       }
     }
   });

@@ -1,6 +1,13 @@
 import { IDENTITY_MATRIX3, transformVector, type Matrix3 } from '../../shared/math/Matrix3';
 import { clamp } from '../../shared/math/clamp';
 import { dotProduct, type Vector3 } from '../../shared/math/Vector3';
+import {
+  logCurveLight,
+  X6_I_LOG_LUT,
+  type FittedLut,
+  type LogCurve,
+  type LogEncoding,
+} from './LogEncoding';
 import type {
   ColourPrimaries,
   MatrixCoefficients,
@@ -25,7 +32,9 @@ export interface ToneCurve {
  * shader evaluates (ADR 0033). The texels hold what the browser's upload makes of a decoded
  * frame: its range applied, its primaries and transfer as recorded, and R′G′B′ through the
  * matrix the frame names, which the renderer brings back to `matrix`, the track's, where the two
- * differ (`matrixCorrectionOf`).
+ * differ (`matrixCorrectionOf`). HLG and a log encoding (ADR 0047) are brought to scene light,
+ * into BT.709 by `gamut`, and toned alike; they differ in how the signal becomes light, and a log
+ * encoding's gamut and exposure are its LUT's.
  */
 export type DisplayConversion =
   | { readonly kind: 'as-recorded'; readonly matrix: MatrixCoefficients }
@@ -34,7 +43,19 @@ export type DisplayConversion =
       readonly matrix: MatrixCoefficients;
       readonly gamut: Matrix3;
       readonly tone: ToneCurve;
+    }
+  | {
+      readonly kind: 'log-to-sdr-bt709';
+      readonly matrix: MatrixCoefficients;
+      readonly curve: LogCurve;
+      readonly gamut: Matrix3;
+      readonly tone: ToneCurve;
     };
+
+/**
+ * The conversions that bring a signal to scene light and tone it for the display.
+ */
+export type ToningConversion = Exclude<DisplayConversion, { readonly kind: 'as-recorded' }>;
 
 /**
  * SDR as the browser uploads it: BT.709 and sRGB are close enough to show as recorded, as the
@@ -78,7 +99,8 @@ export const BT709_LUMINANCE: Vector3 = [0.2126, 0.7152, 0.0722];
 /**
  * Insta360 Studio's own HLG-to-SDR curve, fitted pixel by pixel to the X6's HLG and Rec.709
  * exports of the same stitch: scene light, no OOTF, brought up by two fifths, its luminance
- * rolled off above 0.2 and encoded with a power of 1/2.2 (ADR 0033).
+ * rolled off above 0.2 and encoded with a power of 1/2.2 (ADR 0033). The X6's I-Log LUT is
+ * fitted through it, at the LUT's own exposure (ADR 0047).
  */
 const STUDIO_TONE: ToneCurve = { exposure: 1.4, kneeStart: 0.2, ceiling: 1.5, exponent: 2.2 };
 
@@ -92,6 +114,23 @@ export const HLG_TO_SDR_BT709 = {
   gamut: BT2020_TO_BT709,
   tone: STUDIO_TONE,
 } satisfies DisplayConversion;
+
+/**
+ * A log encoding's track shown as Studio's LUT for the camera shows it: its curve, the LUT's
+ * matrix into BT.709, and Studio's tone curve at the LUT's exposure.
+ */
+function lutConversionOf(
+  { matrix }: Pick<TrackColour, 'matrix'>,
+  { curve, gamut, exposure }: FittedLut,
+): Extract<DisplayConversion, { readonly kind: 'log-to-sdr-bt709' }> {
+  return { kind: 'log-to-sdr-bt709', matrix, curve, gamut, tone: { ...STUDIO_TONE, exposure } };
+}
+
+/**
+ * The X6's I-Log, whose bitstream calls it BT.709, shown as Studio's I-Log LUT shows it: the
+ * conversion `displayConversionsOf` picks for its tracks, for tests.
+ */
+export const X6_I_LOG_TO_SDR_BT709 = lutConversionOf({ matrix: 'bt709' }, X6_I_LOG_LUT);
 
 /**
  * What a conversion chosen for a track's colour leaves wrong, if anything.
@@ -154,6 +193,27 @@ function hlgFrom(colour: TrackColour): ConversionChoice {
     : { conversion };
 }
 
+/**
+ * A log encoding's texels, which the track names SDR, shown by Studio's LUT for the camera; drawn
+ * as recorded, with a warning, for a camera whose LUT is not fitted.
+ */
+function logFrom(colour: TrackColour, { name, lut }: LogEncoding): ConversionChoice {
+  return lut === undefined
+    ? {
+        conversion: asRecordedOf(colour),
+        problem: `${name} of this camera is shown as recorded: its LUT is not fitted`,
+      }
+    : { conversion: lutConversionOf(colour, lut) };
+}
+
+/**
+ * An SDR transfer: as recorded, unless the recording was made in a log encoding the camera's
+ * bitstream calls SDR.
+ */
+function sdrFrom(colour: TrackColour, encoding: LogEncoding | undefined): ConversionChoice {
+  return encoding === undefined ? asRecordedFrom(colour) : logFrom(colour, encoding);
+}
+
 function notShown(transfer: TransferCharacteristics): (colour: TrackColour) => ConversionChoice {
   return (colour) => ({
     conversion: asRecordedOf(colour),
@@ -162,16 +222,19 @@ function notShown(transfer: TransferCharacteristics): (colour: TrackColour) => C
 }
 
 /**
- * The conversion of every transfer, from the track's colour: a transfer the player learns to
- * name does not compile until it is given one.
+ * The conversion of every transfer, from the track's colour and the recording's log encoding,
+ * if any: a transfer the player learns to name does not compile until it is given one.
  */
 const CONVERSION_BY_TRANSFER: Readonly<
-  Record<TransferCharacteristics, (colour: TrackColour) => ConversionChoice>
+  Record<
+    TransferCharacteristics,
+    (colour: TrackColour, encoding: LogEncoding | undefined) => ConversionChoice
+  >
 > = {
-  bt709: asRecordedFrom,
-  smpte170m: asRecordedFrom,
-  'iec61966-2-1': asRecordedFrom,
-  unspecified: asRecordedFrom,
+  bt709: sdrFrom,
+  smpte170m: sdrFrom,
+  'iec61966-2-1': sdrFrom,
+  unspecified: sdrFrom,
   hlg: hlgFrom,
   pq: notShown('pq'),
   linear: notShown('linear'),
@@ -187,12 +250,18 @@ export interface DisplayConversionChoice {
 }
 
 /**
- * Picks a conversion for each track's colour; a colour no conversion shows is drawn as recorded,
- * with a warning, rather than refused: the picture is there, its colours wrong. Tracks that share
- * a problem share its warning.
+ * Picks a conversion for each track's colour, and the recording's log encoding where its info
+ * record names one (`logEncodingOf`); a colour no conversion shows is drawn as recorded, with a
+ * warning, rather than refused: the picture is there, its colours wrong. Tracks that share a
+ * problem share its warning.
  */
-export function displayConversionsOf(colours: readonly TrackColour[]): DisplayConversionChoice {
-  const choices = colours.map((colour) => CONVERSION_BY_TRANSFER[colour.transfer](colour));
+export function displayConversionsOf(
+  colours: readonly TrackColour[],
+  encoding: LogEncoding | undefined,
+): DisplayConversionChoice {
+  const choices = colours.map((colour) =>
+    CONVERSION_BY_TRANSFER[colour.transfer](colour, encoding),
+  );
   const problems = choices.flatMap((choice) =>
     choice.problem === undefined ? [] : [choice.problem],
   );
@@ -215,34 +284,36 @@ export function hlgInverseOetf(signal: number): number {
 /**
  * A texel, red, green and blue from 0 to 1, where the lens's exposure is a factor: what gain
  * matching measures and scales (ADR 0012). As recorded for SDR, whose encoding is close to a
- * power of light; for HLG, scene light in BT.709 raised to the display's power, before the
- * conversion's exposure and highlight roll-off, so a white still fits the seam meter's 8 bits.
+ * power of light; for HLG and a log encoding, scene light in BT.709 raised to the display's
+ * power, before the conversion's exposure and highlight roll-off, so a white still fits the seam
+ * meter's 8 bits.
  */
 export function exposureSignalOf(conversion: DisplayConversion, texel: Vector3): Vector3 {
+  if (conversion.kind === 'as-recorded') return texel;
+  // A corrected texel may fall just outside the signal: below black, which HLG's square segment
+  // would make light, or past white, brighter than the signal encodes.
+  const scene = mapRgb(texel, (channel) => sceneLightOf(conversion, clamp(channel, 0, 1)));
+  const light = transformVector(conversion.gamut, scene);
+  return mapRgb(light, (channel) => Math.max(channel, 0) ** (1 / conversion.tone.exponent));
+}
+
+function sceneLightOf(conversion: ToningConversion, signal: number): number {
   switch (conversion.kind) {
-    case 'as-recorded': {
-      return texel;
-    }
     case 'hlg-to-sdr-bt709': {
-      const scene = mapRgb(texel, (channel) => hlgInverseOetf(clamp(channel, 0, 1)));
-      const light = transformVector(conversion.gamut, scene);
-      return mapRgb(light, (channel) => Math.max(channel, 0) ** (1 / conversion.tone.exponent));
+      return hlgInverseOetf(signal);
+    }
+    case 'log-to-sdr-bt709': {
+      return logCurveLight(conversion.curve, signal);
     }
   }
 }
 
 /**
- * An exposure signal as the display shows it: for HLG, exposed and its highlights rolled off.
+ * An exposure signal as the display shows it: for HLG and a log encoding, exposed and its
+ * highlights rolled off.
  */
 export function shownOf(conversion: DisplayConversion, signal: Vector3): Vector3 {
-  switch (conversion.kind) {
-    case 'as-recorded': {
-      return signal;
-    }
-    case 'hlg-to-sdr-bt709': {
-      return tonedFrom(signal, conversion.tone);
-    }
-  }
+  return conversion.kind === 'as-recorded' ? signal : tonedFrom(signal, conversion.tone);
 }
 
 /**

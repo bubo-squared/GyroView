@@ -3,18 +3,22 @@ import {
   downloadPolicyFor,
   ensureInvariant,
   lensFrameOrder,
+  logEncodingOf,
   RecordingBuffer,
   startFileDownload,
   timeRecording,
   type AudioPackager,
   type AudioSegmentSource,
   type DownloadedFile,
+  type DisplayConversionChoice,
   type DownloadPolicy,
   type FrameSourceKey,
+  type LogEncodingHints,
   type ReadFile,
   type RecordingFiles,
   type RecordingTiming,
   type Seconds,
+  type TrackColour,
   type VideoTrackReader,
 } from '@gyroview/core';
 
@@ -108,7 +112,7 @@ function assemble(
 ): OpenedRecording {
   const { read, files, frameSources, timing } = parts;
   const { layout, calibration, duration } = read;
-  const display = displayConversionsOf(frameSources.map((source) => source.description.colour));
+  const display = displayConversionsFor(read.recording.info, frameSources);
   // Whichever file carries the sound: a split pair given either way round still plays it.
   const [sound] = files.flatMap((file) => file.audioTracks);
   return {
@@ -130,6 +134,20 @@ function assemble(
     buffer: new RecordingBuffer(files.map((file) => file.download)),
     dispose: disposables.toDisposer(),
   };
+}
+
+/**
+ * How each frame source is shown: by its track's colour, and by the log encoding the info record
+ * names, which a camera's bitstream may call SDR (ADR 0047).
+ */
+export function displayConversionsFor(
+  info: LogEncodingHints,
+  frameSources: readonly { readonly description: { readonly colour: TrackColour } }[],
+): DisplayConversionChoice {
+  return displayConversionsOf(
+    frameSources.map((source) => source.description.colour),
+    logEncodingOf(info),
+  );
 }
 
 function metadataOf(parts: AssemblyParts, duration: Seconds, hasAudio: boolean): PlayerMetadata {

@@ -80,6 +80,7 @@ export {
   HLG_TO_SDR_BT709,
   shownOf,
   toDisplay,
+  X6_I_LOG_TO_SDR_BT709,
 } from '../domain/colour/DisplayConversion';
 export { shownAsRecorded } from './shownAsRecorded';
 export {

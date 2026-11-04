@@ -1,7 +1,8 @@
-import { seconds, type SampleTable, type Seconds } from '@gyroview/core';
+import { seconds, type SampleTable, type Seconds, type TrackColour } from '@gyroview/core';
+import { AS_RECORDED, X6_I_LOG_TO_SDR_BT709 } from '@gyroview/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { downloadPolicyOf } from './openInputs';
+import { displayConversionsFor, downloadPolicyOf } from './openInputs';
 
 const MEBIBYTE = 2 ** 20;
 
@@ -29,5 +30,55 @@ describe('downloadPolicyOf', () => {
       expect(policy.requestSize).toBe(8 * MEBIBYTE);
       expect(policy.requestsInFlight).toBe(2);
     }
+  });
+});
+
+/**
+ * Two lens tracks as the X6's bitstream names an I-Log recording's colour: as standard mode's.
+ */
+const TAGGED_BT709: TrackColour = {
+  primaries: 'bt709',
+  transfer: 'bt709',
+  matrix: 'bt709',
+  range: 'limited',
+};
+const LENS_TRACKS = [
+  { description: { colour: TAGGED_BT709 } },
+  { description: { colour: TAGGED_BT709 } },
+];
+
+describe('displayConversionsFor', () => {
+  it('shows an X6 recording whose info record names I-Log by its curve, whatever its tracks say', () => {
+    const choice = displayConversionsFor(
+      { model: 'Insta360 X6', captureMode: 'I_Log' },
+      LENS_TRACKS,
+    );
+    expect(choice).toEqual({
+      conversions: [X6_I_LOG_TO_SDR_BT709, X6_I_LOG_TO_SDR_BT709],
+      warnings: [],
+    });
+  });
+
+  it("draws another camera's I-Log as recorded, and says so", () => {
+    const choice = displayConversionsFor(
+      { model: 'Insta360 X5', captureMode: 'I_Log' },
+      LENS_TRACKS,
+    );
+    expect(choice.conversions).toEqual([
+      { ...AS_RECORDED, matrix: 'bt709' },
+      { ...AS_RECORDED, matrix: 'bt709' },
+    ]);
+    expect(choice.warnings).toHaveLength(1);
+  });
+
+  it('shows a recording made in standard mode as its tracks say', () => {
+    const choice = displayConversionsFor(
+      { model: 'Insta360 X6', captureMode: 'standard' },
+      LENS_TRACKS,
+    );
+    expect(choice.conversions.map((conversion) => conversion.kind)).toEqual([
+      'as-recorded',
+      'as-recorded',
+    ]);
   });
 });

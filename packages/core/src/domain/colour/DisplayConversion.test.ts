@@ -9,7 +9,9 @@ import {
   hlgInverseOetf,
   shownOf,
   toDisplay,
+  X6_I_LOG_TO_SDR_BT709,
 } from './DisplayConversion';
+import { logCurveLight, logEncodingOf } from './LogEncoding';
 import { UNSPECIFIED_COLOUR, type TrackColour } from './TrackColour';
 import { IDENTITY_MATRIX3 } from '../../shared/math/Matrix3';
 import type { Vector3 } from '../../shared/math/Vector3';
@@ -23,9 +25,14 @@ const HLG: TrackColour = {
   range: 'limited',
 };
 const SDR: TrackColour = { primaries: 'bt709', transfer: 'bt709', matrix: 'bt709', range: 'full' };
+/**
+ * What the X6's bitstream says of an I-Log recording.
+ */
+const I_LOG_AS_TAGGED: TrackColour = { ...SDR, range: 'limited' };
+const X6_I_LOG = logEncodingOf({ model: 'Insta360 X6', captureMode: 'I_Log' });
 
 function conversionOf(primaries: TrackColour['primaries']): unknown {
-  return displayConversionsOf([{ ...HLG, primaries }]).conversions[0];
+  return displayConversionsOf([{ ...HLG, primaries }], undefined).conversions[0];
 }
 
 function grey(level: number): Vector3 {
@@ -60,24 +67,27 @@ describe('hlgInverseOetf', () => {
 
 describe('displayConversionsOf', () => {
   it('picks each frame source its conversion, in order', () => {
-    expect(displayConversionsOf([HLG, SDR])).toEqual({
+    expect(displayConversionsOf([HLG, SDR], undefined)).toEqual({
       conversions: [HLG_TO_SDR_BT709, { ...AS_RECORDED, matrix: 'bt709' }],
       warnings: [],
     });
   });
 
   it("keeps each track's matrix, which the renderer brings the texels back to", () => {
-    const matrices = displayConversionsOf([
-      { ...SDR, matrix: 'smpte170m' },
-      { ...HLG, matrix: 'unspecified' },
-    ]).conversions.map((conversion) => conversion.matrix);
+    const matrices = displayConversionsOf(
+      [
+        { ...SDR, matrix: 'smpte170m' },
+        { ...HLG, matrix: 'unspecified' },
+      ],
+      undefined,
+    ).conversions.map((conversion) => conversion.matrix);
     expect(matrices).toEqual(['smpte170m', 'unspecified']);
   });
 
   it('shows every SDR transfer, or none named, as recorded', () => {
     const transfers = ['bt709', 'smpte170m', 'iec61966-2-1', 'unspecified'] as const;
     const colours = transfers.map((transfer) => ({ ...UNSPECIFIED_COLOUR, transfer }));
-    expect(displayConversionsOf(colours)).toEqual({
+    expect(displayConversionsOf(colours, undefined)).toEqual({
       conversions: transfers.map(() => AS_RECORDED),
       warnings: [],
     });
@@ -90,20 +100,43 @@ describe('displayConversionsOf', () => {
   });
 
   it('says so when it shows HLG without its gamut', () => {
-    const choice = displayConversionsOf([{ ...HLG, primaries: 'smpte432' }]);
+    const choice = displayConversionsOf([{ ...HLG, primaries: 'smpte432' }], undefined);
     expect(choice.conversions).toEqual([{ ...HLG_TO_SDR_BT709, gamut: IDENTITY_MATRIX3 }]);
     expect(choice.warnings).toEqual(['HLG of smpte432 primaries is shown without their gamut']);
   });
 
   it('says so when it shows SDR of wider primaries as BT.709', () => {
-    const choice = displayConversionsOf([{ ...SDR, primaries: 'bt2020' }]);
+    const choice = displayConversionsOf([{ ...SDR, primaries: 'bt2020' }], undefined);
     expect(choice.conversions).toEqual([{ ...AS_RECORDED, matrix: 'bt709' }]);
     expect(choice.warnings).toEqual(['bt2020 primaries are shown as BT.709']);
   });
 
+  it("shows I-Log, which the bitstream calls BT.709, by the camera's fitted LUT", () => {
+    expect(displayConversionsOf([I_LOG_AS_TAGGED, I_LOG_AS_TAGGED], X6_I_LOG)).toEqual({
+      conversions: [X6_I_LOG_TO_SDR_BT709, X6_I_LOG_TO_SDR_BT709],
+      warnings: [],
+    });
+  });
+
+  it('keeps a track the bitstream names HLG as HLG, whatever the info record says', () => {
+    expect(displayConversionsOf([HLG], X6_I_LOG).conversions).toEqual([HLG_TO_SDR_BT709]);
+  });
+
+  it("draws I-Log as recorded where the camera's LUT is not fitted, and says so once", () => {
+    const unmeasured = logEncodingOf({ model: 'Insta360 X5', captureMode: 'I_Log' });
+    const choice = displayConversionsOf([I_LOG_AS_TAGGED, I_LOG_AS_TAGGED], unmeasured);
+    expect(choice.conversions).toEqual([
+      { ...AS_RECORDED, matrix: 'bt709' },
+      { ...AS_RECORDED, matrix: 'bt709' },
+    ]);
+    expect(choice.warnings).toEqual([
+      'I-Log of this camera is shown as recorded: its LUT is not fitted',
+    ]);
+  });
+
   it('draws a transfer it cannot show as recorded, and says so once for all its tracks', () => {
     const pq: TrackColour = { ...HLG, transfer: 'pq' };
-    const choice = displayConversionsOf([pq, pq, { ...SDR, transfer: 'linear' }]);
+    const choice = displayConversionsOf([pq, pq, { ...SDR, transfer: 'linear' }], undefined);
     expect(choice.conversions.map((conversion) => conversion.kind)).toEqual([
       'as-recorded',
       'as-recorded',
@@ -156,6 +189,36 @@ describe('toDisplay', () => {
     }
   });
 
+  it('keeps greys grey through the I-Log conversion, brightening them up to white', () => {
+    const levels = Array.from({ length: 21 }, (_, index) => index / 20);
+    const shown = levels.map((level) => toDisplay(X6_I_LOG_TO_SDR_BT709, grey(level)));
+    for (const [index, [red, green, blue]] of shown.entries()) {
+      expect(green).toBeCloseTo(red, PRECISION);
+      expect(blue).toBeCloseTo(red, PRECISION);
+      const previous = shown[index - 1]?.[0];
+      if (previous !== undefined && previous < 1) expect(red).toBeGreaterThan(previous);
+    }
+    expect(shown.at(-1)?.[0]).toBe(1);
+  });
+
+  it("draws I-Log greys where Insta360 Studio's I-Log LUT does, within two hundredths", () => {
+    // I-Log signal, and the median luma of Studio's LUT export over the near-grey pixels of that
+    // signal in its plain export, five frames of one recording (ADR 0047). At 0.8, a few dozen
+    // pixels, the conversion draws some five levels dark.
+    const studio: readonly (readonly [number, number])[] = [
+      [0.2, 0.081],
+      [0.3, 0.185],
+      [0.4, 0.348],
+      [0.5, 0.539],
+      [0.6, 0.713],
+      [0.7, 0.855],
+    ];
+    for (const [signal, lut] of studio) {
+      const [shown] = toDisplay(X6_I_LOG_TO_SDR_BT709, grey(signal));
+      expect(Math.abs(shown - lut)).toBeLessThan(0.02);
+    }
+  });
+
   it('keeps the hue of a colour whose highlights roll off: its channels stay in proportion', () => {
     const { exposure, exponent } = HLG_TO_SDR_BT709.tone;
     const shown = shownOf(HLG_TO_SDR_BT709, [0.9, 0.6, 0.3]);
@@ -167,9 +230,11 @@ describe('toDisplay', () => {
   });
 
   it('brings a BT.2020 primary into BT.709 as far as it reaches, never below black', () => {
-    const shown = toDisplay(HLG_TO_SDR_BT709, [0, 1, 0]);
-    expect(shown.every((value) => Number.isFinite(value) && value >= 0 && value <= 1)).toBe(true);
-    expect(shown[1]).toBeGreaterThan(shown[0]);
+    for (const conversion of [HLG_TO_SDR_BT709, X6_I_LOG_TO_SDR_BT709]) {
+      const shown = toDisplay(conversion, [0, 1, 0]);
+      expect(shown.every((value) => Number.isFinite(value) && value >= 0 && value <= 1)).toBe(true);
+      expect(shown[1]).toBeGreaterThan(shown[0]);
+    }
   });
 });
 
@@ -184,6 +249,14 @@ describe('exposureSignalOf', () => {
     expect(exposureSignalOf(HLG_TO_SDR_BT709, [0, 0, 1.02])).toEqual(
       exposureSignalOf(HLG_TO_SDR_BT709, [0, 0, 1]),
     );
+  });
+
+  it("reads I-Log as its curve's light, raised to the display's power", () => {
+    const { curve, tone } = X6_I_LOG_TO_SDR_BT709;
+    for (const signal of [0.25, 0.5, 0.75]) {
+      const [red] = exposureSignalOf(X6_I_LOG_TO_SDR_BT709, grey(signal));
+      expect(red).toBeCloseTo(logCurveLight(curve, signal) ** (1 / tone.exponent), PRECISION);
+    }
   });
 
   it('matches two HLG lenses a stop apart with one gain, in the shadows and the highlights', () => {

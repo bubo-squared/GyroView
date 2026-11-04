@@ -58,8 +58,8 @@ function rowRangeOf(band: RowBand, canvas: HTMLCanvasElement): RowRange {
 
 /**
  * How much the world moves between the two pairs when each is turned by `rotationFor` its time,
- * and each row by the renderable's `rowCorrectionsFor` it: under lock with the camera's true orientation it stands
- * nearly still.
+ * and each row by the renderable's `rowCorrectionsFor` it: under lock with the camera's true
+ * orientation it stands nearly still.
  */
 export function worldMovement(
   renderable: Renderable,

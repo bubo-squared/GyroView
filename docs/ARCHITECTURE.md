@@ -105,7 +105,9 @@ record as a structure of arrays; `ImuFrame` says how the IMU's axes sit in the c
 (measured per camera, ADR 0009); `OrientationTrack.integrate` turns gyro and accelerometer
 into a body-to-world quaternion per sample (bias from the stillest window, gravity pull). The
 `Stabilizer` strategies (`off`, `lock`, `horizon`, `follow`) turn an orientation into the
-rotation the renderer applies.
+rotation the renderer applies. `RollingShutter` is a camera's readout and row order
+(`rollingShutterFor`, measured per camera); `rowCorrectionsAt` turns it into the nine rotations
+that turn each row for the time it was read (ADR 0046).
 
 **`stitching`**: `LensLayout` (where each lens's pixels are: which input, track and frame
 region) and `StitchingSetup`, which joins calibration, layout and each frame source's display
@@ -159,7 +161,8 @@ Use cases that orchestrate the domain through ports.
 - `recording/timeRecording` relates a recording to video time: the capture clock, frame times
   for its first frame source (`frameTimesOf`: the sources in the order the info record's pts
   type prefers, the sample table only if needed) and the orientation for stabilization (`motionOf`: gyro integration with the camera's
-  IMU frame), each optional with a warning for what is missing.
+  IMU frame, and its rolling shutter where one is measured), each optional with a warning for
+  what is missing.
 - `recording/readSampleTable` finds the movie box and reads it once, into the file's sample table
   and the movie bytes (`ftyp` and `moov`) a codec reader tells the codecs from.
 - `download/FileDownload` downloads one file while it plays, the only reader of its bytes then
@@ -209,23 +212,23 @@ Use cases that orchestrate the domain through ports.
 
 ### Ports: `core/src/ports`
 
-| Port                 | What the core needs                                                                                                                             | Implementations                                                       |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `RandomAccessSource` | `size()`, `read(ByteRange)`                                                                                                                     | `FileRandomAccessSource`, `HttpRangeSource`, `BlobRandomAccessSource` |
-| `ByteStream`         | a range streamed a chunk at a time, given up by returning its iteration                                                                         | `HttpByteStream`, core `SourceByteStream`                             |
-| `CodecReader`        | each track's decoder configuration, from the movie bytes held in memory                                                                         | `MediabunnyCodecReader`                                               |
-| `VideoTrackReader`   | a video track's key frame times and its packets from a time                                                                                     | core `DownloadedVideoTrack`                                           |
-| `AudioSampleSource`  | a sound track's samples from a time                                                                                                             | core `DownloadedAudioSamples`                                         |
-| `AudioPackager`      | a sound track's samples re-packaged as an `AudioSegmentSource`                                                                                  | `MediabunnyAudioPackager`                                             |
-| `MediaBuffer`        | whether enough lies downloaded ahead for playback that starved to resume, and word when more comes                                              | core `FileDownload`, `RecordingBuffer`                                |
-| `VideoDecoderPort`   | create decoders that emit frames and apply backpressure                                                                                         | `WebCodecsVideoDecoderPort`                                           |
-| `PlaybackClock`      | current time, start/pause/seek, whether it runs, end and failure                                                                                | `MediaSourceAudioClock`, core `application/playback/WallClock`        |
-| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                                          | `MediabunnyAudioPackager`'s segments                                  |
-| `FrameSink`          | present a frame pair                                                                                                                            | `ThreeFrameRenderer`                                                  |
-| `PictureRenderer`    | a `FrameSink` that also takes the stabilization rotation, framing, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
-| `SeamMeter`          | the mean colour each lens shows along the seam                                                                                                  | `SeamMeterPass`                                                       |
-| `SeamMismatchMeter`  | per seam-strip bin, how far the lenses disagree for each slide of lens 0's sampling across the ring                                             | the lab's `SeamMismatchPass`                                          |
-| `ResourceLocator`    | does this URL exist                                                                                                                             | `HttpResourceLocator`                                                 |
+| Port                 | What the core needs                                                                                                                                                    | Implementations                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `RandomAccessSource` | `size()`, `read(ByteRange)`                                                                                                                                            | `FileRandomAccessSource`, `HttpRangeSource`, `BlobRandomAccessSource` |
+| `ByteStream`         | a range streamed a chunk at a time, given up by returning its iteration                                                                                                | `HttpByteStream`, core `SourceByteStream`                             |
+| `CodecReader`        | each track's decoder configuration, from the movie bytes held in memory                                                                                                | `MediabunnyCodecReader`                                               |
+| `VideoTrackReader`   | a video track's key frame times and its packets from a time                                                                                                            | core `DownloadedVideoTrack`                                           |
+| `AudioSampleSource`  | a sound track's samples from a time                                                                                                                                    | core `DownloadedAudioSamples`                                         |
+| `AudioPackager`      | a sound track's samples re-packaged as an `AudioSegmentSource`                                                                                                         | `MediabunnyAudioPackager`                                             |
+| `MediaBuffer`        | whether enough lies downloaded ahead for playback that starved to resume, and word when more comes                                                                     | core `FileDownload`, `RecordingBuffer`                                |
+| `VideoDecoderPort`   | create decoders that emit frames and apply backpressure                                                                                                                | `WebCodecsVideoDecoderPort`                                           |
+| `PlaybackClock`      | current time, start/pause/seek, whether it runs, end and failure                                                                                                       | `MediaSourceAudioClock`, core `application/playback/WallClock`        |
+| `AudioSegmentSource` | the audio track as fragmented MP4 segments from a time                                                                                                                 | `MediabunnyAudioPackager`'s segments                                  |
+| `FrameSink`          | present a frame pair                                                                                                                                                   | `ThreeFrameRenderer`                                                  |
+| `PictureRenderer`    | a `FrameSink` that also takes the stabilization rotation, the rows' corrections, framing, view mode, size and lens gains, and creates a `SeamMeter` over what it draws | `ThreeFrameRenderer`                                                  |
+| `SeamMeter`          | the mean colour each lens shows along the seam                                                                                                                         | `SeamMeterPass`                                                       |
+| `SeamMismatchMeter`  | per seam-strip bin, how far the lenses disagree for each slide of lens 0's sampling across the ring                                                                    | the lab's `SeamMismatchPass`                                          |
+| `ResourceLocator`    | does this URL exist                                                                                                                                                    | `HttpResourceLocator`                                                 |
 
 The core implements some ports itself (`WallClock`, `SourceByteStream`, `DownloadedVideoTrack`,
 `DownloadedAudioSamples`, `FileDownload`, `RecordingBuffer`), from other ports and pure code.
@@ -289,8 +292,9 @@ One package per external technology; none imports another.
   `DrawSchedule` says, at once (`DRAW_AT_ONCE`, the tests' and the lab's) or as the composition
   schedules it (ADR 0035). The stitch (`stitch.frag.glsl` with the
   `rectilinearRays` or `equirectangularRays` chunk) turns every pixel of the picture's area into
-  a ray, applies the view and stabilization rotations, projects through each lens model and
-  blends across the feather band; `rawLenses.frag.glsl` copies each lens's frame region into its
+  a ray, applies the view and stabilization rotations and, where the rows are corrected, each
+  lens's correction for the row it images the ray in (`lensSampling.glsl`), projects through each
+  lens model and blends across the feather band; `rawLenses.frag.glsl` copies each lens's frame region into its
   tile; the seam join chunk decides where each lens is read and across which band it is blended
   at the seam (`fixedJoin.glsl` in the player's stitch). `shaderPrograms` is the only place the
   order of GLSL chunks is known, `fullscreenPass` holds the triangle and material setup every
@@ -429,8 +433,8 @@ with Stryker; adapters have contract tests against their ports and run in Chromi
 where they need a browser; the player and the site are tested in browsers over the synthetic
 recordings; the integration suite adds the real files. `pnpm measure` also writes its renders
 to `.artifacts/` and runs the measurements behind a camera's constants (the IMU frame ranking,
-the lens pose and the lens readings against Insta360 Studio's stitch) and behind the bent seam's
-trial (ADR 0026).
+the lens pose and the lens readings against Insta360 Studio's stitch, the rolling shutter's row
+order) and behind the bent seam's trial (ADR 0026).
 
 ## Two flows
 
@@ -469,7 +473,8 @@ rebuilds an error from its code and message, so the page hears it with its categ
 - Variants of the format (trailer wrapper, record locator, gyro layout, calibration version,
   lens layout, frame-time source) are strategies selected from data in the file, never from the
   camera model string alone (ADR 0004). The IMU frame alone comes from the model string,
-  reported as unverified until measured (ADR 0009).
+  reported as unverified until measured (ADR 0009), and the rolling shutter's row order, applied
+  only where measured (ADR 0046).
 - Units are branded types; rotations have one convention module; errors are `GyroViewError`s
   with stable codes; optional data is modelled as absence, required data missing is an error.
 - Every decision that is not obvious from the code has an ADR; every concept has one name, in

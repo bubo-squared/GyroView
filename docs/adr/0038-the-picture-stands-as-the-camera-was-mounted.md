@@ -110,3 +110,9 @@ axis, and in `off` its horizon ran top to bottom on every frame.
   that stands lens-level, on its side as the slope tilts it.
 - The lens-vertical forward rests on one camera's Studio export; a lens-vertical X camera on a
   drone faces wherever its mount put the body's minus x.
+
+## Since ADR 0046 (2026-10-18)
+
+Where a camera's row order is measured, every mode, `off` included, also turns each row by the
+camera's turn between the frame's time and the time the row was read: `off` draws the camera's
+motion as recorded at each frame's time, without the skew its rolling shutter added.

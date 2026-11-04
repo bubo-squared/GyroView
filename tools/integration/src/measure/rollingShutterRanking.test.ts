@@ -87,8 +87,8 @@ describe('rolling shutter ranking by world stillness under lock stabilization', 
       const candidates = candidatesFor(readout);
       for (const time of sample.imuRankingTimes) {
         const moment = await decodeMoment(opened, time);
-        // Consecutive frames: half a second apart, the scene itself moves far more than a row's
-        // correction does.
+        // Each moment's two consecutive frames: between frames half a second apart, the scene
+        // itself moves far more than a row's correction does.
         const pairs = { canvas, renderer, first: moment.first, later: moment.second };
         for (const candidate of candidates) {
           const { shutter } = candidate;

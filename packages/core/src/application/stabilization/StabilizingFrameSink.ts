@@ -30,9 +30,10 @@ export interface StabilizingParts<Handle> {
   readonly frameTimes: FrameTimes | undefined;
   /**
    * The camera's rolling shutter, when its row order is measured: each row is then turned by the
-   * camera's turn between the frame's time and the row's (ADR 0046).
+   * camera's turn between the frame's time and the row's (ADR 0046); without it every row turns
+   * with its frame. Required, as the frame times are, so a caller cannot leave it out unnoticed.
    */
-  readonly rollingShutter?: RollingShutter | undefined;
+  readonly rollingShutter: RollingShutter | undefined;
 }
 
 /**

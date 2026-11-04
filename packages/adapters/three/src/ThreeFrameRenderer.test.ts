@@ -7,12 +7,16 @@ import {
   IDENTITY_MATRIX3,
   lensRotation,
   MAX_MAGNIFICATION,
+  multiplyMatrices,
   quaternionFromAxisAngle,
   radians,
+  rotationAboutX,
+  rotationAboutY,
   ROW_CORRECTION_COUNT,
   seconds,
   stabilizerFor,
   transformVector,
+  transposeMatrix,
   type CalibrationSet,
   type DecodedFrame,
   type Framing,
@@ -610,17 +614,27 @@ describe('ThreeFrameRenderer', () => {
     expect(pixelAt(renderer, CENTRE).b).toBeGreaterThan(BRIGHT);
   });
 
-  it('turns every row alike as a stabilization does, when every row has the same correction', () => {
-    const renderer = open();
-    renderer.setViewMode('equirectangular');
-    const turnedAround = stabilizerFor('lock').nextRotation(
-      quaternionFromAxisAngle([0, 1, 0], radians(Math.PI)),
-      seconds(0),
-    );
-    renderer.setRowCorrections(Array.from({ length: ROW_CORRECTION_COUNT }, () => turnedAround));
-    presentRedAndBlue(renderer);
-    expect(pixelTowards(renderer, [0, 0, 1]).b).toBeGreaterThan(BRIGHT);
-    expect(pixelTowards(renderer, [0, 0, -1]).r).toBeGreaterThan(BRIGHT);
+  it('turns every row after the stabilization, when every row has the same correction', () => {
+    // A quarter turn is not its own inverse and does not commute with the stabilization's tilt,
+    // so a correction applied backwards, or before the stabilization, reads other texels. The
+    // lenses show different pictures: a direction turned half a turn about y falls on the same
+    // pixel of the other lens.
+    const correction = rotationAboutY(radians(Math.PI / 2));
+    const stabilization = rotationAboutX(radians(Math.PI / 6));
+    const both = multiplyMatrices(correction, stabilization);
+    const corrected = open();
+    corrected.setViewMode('equirectangular');
+    corrected.setStabilization(stabilization);
+    corrected.setRowCorrections(Array.from({ length: ROW_CORRECTION_COUNT }, () => correction));
+    present(corrected, [gradientFrame(), solidFrame('#0000ff')]);
+    const stabilized = open();
+    stabilized.setViewMode('equirectangular');
+    stabilized.setStabilization(both);
+    present(stabilized, [gradientFrame(), solidFrame('#0000ff')]);
+    for (const [yaw, pitch] of PROBES_ON_LENS_ZERO) {
+      const ray = transformVector(transposeMatrix(both), bodyDirectionAt(yaw, pitch));
+      expectColoursClose(pixelTowards(corrected, ray), pixelTowards(stabilized, ray));
+    }
   });
 
   it('turns each row of a lens by its own correction: the top rows show the turned direction', () => {

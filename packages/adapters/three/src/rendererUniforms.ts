@@ -75,7 +75,7 @@ export interface RendererUniforms extends ConversionUniforms {
   readonly uLensCount: IUniform<number>;
   readonly uViewRotation: IUniform<Matrix3>;
   readonly uStabilization: IUniform<Matrix3>;
-  readonly uRowCorrected: IUniform<boolean>;
+  readonly uIsRowCorrected: IUniform<boolean>;
   readonly uRowCorrection: IUniform<Matrix3[]>;
   readonly uPlaneHalfExtent: IUniform<number>;
   readonly uPictureAspect: IUniform<number>;
@@ -122,7 +122,7 @@ function viewUniforms(
   | 'uLensCount'
   | 'uViewRotation'
   | 'uStabilization'
-  | 'uRowCorrected'
+  | 'uIsRowCorrected'
   | 'uRowCorrection'
   | 'uPlaneHalfExtent'
   | 'uPictureAspect'
@@ -133,7 +133,7 @@ function viewUniforms(
     uLensCount: { value: setup.lenses.length },
     uViewRotation: { value: new Matrix3() },
     uStabilization: { value: new Matrix3() },
-    uRowCorrected: { value: false },
+    uIsRowCorrected: { value: false },
     uRowCorrection: { value: Array.from({ length: ROW_CORRECTION_COUNT }, () => new Matrix3()) },
     uPlaneHalfExtent: { value: 1 },
     uPictureAspect: { value: 1 },

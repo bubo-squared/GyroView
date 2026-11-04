@@ -8,7 +8,7 @@ uniform float uLensHalfFov[MAX_LENSES];
 uniform vec4 uLensWindow[MAX_LENSES];
 // Rolling-shutter corrections (ADR 0046): the body as it was when each row was read, from the
 // body at the frame's time, for rows from the top of every lens's window to its bottom.
-uniform bool uRowCorrected;
+uniform bool uIsRowCorrected;
 uniform mat3 uRowCorrection[ROW_CORRECTIONS];
 
 struct LensSample {
@@ -38,17 +38,17 @@ vec2 canvasPixel(int i, vec3 d, float theta, out bool isKnown) {
 // some 80 rows of a ONE R's lens, which leaves the row found off by about 5 percent of the
 // correction, so one step is enough.
 vec3 rowCorrected(int i, vec3 dirBody) {
-  if (!uRowCorrected) return dirBody;
+  if (!uIsRowCorrected) return dirBody;
   vec3 d = uLensRotation[i] * dirBody;
   float theta = atan(length(d.xy), d.z);
   bool isKnown;
   vec2 pixel = canvasPixel(i, d, theta, isKnown);
   float row = clamp((pixel.y - uLensWindow[i].y) / uLensWindow[i].w, 0.0, 1.0);
   float rowStep = row * float(ROW_CORRECTIONS - 1);
-  int below = min(int(floor(rowStep)), ROW_CORRECTIONS - 2);
-  vec3 above = uRowCorrection[below] * dirBody;
-  vec3 next = uRowCorrection[below + 1] * dirBody;
-  return normalize(mix(above, next, rowStep - float(below)));
+  int node = min(int(floor(rowStep)), ROW_CORRECTIONS - 2);
+  vec3 turnedByNode = uRowCorrection[node] * dirBody;
+  vec3 turnedByNext = uRowCorrection[node + 1] * dirBody;
+  return normalize(mix(turnedByNode, turnedByNext, rowStep - float(node)));
 }
 
 // What lens i shows in a body direction, read as `sampling` says, if it images it at all:

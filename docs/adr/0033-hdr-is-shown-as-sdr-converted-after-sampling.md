@@ -1,7 +1,7 @@
 # ADR 0033: HDR is shown as SDR BT.709, converted in the shader right after a lens is sampled
 
-Status: accepted (2026-09-30, revised 2026-10-01); the tone parameters are provisional, fitted
-to one X6 recording
+Status: accepted (2026-09-30, revised 2026-10-01, amended by ADR 0047 on 2026-11-04); the tone
+parameters are provisional, fitted to one X6 recording
 
 ## Context
 
@@ -128,3 +128,11 @@ as it arrives: upload, mipmaps and drawing are not in it, nor 50 fps on a 60 Hz 
   over Direct3D 11) with NVIDIA, Intel and AMD GPUs, Safari on macOS, Safari on iOS (memory),
   and presented rather than decoded frames at 8K50. A Dolby Vision recording whose sample entry
   is `dvh1` rather than `hvc1` is not read (verify on real file).
+
+## Since ADR 0047 (2026-11-04)
+
+An SDR track is shown as recorded unless the info record names a log encoding the camera's
+bitstream calls SDR: the X6's I-Log, whose SPS says BT.709. `displayConversionsOf` takes the
+recording's log encoding beside the tracks' colours, and such a track is converted as HLG is, by
+Studio's LUT for its camera as fitted: its curve in place of HLG's inverse OETF, its matrix as
+the gamut, and Studio's tone curve at its exposure.

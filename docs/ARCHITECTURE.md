@@ -88,9 +88,13 @@ scale to any model's parameters. `lensPose` gives the body-to-lens rotation from
 roll (ADR 0008, ADR 0025).
 
 **`colour`: how a track's texels reach the display.** `TrackColour` is a video track's colour as
-its bitstream names it. `DisplayConversion` is the data of one way of showing a track's texels
-on the SDR BT.709 canvas, chosen per frame source by `displayConversionsOf` through a table over
-every transfer: as recorded for SDR, HLG to SDR BT.709 for HLG (ADR 0033). `exposureSignalOf`
+its bitstream names it. `LogEncoding` is what the info record adds where the bitstream says SDR:
+a recording made in I-Log, and Studio's LUT for its camera as fitted (`FittedLut`: a `LogCurve`,
+a matrix and an exposure; `logEncodingOf`, ADR 0047). `DisplayConversion` is the data of one way
+of showing a track's texels on the SDR BT.709 canvas, chosen per frame source by
+`displayConversionsOf` through a table over every transfer: as recorded for SDR, a log encoding
+to SDR BT.709 by its fitted LUT where the recording names one, HLG to SDR BT.709 for HLG
+(ADR 0033). `exposureSignalOf`
 and `shownOf` are its two stages around the exposure gain, the references the shader is held
 to; `matrixCorrectionOf` brings R′G′B′ a platform derived through another matrix back to the
 track's. `gainMatch` holds the exposure-matching model, which scales the exposure signals of the

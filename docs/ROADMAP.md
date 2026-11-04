@@ -94,7 +94,7 @@ upright, the rest of its IMU frame assumed (ADR 0009).
 
 One Insta360 ONE R recording with the 5.7K 360 lens module (an H.264 `_00_`/`_10_` pair, a
 skydive, a local sample, ADR 0031): its IMU frame by the stillness ranking (ADR 0009), and its
-rolling shutter's row order by the same measure (ADR 0046), in Chromium and WebKit.
+rolling shutter's row order on lens 0, lens 1's assumed (ADR 0046), in Chromium and WebKit.
 
 ## Waiting on something only a user can supply
 
@@ -113,6 +113,8 @@ rolling shutter's row order by the same measure (ADR 0046), in Chromium and WebK
   to "aligned" with a `warning` until measured.
 - **A ONE RS recording that turns**: to measure the rest of its IMU frame (ADR 0009); one that
   stood still cannot tell the four quarter turns about its down apart.
+- **A ONE R recording that can be shared**: to confirm its IMU frame (ADR 0009) and its rolling
+  shutter's row order, lens 1's on its own (ADR 0046); both rest on one unit's recording.
 - **An iPhone**: to run the developer page on iOS Safari and confirm `ManagedMediaSource`
   audio, hardware decoder limits with several players on a page, the pinned fullscreen
   fallback, that the volume slider hides where the volume cannot be set, and that the

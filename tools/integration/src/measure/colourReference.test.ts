@@ -1,4 +1,5 @@
 import { readPixels } from '@gyroview/adapter-three/testing';
+import type { DisplayConversion } from '@gyroview/core';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { saveMeasurement } from '../browser/artifacts';
@@ -16,14 +17,22 @@ import {
 
 /**
  * How far the player's mean red, green and blue, its saturation and its luma percentiles may lie
- * from Studio's, in levels of 255: a little above what ADR 0033 measured, so a change to the
- * conversion that moves the picture off Studio's fails here. A wrong matrix barely moves these
- * statistics of a whole scene; `decodedFrameUpload.test.ts` and the three adapter's upload tests
- * guard the matrix.
+ * from Studio's, in levels of 255: a little above what ADR 0033 and ADR 0047 measured, so a
+ * change to the conversion that moves the picture off Studio's fails here. A wrong matrix barely
+ * moves these statistics of a whole scene; `decodedFrameUpload.test.ts` and the three adapter's
+ * upload tests guard the matrix.
  */
 const MEAN_TOLERANCE_LEVELS = 5;
 const SATURATION_TOLERANCE_LEVELS = 2.5;
-const LUMA_TOLERANCE_LEVELS = 4;
+/**
+ * The luma's, by the conversion: I-Log's curve is steeper than HLG's through the middle tones, so
+ * the player's own stitch, a level or two brighter than Studio's, moves it further.
+ */
+const LUMA_TOLERANCE_LEVELS: Readonly<Record<DisplayConversion['kind'], number>> = {
+  'as-recorded': 4,
+  'hlg-to-sdr-bt709': 4,
+  'log-to-sdr-bt709': 4.5,
+};
 
 function expectWithin(
   player: readonly number[],
@@ -38,9 +47,9 @@ function expectWithin(
 const CLIPS = STUDIO_CLIPS.filter((clip) => clip.sdrFrames.length > 0);
 
 /**
- * The player's colour of an HDR recording against Insta360 Studio's SDR export of the same
- * stitch (ADR 0033): the whole sphere's statistics, weighted by area, which no turn between the
- * two panoramas changes.
+ * The player's colour of an HDR or log recording against Insta360 Studio's SDR export of the
+ * same stitch (ADR 0033, ADR 0047): the whole sphere's statistics, weighted by area, which no
+ * turn between the two panoramas changes.
  */
 describe.skipIf(CLIPS.length === 0)("the player's colour against Studio's SDR export", () => {
   const cleanups: (() => void)[] = [];
@@ -72,7 +81,9 @@ describe.skipIf(CLIPS.length === 0)("the player's colour against Studio's SDR ex
         await saveMeasurement(`${clip.slug}-${frame.time}s-colour`, { player, studio });
         expectWithin(player.meanRgb, studio.meanRgb, MEAN_TOLERANCE_LEVELS);
         expectWithin([player.saturation], [studio.saturation], SATURATION_TOLERANCE_LEVELS);
-        expectWithin(player.lumaPercentiles, studio.lumaPercentiles, LUMA_TOLERANCE_LEVELS);
+        const [conversion] = opened.displayConversions;
+        const lumaTolerance = LUMA_TOLERANCE_LEVELS[conversion?.kind ?? 'as-recorded'];
+        expectWithin(player.lumaPercentiles, studio.lumaPercentiles, lumaTolerance);
       });
     }
   }

@@ -58,6 +58,12 @@ the sensor reads the coded image's rows. No rotation of the whole frame removes 
 - `ThreeFrameRenderer.test.ts`: corrections all alike turn the picture as a stabilization by the
   same rotation does; corrections that turn only the top rows of a lens's window turn only the
   directions those rows image; no corrections turn every row with its frame again.
+- On an iPhone (WebKit, 2026-11-04), the developer page filling the screen, with the correction
+  forced on by a local switch that is not in the repository: a ONE RS recording presented 21.8
+  frames a second against 22.1 without it, near its own rate, over some 45 seconds each, and the
+  office recording (X5, 5.7K at 60 fps) 49.3 against 52.5, a stall of the network in the corrected
+  run. The ONE RS turns whole without the switch, and the shader's cost does not depend on the
+  camera.
 
 ## Alternatives considered
 
@@ -84,4 +90,5 @@ the sensor reads the coded image's rows. No rotation of the whole frame removes 
   catalogue (ADR 0031) with the moments it turns at and run `pnpm measure`.
 - Each lens projects a direction once more, to find the row it images it in; no texture is read
   twice. Only a recording whose rows are corrected pays for it: for any other the shader returns
-  before the projection.
+  before the projection. On an iPhone a ONE RS recording plays about as smoothly with it as
+  without, and the 60 fps office recording at most some 3 frames a second slower.

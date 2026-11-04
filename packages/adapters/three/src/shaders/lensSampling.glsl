@@ -34,9 +34,9 @@ vec2 canvasPixel(int i, vec3 d, float theta, out bool isKnown) {
 }
 
 // The body direction as it was when lens i read the row it images the direction in: found by
-// where the direction lands at the frame's time. A turn of 500 degrees a second moves it by
-// some 80 rows of a ONE R's lens, which leaves the row found off by about 5 percent of the
-// correction, so one step is enough.
+// where the direction lands at the frame's time. A turn of 500 degrees a second moves it by up
+// to some 80 rows of a ONE R's lens, at the window's top and bottom, which leaves the row found
+// off by about 5 to 6 percent of the correction, so one step is enough.
 vec3 rowCorrected(int i, vec3 dirBody) {
   if (!uIsRowCorrected) return dirBody;
   vec3 d = uLensRotation[i] * dirBody;

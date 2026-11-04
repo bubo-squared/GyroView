@@ -34,8 +34,9 @@ vec2 canvasPixel(int i, vec3 d, float theta, out bool isKnown) {
 }
 
 // The body direction as it was when lens i read the row it images the direction in: found by
-// where the direction lands at the frame's time, which the correction moves by a few rows at
-// most, so one step is enough.
+// where the direction lands at the frame's time. A turn of 500 degrees a second moves it by
+// some 80 rows of a ONE R's lens, which leaves the row found off by about 5 percent of the
+// correction, so one step is enough.
 vec3 rowCorrected(int i, vec3 dirBody) {
   if (!uRowCorrected) return dirBody;
   vec3 d = uLensRotation[i] * dirBody;
@@ -43,11 +44,11 @@ vec3 rowCorrected(int i, vec3 dirBody) {
   bool isKnown;
   vec2 pixel = canvasPixel(i, d, theta, isKnown);
   float row = clamp((pixel.y - uLensWindow[i].y) / uLensWindow[i].w, 0.0, 1.0);
-  float step = row * float(ROW_CORRECTIONS - 1);
-  int below = min(int(floor(step)), ROW_CORRECTIONS - 2);
+  float rowStep = row * float(ROW_CORRECTIONS - 1);
+  int below = min(int(floor(rowStep)), ROW_CORRECTIONS - 2);
   vec3 above = uRowCorrection[below] * dirBody;
   vec3 next = uRowCorrection[below + 1] * dirBody;
-  return normalize(mix(above, next, step - float(below)));
+  return normalize(mix(above, next, rowStep - float(below)));
 }
 
 // What lens i shows in a body direction, read as `sampling` says, if it images it at all:

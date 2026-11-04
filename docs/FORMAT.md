@@ -113,7 +113,8 @@ taken for a bad trim record and ignored.
 
 Field numbers (`packages/core/src/domain/format/info/infoFields.ts`): 1 serial, 2 model,
 3 firmware, 5 `offset` (v1 calibration), 19 dimension {1 width, 2 height}, 20 frame rate,
-22 capture mode, 24 `first_frame_timestamp` (capture clock), 25 rolling shutter (ms, double),
+22 capture mode (`standard`; `I_Log` on the X6 in I-Log, whose SPS names BT.709 as standard
+mode's does, ADR 0047), 24 `first_frame_timestamp` (capture clock), 25 rolling shutter (ms, double),
 26 file group {1 type, 2 index, 3 identify, 4 total}, 27 window crop {1..6}, 28 gyro offset
 (ms, double), 29 has gyro offset, 40 total frames, 42 flowstate online, 51 gyro type,
 53 `offset_v2`, 54 `offset_v3`, 62 raw gyro flag, 64 pts type (1 track timestamps, 2 exposure

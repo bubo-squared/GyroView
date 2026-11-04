@@ -96,6 +96,10 @@ One Insta360 ONE R recording with the 5.7K 360 lens module (an H.264 `_00_`/`_10
 skydive, a local sample, ADR 0031): its IMU frame by the stillness ranking (ADR 0009), and its
 rolling shutter's row order on lens 0, lens 1's assumed (ADR 0046), in Chromium and WebKit.
 
+One Insta360 X6 recording in I-Log, and one in standard mode (8K30, 10-bit, local samples,
+ADR 0031): I-Log shown as Studio's I-Log LUT shows it, by a curve and a matrix fitted to Studio's
+plain and LUT exports of one stitch (ADR 0047), in Chromium and WebKit.
+
 ## Waiting on something only a user can supply
 
 - **An iPhone and an Android phone for motion look** (ADR 0040), over HTTPS: the permission prompt
@@ -115,6 +119,10 @@ rolling shutter's row order on lens 0, lens 1's assumed (ADR 0046), in Chromium 
   stood still cannot tell the four quarter turns about its down apart.
 - **A ONE R recording that can be shared**: to confirm its IMU frame (ADR 0009) and its rolling
   shutter's row order, lens 1's on its own (ADR 0046); both rest on one unit's recording.
+- **Another X6 I-Log recording, of another scene, and I-Log of other cameras**: each with
+  Studio's exports of one stitch, plain and with its LUT, to score the X6's fitted LUT on a scene
+  it was not fitted to and to fit another camera's (ADR 0047); I-Log of other cameras is drawn as
+  recorded until then.
 - **An iPhone**: to run the developer page on iOS Safari and confirm `ManagedMediaSource`
   audio, hardware decoder limits with several players on a page, the pinned fullscreen
   fallback, that the volume slider hides where the volume cannot be set, and that the
@@ -151,6 +159,10 @@ rolling shutter's row order on lens 0, lens 1's assumed (ADR 0046), in Chromium 
   degrees; its IMU frame is assumed past its down (ADR 0009).
 - HDR is shown as SDR: HLG through Insta360 Studio's curve, fitted to its pixels; PQ is drawn
   as recorded, with a warning. The 10 bits reach the shader as 8.
+- I-Log is shown as Studio's LUT shows it on the X6 alone, its LUT fitted to one recording of one
+  scene (ADR 0047). WebKit draws the X6's 10-bit SDR some 1.4 levels redder and bluer
+  than Chromium, standard mode's too, and I-Log's curve steepens it to some 3 to 4 levels: a sky
+  leans to lavender in WebKit.
 - The X6's 8K at 50 fps in 10 bits decodes at twice its frame rate on an M4 Pro (123 pairs a
   second in Chromium, 98 in WebKit), counting the decoders alone. Drawn, headless on the same
   machine, it reaches the screen at 49.6 pairs a second in Chromium and 48 in WebKit, skipping

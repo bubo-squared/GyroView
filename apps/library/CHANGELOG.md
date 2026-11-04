@@ -3,6 +3,15 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## Unreleased
+
+Added (ADR 0047, I-Log is shown as Insta360 Studio's I-Log LUT shows it):
+
+- An Insta360 X6 recording made in I-Log is shown in Studio's I-Log LUT colours, no longer grey and
+  pale: its info record names I-Log where its bitstream says BT.709, and the player converts it by
+  a curve and a colour matrix fitted to Studio's LUT. I-Log of another camera is drawn as recorded
+  until its LUT is fitted.
+
 ## 0.9.1 (2026-11-04)
 
 Added (ADR 0046, each row is turned for the time its sensor read it):

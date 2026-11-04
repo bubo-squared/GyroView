@@ -50,3 +50,4 @@ new record takes the next number and a line here.
 - [ADR 0044](0044-a-server-slow-to-answer-is-asked-in-fewer-larger-ranges.md): A server slow to answer is asked in fewer, larger ranges
 - [ADR 0045](0045-a-recording-is-rendered-frame-by-frame-at-the-pace-its-consumer-takes-the-frames.md): A recording is rendered frame by frame at the pace its consumer takes the frames
 - [ADR 0046](0046-each-row-is-turned-for-the-time-its-sensor-read-it.md): Each row is turned for the time its sensor read it
+- [ADR 0047](0047-i-log-is-shown-as-studios-lut-shows-it.md): I-Log is shown as Insta360 Studio's I-Log LUT shows it

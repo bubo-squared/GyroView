@@ -5,11 +5,12 @@
  */
 export interface DrawSchedule {
   /**
-   * Asks for `draw` to run, at once or later; a later run serves every request made before it.
+   * Asks for `draw` to run, at once or later, or leaves the change to the next presented pair; a
+   * later run serves every request made before it.
    */
   request(draw: () => void): void;
   /**
-   * The picture asked for was drawn by other means, a presented frame: nothing pending runs.
+   * The picture asked for was drawn by other means, a presented pair: nothing pending runs.
    */
   cancel(): void;
 }
@@ -21,6 +22,19 @@ export interface DrawSchedule {
 export const DRAW_AT_ONCE: DrawSchedule = {
   request: (draw): void => {
     draw();
+  },
+  cancel: (): void => {
+    // Nothing waits.
+  },
+};
+
+/**
+ * Draws nothing on its own: every change, a restored context included, waits for the next
+ * presented pair, for whoever reads the canvas only right after a pair, as a rendition does.
+ */
+export const DRAW_WITH_NEXT_PAIR: DrawSchedule = {
+  request: (): void => {
+    // The next presented pair draws the change.
   },
   cancel: (): void => {
     // Nothing waits.

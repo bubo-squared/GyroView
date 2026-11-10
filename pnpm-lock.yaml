@@ -91,8 +91,8 @@ importers:
   apps/library:
     dependencies:
       mediabunny:
-        specifier: ^1.58.0
-        version: 1.58.0
+        specifier: ^1.65.2
+        version: 1.65.2
       three:
         specifier: ^0.186.0
         version: 0.186.0
@@ -151,8 +151,8 @@ importers:
         specifier: workspace:*
         version: link:../../core
       mediabunny:
-        specifier: ^1.58.0
-        version: 1.58.0
+        specifier: ^1.65.2
+        version: 1.65.2
     devDependencies:
       '@types/node':
         specifier: 26.6.1
@@ -373,8 +373,8 @@ importers:
         specifier: 4.1.12
         version: 4.1.12(playwright@1.63.0)(vite@8.3.3(@types/node@26.6.1)(esbuild@0.28.2)(tsx@4.23.13)(yaml@2.9.1))(vitest@4.1.12)
       mediabunny:
-        specifier: ^1.58.0
-        version: 1.58.0
+        specifier: ^1.65.2
+        version: 1.65.2
       playwright:
         specifier: 1.63.0
         version: 1.63.0
@@ -2035,8 +2035,8 @@ packages:
   mdn-data@2.34.0:
     resolution: {integrity: sha512-OgIlLv0NxJKVW4GTSAoEgpRGd4F2XCqGinK0MsMlBCCS/Zcm2/LsbercNWNA7PeMMcjl75NnI97eqyo7zkdxWA==}
 
-  mediabunny@1.58.0:
-    resolution: {integrity: sha512-0jW6vSDVqWwNe3+WBryrMzC2mUBfk6E5KQLGXLdKVGzclceXXIsbayEkAsNDCuoTcoMiVI62sPDnkkFDxiMjGw==}
+  mediabunny@1.65.2:
+    resolution: {integrity: sha512-goZpibvo/5hkc/56WVNm93Ini+o7K4y8aXA20c/BN1B+m3L5aHQa8MTvO+S1APg/YI8kMILtrX6QCqUtxLW7bA==}
 
   meshoptimizer@1.1.1:
     resolution: {integrity: sha512-oRFNWJRDA/WTrVj7NWvqa5HqE1t9MYDj2VaWirQCzCCrAd2GHrqR/sQezCxiWATPNlKTcRaPRHPJwIRoPBAp5g==}
@@ -4279,7 +4279,7 @@ snapshots:
 
   mdn-data@2.34.0: {}
 
-  mediabunny@1.58.0:
+  mediabunny@1.65.2:
     dependencies:
       '@types/dom-mediacapture-transform': 0.1.12
       '@types/dom-webcodecs': 0.1.13

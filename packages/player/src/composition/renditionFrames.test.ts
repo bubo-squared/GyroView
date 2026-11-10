@@ -73,6 +73,58 @@ function pixelsOf(frame: VideoFrame): Uint8ClampedArray {
   return context.getImageData(0, 0, canvas.width, canvas.height).data;
 }
 
+interface Draws {
+  /**
+   * Into any canvas's own drawing buffer: the pictures drawn.
+   */
+  readonly intoCanvas: number;
+  /**
+   * Into a framebuffer, as the seam meter's are.
+   */
+  readonly intoFramebuffers: number;
+  restore(): void;
+}
+
+/**
+ * Counts the WebGL draws of the page until restored.
+ */
+function countDraws(): Draws {
+  const prototype = WebGL2RenderingContext.prototype;
+  // eslint-disable-next-line @typescript-eslint/unbound-method -- each is called back with its receiver
+  const { drawArrays, drawElements } = prototype;
+  const counts = { intoCanvas: 0, intoFramebuffers: 0 };
+  const countDraw = (gl: WebGL2RenderingContext): void => {
+    if (gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING) === null) counts.intoCanvas += 1;
+    else counts.intoFramebuffers += 1;
+  };
+  prototype.drawArrays = function countedArrays(
+    this: WebGL2RenderingContext,
+    ...parameters: Parameters<WebGL2RenderingContext['drawArrays']>
+  ): void {
+    countDraw(this);
+    drawArrays.apply(this, parameters);
+  };
+  prototype.drawElements = function countedElements(
+    this: WebGL2RenderingContext,
+    ...parameters: Parameters<WebGL2RenderingContext['drawElements']>
+  ): void {
+    countDraw(this);
+    drawElements.apply(this, parameters);
+  };
+  return {
+    get intoCanvas(): number {
+      return counts.intoCanvas;
+    },
+    get intoFramebuffers(): number {
+      return counts.intoFramebuffers;
+    },
+    restore: (): void => {
+      prototype.drawArrays = drawArrays;
+      prototype.drawElements = drawElements;
+    },
+  };
+}
+
 describe('renditionOf', () => {
   const opened: OpenedRecording[] = [];
 
@@ -153,6 +205,18 @@ describe('renditionOf', () => {
     expect(second).toEqual(first);
     const middle = first?.[FRAME_COUNT / 2] ?? new Uint8ClampedArray();
     expect(new Set(middle).size).toBeGreaterThan(16);
+  });
+
+  it('draws each frame once, its new gains drawn with the next frame rather than on their own', async () => {
+    const { recording } = await openSynthetic();
+    const draws = countDraws();
+    try {
+      const frames = await framesOf(recording, { size: SIZE, gainMatching: true });
+      expect(draws.intoCanvas).toBe(frames.length);
+      expect(draws.intoFramebuffers).toBeGreaterThan(0);
+    } finally {
+      draws.restore();
+    }
   });
 
   it('renders only the frames of the span asked for, timed from its start', async () => {

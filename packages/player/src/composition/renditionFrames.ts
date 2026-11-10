@@ -1,4 +1,4 @@
-import { ThreeFrameRenderer } from '@gyroview/adapter-three';
+import { DRAW_WITH_NEXT_PAIR, ThreeFrameRenderer } from '@gyroview/adapter-three';
 import {
   DecodePipeline,
   DEFAULT_PICTURE_QUALITY,
@@ -170,8 +170,15 @@ class RenditionRun implements RenditionFrames {
     this.wake.resolve();
   }
 
+  /**
+   * The renderer draws only the pairs presented to it. The picture is taken right after each pair,
+   * which is closed then, so new gains drawn on their own would be a picture nobody takes; and a
+   * lost context fails the run, so a restored one has nothing to draw.
+   */
   private equirectangularRenderer(quality: PictureQuality): ThreeFrameRenderer {
-    const renderer = ThreeFrameRenderer.create(this.canvas, stitchingSetupOf(this.parts.opened));
+    const renderer = ThreeFrameRenderer.create(this.canvas, stitchingSetupOf(this.parts.opened), {
+      drawSchedule: DRAW_WITH_NEXT_PAIR,
+    });
     this.disposables.add(() => {
       renderer.dispose();
     });

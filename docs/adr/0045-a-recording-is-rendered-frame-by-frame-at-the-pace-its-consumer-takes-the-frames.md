@@ -42,7 +42,8 @@ nothing is dropped or repeated.
   with an asynchronous read-back (ADR 0012), so in the player the frame a new gain first shows on
   depends on the GPU. A rendition awaits `GainMatchingFrameSink.settled()` after each frame: the
   gains measured on a frame apply from the next one, and two renditions of a recording are the
-  same pixels.
+  same pixels. Its renderer draws only the pairs presented to it (`DRAW_WITH_NEXT_PAIR`): new
+  gains are drawn with the next frame, not as a picture of their own that nobody takes.
 - **It draws on an `OffscreenCanvas` of its own**, and touches no DOM, so it runs in a
   dedicated worker beside the encoder. A caller's canvas is not taken: the rendition would resize
   it and hold its WebGL2 context, and the option is easier to add later than to take back.

@@ -293,7 +293,8 @@ One package per external technology; none imports another.
 - **`three`**: `ThreeFrameRenderer`, on a canvas element or an `OffscreenCanvas` (`RenderCanvas`),
   one fullscreen pass per frame with the program of the picture the view mode asks for
   (`pictureMaterials`); a changed setting is drawn when its
-  `DrawSchedule` says, at once (`DRAW_AT_ONCE`, the tests' and the lab's) or as the composition
+  `DrawSchedule` says, at once (`DRAW_AT_ONCE`, the tests' and the lab's), only with the next
+  presented pair (`DRAW_WITH_NEXT_PAIR`, a rendition's; ADR 0045) or as the composition
   schedules it (ADR 0035). The stitch (`stitch.frag.glsl` with the
   `rectilinearRays` or `equirectangularRays` chunk) turns every pixel of the picture's area into
   a ray, applies the view and stabilization rotations and, where the rows are corrected, each

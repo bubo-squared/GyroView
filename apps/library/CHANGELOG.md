@@ -3,6 +3,22 @@
 What changed for a page using the package, newest first. Until 1.0, a minor version may change
 the API.
 
+## 0.10.1 (2026-11-11)
+
+Changed:
+
+- The package asks for mediabunny 1.65.2 or a later 1.x (was 1.58.0). It reads each recording's
+  movie box through mediabunny, which since 1.62 throws on a malformed or malicious one instead
+  of exhausting memory or looping; such a recording fails with `unsupported-container`. A page
+  that uses mediabunny itself shares the package's copy from 1.65.2 on; an older one means two
+  copies. The standalone module is about 4 KB larger compressed.
+
+Changed (ADR 0045, amended):
+
+- `openRendition` no longer draws an extra full-size picture, which nothing took, each time gain
+  matching changes the lens gains (every half second of the recording, while gain matching is
+  on): each frame is drawn once, and the frames are the same pixels.
+
 ## 0.10.0 (2026-11-04)
 
 Added (ADR 0047, I-Log is shown as Insta360 Studio's I-Log LUT shows it):

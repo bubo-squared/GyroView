@@ -8,6 +8,7 @@ import type {
   RandomAccessSource,
   ResourceLocator,
   Deferred,
+  Milliseconds,
   Seconds,
   StabilizationMode,
   VideoDecoderPort,
@@ -39,8 +40,8 @@ export interface SourceOpener {
 }
 
 /**
- * Everything the composition root needs from outside the core to open a recording. The browser
- * supplies adapters; tests supply doubles.
+ * Everything the composition root needs from outside the core to open and play a recording. The
+ * browser supplies adapters; tests supply doubles.
  */
 export interface RecordingPorts<Handle = unknown> {
   readonly sources: SourceOpener;
@@ -56,6 +57,10 @@ export interface RecordingPorts<Handle = unknown> {
    * A fresh signal that fires when a decode probe has taken too long.
    */
   readonly probeDeadline: () => Deferred<void>;
+  /**
+   * The page's monotonic time, which a recording without sound the browser can play plays by.
+   */
+  readonly pageTime: () => Milliseconds;
 }
 
 /**
@@ -74,6 +79,7 @@ export interface PipelineParts {
   readonly opened: OpenedRecording;
   readonly host: PipelineHost;
   readonly decoderPort: VideoDecoderPort<VideoFrame>;
+  readonly pageTime: RecordingPorts['pageTime'];
   /**
    * Aborts a load a newer one superseded, before it draws on the host's canvas.
    */

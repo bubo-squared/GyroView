@@ -1,7 +1,9 @@
 import {
   degrees,
   GyroViewError,
+  milliseconds,
   seconds,
+  type Milliseconds,
   type PictureRenderer,
   type PlaybackSession,
   type VideoDecoderPort,
@@ -22,6 +24,10 @@ import { settle, waitFor } from '../test/waiting';
 
 const CANVAS_WIDTH = 128;
 const CANVAS_HEIGHT = 64;
+/**
+ * A frame of the synthetic X5 recording, which plays at 10 fps.
+ */
+const FRAME_MS = milliseconds(100);
 function sourceOf(url: string): PlayerSource {
   return { main: { url }, second: undefined };
 }
@@ -81,6 +87,24 @@ function harness(
     errors.push(error);
   });
   return { player, canvas, audio, statuses, events, frames, warnings, errors };
+}
+
+/**
+ * Page time that moves only when the test moves it.
+ */
+interface HeldTime {
+  readonly now: () => Milliseconds;
+  readonly advance: (by: Milliseconds) => void;
+}
+
+function heldTime(): HeldTime {
+  let now = 0;
+  return {
+    now: () => milliseconds(now),
+    advance: (by): void => {
+      now += by;
+    },
+  };
 }
 
 /**
@@ -156,6 +180,16 @@ describe('Player over the synthetic X5 recording', () => {
     return created;
   }
 
+  /**
+   * A player whose silent clock reads page time the test moves: the 3-second recording plays only
+   * as far as the test says, so no stall of a slow runner, such as a first draw compiling its
+   * shaders without a GPU, plays it to its end before the test looks.
+   */
+  function openHeld(): Harness & { readonly time: HeldTime } {
+    const time = heldTime();
+    return { ...open(buildPipeline, { ...browserPorts(), pageTime: time.now }), time };
+  }
+
   afterEach(() => {
     for (const { player, canvas } of harnesses.splice(0)) {
       player.dispose();
@@ -196,15 +230,18 @@ describe('Player over the synthetic X5 recording', () => {
   });
 
   it('plays frames in media order, pauses, seeks and stops with media-element events', async () => {
-    const { player, events, frames } = open();
+    const { player, events, frames, time } = openHeld();
     await player.load(sourceOf(X5_RECORDING_URL));
 
     await player.play();
-    await waitFor(() => frames.length >= 5, 'five presented frames');
-    // Playing, or buffering through a stall on a slow machine.
-    expect(player.isPaused).toBe(false);
-    expect(frames).toEqual(frames.toSorted((left, right) => left - right));
-    expect(player.currentTime).toBeGreaterThan(0);
+    for (let shown = 1; shown <= 5; shown += 1) {
+      if (shown > 1) time.advance(FRAME_MS);
+      await waitFor(() => frames.length >= shown, `presented frame ${shown}`);
+    }
+    // Each frame shows once the page's time reaches it, and not before.
+    expect(frames).toEqual([0, 0.1, 0.2, 0.3, 0.4]);
+    expect(player.status).toBe('playing');
+    expect(player.currentTime).toBe(0.4);
 
     player.pause();
     expect(player.status).toBe('paused');
@@ -481,7 +518,7 @@ describe('Player over the synthetic X5 recording', () => {
   });
 
   it('toggles playback as a tap does, a refused start a warning', async () => {
-    const { player, warnings } = open();
+    const { player, warnings } = openHeld();
     player.togglePlayback();
     await waitFor(() => warnings.length > 0, 'the refused start');
     expect(warnings).toEqual([

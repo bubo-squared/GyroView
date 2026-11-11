@@ -1,6 +1,7 @@
 import {
   Deferred,
   ITERATION_END,
+  milliseconds,
   readSampleTable,
   SourceByteStream,
   type AudioDecoderConfiguration,
@@ -9,6 +10,7 @@ import {
   type AudioSegmentSource,
   type CodecReader,
   type ContainerCodecs,
+  type Milliseconds,
   type ResourceLocator,
   type TrackColour,
   type VideoDecoderPort,
@@ -194,5 +196,6 @@ export function fakePorts(parts: FakePortsParts): RecordingPorts {
     decoderPort: parts.decoderPort ?? new FakeVideoDecoderPort(),
     locatorFor: (): ResourceLocator => locator,
     probeDeadline: (): Deferred<void> => new Deferred<void>(),
+    pageTime: (): Milliseconds => milliseconds(performance.now()),
   };
 }

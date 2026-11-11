@@ -8,7 +8,7 @@ import {
 } from '@gyroview/adapter-fetch';
 import { MediabunnyAudioPackager, MediabunnyCodecReader } from '@gyroview/adapter-mediabunny';
 import { WebCodecsVideoDecoderPort } from '@gyroview/adapter-webcodecs';
-import { Deferred, SourceByteStream } from '@gyroview/core';
+import { Deferred, milliseconds, SourceByteStream } from '@gyroview/core';
 
 import type { OpenedSource, RecordingPorts, SourceOpener } from './ports';
 import { isUrlInput, type BlobInput, type UrlInput } from '../PlayerSource';
@@ -41,6 +41,7 @@ export function browserPorts(options: BrowserPortsOptions = {}): RecordingPorts<
     decoderPort: new WebCodecsVideoDecoderPort(),
     locatorFor: (input, signal) => new HttpResourceLocator(requestOptionsFor(http, input), signal),
     probeDeadline: () => deadlineIn(probeTimeoutMs),
+    pageTime: () => milliseconds(performance.now()),
   };
 }
 

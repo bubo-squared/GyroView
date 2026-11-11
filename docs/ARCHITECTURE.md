@@ -326,7 +326,7 @@ The composition root and the user-facing element, in three layers.
   It depends on `RecordingPorts` (`SourceOpener`, `CodecReader`, `AudioPackager`, `VideoDecoderPort`, a
   `ResourceLocator` for each input, so the other lens file is looked for with the main file's
   credentials and `fetch` (ADR 0027, ADR 0043), a deadline factory), so it is tested against fakes; `browserPorts`
-  supplies the real adapters. `buildPipeline` assembles the running parts: the clock (audio or wall),
+  supplies the real adapters. `buildPipeline` assembles the running parts: the clock (audio, or wall over the ports' page time),
   the renderer, which draws a changed setting once at the next animation frame
   (`AnimationFrameDraws` over the `FrameScheduler` the player's `FrameLoop` ticks on, ADR 0035),
   its drawing buffer kept to the canvas's size (`DrawingBufferFit`, whose pixel ratio cap the

@@ -75,13 +75,10 @@ function pixelsOf(frame: VideoFrame): Uint8ClampedArray {
 
 interface Draws {
   /**
-   * Into any canvas's own drawing buffer: the pictures drawn.
+   * Into any canvas's own drawing buffer: the pictures drawn, not the seam meter's draws into its
+   * framebuffers.
    */
   readonly intoCanvas: number;
-  /**
-   * Into a framebuffer, as the seam meter's are.
-   */
-  readonly intoFramebuffers: number;
   restore(): void;
 }
 
@@ -92,10 +89,9 @@ function countDraws(): Draws {
   const prototype = WebGL2RenderingContext.prototype;
   // eslint-disable-next-line @typescript-eslint/unbound-method -- each is called back with its receiver
   const { drawArrays, drawElements } = prototype;
-  const counts = { intoCanvas: 0, intoFramebuffers: 0 };
+  let intoCanvas = 0;
   const countDraw = (gl: WebGL2RenderingContext): void => {
-    if (gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING) === null) counts.intoCanvas += 1;
-    else counts.intoFramebuffers += 1;
+    if (gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING) === null) intoCanvas += 1;
   };
   prototype.drawArrays = function countedArrays(
     this: WebGL2RenderingContext,
@@ -113,10 +109,7 @@ function countDraws(): Draws {
   };
   return {
     get intoCanvas(): number {
-      return counts.intoCanvas;
-    },
-    get intoFramebuffers(): number {
-      return counts.intoFramebuffers;
+      return intoCanvas;
     },
     restore: (): void => {
       prototype.drawArrays = drawArrays;
@@ -172,6 +165,25 @@ describe('renditionOf', () => {
     return seen;
   }
 
+  /**
+   * The pixels of every frame the rendition yields, the frame closed.
+   */
+  async function picturesOf(
+    recording: OpenedRecording,
+    request: RenditionRequest,
+  ): Promise<Uint8ClampedArray[]> {
+    const rendition = renditionOf(
+      { opened: recording, decoderPort: browserPorts().decoderPort },
+      request,
+    );
+    const pictures: Uint8ClampedArray[] = [];
+    for await (const frame of rendition.frames()) {
+      pictures.push(pixelsOf(frame));
+      frame.close();
+    }
+    return pictures;
+  }
+
   it('renders every frame of the recording once, in order, as 2:1 panoramas timed from its start', async () => {
     const { recording } = await openSynthetic();
     const frames = await framesOf(recording, { size: SIZE });
@@ -188,35 +200,28 @@ describe('renditionOf', () => {
 
   it('draws the stitched panorama, the same pixels every time whatever the pace of the GPU', async () => {
     const { recording } = await openSynthetic();
-    const renders: Uint8ClampedArray[][] = [];
-    for (let run = 0; run < 2; run += 1) {
-      const rendition = renditionOf(
-        { opened: recording, decoderPort: browserPorts().decoderPort },
-        { size: SIZE },
-      );
-      const pictures: Uint8ClampedArray[] = [];
-      for await (const frame of rendition.frames()) {
-        pictures.push(pixelsOf(frame));
-        frame.close();
-      }
-      renders.push(pictures);
-    }
-    const [first, second] = renders;
+    const first = await picturesOf(recording, { size: SIZE });
+    const second = await picturesOf(recording, { size: SIZE });
     expect(second).toEqual(first);
-    const middle = first?.[FRAME_COUNT / 2] ?? new Uint8ClampedArray();
+    const middle = first[FRAME_COUNT / 2] ?? new Uint8ClampedArray();
     expect(new Set(middle).size).toBeGreaterThan(16);
   });
 
   it('draws each frame once, its new gains drawn with the next frame rather than on their own', async () => {
     const { recording } = await openSynthetic();
     const draws = countDraws();
+    let matched: Uint8ClampedArray[];
     try {
-      const frames = await framesOf(recording, { size: SIZE, gainMatching: true });
-      expect(draws.intoCanvas).toBe(frames.length);
-      expect(draws.intoFramebuffers).toBeGreaterThan(0);
+      matched = await picturesOf(recording, { size: SIZE, gainMatching: true });
+      expect(draws.intoCanvas).toBe(matched.length);
     } finally {
       draws.restore();
     }
+    const unmatched = await picturesOf(recording, { size: SIZE, gainMatching: false });
+    // The first frame is drawn before anything was measured; the gains measured on it show in the
+    // next.
+    expect(matched[0]).toEqual(unmatched[0]);
+    expect(matched[1]).not.toEqual(unmatched[1]);
   });
 
   it('renders only the frames of the span asked for, timed from its start', async () => {

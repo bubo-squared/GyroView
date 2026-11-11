@@ -57,23 +57,14 @@ const FIRST_SECOND = 2;
  */
 const SEEK_WITHIN = 0.5;
 /**
- * How far before the end of what a stopped run appended a seek goes, and past it playback must
- * then get: across the seam between the two runs' audio.
+ * How far before the end of what a stopped run appended the next run restarts from, and past it
+ * playback must then get: across the seam between the two runs' audio.
  */
 const ACROSS_THE_SEAM = 0.3;
 /**
  * Headless WebKit under load is slow to start playing.
  */
 const PLAYBACK_WITHIN_MS = 10_000;
-/**
- * Playwright's Linux WebKit (GStreamer) now and then never finishes a seek within buffered audio,
- * `seeking` for good: about one such seek in 22 when segments are appended and the stream ends
- * while it is pending, as the player does, and one in 270 when they are not, in a Linux
- * container; never in 90 tries on macOS. A test that plays across a seam is tried again when its
- * seek was lost, and only then: audio that fails to decode at a seam fails at once.
- */
-const LOST_SEEK = 'the seek was lost';
-const LOST_SEEK_RETRY = { count: 2, condition: new RegExp(LOST_SEEK, 'u') };
 /**
  * A time past the first second, which a run stalled after it has not appended.
  */
@@ -260,34 +251,44 @@ describe.skipIf(!isMediaSourceTypeSupported(AAC_IN_MP4))('SourceBufferFeeder', (
     close();
   });
 
-  // A seek stops a run between any two of its segments: playing from the last run's audio into
-  // the next run's must still decode, which only playing shows.
-  for (const appended of [1, 2, 3]) {
-    it(
-      `plays from one run's audio into the next after a seek stopped a run after ${appended} of its segments`,
-      { retry: LOST_SEEK_RETRY },
-      async () => {
-        const stalled = new Deferred<void>();
-        const { feeder, element, close } = await fixtureFeeder(stallingAfter(appended, stalled));
-        onTestFinished(close);
-        feeder.restartFrom(seconds(0));
-        await stalled.promise;
-        const seam = element.buffered.length > 0 ? element.buffered.end(0) : 0;
-        const from = Math.max(0, seam - ACROSS_THE_SEAM);
-        element.muted = true;
-        element.currentTime = from;
-        feeder.restartFrom(seconds(from));
-        await element.play();
-        await waitUntil(
-          () => element.error !== null || element.currentTime > seam + ACROSS_THE_SEAM,
-          PLAYBACK_WITHIN_MS,
-        );
-        expect(element.error).toBeNull();
-        expect(feeder.failure).toBeUndefined();
-        expect(element.seeking, LOST_SEEK).toBe(false);
-        expect(element.currentTime).toBeGreaterThan(seam + ACROSS_THE_SEAM);
-      },
-    );
+  // A seek restarts the feeder, stopping its run between any two of its segments: playing from
+  // the last run's audio into the next run's must still decode, which only playing shows, and so
+  // must a second initialisation segment before any audio. The element plays from the start
+  // rather than seeking to the seam, since Playwright's Linux WebKit (GStreamer) now and then
+  // never finishes a seek within buffered audio, and retrying did not help: in a run where one
+  // seek was lost, the next often were too.
+  const restarts = [
+    {
+      appended: 1,
+      name: 'plays after a restart stopped a run after its initialisation segment alone',
+    },
+    ...[2, 3].map((appended) => ({
+      appended,
+      name: `plays from one run's audio into the next after a restart stopped a run after ${appended} of its segments`,
+    })),
+  ];
+  for (const { appended, name } of restarts) {
+    it(name, async () => {
+      const stalled = new Deferred<void>();
+      const { feeder, element, asked, close } = await fixtureFeeder(
+        stallingAfter(appended, stalled),
+      );
+      onTestFinished(close);
+      feeder.restartFrom(seconds(0));
+      await stalled.promise;
+      const seam = element.buffered.length > 0 ? element.buffered.end(0) : 0;
+      feeder.restartFrom(seconds(Math.max(0, seam - ACROSS_THE_SEAM)));
+      element.muted = true;
+      await element.play();
+      await waitUntil(
+        () => element.error !== null || element.currentTime > seam + ACROSS_THE_SEAM,
+        PLAYBACK_WITHIN_MS,
+      );
+      expect(asked).toEqual([0, seam]);
+      expect(element.error).toBeNull();
+      expect(feeder.failure).toBeUndefined();
+      expect(element.currentTime).toBeGreaterThan(seam + ACROSS_THE_SEAM);
+    });
   }
 
   it("leaves a failed element's own error to say why, appending nothing more", async () => {

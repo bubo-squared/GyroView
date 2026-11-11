@@ -7,18 +7,17 @@ import {
   ensureInvariant,
   FramePairQueue,
   GyroViewError,
-  GainMatchingFrameSink,
   IS_GAIN_MATCHED_BY_DEFAULT,
   messageOf,
-  referenceLensOf,
   RenditionSpan,
   seconds,
   stabilizerFor,
-  UPRIGHT_MOUNTING,
   type FramePair,
+  type GainMatchingFrameSink,
   type PictureQuality,
   type SpanRequest,
   type StabilizationMode,
+  type StitchingSetup,
   type VideoDecoderPort,
   type ViewportSize,
 } from '@gyroview/core';
@@ -26,7 +25,7 @@ import {
 import {
   DECODE_PIPELINE_OPTIONS,
   PAIR_QUEUE_CAPACITY,
-  sinkOver,
+  sinksOver,
   stitchingSetupOf,
 } from './buildPipeline';
 import { Disposables } from './Disposables';
@@ -116,8 +115,12 @@ class RenditionRun implements RenditionFrames {
       releaseContextOf(this.canvas);
     });
     try {
-      this.renderer = this.equirectangularRenderer(request.quality ?? DEFAULT_PICTURE_QUALITY);
-      this.gainMatching = this.sinksOver(request);
+      const setup = stitchingSetupOf(parts.opened);
+      this.renderer = this.equirectangularRenderer(
+        setup,
+        request.quality ?? DEFAULT_PICTURE_QUALITY,
+      );
+      this.gainMatching = this.gainMatchingOver(setup, request);
     } catch (error) {
       this.disposables.disposeAll();
       throw error;
@@ -175,8 +178,11 @@ class RenditionRun implements RenditionFrames {
    * which is closed then, so new gains drawn on their own would be a picture nobody takes; and a
    * lost context fails the run, so a restored one has nothing to draw.
    */
-  private equirectangularRenderer(quality: PictureQuality): ThreeFrameRenderer {
-    const renderer = ThreeFrameRenderer.create(this.canvas, stitchingSetupOf(this.parts.opened), {
+  private equirectangularRenderer(
+    setup: StitchingSetup,
+    quality: PictureQuality,
+  ): ThreeFrameRenderer {
+    const renderer = ThreeFrameRenderer.create(this.canvas, setup, {
       drawSchedule: DRAW_WITH_NEXT_PAIR,
     });
     this.disposables.add(() => {
@@ -190,25 +196,19 @@ class RenditionRun implements RenditionFrames {
   }
 
   /**
-   * Gain matching in front of the stabilizing sink in front of the renderer, as the player
-   * composes them.
+   * The sinks the player presents through, with the settings asked for: the front of the chain.
    */
-  private sinksOver(request: RenditionRequest): GainMatchingFrameSink<VideoFrame> {
-    const { opened } = this.parts;
-    const { sink, stabilizing } = sinkOver(this.renderer, opened);
-    stabilizing?.setStabilizer(stabilizerFor(request.stabilization ?? DEFAULT_STABILIZATION_MODE));
-    const mounting = opened.motion?.mounting ?? UPRIGHT_MOUNTING;
-    const lenses = stitchingSetupOf(opened).lenses;
-    const matching = new GainMatchingFrameSink(
-      sink,
-      this.renderer,
-      referenceLensOf(lenses, mounting),
-    );
+  private gainMatchingOver(
+    setup: StitchingSetup,
+    request: RenditionRequest,
+  ): GainMatchingFrameSink<VideoFrame> {
+    const { stabilizing, gainMatching } = sinksOver(this.renderer, this.parts.opened, setup);
     this.disposables.add(() => {
-      matching.dispose();
+      gainMatching.dispose();
     });
-    if (request.gainMatching ?? IS_GAIN_MATCHED_BY_DEFAULT) matching.enable();
-    return matching;
+    stabilizing?.setStabilizer(stabilizerFor(request.stabilization ?? DEFAULT_STABILIZATION_MODE));
+    if (request.gainMatching ?? IS_GAIN_MATCHED_BY_DEFAULT) gainMatching.enable();
+    return gainMatching;
   }
 
   /**

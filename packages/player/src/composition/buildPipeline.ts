@@ -14,6 +14,8 @@ import {
   WallClock,
   type DecodePipelineOptions,
   type FrameSink,
+  type GainRenderer,
+  type PictureRenderer,
   type PlaybackClock,
   type StitchingSetup,
 } from '@gyroview/core';
@@ -77,23 +79,18 @@ export async function buildPipeline(parts: PipelineParts): Promise<Pipeline> {
   }
 }
 
-interface Drawing {
+interface Drawing extends Sinks {
   readonly renderer: ThreeFrameRenderer;
   /**
    * The drawing buffer kept to the canvas's size, as many device pixels as the quality allows.
    */
   readonly fit: DrawingBufferFit;
-  readonly stabilizing: StabilizingFrameSink<VideoFrame> | undefined;
-  /**
-   * The front of the chain the session presents to.
-   */
-  readonly gainMatching: GainMatchingFrameSink<VideoFrame>;
 }
 
 /**
- * The GPU stitcher on the host canvas, behind the stabilizing sink when there is a gyro, behind
- * gain matching, which measures what the stitcher drew. A change of the view or the gains is
- * drawn once at the next animation frame, where a frame presented in it draws it anyway.
+ * The GPU stitcher on the host canvas, behind the sinks every renderer of the recording is
+ * presented through. A change of the view or the gains is drawn once at the next animation
+ * frame, where a frame presented in it draws it anyway.
  */
 function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
   const setup = stitchingSetupOf(parts.opened);
@@ -107,17 +104,11 @@ function drawingFor(parts: PipelineParts, disposables: Disposables): Drawing {
   disposables.add(() => {
     fit.dispose();
   });
-  const { sink, stabilizing } = sinkOver(renderer, parts.opened);
-  const mounting = parts.opened.motion?.mounting ?? UPRIGHT_MOUNTING;
-  const gainMatching = new GainMatchingFrameSink(
-    sink,
-    renderer,
-    referenceLensOf(setup.lenses, mounting),
-  );
+  const sinks = sinksOver(renderer, parts.opened, setup);
   disposables.add(() => {
-    gainMatching.dispose();
+    sinks.gainMatching.dispose();
   });
-  return { renderer, fit, stabilizing, gainMatching };
+  return { renderer, fit, ...sinks };
 }
 
 /**
@@ -191,16 +182,64 @@ export function stitchingSetupOf(opened: OpenedRecording): StitchingSetup {
   });
 }
 
-export interface SinkChoice {
+/**
+ * The sinks a renderer of the recording is presented through, the player's and a rendition's.
+ */
+export interface Sinks {
+  /**
+   * Where the stabilization mode is set; undefined without a gyro.
+   */
+  readonly stabilizing: StabilizingFrameSink<VideoFrame> | undefined;
+  /**
+   * The front of the chain, which pairs are presented to; its owner disposes of it.
+   */
+  readonly gainMatching: GainMatchingFrameSink<VideoFrame>;
+}
+
+/**
+ * The renderer at the end of the sinks: turned before each pair it draws, its gains matched.
+ */
+export type SinkRenderer = Pick<
+  PictureRenderer<VideoFrame>,
+  'present' | 'setStabilization' | 'setRowCorrections'
+> &
+  GainRenderer<VideoFrame>;
+
+/**
+ * What the sinks read of the recording: its motion, and the frame times a pair is turned for.
+ */
+export type SinkMotion = Pick<OpenedRecording, 'motion' | 'frameTimes'>;
+
+/**
+ * Gain matching, which measures what the renderer drew, in front of the stabilizing sink, or of
+ * the renderer itself when there is no gyro, turned upright once then; one place, so that the
+ * player and a rendition draw a recording alike.
+ */
+export function sinksOver(
+  renderer: SinkRenderer,
+  opened: SinkMotion,
+  setup: Pick<StitchingSetup, 'lenses'>,
+): Sinks {
+  const { sink, stabilizing } = sinkBehindGainMatching(renderer, opened);
+  const mounting = opened.motion?.mounting ?? UPRIGHT_MOUNTING;
+  const gainMatching = new GainMatchingFrameSink(
+    sink,
+    renderer,
+    referenceLensOf(setup.lenses, mounting),
+  );
+  return { stabilizing, gainMatching };
+}
+
+interface SinkChoice {
   readonly sink: FrameSink<VideoFrame>;
   readonly stabilizing: StabilizingFrameSink<VideoFrame> | undefined;
 }
 
 /**
- * The sink a renderer of the recording is presented through: the stabilizing sink when there is
- * a gyro, the renderer itself, drawing the body upright, when there is none.
+ * The stabilizing sink when there is a gyro, the renderer itself, drawing the body upright, when
+ * there is none.
  */
-export function sinkOver(renderer: ThreeFrameRenderer, opened: OpenedRecording): SinkChoice {
+function sinkBehindGainMatching(renderer: SinkRenderer, opened: SinkMotion): SinkChoice {
   if (!opened.motion) {
     // Without a gyro the body is drawn as recorded, facing where an upright camera faces.
     renderer.setStabilization(UPRIGHT_MOUNTING.toBody);

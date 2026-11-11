@@ -5,7 +5,6 @@ import {
   GainMatchingFrameSink,
   isFlowing,
   messageOf,
-  milliseconds,
   PlaybackSession,
   referenceLensOf,
   seconds,
@@ -158,10 +157,11 @@ interface ChosenClock {
  */
 async function clockFor(parts: PipelineParts): Promise<ChosenClock> {
   const { soundSegments } = parts.opened;
-  if (!soundSegments) return wallClock(NO_AUDIO_WARNING);
+  if (!soundSegments) return wallClock(parts.pageTime, NO_AUDIO_WARNING);
   try {
     const segments = soundSegments();
-    if (!MediaSourceAudioClock.isSupported(segments)) return wallClock(AUDIO_UNSUPPORTED_WARNING);
+    if (!MediaSourceAudioClock.isSupported(segments))
+      return wallClock(parts.pageTime, AUDIO_UNSUPPORTED_WARNING);
     // The audio element is the host's, shared with any newer load: a superseded load must not
     // take it over. The pipeline stops right after this, whatever clock it got.
     parts.signal.throwIfAborted();
@@ -169,15 +169,15 @@ async function clockFor(parts: PipelineParts): Promise<ChosenClock> {
     return { clock, warnings: [] };
   } catch (error) {
     // Sound is a comfort, the picture is the point: a broken audio path must not stop playback.
-    return wallClock(`${AUDIO_FAILED_WARNING} (${messageOf(error)})`);
+    return wallClock(parts.pageTime, `${AUDIO_FAILED_WARNING} (${messageOf(error)})`);
   }
 }
 
 /**
  * A clock over the monotonic page time, which a change of the system clock does not move.
  */
-function wallClock(warning: string): ChosenClock {
-  return { clock: new WallClock(() => milliseconds(performance.now())), warnings: [warning] };
+function wallClock(pageTime: PipelineParts['pageTime'], warning: string): ChosenClock {
+  return { clock: new WallClock(pageTime), warnings: [warning] };
 }
 
 /**

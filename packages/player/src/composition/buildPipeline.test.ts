@@ -35,6 +35,7 @@ describe('buildPipeline', () => {
         opened,
         host: { canvas, audio },
         decoderPort: ports.decoderPort,
+        pageTime: ports.pageTime,
         signal: superseded.signal,
       }),
     ).rejects.toMatchObject({ name: 'AbortError' });
@@ -68,6 +69,7 @@ describe('buildPipeline', () => {
       opened: { ...opened, readAhead },
       host: { canvas, audio },
       decoderPort: ports.decoderPort,
+      pageTime: ports.pageTime,
       signal: new AbortController().signal,
     });
     expect(readsAhead).toBe(0);

@@ -41,6 +41,7 @@ export async function loadRecording(request: LoadRequest): Promise<LoadedRecordi
       opened,
       host: parts.host,
       decoderPort: parts.ports.decoderPort,
+      pageTime: parts.ports.pageTime,
       signal,
     });
     disposables.add(() => {

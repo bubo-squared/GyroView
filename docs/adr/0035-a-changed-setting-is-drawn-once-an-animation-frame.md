@@ -1,6 +1,7 @@
 # ADR 0035: A changed setting is drawn once an animation frame
 
-Status: accepted (2026-10-02)
+Status: accepted (2026-10-02); amended (2026-11-10): a rendition's renderer, whose canvas is read
+only right after a pair, draws only the pairs presented to it (`DRAW_WITH_NEXT_PAIR`, ADR 0045).
 
 ## Context
 
@@ -27,9 +28,11 @@ frames of the recording. Gain matching drew one extra stitch every half second w
 ## Decision
 
 - The renderer draws a changed setting when its `DrawSchedule` says. The adapter offers
-  `DRAW_AT_ONCE`, its default; the player's composition gives each renderer an
-  `AnimationFrameDraws`, which draws once at the next animation frame however many changes come
-  before it, on the same `FrameScheduler` the player's `FrameLoop` ticks on.
+  `DRAW_AT_ONCE`, its default, and `DRAW_WITH_NEXT_PAIR`, which leaves the change to the next
+  presented pair. The player's composition gives the player's renderer an `AnimationFrameDraws`,
+  which draws once at the next animation frame however many changes come before it, on the same
+  `FrameScheduler` the player's `FrameLoop` ticks on; a rendition's renderer takes
+  `DRAW_WITH_NEXT_PAIR` (ADR 0045).
 - A presented pair is drawn at once and cancels the draw the schedule holds, so a frame that
   presents draws once. A new drawing buffer size is drawn at once as well: resizing clears the
   canvas, which would otherwise stay blank until the next frame. Disposing gives up the draw

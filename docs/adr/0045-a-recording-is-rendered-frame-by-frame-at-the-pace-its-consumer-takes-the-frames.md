@@ -1,6 +1,8 @@
 # ADR 0045: A recording is rendered frame by frame at the pace its consumer takes the frames
 
-Status: accepted (2026-10-18)
+Status: accepted (2026-10-18); amended (2026-11-10): its renderer draws only the pairs presented
+to it (`DRAW_WITH_NEXT_PAIR`), so new gains are drawn with the next frame rather than on their
+own.
 
 ## Context
 
@@ -60,8 +62,8 @@ nothing is dropped or repeated.
 - **Sound is the page's.** The recording's audio track is in the file as recorded, for an
   encoding library to copy; the rendition draws pictures only.
 - **The composition owns the loop** (`renditionOf`), beside `buildPipeline`, whose stitching
-  setup and sink choice it shares: use cases do not know each other, so the core gives the span
-  and the settling, and the composition wires the pipeline, the queue and the sinks.
+  setup and sinks (`sinksOver`) it shares: use cases do not know each other, so the core gives
+  the span and the settling, and the composition wires the pipeline, the queue and the sinks.
 
 ## Alternatives considered
 

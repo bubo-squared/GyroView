@@ -22,7 +22,9 @@ pnpm test:coverage              # every project with coverage, in Node, Chromium
 
 The browser projects (the player, the WebCodecs, Three.js and MSE adapters, the embed site)
 run in headless Chromium and WebKit through Playwright; `pnpm --filter
-@gyroview/adapter-webcodecs exec playwright install chromium webkit` installs them once.
+@gyroview/adapter-webcodecs exec playwright install chromium webkit` installs them once. CI runs
+them in Playwright's image of the same version (`.github/workflows/ci.yml`), so a bump of
+`playwright` moves the image's tag and digest with it.
 
 ## Builds and tools
 

@@ -19,6 +19,12 @@ jobs:
     name: Typecheck, lint, format, dependency rules, tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Playwright's image holds the browsers and the system libraries they need, so the job reaches
+    # no Ubuntu package mirror, whose slow days held it past its timeout. The tag names the
+    # `playwright` version packages/adapters/webcodecs pins, and moves with it.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      options: --ipc=host
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -27,20 +33,6 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Find the Playwright version
-        id: playwright
-        run: echo "version=$(pnpm --filter @gyroview/adapter-webcodecs exec playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
-      # The browsers are downloaded once per Playwright version; the system libraries they need
-      # are not cached, and are installed on every run.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        id: browsers
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      - if: steps.browsers.outputs.cache-hit != 'true'
-        run: pnpm --filter @gyroview/adapter-webcodecs exec playwright install --with-deps chromium webkit
-      - if: steps.browsers.outputs.cache-hit == 'true'
-        run: pnpm --filter @gyroview/adapter-webcodecs exec playwright install-deps chromium webkit
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
